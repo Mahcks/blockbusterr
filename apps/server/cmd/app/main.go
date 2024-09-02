@@ -12,6 +12,7 @@ import (
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/global"
+	"github.com/mahcks/blockbusterr/internal/rest"
 )
 
 var (
@@ -78,7 +79,19 @@ func main() {
 		close(done)
 	}()
 
-	// wg.Add(1)
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+
+		slog.Info("Starting API server")
+		if err := rest.New(gctx); err != nil {
+			slog.Error("Error starting API server", "error", err)
+			cancel()
+			return
+		}
+		slog.Info("API server stopped")
+	}()
 
 	<-done
 

@@ -12,30 +12,6 @@ import (
 
 type Config struct {
 	Timestamp time.Time `mapstructure:"timestamp" json:"timestamp"`
-
-	Twitch struct {
-		Bot struct {
-			Prefix    string `mapstructure:"prefix" json:"prefix"`
-			Channel   string `mapstructure:"channel" json:"channel"`
-			ChannelID string `mapstructure:"channel_id" json:"channel_id"`
-			Username  string `mapstructure:"username" json:"username"`
-			OAuth     string `mapstructure:"oauth" json:"oauth"`
-		} `mapstructure:"bot" json:"bot"`
-
-		Helix struct {
-			ClientID       string `mapstructure:"client_id" json:"client_id"`
-			ClientSecret   string `mapstructure:"client_secret" json:"client_secret"`
-			EventSubSecret string `mapstructure:"eventsub_secret" json:"eventsub_secret"`
-		} `mapstructure:"helix" json:"helix"`
-	} `mapstructure:"twitch" json:"twitch"`
-
-	Turso struct {
-		URL string `mapstructure:"url" json:"url"`
-	} `mapstructure:"turso" json:"turso"`
-
-	APIKeys struct {
-		LastFM string `mapstructure:"lastfm" json:"lastfm"`
-	} `mapstructure:"api_keys" json:"api_keys"`
 }
 
 //nolint:gocritic

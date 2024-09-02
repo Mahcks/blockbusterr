@@ -25,3 +25,15 @@ func IsEmptyValue(v reflect.Value) bool {
 	}
 	return false
 }
+
+// Util - Ternary:
+// A golang equivalent to JS Ternary Operator
+//
+// It takes a condition, and returns a result depending on the outcome
+func Ternary[T any](condition bool, whenTrue T, whenFalse T) T {
+	if condition {
+		return whenTrue
+	}
+
+	return whenFalse
+}
