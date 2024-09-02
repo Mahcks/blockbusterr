@@ -1,0 +1,3 @@
+tasks:
+  dev:
+    command: 'go run cmd/app/main.go'
