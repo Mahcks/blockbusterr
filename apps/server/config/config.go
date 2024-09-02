@@ -12,6 +12,11 @@ import (
 
 type Config struct {
 	Timestamp time.Time `mapstructure:"timestamp" json:"timestamp"`
+
+	Trakt struct {
+		ClientID     string `mapstructure:"client_id" json:"client_id"`
+		ClientSecret string `mapstructure:"client_secret" json:"client_secret"`
+	} `mapstructure:"trakt" json:"trakt"`
 }
 
 //nolint:gocritic
