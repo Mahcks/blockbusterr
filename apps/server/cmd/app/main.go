@@ -10,8 +10,11 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/mattn/go-sqlite3"
+
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/rest"
+	"github.com/mahcks/blockbusterr/internal/services/sqlite"
 	"github.com/mahcks/blockbusterr/internal/services/trakt"
 )
 
@@ -46,6 +49,17 @@ func main() {
 
 	gctx, cancel := global.WithCancel(global.New(context.Background()))
 	var err error
+
+	{
+		slog.Info("Setting up SQLite database")
+		gctx.Crate().SQL, err = sqlite.Setup(gctx)
+		if err != nil {
+			slog.Error("Error setting up SQLite database", "error", err)
+			cancel()
+			return
+		}
+		slog.Info("SQLite database setup complete")
+	}
 
 	{
 		slog.Info("Setting up Trakt API")
