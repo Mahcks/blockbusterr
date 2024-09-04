@@ -78,7 +78,10 @@ func New(gctx global.Context) error {
 	}))
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "http://localhost:3001,https://ret-paladin-bot-website.vercel.app,https://retpaladinbot.com,https://www.retpaladinbot.com",
+		AllowOrigins: "*",
+		AllowOriginsFunc: func(origin string) bool {
+			return true
+		},
 		AllowMethods: "GET,POST,PUT,PATCH,DELETE",
 		AllowHeaders: strings.Join(allowedHeaders, ", "),
 	}))

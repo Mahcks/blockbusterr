@@ -1,3 +1,7 @@
 package services
 
-type Crate struct{}
+import "github.com/mahcks/blockbusterr/internal/services/trakt"
+
+type Crate struct {
+	Trakt trakt.Service
+}

@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/rest"
+	"github.com/mahcks/blockbusterr/internal/services/trakt"
 )
 
 var (
@@ -44,13 +44,31 @@ func main() {
 
 	slog.Info("Starting the application", "version", version, "timestamp", Timestamp)
 
-	cfg, err := config.New(Version, time.Now())
-	if err != nil {
-		slog.Error("Error loading config", "error", err)
-		os.Exit(1)
-	}
+	gctx, cancel := global.WithCancel(global.New(context.Background()))
+	var err error
 
-	gctx, cancel := global.WithCancel(global.New(context.Background(), cfg))
+	{
+		slog.Info("Setting up Trakt API")
+		gctx.Crate().Trakt, err = trakt.Setup(gctx, trakt.SetupOptions{
+			ClientID:     "1234567890",
+			ClientSecret: "0987654321",
+		})
+		if err != nil {
+			slog.Error("Error setting up Trakt API", "error", err)
+			cancel()
+			return
+		}
+		slog.Info("Trakt API setup complete")
+
+		popularMovies, err := gctx.Crate().Trakt.GetPopularMovies(gctx, 1)
+		if err != nil {
+			slog.Error("Error getting popular movies", "error", err)
+			cancel()
+			return
+		}
+
+		fmt.Println(popularMovies)
+	}
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
