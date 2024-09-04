@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
+	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/rest"
 	"github.com/mahcks/blockbusterr/internal/services/sqlite"
@@ -47,8 +48,14 @@ func main() {
 
 	slog.Info("Starting the application", "version", version, "timestamp", Timestamp)
 
-	gctx, cancel := global.WithCancel(global.New(context.Background()))
-	var err error
+	// Load configuration
+	cfg, err := config.New(Version, time.Now())
+	if err != nil {
+		slog.Error("Error loading config", "error", err)
+		os.Exit(1)
+	}
+
+	gctx, cancel := global.WithCancel(global.New(context.Background(), cfg))
 
 	{
 		slog.Info("Setting up SQLite database")
@@ -64,8 +71,8 @@ func main() {
 	{
 		slog.Info("Setting up Trakt API")
 		gctx.Crate().Trakt, err = trakt.Setup(gctx, trakt.SetupOptions{
-			ClientID:     "1234567890",
-			ClientSecret: "0987654321",
+			ClientID:     gctx.Config().Trakt.ClientID,
+			ClientSecret: gctx.Config().Trakt.ClientSecret,
 		})
 		if err != nil {
 			slog.Error("Error setting up Trakt API", "error", err)
@@ -74,7 +81,10 @@ func main() {
 		}
 		slog.Info("Trakt API setup complete")
 
-		popularMovies, err := gctx.Crate().Trakt.GetPopularMovies(gctx, 1)
+		popularMovies, err := gctx.Crate().Trakt.GetMostWatchedMovies(gctx, &trakt.GetMostWatchedMoviesParams{
+			Extended: "full",
+			Period:   "weekly",
+		})
 		if err != nil {
 			slog.Error("Error getting popular movies", "error", err)
 			cancel()
