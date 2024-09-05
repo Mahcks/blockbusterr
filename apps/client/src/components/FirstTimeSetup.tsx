@@ -1,13 +1,13 @@
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "./ui/button";
+import { useNavigate } from "react-router-dom";
 
 const SetupStepper = () => {
   const [step, setStep] = useState(0);
+  const [loading, setLoading] = useState(false); // Loading state for API request
+  const [error, setError] = useState<string | null>(null); // Error state
+  const navigate = useNavigate(); // Initialize navigate from react-router-dom
 
   // Steps for the setup
   const steps = [
@@ -37,40 +37,69 @@ const SetupStepper = () => {
     }
   };
 
+  const handleFinish = async () => {
+    setLoading(true); // Set loading to true during the API request
+    try {
+      // Make API request to set the setup as complete
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/settings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          key: "SETUP_COMPLETE",
+          value: "true",
+          type: "boolean",
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update setup status");
+      }
+
+      // After the API request succeeds, navigate to the home page
+      navigate("/");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred");
+      }
+    } finally {
+      setLoading(false); // Set loading to false after the request
+    }
+  };
+
   return (
-    <Dialog>
-      <DialogTrigger>
-        <button className="px-4 py-2 bg-blue-600 text-white">
-          Start Setup
-        </button>
-      </DialogTrigger>
+    <Dialog open>
       <DialogContent>
         <DialogTitle>{steps[step].title}</DialogTitle>
-
         <div className="mt-4">{steps[step].content}</div>
-
         <div className="flex justify-between mt-4">
           {step > 0 && (
-            <button onClick={handlePrevious} className="px-4 py-2 bg-gray-300">
+            <Button onClick={handlePrevious} className="px-4 py-2 bg-gray-300">
               Previous
-            </button>
+            </Button>
           )}
           {step < steps.length - 1 ? (
-            <button
+            <Button
               onClick={handleNext}
               className="px-4 py-2 bg-blue-600 text-white"
             >
               Next
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               className="px-4 py-2 bg-green-600 text-white"
-              onClick={() => alert("Setup Complete!")}
+              onClick={handleFinish}
+              disabled={loading} // Disable the button while loading
             >
-              Finish
-            </button>
+              {loading ? "Finishing..." : "Finish"}
+            </Button>
           )}
         </div>
+        {error && <p className="text-red-500 mt-4">{error}</p>}{" "}
+        {/* Display errors */}
       </DialogContent>
     </Dialog>
   );

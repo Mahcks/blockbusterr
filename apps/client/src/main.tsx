@@ -3,16 +3,21 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Root from "@/routes/root.tsx";
 import Settings from "@/routes/settings.tsx";
-import "./index.css";
+import Setup from "./routes/setup";
+import ProtectedRoute from "@/routes/ProtectedRoute";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Root />,
+    element: <ProtectedRoute element={<Root />} />,
   },
   {
     path: "/settings",
-    element: <Settings />,
+    element: <ProtectedRoute element={<Settings />} />,
+  },
+  {
+    path: "/setup",
+    element: <Setup />,
   },
 ]);
 
