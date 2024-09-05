@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { RiHome2Fill, RiToolsFill } from "@remixicon/react";
 import ThemeToggle from "@/components/ThemeToggle";
 
-export default function sNavBar() {
+export default function NavBar() {
   const location = useLocation();
 
   // If the current route is "/settings", change the link to "/"
@@ -24,10 +24,10 @@ export default function sNavBar() {
       </div>
 
       <div className="flex space-x-2">
-        <ThemeToggle />
         <Link to={linkPath}>
           <Button variant="ghost">{icon}</Button>
         </Link>
+        <ThemeToggle />
       </div>
     </div>
   );
