@@ -6,6 +6,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/helpers"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/respond"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes"
+	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/settings"
 )
 
 func ctx(fn func(*respond.Ctx) error) fiber.Handler {
@@ -18,4 +19,10 @@ func ctx(fn func(*respond.Ctx) error) fiber.Handler {
 func New(gctx global.Context, helpers *helpers.Helpers, router fiber.Router) {
 	indexRoute := routes.NewRouteGroup(gctx, helpers)
 	router.Get("/", indexRoute.Index)
+
+	settings := settings.NewRouteGroup(gctx, helpers)
+	router.Post("/settings", ctx(settings.PostSetting))
+	router.Get("/settings", ctx(settings.GetSetting))
+	router.Delete("/settings", ctx(settings.DeleteSetting))
+	router.Put("/settings", ctx(settings.PutSetting))
 }
