@@ -1,7 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RiHome2Fill, RiToolsFill } from "@remixicon/react";
-import ThemeToggle from "@/components/ThemeToggle";
 
 export default function NavBar() {
   const location = useLocation();
@@ -27,7 +26,6 @@ export default function NavBar() {
         <Link to={linkPath}>
           <Button variant="ghost">{icon}</Button>
         </Link>
-        <ThemeToggle />
       </div>
     </div>
   );
