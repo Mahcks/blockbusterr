@@ -1,1 +1,32 @@
+# Ignore the SQLite database file
 apps/server/blockbusterr.db
+
+# Other typical ignores
+
+# Ignore node_modules from the client side (if using Node.js)
+apps/client/node_modules
+
+# Ignore Go build cache and binaries
+apps/server/.cache
+apps/server/bin
+apps/server/build
+apps/server/tmp
+apps/server/cmd/app/server  # The built server binary, if present locally
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+
+# Ignore version control system directories
+.git
+.gitignore
+
+# Ignore Docker-related files
+Dockerfile
+.dockerignore
+
+# Ignore editor and OS-specific files
+*.swp
+*.DS_Store
+.vscode/
+.idea/
