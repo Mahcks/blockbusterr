@@ -2,8 +2,11 @@ package trakt
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/dghubble/sling"
+	"github.com/mahcks/blockbusterr/internal/global"
+	"github.com/mahcks/blockbusterr/pkg/errors"
 	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
@@ -17,6 +20,7 @@ type Service interface {
 }
 
 type traktService struct {
+	gctx global.Context
 	base *sling.Sling
 }
 
@@ -25,9 +29,30 @@ type GetTrendingMoviesParams struct {
 	Extended string `url:"extended,omitempty"`
 }
 
+func (t *traktService) FetchClientIDFromDB(ctx context.Context) (string, error) {
+	var clientID string
+
+	// Use parameterized query with context to prevent SQL injection
+	query := `SELECT value FROM settings WHERE key = ?`
+
+	err := t.gctx.Crate().SQL.DB().QueryRowContext(ctx, query, "TRAKT_CLIENT_ID").Scan(&clientID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", errors.ErrMissingEnvironmentVariable().SetDetail("%s is missing", "TRAKT_CLIENT_ID")
+		}
+		return "", err
+	}
+	return clientID, nil
+}
+
 func (t *traktService) GetTrendingMovies(ctx context.Context, params *GetTrendingMoviesParams) ([]structures.TraktMovie, error) {
+	clientID, err := t.FetchClientIDFromDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	var movies []structures.TraktMovie
-	_, err := t.base.New().QueryStruct(params).Get("/movies/trending").ReceiveSuccess(&movies)
+	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/movies/trending").ReceiveSuccess(&movies)
 	if err != nil {
 		return nil, err
 	}
@@ -41,8 +66,12 @@ type GetPopularMoviesParams struct {
 }
 
 func (t *traktService) GetPopularMovies(ctx context.Context, params *GetPopularMoviesParams) ([]structures.TraktMovie, error) {
+	clientID, err := t.FetchClientIDFromDB(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var movies []structures.TraktMovie
-	_, err := t.base.New().QueryStruct(params).Get("/movies/popular").ReceiveSuccess(&movies)
+	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/movies/popular").ReceiveSuccess(&movies)
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +90,13 @@ type TraktAnticipatedMovie struct {
 }
 
 func (t *traktService) GetAnticipatedMovies(ctx context.Context, params *GetAnticipatedMoviesParams) ([]TraktAnticipatedMovie, error) {
+	clientID, err := t.FetchClientIDFromDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	var movies []TraktAnticipatedMovie
-	_, err := t.base.New().QueryStruct(params).Get("/movies/anticipated").ReceiveSuccess(&movies)
+	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/movies/anticipated").ReceiveSuccess(&movies)
 	if err != nil {
 		return nil, err
 	}
@@ -81,8 +115,13 @@ type TraktBoxOfficeMovie struct {
 }
 
 func (t *traktService) GetBoxOfficeMovies(ctx context.Context, params *GetBoxOfficeMoviesParams) ([]TraktBoxOfficeMovie, error) {
+	clientID, err := t.FetchClientIDFromDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	var movies []TraktBoxOfficeMovie
-	_, err := t.base.New().QueryStruct(params).Get("/movies/boxoffice").ReceiveSuccess(&movies)
+	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/movies/boxoffice").ReceiveSuccess(&movies)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +143,13 @@ type TraktMostWatchedMovie struct {
 }
 
 func (t *traktService) GetMostWatchedMovies(ctx context.Context, params *GetMostWatchedMoviesParams) ([]TraktMostWatchedMovie, error) {
+	clientID, err := t.FetchClientIDFromDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	var movies []TraktMostWatchedMovie
-	_, err := t.base.New().QueryStruct(params).Get("/movies/watched").ReceiveSuccess(&movies)
+	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/movies/watched").ReceiveSuccess(&movies)
 	if err != nil {
 		return nil, err
 	}
@@ -131,10 +175,15 @@ type GetMostPlayedMoviesResponse struct {
 }
 
 func (t *traktService) GetMostPlayedMovies(ctx context.Context, params *GetMostPlayedMoviesParams) (GetMostPlayedMoviesResponse, error) {
+	clientID, err := t.FetchClientIDFromDB(ctx)
+	if err != nil {
+		return GetMostPlayedMoviesResponse{}, err
+	}
+
 	var response GetMostPlayedMoviesResponse
 
 	var movies []MostPlayedMovie
-	_, err := t.base.New().QueryStruct(params).Get("/movies/played").ReceiveSuccess(&movies)
+	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/movies/played").ReceiveSuccess(&movies)
 	if err != nil {
 		return GetMostPlayedMoviesResponse{}, err
 	}

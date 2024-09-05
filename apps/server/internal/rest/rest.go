@@ -11,6 +11,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/mahcks/blockbusterr/internal/global"
+	"github.com/mahcks/blockbusterr/internal/helpers"
 	v1 "github.com/mahcks/blockbusterr/internal/rest/v1"
 	commonErrors "github.com/mahcks/blockbusterr/pkg/errors"
 )
@@ -37,7 +38,11 @@ type APIError struct {
 	Details    map[string]interface{} `json:"details,omitempty"`
 }
 
-func New(gctx global.Context) error {
+func New(gctx global.Context, helpers *helpers.Helpers) error {
+	if helpers == nil {
+		return errors.New("helpers is nil")
+	}
+
 	app := fiber.New(fiber.Config{
 		// Custom error handler for common.APIError
 		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
@@ -84,7 +89,7 @@ func New(gctx global.Context) error {
 	}))
 
 	v1Group := app.Group("/v1")
-	v1.New(gctx, v1Group)
+	v1.New(gctx, helpers, v1Group)
 
 	errCh := make(chan error)
 	// Listen for connections in a separate goroutine.

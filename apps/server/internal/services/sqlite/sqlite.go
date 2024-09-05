@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+
+	"github.com/mahcks/blockbusterr/internal/db"
 )
 
 func Setup(ctx context.Context) (Service, error) {
@@ -25,6 +27,9 @@ func Setup(ctx context.Context) (Service, error) {
 	}
 
 	slog.Info("SQLite database pinged")
+
+	// Initialize the queries
+	svc.queries = db.NewQueries(svc.db)
 
 	go func() {
 		<-ctx.Done()

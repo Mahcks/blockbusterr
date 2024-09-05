@@ -1,13 +1,18 @@
 package routes
 
-import "github.com/mahcks/blockbusterr/internal/global"
+import (
+	"github.com/mahcks/blockbusterr/internal/global"
+	"github.com/mahcks/blockbusterr/internal/helpers"
+)
 
 type RouteGroup struct {
-	gctx global.Context
+	gctx    global.Context
+	helpers *helpers.Helpers
 }
 
-func NewRouteGroup(gctx global.Context) *RouteGroup {
+func NewRouteGroup(gctx global.Context, helpers *helpers.Helpers) *RouteGroup {
 	return &RouteGroup{
-		gctx: gctx,
+		gctx:    gctx,
+		helpers: helpers,
 	}
 }

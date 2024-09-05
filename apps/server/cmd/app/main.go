@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -12,11 +13,10 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/global"
+	"github.com/mahcks/blockbusterr/internal/helpers"
 	"github.com/mahcks/blockbusterr/internal/rest"
 	"github.com/mahcks/blockbusterr/internal/services/sqlite"
-	"github.com/mahcks/blockbusterr/internal/services/trakt"
 )
 
 var (
@@ -48,14 +48,8 @@ func main() {
 
 	slog.Info("Starting the application", "version", version, "timestamp", Timestamp)
 
-	// Load configuration
-	cfg, err := config.New(Version, time.Now())
-	if err != nil {
-		slog.Error("Error loading config", "error", err)
-		os.Exit(1)
-	}
-
-	gctx, cancel := global.WithCancel(global.New(context.Background(), cfg))
+	gctx, cancel := global.WithCancel(global.New(context.Background()))
+	var err error
 
 	{
 		slog.Info("Setting up SQLite database")
@@ -68,18 +62,10 @@ func main() {
 		slog.Info("SQLite database setup complete")
 	}
 
-	{
-		slog.Info("Setting up Trakt API")
-		gctx.Crate().Trakt, err = trakt.Setup(gctx, trakt.SetupOptions{
-			ClientID:     gctx.Config().Trakt.ClientID,
-			ClientSecret: gctx.Config().Trakt.ClientSecret,
-		})
-		if err != nil {
-			slog.Error("Error setting up Trakt API", "error", err)
-			cancel()
-			return
-		}
-		slog.Info("Trakt API setup complete")
+	// Initialize helpers
+	helpersInstance, err := helpers.SetupHelpers(gctx)
+	if err != nil {
+		log.Fatalf("Failed to initialize helpers: %v", err)
 	}
 
 	interrupt := make(chan os.Signal, 1)
@@ -115,7 +101,7 @@ func main() {
 		defer wg.Done()
 
 		slog.Info("Starting API server")
-		if err := rest.New(gctx); err != nil {
+		if err := rest.New(gctx, helpersInstance); err != nil {
 			slog.Error("Error starting API server", "error", err)
 			cancel()
 			return

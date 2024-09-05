@@ -28,7 +28,8 @@ var (
 	ErrBadRequest              apiErrorFunc = DefineError(10404, "Bad Request", fasthttp.StatusBadRequest)
 
 	// Client type errors
-	ErrValidationRejected apiErrorFunc = DefineError(10410, "Validation Rejected", fasthttp.StatusBadRequest)
+	ErrValidationRejected         apiErrorFunc = DefineError(10410, "Validation Rejected", fasthttp.StatusBadRequest)
+	ErrMissingEnvironmentVariable apiErrorFunc = DefineError(10405, "Missing Required Environment Variable", fasthttp.StatusBadRequest)
 
 	// Other client errors
 
