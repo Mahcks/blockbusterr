@@ -61,7 +61,6 @@ COPY nginx.conf /etc/nginx/nginx.conf
 
 # Create a data directory for SQLite and copy migrations (if any)
 RUN mkdir -p /app/data
-COPY ./apps/server/config server/config
 COPY ./apps/migrations /apps/migrations
 
 # Copy the SQLite initialization script
