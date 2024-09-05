@@ -24,9 +24,7 @@ func New(Version string, Timestamp time.Time) (*Config, error) {
 	config := viper.New()
 
 	config.SetConfigType("yaml")
-	config.AddConfigPath("./config")
-	config.AddConfigPath("./src/config")
-	config.AddConfigPath("./app/config")
+	config.AddConfigPath("./server/config")
 
 	// Use the dev config file if the version is dev
 	if Version == "dev" {

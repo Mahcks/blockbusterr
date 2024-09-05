@@ -80,18 +80,6 @@ func main() {
 			return
 		}
 		slog.Info("Trakt API setup complete")
-
-		popularMovies, err := gctx.Crate().Trakt.GetMostWatchedMovies(gctx, &trakt.GetMostWatchedMoviesParams{
-			Extended: "full",
-			Period:   "weekly",
-		})
-		if err != nil {
-			slog.Error("Error getting popular movies", "error", err)
-			cancel()
-			return
-		}
-
-		fmt.Println(popularMovies)
 	}
 
 	interrupt := make(chan os.Signal, 1)

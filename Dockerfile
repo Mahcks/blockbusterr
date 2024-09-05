@@ -1,6 +1,9 @@
 # Stage 1: Build the Golang backend with CGO enabled
 FROM golang:1.22 AS server-builder
 
+# Version of the server build
+ARG VERSION=""
+
 WORKDIR /app/server
 
 # Install necessary build tools and libraries
@@ -15,7 +18,7 @@ COPY apps/server/ .
 
 # Build the Go server binary with CGO enabled
 WORKDIR /app/server/cmd/app
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o /app/server/server .
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o /app/server/server -ldflags="-X 'main.Version=${VERSION}'" .
 
 # Stage 2: Build the Vite React frontend
 FROM node:20-alpine AS client-builder
@@ -58,6 +61,7 @@ COPY nginx.conf /etc/nginx/nginx.conf
 
 # Create a data directory for SQLite and copy migrations (if any)
 RUN mkdir -p /app/data
+COPY ./apps/server/config server/config
 COPY ./apps/migrations /apps/migrations
 
 # Copy the SQLite initialization script
