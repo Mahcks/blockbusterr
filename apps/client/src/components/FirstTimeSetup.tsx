@@ -3,7 +3,12 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { FormProvider, useForm, useFormContext } from "react-hook-form";
+import {
+  Controller,
+  FormProvider,
+  useForm,
+  useFormContext,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   FormControl,
@@ -20,6 +25,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 import { Info } from "lucide-react";
 
 // Define Zod schema for validation
@@ -31,6 +44,9 @@ const setupFormSchema = z.object({
     client_secret: z
       .string()
       .min(10, { message: "Client Secret must be at least 10 characters." }),
+  }),
+  providers: z.object({
+    provider: z.enum(["ombi", "radarr-sonarr"]),
   }),
   movies: z.object({
     interval: z.number().int().min(0),
@@ -56,6 +72,7 @@ const SetupStepper = () => {
     resolver: zodResolver(setupFormSchema),
     defaultValues: {
       trakt: { client_id: "", client_secret: "" },
+      providers: { provider: "radarr-sonarr" },
       movies: { interval: 1 },
       tvShows: { quality: "medium", notifications: false },
     },
@@ -68,12 +85,16 @@ const SetupStepper = () => {
       content: <Step1 />,
     },
     {
-      title: "Step 2: Configure Movie Preferences",
+      title: "Configure Ombi or Radarr/Sonarr",
       content: <Step2 />,
     },
     {
-      title: "Step 3: Finalize Setup",
+      title: "Step 3: Configure Movie Preferences",
       content: <Step3 />,
+    },
+    {
+      title: "Step 4: Configure TV Preferences",
+      content: <Step4 />,
     },
   ];
 
@@ -89,13 +110,17 @@ const SetupStepper = () => {
     }
   };
 
-  const handleFinish = async (data: SetupFormValues) => {
+  const handleFinish: React.MouseEventHandler<HTMLButtonElement> = async (
+    event
+  ) => {
+    event.preventDefault(); // Prevent the default form submission behavior
     setLoading(true); // Set loading to true during the API request
     try {
+      const data = formMethods.getValues(); // Get the form values using react-hook-form
       console.log("Form Data:", data);
 
       // Make API request to set the setup as complete
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/settings`, {
+      /* const res = await fetch(`${import.meta.env.VITE_API_URL}/settings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -106,10 +131,10 @@ const SetupStepper = () => {
           type: "boolean",
         }),
       });
-
+  
       if (!res.ok) {
         throw new Error("Failed to update setup status");
-      }
+      } */
 
       // After the API request succeeds, navigate to the home page
       navigate("/");
@@ -170,121 +195,177 @@ const SetupStepper = () => {
 
 // Step 1: User Information
 const Step1 = () => {
-  const { control } = useFormContext();
-
   return (
     <div className="py-3">
-      <FormField
-        control={control}
+      <InputField
         name="trakt.clientId"
-        render={({ field }) => (
-          <FormItem className="pb-5">
-            <FormLabel>Client ID</FormLabel>
-            <FormControl>
-              <Input placeholder="Enter Trakt Client ID" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Client ID"
+        placeholder="Enter Trakt Client ID"
       />
-      <FormField
-        control={control}
+      <InputField
         name="trakt.clientSecret"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Client Secret</FormLabel>
-            <FormControl>
-              <Input placeholder="Enter Trakt Client Secret" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Client Secret"
+        placeholder="Enter Trakt Client Secret"
       />
     </div>
   );
 };
 
-// Step 2: Preferences
 const Step2 = () => {
-  const { control } = useFormContext();
+  const providerOptions = [
+    { value: "radarr-sonarr", label: "Radarr/Sonarr" },
+    { value: "ombi", label: "Ombi" },
+  ];
 
   return (
+    <SelectField
+      name="providers.provider"
+      label="Select your provider"
+      options={providerOptions}
+    />
+  );
+};
+
+const Step3 = () => {
+  return (
     <div>
-      <FormField
-        control={control}
-        name="movies.interval"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              <span className="flex items-center gap-2 text-lg">
-                <p className="font-bold">Interval</p>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Interval in hours for checking movies.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </span>
-            </FormLabel>
-            <FormControl>
-              <div className="flex items-center gap-2">
-                <Input type="number" {...field} />
-                <span>hours</span>
-              </div>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <FormItem>
+        <FormLabel>
+          <span className="flex items-center gap-2">
+            <p className="font-bold text-lg">Interval</p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Interval in hours for checking movies.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </span>
+        </FormLabel>
+        <div className="flex items-center gap-2 w-full">
+          <div className="flex-grow">
+            <InputField
+              name="movies.interval"
+              label=""
+              placeholder="Enter interval"
+              type="number"
+            />
+          </div>
+          <p>hours</p>
+        </div>
+      </FormItem>
     </div>
   );
 };
 
 // Step 3: Review and Confirm
-const Step3 = () => {
-  const { control } = useFormContext();
+const Step4 = () => {
+  const qualityOptions = [
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" },
+  ];
 
   return (
     <div>
-      <FormField
-        control={control}
+      <SelectField
         name="tvShows.quality"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>TV Show Quality</FormLabel>
-            <FormControl>
-              <select {...field}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="TV Show Quality"
+        options={qualityOptions}
       />
-      <FormField
-        control={control}
+      <CheckboxField
         name="tvShows.notifications"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Enable Notifications</FormLabel>
-            <FormControl>
-              <Checkbox
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Enable Notifications"
       />
     </div>
   );
 };
 
 export default SetupStepper;
+
+// FormField components for different field types
+
+// InputField component
+export const InputField = ({
+  name,
+  label,
+  placeholder,
+  type = "text",
+}: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+any) => {
+  const { control } = useFormContext();
+
+  return (
+    <FormItem>
+      <FormLabel>{label}</FormLabel>
+      <FormControl>
+        <Controller
+          name={name}
+          control={control}
+          render={({ field }) => (
+            <Input {...field} type={type} placeholder={placeholder} />
+          )}
+        />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  );
+};
+
+// SelectField component
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const SelectField = ({ name, label, options }: any) => {
+  const { control } = useFormContext();
+
+  return (
+    <FormItem>
+      <FormLabel>{label}</FormLabel>
+      <FormControl>
+        <Controller
+          name={name}
+          control={control}
+          render={({ field }) => (
+            <Select onValueChange={field.onChange} value={field.value}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue>{field.value || "Select an option"}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((option: any) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  );
+};
+
+// CheckboxField component
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const CheckboxField = ({ name, label }: any) => {
+  const { control } = useFormContext();
+
+  return (
+    <FormItem>
+      <FormLabel>{label}</FormLabel>
+      <FormControl>
+        <Controller
+          name={name}
+          control={control}
+          render={({ field }) => (
+            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+          )}
+        />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  );
+};
