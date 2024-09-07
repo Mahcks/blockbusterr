@@ -11,8 +11,8 @@ import (
 )
 
 type Service interface {
-	GetTrendingMovies(ctx context.Context, params *GetTrendingMoviesParams) ([]structures.TraktMovie, error)
-	GetPopularMovies(ctx context.Context, params *GetPopularMoviesParams) ([]structures.TraktMovie, error)
+	GetTrendingMovies(ctx context.Context, params *GetTrendingMoviesParams) (GetTrendingMoviesResponse, error)
+	GetPopularMovies(ctx context.Context, params *GetPopularMoviesParams) (GetPopularMoviesResponse, error)
 	GetAnticipatedMovies(ctx context.Context, params *GetAnticipatedMoviesParams) ([]TraktAnticipatedMovie, error)
 	GetBoxOfficeMovies(ctx context.Context, params *GetBoxOfficeMoviesParams) ([]TraktBoxOfficeMovie, error)
 	GetMostWatchedMovies(ctx context.Context, params *GetMostWatchedMoviesParams) ([]TraktMostWatchedMovie, error)
@@ -24,40 +24,42 @@ type traktService struct {
 	base *sling.Sling
 }
 
-type GetTrendingMoviesParams struct {
-	// Either `full` or `metadata`
-	Extended string `url:"extended,omitempty"`
-}
-
 func (t *traktService) FetchClientIDFromDB(ctx context.Context) (string, error) {
 	var clientID string
 
 	// Use parameterized query with context to prevent SQL injection
 	query := `SELECT value FROM settings WHERE key = ?`
 
-	err := t.gctx.Crate().SQL.DB().QueryRowContext(ctx, query, "TRAKT_CLIENT_ID").Scan(&clientID)
+	err := t.gctx.Crate().SQL.DB().QueryRowContext(ctx, query, structures.SettingTraktClientID).Scan(&clientID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", errors.ErrMissingEnvironmentVariable().SetDetail("%s is missing", "TRAKT_CLIENT_ID")
+			return "", errors.ErrMissingEnvironmentVariable().SetDetail("%s is missing", structures.SettingTraktClientID.String())
 		}
 		return "", err
 	}
 	return clientID, nil
 }
 
-func (t *traktService) GetTrendingMovies(ctx context.Context, params *GetTrendingMoviesParams) ([]structures.TraktMovie, error) {
+type GetTrendingMoviesParams struct {
+	// Either `full` or `metadata`
+	Extended string `url:"extended,omitempty"`
+}
+
+type GetTrendingMoviesResponse []structures.TraktMovie
+
+func (t *traktService) GetTrendingMovies(ctx context.Context, params *GetTrendingMoviesParams) (GetTrendingMoviesResponse, error) {
 	clientID, err := t.FetchClientIDFromDB(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var movies []structures.TraktMovie
-	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/movies/trending").ReceiveSuccess(&movies)
+	var response GetTrendingMoviesResponse
+	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/movies/trending").ReceiveSuccess(&response)
 	if err != nil {
 		return nil, err
 	}
 
-	return movies, err
+	return response, err
 }
 
 type GetPopularMoviesParams struct {
@@ -65,18 +67,20 @@ type GetPopularMoviesParams struct {
 	Extended string `url:"extended,omitempty"`
 }
 
-func (t *traktService) GetPopularMovies(ctx context.Context, params *GetPopularMoviesParams) ([]structures.TraktMovie, error) {
+type GetPopularMoviesResponse []structures.TraktMovie
+
+func (t *traktService) GetPopularMovies(ctx context.Context, params *GetPopularMoviesParams) (GetPopularMoviesResponse, error) {
 	clientID, err := t.FetchClientIDFromDB(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var movies []structures.TraktMovie
-	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/movies/popular").ReceiveSuccess(&movies)
+	var response GetPopularMoviesResponse
+	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/movies/popular").ReceiveSuccess(&response)
 	if err != nil {
 		return nil, err
 	}
 
-	return movies, err
+	return response, err
 }
 
 type GetAnticipatedMoviesParams struct {

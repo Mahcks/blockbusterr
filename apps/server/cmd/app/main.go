@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
@@ -67,6 +68,20 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize helpers: %v", err)
 	}
+
+	radarrReq, err := helpersInstance.Radarr.GetQualityProfiles()
+	if err != nil {
+		log.Fatalf("Failed to get root folders: %v", err)
+	}
+
+	// Pretty print the JSON with indentation
+	jsonData, err := json.MarshalIndent(radarrReq, "", "  ")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	fmt.Println(string(jsonData))
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
