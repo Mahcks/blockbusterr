@@ -22,6 +22,8 @@ const (
 	SettingRadarrURL    Setting = "RADARR_URL"
 	SettingRadarrAPIKey Setting = "RADARR_API_KEY"
 
+	// UI Flags
+
 	SettingSetupComplete Setting = "SETUP_COMPLETE"
 )
 
