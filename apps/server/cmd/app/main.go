@@ -16,6 +16,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/helpers"
 	"github.com/mahcks/blockbusterr/internal/rest"
+	"github.com/mahcks/blockbusterr/internal/scheduler"
 	"github.com/mahcks/blockbusterr/internal/services/sqlite"
 )
 
@@ -67,6 +68,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize helpers: %v", err)
 	}
+
+	// Setup the scheduler
+	scheduler.Setup(gctx)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
