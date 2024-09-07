@@ -14,16 +14,6 @@ const (
 	// SettingTraktClientSecret is the Trakt client secret
 	SettingTraktClientSecret Setting = "TRAKT_CLIENT_SECRET"
 
-	// Automatic movie settings
-
-	SettingAutomaticMovieInterval    Setting = "AUTOMATIC_MOVIE_INTERVAL"
-	SettingAutomaticMovieAnticipated Setting = "AUTOMATIC_MOVIE_ANTICIPATED"
-	SettingAutomaticMovieBoxOffice   Setting = "AUTOMATIC_MOVIE_BOX_OFFICE"
-	SettingAutomaticMoviePopular     Setting = "AUTOMATIC_MOVIE_POPULAR"
-	SettingAutomaticMovieTrending    Setting = "AUTOMATIC_MOVIE_TRENDING"
-
-	// Movie Filters
-
 	// Ombi
 
 	// SettingOmbiURL is the Ombi URL
