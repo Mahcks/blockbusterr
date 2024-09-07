@@ -24,6 +24,58 @@ type traktService struct {
 	base *sling.Sling
 }
 
+// TraktMovie is a struct that represents a movie from the Trakt API
+type Movie struct {
+	// Title of the movie
+	Title string `json:"title"`
+	// Year the movie was released
+	Year int `json:"year"`
+	// IDS of the movie
+	IDs MovieIDs `json:"ids"`
+	// Tagline of the movie
+	Tagline string `json:"tagline,omitempty"`
+	// Overview of the movie
+	Overview string `json:"overview,omitempty"`
+	// Released date of the movie when it was released
+	Released string `json:"released,omitempty"`
+	// Runtime of the movie in minutes
+	Runtime int `json:"runtime,omitempty"`
+	// Country where the movie was produced
+	Country string `json:"country,omitempty"`
+	// Status of the movie
+	Status string `json:"status,omitempty"`
+	// Rating of the movie
+	Rating float64 `json:"rating,omitempty"`
+	// Votes of the movie
+	Votes int `json:"votes,omitempty"`
+	// Comment count of the movie
+	CommentCount int `json:"comment_count,omitempty"`
+	// Trailer URL of the movie trailer
+	Trailer string `json:"trailer,omitempty"`
+	// Hompage is the link to the movies page
+	Homepage string `json:"homepage,omitempty"`
+	// UpdatedAt is the date the movie was last updated
+	UpdatedAt string `json:"updated_at,omitempty"`
+	// Language of the movie
+	Language string `json:"language,omitempty"`
+	// Languages that the movie supports
+	Languages []string `json:"languages,omitempty"`
+	// AvailableTranslations of the movie
+	AvailableTranslations []string `json:"available_translations,omitempty"`
+	// Genres of the movie
+	Genres []string `json:"genres,omitempty"`
+	// Certification of the movie
+	Certification string `json:"certification,omitempty"`
+}
+
+// TraktMovieIDs is a struct that represents the IDs of a movie from the Trakt API
+type MovieIDs struct {
+	Trakt int    `json:"trakt"`
+	Slug  string `json:"slug"`
+	IMDB  string `json:"imdb"`
+	TMDB  int    `json:"tmdb"`
+}
+
 func (t *traktService) FetchClientIDFromDB(ctx context.Context) (string, error) {
 	var clientID string
 
@@ -45,7 +97,7 @@ type GetTrendingMoviesParams struct {
 	Extended string `url:"extended,omitempty"`
 }
 
-type GetTrendingMoviesResponse []structures.TraktMovie
+type GetTrendingMoviesResponse []Movie
 
 func (t *traktService) GetTrendingMovies(ctx context.Context, params *GetTrendingMoviesParams) (GetTrendingMoviesResponse, error) {
 	clientID, err := t.FetchClientIDFromDB(ctx)
@@ -67,7 +119,7 @@ type GetPopularMoviesParams struct {
 	Extended string `url:"extended,omitempty"`
 }
 
-type GetPopularMoviesResponse []structures.TraktMovie
+type GetPopularMoviesResponse []Movie
 
 func (t *traktService) GetPopularMovies(ctx context.Context, params *GetPopularMoviesParams) (GetPopularMoviesResponse, error) {
 	clientID, err := t.FetchClientIDFromDB(ctx)
@@ -89,8 +141,8 @@ type GetAnticipatedMoviesParams struct {
 }
 
 type TraktAnticipatedMovie struct {
-	ListCount int                   `json:"list_count"`
-	Movie     structures.TraktMovie `json:"movie"`
+	ListCount int   `json:"list_count"`
+	Movie     Movie `json:"movie"`
 }
 
 func (t *traktService) GetAnticipatedMovies(ctx context.Context, params *GetAnticipatedMoviesParams) ([]TraktAnticipatedMovie, error) {
@@ -114,8 +166,8 @@ type GetBoxOfficeMoviesParams struct {
 }
 
 type TraktBoxOfficeMovie struct {
-	Revenue int                   `json:"revenue"`
-	Movie   structures.TraktMovie `json:"movie"`
+	Revenue int   `json:"revenue"`
+	Movie   Movie `json:"movie"`
 }
 
 func (t *traktService) GetBoxOfficeMovies(ctx context.Context, params *GetBoxOfficeMoviesParams) ([]TraktBoxOfficeMovie, error) {
@@ -140,10 +192,10 @@ type GetMostWatchedMoviesParams struct {
 }
 
 type TraktMostWatchedMovie struct {
-	WatcherCount   int                   `json:"watcher_count"`
-	PlayCount      int                   `json:"play_count"`
-	CollectedCount int                   `json:"collected"`
-	Movie          structures.TraktMovie `json:"movie"`
+	WatcherCount   int   `json:"watcher_count"`
+	PlayCount      int   `json:"play_count"`
+	CollectedCount int   `json:"collected"`
+	Movie          Movie `json:"movie"`
 }
 
 func (t *traktService) GetMostWatchedMovies(ctx context.Context, params *GetMostWatchedMoviesParams) ([]TraktMostWatchedMovie, error) {
@@ -168,10 +220,10 @@ type GetMostPlayedMoviesParams struct {
 }
 
 type MostPlayedMovie struct {
-	WatcherCount   int                   `json:"watcher_count"`
-	PlayCount      int                   `json:"play_count"`
-	CollectedCount int                   `json:"collected_count"`
-	Movie          structures.TraktMovie `json:"movie"`
+	WatcherCount   int   `json:"watcher_count"`
+	PlayCount      int   `json:"play_count"`
+	CollectedCount int   `json:"collected_count"`
+	Movie          Movie `json:"movie"`
 }
 
 type GetMostPlayedMoviesResponse struct {
