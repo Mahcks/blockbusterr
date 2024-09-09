@@ -17,6 +17,10 @@ type Service interface {
 	GetBoxOfficeMovies(ctx context.Context, params *TraktMovieParams) ([]TraktBoxOfficeMovie, error)
 	GetMostWatchedMovies(ctx context.Context, params *TraktMovieParams) ([]TraktMostWatchedMovie, error)
 	GetMostPlayedMovies(ctx context.Context, params *TraktMovieParams) (GetMostPlayedMoviesResponse, error)
+
+	GetAnticipatedShows(ctx context.Context, params *TraktMovieParams) (GetAnticipatedShowsResponse, error)
+	GetPopularShows(ctx context.Context, params *TraktMovieParams) (GetPopularShowsResponse, error)
+	GetTrendingShows(ctx context.Context, params *TraktMovieParams) (GetTrendingShowsResponse, error)
 }
 
 type traktService struct {
@@ -95,6 +99,46 @@ type MovieIDs struct {
 	Slug  string `json:"slug"`
 	IMDB  string `json:"imdb"`
 	TMDB  int    `json:"tmdb"`
+}
+
+type Show struct {
+	Title                 string   `json:"title"`
+	Year                  int      `json:"year"`
+	IDs                   ShowIDs  `json:"ids"`
+	Tagline               string   `json:"tagline,omitempty"`
+	Overview              string   `json:"overview,omitempty"`
+	FirstAired            string   `json:"first_aired,omitempty"`
+	Airs                  ShowAirs `json:"airs,omitempty"`
+	Runtime               int      `json:"runtime,omitempty"`
+	Certification         string   `json:"certification,omitempty"`
+	Network               string   `json:"network,omitempty"`
+	Country               string   `json:"country,omitempty"`
+	Trailer               string   `json:"trailer,omitempty"`
+	Homepage              string   `json:"homepage,omitempty"`
+	Status                string   `json:"status,omitempty"`
+	Rating                float64  `json:"rating,omitempty"`
+	Votes                 int      `json:"votes,omitempty"`
+	CommentCount          int      `json:"comment_count,omitempty"`
+	UpdatedAt             string   `json:"updated_at,omitempty"`
+	Language              string   `json:"language,omitempty"`
+	Languages             []string `json:"languages,omitempty"`
+	AvailableTranslations []string `json:"available_translations,omitempty"`
+	Genres                []string `json:"genres,omitempty"`
+	AiredEpisodes         int      `json:"aired_episodes,omitempty"`
+}
+
+type ShowIDs struct {
+	Trakt int    `json:"trakt"`
+	Slug  string `json:"slug"`
+	TVDB  int    `json:"tvdb"`
+	IMDB  string `json:"imdb"`
+	TMDB  int    `json:"tmdb"`
+}
+
+type ShowAirs struct {
+	Day      string `json:"day"`
+	Time     string `json:"time"`
+	Timezone string `json:"timezone"`
 }
 
 func (t *traktService) FetchClientIDFromDB(ctx context.Context) (string, error) {
@@ -239,6 +283,67 @@ func (t *traktService) GetMostPlayedMovies(ctx context.Context, params *TraktMov
 	}
 
 	response.Movies = movies
+
+	return response, err
+}
+
+type GetAnticipatedShowsResponse []AnticipatedShow
+
+type AnticipatedShow struct {
+	ListCount int  `json:"list_count"`
+	Show      Show `json:"show"`
+}
+
+func (t *traktService) GetAnticipatedShows(ctx context.Context, params *TraktMovieParams) (GetAnticipatedShowsResponse, error) {
+	clientID, err := t.FetchClientIDFromDB(ctx)
+	if err != nil {
+		return GetAnticipatedShowsResponse{}, err
+	}
+
+	var response GetAnticipatedShowsResponse
+	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/shows/trending").ReceiveSuccess(&response)
+	if err != nil {
+		return GetAnticipatedShowsResponse{}, err
+	}
+
+	return response, err
+}
+
+type GetPopularShowsResponse []Show
+
+func (t *traktService) GetPopularShows(ctx context.Context, params *TraktMovieParams) (GetPopularShowsResponse, error) {
+	clientID, err := t.FetchClientIDFromDB(ctx)
+	if err != nil {
+		return GetPopularShowsResponse{}, err
+	}
+
+	var response GetPopularShowsResponse
+	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/shows/popular").ReceiveSuccess(&response)
+	if err != nil {
+		return GetPopularShowsResponse{}, err
+	}
+
+	return response, err
+}
+
+type GetTrendingShowsResponse []TrendingShow
+
+type TrendingShow struct {
+	Watchers int  `json:"watchers"`
+	Show     Show `json:"show"`
+}
+
+func (t *traktService) GetTrendingShows(ctx context.Context, params *TraktMovieParams) (GetTrendingShowsResponse, error) {
+	clientID, err := t.FetchClientIDFromDB(ctx)
+	if err != nil {
+		return GetTrendingShowsResponse{}, err
+	}
+
+	var response GetTrendingShowsResponse
+	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/shows/trending").ReceiveSuccess(&response)
+	if err != nil {
+		return GetTrendingShowsResponse{}, err
+	}
 
 	return response, err
 }

@@ -48,6 +48,24 @@ func Setup(gctx global.Context, helpers helpers.Helpers) *Scheduler {
 		})
 	}
 
+	sonarrInterval, err := gctx.Crate().SQL.Queries().GetShowInterval(gctx)
+	if err != nil {
+		log.Error("[scheduler] Failed to get show interval from database", "error", err)
+		return nil
+	}
+
+	if !sonarrInterval.Valid {
+		log.Error("[scheduler] Show interval is not set!")
+		return nil
+	}
+
+	// Skip the show interval if it's set to 0
+	if sonarrInterval.Int32 != 0 {
+		svc.StartShowJob(int(sonarrInterval.Int32), func() {
+			svc.SonarrJobFunc(gctx, helpers)
+		})
+	}
+
 	return svc
 }
 
