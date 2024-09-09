@@ -14,7 +14,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/helpers/trakt"
 )
 
-type movieJob struct {
+type radarrJob struct {
 	radarrSettings db.RadarrSettings
 	movieSettings  db.MovieSettings
 
@@ -24,23 +24,23 @@ type movieJob struct {
 	trendingMovies    []trakt.Movie
 }
 
-// MovieJobFunc defines the logic for the movie job
-func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
+// RadarrJobFunc defines the logic for the Radarr job
+func (s Scheduler) RadarrJobFunc(gctx global.Context, helpers helpers.Helpers) {
 	log.Info("[scheduler] Running movie job...")
-	mj := movieJob{}
+	mj := radarrJob{}
 	var err error
 
 	// Step 1. Get all settings from Radarr table
 	mj.radarrSettings, err = gctx.Crate().SQL.Queries().GetRadarrSettings(gctx)
 	if err != nil {
-		log.Errorf("[movie-job] Error getting Radarr settings: %v", err)
+		log.Errorf("[radarr-job] Error getting Radarr settings: %v", err)
 		return
 	}
 
 	// Step 2. Get all the settings for movies
 	mj.movieSettings, err = gctx.Crate().SQL.Queries().GetMovieSettings(gctx)
 	if err != nil {
-		log.Error("[movie-job] Error getting movie settings", "error", err)
+		log.Error("[radarr-job] Error getting movie settings", "error", err)
 		return
 	}
 
@@ -50,12 +50,12 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 	// Fetch Anticipated Movies
 	if mj.movieSettings.Anticipated.Valid {
 		if mj.movieSettings.Anticipated.Int32 == 0 {
-			log.Warn("[movie-job] Anticipated movies are enabled but the limit is set to 0. Skipping...")
+			log.Warn("[radarr-job] Anticipated movies are enabled but the limit is set to 0. Skipping...")
 		} else {
 			params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
 			anticipatedMovies, err := helpers.Trakt.GetAnticipatedMovies(gctx, params)
 			if err != nil {
-				log.Error("[movie-job] Error fetching anticipated movies from Trakt", "error", err)
+				log.Error("[radarr-job] Error fetching anticipated movies from Trakt", "error", err)
 			} else {
 				movies := extractMoviesFromAnticipated(anticipatedMovies)
 				filteredMovies := applyAdditionalFilters(movies, mj.movieSettings)
@@ -70,12 +70,12 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 	// Fetch BoxOffice Movies
 	if mj.movieSettings.BoxOffice.Valid {
 		if mj.movieSettings.BoxOffice.Int32 == 0 {
-			log.Warn("[movie-job] Box office movies are enabled but the limit is set to 0. Skipping...")
+			log.Warn("[radarr-job] Box office movies are enabled but the limit is set to 0. Skipping...")
 		} else {
 			params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
 			boxOfficeMovies, err := helpers.Trakt.GetBoxOfficeMovies(gctx, params)
 			if err != nil {
-				log.Error("[movie-job] Error fetching box office movies from Trakt", "error", err)
+				log.Error("[radarr-job] Error fetching box office movies from Trakt", "error", err)
 			} else {
 				movies := extractMoviesFromBoxOffice(boxOfficeMovies)
 				filteredMovies := applyAdditionalFilters(movies, mj.movieSettings)
@@ -90,12 +90,12 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 	// Fetch Popular Movies
 	if mj.movieSettings.Popular.Valid {
 		if mj.movieSettings.Popular.Int32 == 0 {
-			log.Warn("[movie-job] Popular movies are enabled but the limit is set to 0. Skipping...")
+			log.Warn("[radarr-job] Popular movies are enabled but the limit is set to 0. Skipping...")
 		} else {
 			params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
 			popularMovies, err := helpers.Trakt.GetPopularMovies(gctx, params)
 			if err != nil {
-				log.Error("[movie-job] Error fetching popular movies from Trakt", "error", err)
+				log.Error("[radarr-job] Error fetching popular movies from Trakt", "error", err)
 			} else {
 				movies := extractMoviesFromPopular(popularMovies)
 				filteredMovies := applyAdditionalFilters(movies, mj.movieSettings)
@@ -110,12 +110,12 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 	// Fetch Trending Movies
 	if mj.movieSettings.Trending.Valid {
 		if mj.movieSettings.Trending.Int32 == 0 {
-			log.Warn("[movie-job] Trending movies are enabled but the limit is set to 0. Skipping...")
+			log.Warn("[radarr-job] Trending movies are enabled but the limit is set to 0. Skipping...")
 		} else {
 			params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
 			trendingMovies, err := helpers.Trakt.GetTrendingMovies(gctx, params)
 			if err != nil {
-				log.Error("[movie-job] Error fetching trending movies from Trakt", "error", err)
+				log.Error("[radarr-job] Error fetching trending movies from Trakt", "error", err)
 			} else {
 				movies := extractMoviesFromTrending(trendingMovies)
 				filteredMovies := applyAdditionalFilters(movies, mj.movieSettings)
@@ -127,10 +127,10 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 		}
 	}
 
-	log.Debug("[movie-job] Anticipated Movies", "count", len(mj.anticipatedMovies))
-	log.Debug("[movie-job] Box Office Movies", "count", len(mj.boxOfficeMovies))
-	log.Debug("[movie-job] Popular Movies", "count", len(mj.popularMovies))
-	log.Debug("[movie-job] Trending Movies", "count", len(mj.trendingMovies))
+	log.Debug("[radarr-job] Anticipated Movies", "count", len(mj.anticipatedMovies))
+	log.Debug("[radarr-job] Box Office Movies", "count", len(mj.boxOfficeMovies))
+	log.Debug("[radarr-job] Popular Movies", "count", len(mj.popularMovies))
+	log.Debug("[radarr-job] Trending Movies", "count", len(mj.trendingMovies))
 
 	log.Info("[scheduler] Completed movie job!")
 }
@@ -347,7 +347,7 @@ func requestMoviesToRadarr(r radarr.Service, movies []trakt.Movie, radarrSetting
 	// Fetch quality profile and root folder from Radarr
 	qualityProfileID, rootFolderPath, err := fetchRadarrSettings(r, radarrSettings)
 	if err != nil {
-		log.Error("[movie-job: radarr] Error fetching Radarr settings", "error", err)
+		log.Error("[radarr-job: radarr] Error fetching Radarr settings", "error", err)
 		return
 	}
 
@@ -376,14 +376,14 @@ func requestMoviesToRadarr(r radarr.Service, movies []trakt.Movie, radarrSetting
 		if err != nil {
 			if errors.Is(err, radarr.ErrMovieAlreadyExists) {
 				// Log a warning if the movie already exists in Radarr
-				log.Warnf(`[movie-job] Skipping "%s" as it already exists in Radarr...`, movie.Title)
+				log.Warnf(`[radarr-job] Skipping "%s" as it already exists in Radarr...`, movie.Title)
 			} else {
 				// Log an error for any other issues
-				log.Errorf("[movie-job] Failed to request movie %s: %v", movie.Title, err)
+				log.Errorf("[radarr-job] Failed to request movie %s: %v", movie.Title, err)
 			}
 		} else {
 			// Log a success message if the movie was added successfully
-			log.Infof("[movie-job] Movie requested successfully: %s", movie.Title)
+			log.Infof("[radarr-job] Movie requested successfully: %s", movie.Title)
 		}
 	}
 }

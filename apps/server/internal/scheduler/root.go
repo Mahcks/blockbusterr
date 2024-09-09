@@ -44,7 +44,7 @@ func Setup(gctx global.Context, helpers helpers.Helpers) *Scheduler {
 	// Skip the movie interval if it's set to 0
 	if movieInterval.Int32 != 0 {
 		svc.StartMovieJob(int(movieInterval.Int32), func() {
-			svc.MovieJobFunc(gctx, helpers)
+			svc.RadarrJobFunc(gctx, helpers)
 		})
 	}
 
