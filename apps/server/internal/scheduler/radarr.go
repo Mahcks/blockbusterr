@@ -27,6 +27,10 @@ type radarrJob struct {
 // RadarrJobFunc defines the logic for the Radarr job
 func (s Scheduler) RadarrJobFunc(gctx global.Context, helpers helpers.Helpers) {
 	log.Info("[scheduler] Running movie job...")
+
+	// Start time tracking
+	startTime := time.Now()
+
 	mj := radarrJob{}
 	var err error
 
@@ -132,7 +136,11 @@ func (s Scheduler) RadarrJobFunc(gctx global.Context, helpers helpers.Helpers) {
 	log.Debug("[radarr-job] Popular Movies", "count", len(mj.popularMovies))
 	log.Debug("[radarr-job] Trending Movies", "count", len(mj.trendingMovies))
 
-	log.Info("[scheduler] Completed movie job!")
+	duration := time.Since(startTime)
+	durationInSeconds := float64(duration.Milliseconds()) / 1000
+	roundedDuration := fmt.Sprintf("%.2f", durationInSeconds)
+
+	log.Infof("[scheduler] Completed radarr job in %v seconds!", roundedDuration)
 }
 
 // Helper function to build Trakt API request parameters from the settings
