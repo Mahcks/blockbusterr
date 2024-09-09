@@ -11,8 +11,8 @@ type RadarrSettings struct {
 	APIKey              sql.NullString `db:"api_key"`              // API key required to make requests to Radarr
 	URL                 sql.NullString `db:"url"`                  // Base URL for the Radarr server
 	MinimumAvailability sql.NullString `db:"minimum_availability"` // Minimum availability setting ("announced", "in_cinemas", "released")
-	Quality             sql.NullString `db:"quality"`              // Quality profile to use for Radarr
-	RootFolder          sql.NullString `db:"root_folder"`          // The root folder to use for Radarr
+	Quality             sql.NullInt32  `db:"quality"`              // Quality profile to use for Radarr
+	RootFolder          sql.NullInt32  `db:"root_folder"`          // The root folder to use for Radarr
 }
 
 func (q *Queries) GetRadarrSettings(ctx context.Context) (RadarrSettings, error) {

@@ -11,17 +11,38 @@ import (
 )
 
 type Service interface {
-	GetTrendingMovies(ctx context.Context, params *GetTrendingMoviesParams) (GetTrendingMoviesResponse, error)
-	GetPopularMovies(ctx context.Context, params *GetPopularMoviesParams) (GetPopularMoviesResponse, error)
-	GetAnticipatedMovies(ctx context.Context, params *GetAnticipatedMoviesParams) ([]TraktAnticipatedMovie, error)
-	GetBoxOfficeMovies(ctx context.Context, params *GetBoxOfficeMoviesParams) ([]TraktBoxOfficeMovie, error)
-	GetMostWatchedMovies(ctx context.Context, params *GetMostWatchedMoviesParams) ([]TraktMostWatchedMovie, error)
-	GetMostPlayedMovies(ctx context.Context, params *GetMostPlayedMoviesParams) (GetMostPlayedMoviesResponse, error)
+	GetTrendingMovies(ctx context.Context, params *TraktMovieParams) (GetTrendingMoviesResponse, error)
+	GetPopularMovies(ctx context.Context, params *TraktMovieParams) (GetPopularMoviesResponse, error)
+	GetAnticipatedMovies(ctx context.Context, params *TraktMovieParams) ([]TraktAnticipatedMovie, error)
+	GetBoxOfficeMovies(ctx context.Context, params *TraktMovieParams) ([]TraktBoxOfficeMovie, error)
+	GetMostWatchedMovies(ctx context.Context, params *TraktMovieParams) ([]TraktMostWatchedMovie, error)
+	GetMostPlayedMovies(ctx context.Context, params *TraktMovieParams) (GetMostPlayedMoviesResponse, error)
 }
 
 type traktService struct {
 	gctx global.Context
 	base *sling.Sling
+}
+
+// Movie params for every Trakt API movie request
+type TraktMovieParams struct {
+	// Either `full` or `metadata`
+	Extended string `url:"extended,omitempty"`
+
+	// 4 digit year or range of years. (Example: 2007 or 2007-2016)
+	Years string `url:"years,omitempty"`
+	// Genre slugs.
+	Genres string `url:"genres,omitempty"`
+	// Language codes (ISO 639-1)
+	Languages string `url:"languages,omitempty"`
+	// Country codes (ISO 3166-1)
+	Countries string `url:"countries,omitempty"`
+	// Minimum and maximum length of runtime in minutes. (Example: 90-120)
+	Runtime string `url:"runtime,omitempty"`
+
+	// Pagination
+	Page  int `url:"page,omitempty"`
+	Limit int `url:"limit,omitempty"`
 }
 
 // Movie is a struct that represents a movie from the Trakt API
@@ -92,29 +113,14 @@ func (t *traktService) FetchClientIDFromDB(ctx context.Context) (string, error) 
 	return clientID, nil
 }
 
-type GetTrendingMoviesParams struct {
-	// Either `full` or `metadata`
-	Extended string `url:"extended,omitempty"`
+type GetTrendingMoviesResponse []TrendingMovie
 
-	// 4 digit year or range of years. (Example: 2007 or 2007-2016)
-	Years string `url:"years,omitempty"`
-	// Genre slugs.
-	Genres string `url:"genres,omitempty"`
-	// Language codes (ISO 639-1)
-	Languages string `url:"languages,omitempty"`
-	// Country codes (ISO 3166-1)
-	Countries string `url:"countries,omitempty"`
-	// Minimum and maximum length of runtime in minutes. (Example: 90-120)
-	Runtime string `url:"runtime,omitempty"`
-
-	// Pagination
-	Page  int `url:"page,omitempty"`
-	Limit int `url:"limit,omitempty"`
+type TrendingMovie struct {
+	Watchers int   `json:"watchers"`
+	Movie    Movie `json:"movie"`
 }
 
-type GetTrendingMoviesResponse []Movie
-
-func (t *traktService) GetTrendingMovies(ctx context.Context, params *GetTrendingMoviesParams) (GetTrendingMoviesResponse, error) {
+func (t *traktService) GetTrendingMovies(ctx context.Context, params *TraktMovieParams) (GetTrendingMoviesResponse, error) {
 	clientID, err := t.FetchClientIDFromDB(ctx)
 	if err != nil {
 		return nil, err
@@ -129,29 +135,9 @@ func (t *traktService) GetTrendingMovies(ctx context.Context, params *GetTrendin
 	return response, err
 }
 
-type GetPopularMoviesParams struct {
-	// Either `full` or `metadata`
-	Extended string `url:"extended,omitempty"`
-
-	// 4 digit year or range of years. (Example: 2007 or 2007-2016)
-	Years string `url:"years,omitempty"`
-	// Genre slugs.
-	Genres string `url:"genres,omitempty"`
-	// Language codes (ISO 639-1)
-	Languages string `url:"languages,omitempty"`
-	// Country codes (ISO 3166-1)
-	Countries string `url:"countries,omitempty"`
-	// Minimum and maximum length of runtime in minutes. (Example: 90-120)
-	Runtime string `url:"runtime,omitempty"`
-
-	// Pagination
-	Page  int `url:"page,omitempty"`
-	Limit int `url:"limit,omitempty"`
-}
-
 type GetPopularMoviesResponse []Movie
 
-func (t *traktService) GetPopularMovies(ctx context.Context, params *GetPopularMoviesParams) (GetPopularMoviesResponse, error) {
+func (t *traktService) GetPopularMovies(ctx context.Context, params *TraktMovieParams) (GetPopularMoviesResponse, error) {
 	clientID, err := t.FetchClientIDFromDB(ctx)
 	if err != nil {
 		return nil, err
@@ -165,32 +151,12 @@ func (t *traktService) GetPopularMovies(ctx context.Context, params *GetPopularM
 	return response, err
 }
 
-type GetAnticipatedMoviesParams struct {
-	// Either `full` or `metadata`
-	Extended string `url:"extended,omitempty"`
-
-	// 4 digit year or range of years. (Example: 2007 or 2007-2016)
-	Years string `url:"years,omitempty"`
-	// Genre slugs.
-	Genres string `url:"genres,omitempty"`
-	// Language codes (ISO 639-1)
-	Languages string `url:"languages,omitempty"`
-	// Country codes (ISO 3166-1)
-	Countries string `url:"countries,omitempty"`
-	// Minimum and maximum length of runtime in minutes. (Example: 90-120)
-	Runtime string `url:"runtime,omitempty"`
-
-	// Pagination
-	Page  int `url:"page,omitempty"`
-	Limit int `url:"limit,omitempty"`
-}
-
 type TraktAnticipatedMovie struct {
 	ListCount int   `json:"list_count"`
 	Movie     Movie `json:"movie"`
 }
 
-func (t *traktService) GetAnticipatedMovies(ctx context.Context, params *GetAnticipatedMoviesParams) ([]TraktAnticipatedMovie, error) {
+func (t *traktService) GetAnticipatedMovies(ctx context.Context, params *TraktMovieParams) ([]TraktAnticipatedMovie, error) {
 	clientID, err := t.FetchClientIDFromDB(ctx)
 	if err != nil {
 		return nil, err
@@ -205,32 +171,12 @@ func (t *traktService) GetAnticipatedMovies(ctx context.Context, params *GetAnti
 	return movies, err
 }
 
-type GetBoxOfficeMoviesParams struct {
-	// Either `full` or `metadata`
-	Extended string `url:"extended,omitempty"`
-
-	// 4 digit year or range of years. (Example: 2007 or 2007-2016)
-	Years string `url:"years,omitempty"`
-	// Genre slugs.
-	Genres string `url:"genres,omitempty"`
-	// Language codes (ISO 639-1)
-	Languages string `url:"languages,omitempty"`
-	// Country codes (ISO 3166-1)
-	Countries string `url:"countries,omitempty"`
-	// Minimum and maximum length of runtime in minutes. (Example: 90-120)
-	Runtime string `url:"runtime,omitempty"`
-
-	// Pagination
-	Page  int `url:"page,omitempty"`
-	Limit int `url:"limit,omitempty"`
-}
-
 type TraktBoxOfficeMovie struct {
 	Revenue int   `json:"revenue"`
 	Movie   Movie `json:"movie"`
 }
 
-func (t *traktService) GetBoxOfficeMovies(ctx context.Context, params *GetBoxOfficeMoviesParams) ([]TraktBoxOfficeMovie, error) {
+func (t *traktService) GetBoxOfficeMovies(ctx context.Context, params *TraktMovieParams) ([]TraktBoxOfficeMovie, error) {
 	clientID, err := t.FetchClientIDFromDB(ctx)
 	if err != nil {
 		return nil, err
@@ -245,27 +191,6 @@ func (t *traktService) GetBoxOfficeMovies(ctx context.Context, params *GetBoxOff
 	return movies, err
 }
 
-type GetMostWatchedMoviesParams struct {
-	// Either `full` or `metadata`
-	Extended string `url:"extended,omitempty"`
-	Period   string `url:"period,omitempty"`
-
-	// 4 digit year or range of years. (Example: 2007 or 2007-2016)
-	Years string `url:"years,omitempty"`
-	// Genre slugs.
-	Genres string `url:"genres,omitempty"`
-	// Language codes (ISO 639-1)
-	Languages string `url:"languages,omitempty"`
-	// Country codes (ISO 3166-1)
-	Countries string `url:"countries,omitempty"`
-	// Minimum and maximum length of runtime in minutes. (Example: 90-120)
-	Runtime string `url:"runtime,omitempty"`
-
-	// Pagination
-	Page  int `url:"page,omitempty"`
-	Limit int `url:"limit,omitempty"`
-}
-
 type TraktMostWatchedMovie struct {
 	WatcherCount   int   `json:"watcher_count"`
 	PlayCount      int   `json:"play_count"`
@@ -273,7 +198,7 @@ type TraktMostWatchedMovie struct {
 	Movie          Movie `json:"movie"`
 }
 
-func (t *traktService) GetMostWatchedMovies(ctx context.Context, params *GetMostWatchedMoviesParams) ([]TraktMostWatchedMovie, error) {
+func (t *traktService) GetMostWatchedMovies(ctx context.Context, params *TraktMovieParams) ([]TraktMostWatchedMovie, error) {
 	clientID, err := t.FetchClientIDFromDB(ctx)
 	if err != nil {
 		return nil, err
@@ -288,27 +213,6 @@ func (t *traktService) GetMostWatchedMovies(ctx context.Context, params *GetMost
 	return movies, err
 }
 
-type GetMostPlayedMoviesParams struct {
-	// Either `full` or `metadata`
-	Extended string `url:"extended,omitempty"`
-	Period   string `url:"period,omitempty"`
-
-	// 4 digit year or range of years. (Example: 2007 or 2007-2016)
-	Years string `url:"years,omitempty"`
-	// Genre slugs.
-	Genres string `url:"genres,omitempty"`
-	// Language codes (ISO 639-1)
-	Languages string `url:"languages,omitempty"`
-	// Country codes (ISO 3166-1)
-	Countries string `url:"countries,omitempty"`
-	// Minimum and maximum length of runtime in minutes. (Example: 90-120)
-	Runtime string `url:"runtime,omitempty"`
-
-	// Pagination
-	Page  int `url:"page,omitempty"`
-	Limit int `url:"limit,omitempty"`
-}
-
 type MostPlayedMovie struct {
 	WatcherCount   int   `json:"watcher_count"`
 	PlayCount      int   `json:"play_count"`
@@ -320,7 +224,7 @@ type GetMostPlayedMoviesResponse struct {
 	Movies []MostPlayedMovie `json:"movies"`
 }
 
-func (t *traktService) GetMostPlayedMovies(ctx context.Context, params *GetMostPlayedMoviesParams) (GetMostPlayedMoviesResponse, error) {
+func (t *traktService) GetMostPlayedMovies(ctx context.Context, params *TraktMovieParams) (GetMostPlayedMoviesResponse, error) {
 	clientID, err := t.FetchClientIDFromDB(ctx)
 	if err != nil {
 		return GetMostPlayedMoviesResponse{}, err

@@ -1,6 +1,10 @@
 package utils
 
-import "reflect"
+import (
+	"encoding/json"
+	"fmt"
+	"reflect"
+)
 
 // IsEmptyValue uses reflection to determine if a value is empty.
 func IsEmptyValue(v reflect.Value) bool {
@@ -36,4 +40,13 @@ func Ternary[T any](condition bool, whenTrue T, whenFalse T) T {
 	}
 
 	return whenFalse
+}
+
+func PrettyPrintStruct(data interface{}) {
+	prettyJSON, err := json.MarshalIndent(data, "", "    ")
+	if err != nil {
+		fmt.Println("Failed to generate JSON:", err)
+		return
+	}
+	fmt.Println(string(prettyJSON))
 }

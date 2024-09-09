@@ -2,9 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
-	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
@@ -13,6 +10,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
+	"github.com/charmbracelet/log"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/helpers"
 	"github.com/mahcks/blockbusterr/internal/rest"
@@ -36,31 +34,38 @@ func main() {
 	}
 
 	// Intialize the logger depending on the version of the app
-	var logger *slog.Logger
+	var logger *log.Logger
 	if version == "dev" {
-		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		}))
+		// Enable debug logging in development, and use colorful output
+		logger = log.NewWithOptions(os.Stdout, log.Options{
+			Level:           log.DebugLevel, // Set the log level here
+			ReportCaller:    true,
+			ReportTimestamp: true,
+		})
 	} else {
-		logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		// Production logger with JSON output and info level
+		logger = log.NewWithOptions(os.Stdout, log.Options{
+			Level: log.InfoLevel, // Set log level to info in production
+		})
 	}
 
-	slog.SetDefault(logger)
+	// Set the logger as the default logger
+	log.SetDefault(logger)
 
-	slog.Info("Starting the application", "version", version, "timestamp", Timestamp)
+	log.Info("Starting the application", "version", version, "timestamp", Timestamp)
 
 	gctx, cancel := global.WithCancel(global.New(context.Background()))
 	var err error
 
 	{
-		slog.Info("Setting up SQLite database")
+		log.Info("Setting up SQLite database")
 		gctx.Crate().SQL, err = sqlite.Setup(gctx)
 		if err != nil {
-			slog.Error("Error setting up SQLite database", "error", err)
+			log.Error("Error setting up SQLite database", "error", err)
 			cancel()
 			return
 		}
-		slog.Info("SQLite database setup complete")
+		log.Info("SQLite database setup complete")
 	}
 
 	// Initialize helpers
@@ -70,7 +75,7 @@ func main() {
 	}
 
 	// Setup the scheduler
-	scheduler.Setup(gctx)
+	scheduler.Setup(gctx, *helpersInstance)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
@@ -89,10 +94,10 @@ func main() {
 			case <-time.After(time.Minute):
 			case <-interrupt:
 			}
-			fmt.Println("force shutdown")
+			log.Warn("Force shutdown")
 		}()
 
-		fmt.Println("shutting down")
+		log.Warn("Shutting down...")
 
 		wg.Wait()
 
@@ -104,17 +109,17 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		slog.Info("Starting API server")
+		log.Info("Starting API server")
 		if err := rest.New(gctx, helpersInstance); err != nil {
-			slog.Error("Error starting API server", "error", err)
+			log.Error("Error starting API server", "error", err)
 			cancel()
 			return
 		}
-		slog.Info("API server stopped")
+		log.Info("API server stopped")
 	}()
 
 	<-done
 
-	slog.Info("Application stopped")
+	log.Info("Application stopped")
 	os.Exit(0)
 }

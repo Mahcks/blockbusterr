@@ -1,6 +1,7 @@
 package radarr
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/dghubble/sling"
@@ -158,11 +159,11 @@ type Movie struct {
 	Folder                string                     `json:"folder"`
 	Certification         string                     `json:"certification"`
 	Genres                []string                   `json:"genres"`
-	Tags                  map[int]struct{}           `json:"tags"` // Use a map to simulate HashSet
-	Added                 time.Time                  `json:"added"`
-	Ratings               Ratings                    `json:"ratings"`
-	Popularity            float32                    `json:"popularity"`
-	Statistics            MovieStatisticsResource    `json:"statistics"`
+	// Tags                  map[int]struct{}           `json:"tags"`
+	Added      time.Time               `json:"added"`
+	Ratings    Ratings                 `json:"ratings"`
+	Popularity float32                 `json:"popularity"`
+	Statistics MovieStatisticsResource `json:"statistics"`
 }
 
 type Language struct {
@@ -211,9 +212,11 @@ type RequestMovieBody struct {
 	// The quality profile ID to use for the film (provided by Radarr)
 	QualityProfileID int `json:"qualityProfileId"`
 	// The root folder to use for the film. The user can choose from the list of available root folders provided by Radarr in the settings.
-	RootFolderPath string `json:"path"`
+	RootFolderPath string `json:"rootFolderPath"`
 	// The Movie Database ID of the film (provided by Trakt)
 	TMDBID int `json:"tmdbId"`
+	// Whether or not the movie is monitored
+	Monitored bool `json:"monitored"`
 	// The minimum availability setting for the film. The user can choose from "announced", "in_cinemas", or "released".
 	MinimumAvailability string `json:"minimumAvailability"`
 	AddOptions          struct {
@@ -222,17 +225,53 @@ type RequestMovieBody struct {
 	} `json:"addOptions"`
 }
 
-func (r *radarrService) RequestMovie(RequestMovieBody) (RequestMovieResponse, error) {
+type RequestMovieError struct {
+	PropertyName string `json:"propertyName"`
+	ErrorMessage string `json:"errorMessage"`
+	// AttemptedValue json.RawMessage `json:"attemptedValue"`
+	Severity  string `json:"severity"`
+	ErrorCode string `json:"errorCode"`
+}
+
+// Define a custom error for when a movie already exists in Radarr
+var ErrMovieAlreadyExists = fmt.Errorf("movie already exists in Radarr")
+
+func (r *radarrService) RequestMovie(body RequestMovieBody) (RequestMovieResponse, error) {
 	url, err := r.FetchRadarrURLFromDB()
 	if err != nil {
 		return RequestMovieResponse{}, err
 	}
 
 	var response RequestMovieResponse
-	_, err = url.New().Get("/api/v3/qualityprofile").Receive(&response, nil)
+	var responseErrors []RequestMovieError
+
+	// Send the POST request to Radarr and capture the response or errors
+	apiResponse, err := url.New().Post("/api/v3/movie").BodyJSON(body).Receive(&response, &responseErrors)
 	if err != nil {
-		return RequestMovieResponse{}, errors.ErrInternalServerError().SetDetail("Failed to get Radarr quality profiles")
+		return RequestMovieResponse{}, err
 	}
 
-	return response, nil
+	// Check the HTTP status code to determine if it was successful
+	if apiResponse.StatusCode >= 200 && apiResponse.StatusCode < 300 {
+		// Successful response, return the movie data
+		return response, nil
+	}
+
+	// If Radarr returns an array of errors, iterate through them
+	if len(responseErrors) > 0 {
+		for _, err := range responseErrors {
+			// Check if the error code is for an existing movie
+			if err.ErrorCode == "MovieExistsValidator" {
+				return RequestMovieResponse{}, ErrMovieAlreadyExists
+			}
+
+			// Collect other error messages
+			errorMessages := fmt.Sprintf("%s - %s (Code: %s, Severity: %s)",
+				err.PropertyName, err.ErrorMessage, err.ErrorCode, err.Severity)
+			return RequestMovieResponse{}, fmt.Errorf("radarr api error: %s", errorMessages)
+		}
+	}
+
+	// If no specific errors were captured, return a generic error
+	return RequestMovieResponse{}, fmt.Errorf("radarr api returned an unexpected error")
 }

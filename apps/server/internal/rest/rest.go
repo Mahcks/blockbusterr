@@ -3,11 +3,11 @@ package rest
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/mahcks/blockbusterr/internal/global"
@@ -46,7 +46,7 @@ func New(gctx global.Context, helpers *helpers.Helpers) error {
 	app := fiber.New(fiber.Config{
 		// Custom error handler for common.APIError
 		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
-			slog.ErrorContext(ctx.Context(), "error in fiber", "error", err)
+			log.Error("error in fiber", "error", err)
 
 			// Handle fiber-specific errors
 			var fe *fiber.Error
@@ -110,13 +110,13 @@ func New(gctx global.Context, helpers *helpers.Helpers) error {
 		// A shutdown signal was received before the server started,
 		// so try to stop the server.
 		if err := app.Shutdown(); err != nil {
-			slog.Error("error while shutting down server", "error", err)
+			log.Error("error while shutting down server", "error", err)
 		}
 		return nil
 	case err := <-errCh:
 		// The server has exited, so return the error (if any).
 		if err != nil {
-			slog.Error("error from server", "error", err)
+			log.Error("error from server", "error", err)
 			return err
 		}
 	}
@@ -126,7 +126,7 @@ func New(gctx global.Context, helpers *helpers.Helpers) error {
 
 	// Shutdown the server
 	if err := app.Shutdown(); err != nil {
-		slog.Error("error while shutting down server", "error", err)
+		log.Error("error while shutting down server", "error", err)
 		return err
 	}
 
