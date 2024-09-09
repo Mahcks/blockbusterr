@@ -12,7 +12,6 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   FormControl,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -120,7 +119,7 @@ const SetupStepper = () => {
       console.log("Form Data:", data);
 
       // Make API request to set the setup as complete
-      /* const res = await fetch(`${import.meta.env.VITE_API_URL}/settings`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/settings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -131,10 +130,10 @@ const SetupStepper = () => {
           type: "boolean",
         }),
       });
-  
+
       if (!res.ok) {
         throw new Error("Failed to update setup status");
-      } */
+      }
 
       // After the API request succeeds, navigate to the home page
       navigate("/");
