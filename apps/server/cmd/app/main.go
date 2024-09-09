@@ -38,14 +38,16 @@ func main() {
 	if version == "dev" {
 		// Enable debug logging in development, and use colorful output
 		logger = log.NewWithOptions(os.Stdout, log.Options{
-			Level:           log.DebugLevel, // Set the log level here
+			Level:           log.DebugLevel,
 			ReportCaller:    true,
 			ReportTimestamp: true,
 		})
 	} else {
 		// Production logger with JSON output and info level
 		logger = log.NewWithOptions(os.Stdout, log.Options{
-			Level: log.InfoLevel, // Set log level to info in production
+			Level:           log.InfoLevel,
+			Formatter:       log.JSONFormatter,
+			ReportTimestamp: true,
 		})
 	}
 
