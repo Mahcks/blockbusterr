@@ -49,56 +49,81 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 
 	// Fetch Anticipated Movies
 	if mj.movieSettings.Anticipated.Valid {
-		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
-		anticipatedMovies, err := helpers.Trakt.GetAnticipatedMovies(gctx, params)
-		if err != nil {
-			log.Error("[movie-job] Error fetching anticipated movies from Trakt", "error", err)
+		if mj.movieSettings.Anticipated.Int32 == 0 {
+			log.Warn("[movie-job] Anticipated movies are enabled but the limit is set to 0. Skipping...")
 		} else {
-			movies := extractMoviesFromAnticipated(anticipatedMovies)
-			filteredMovies := applyAdditionalFilters(movies, mj.movieSettings)
-			mj.anticipatedMovies = getTopNMovies(filteredMovies, int(mj.movieSettings.Anticipated.Int32))
+			params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
+			anticipatedMovies, err := helpers.Trakt.GetAnticipatedMovies(gctx, params)
+			if err != nil {
+				log.Error("[movie-job] Error fetching anticipated movies from Trakt", "error", err)
+			} else {
+				movies := extractMoviesFromAnticipated(anticipatedMovies)
+				filteredMovies := applyAdditionalFilters(movies, mj.movieSettings)
+				mj.anticipatedMovies = getTopNMovies(filteredMovies, int(mj.movieSettings.Anticipated.Int32))
 
-			// Make requests to Radarr for Anticipated movies
-			requestMoviesToRadarr(helpers.Radarr, mj.anticipatedMovies, mj.radarrSettings)
+				// Make requests to Radarr for Anticipated movies
+				requestMoviesToRadarr(helpers.Radarr, mj.anticipatedMovies, mj.radarrSettings)
+			}
 		}
 	}
 
 	// Fetch BoxOffice Movies
 	if mj.movieSettings.BoxOffice.Valid {
-		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
-		boxOfficeMovies, err := helpers.Trakt.GetBoxOfficeMovies(gctx, params)
-		if err != nil {
-			log.Error("[movie-job] Error fetching box office movies from Trakt", "error", err)
+		if mj.movieSettings.BoxOffice.Int32 == 0 {
+			log.Warn("[movie-job] Box office movies are enabled but the limit is set to 0. Skipping...")
 		} else {
-			movies := extractMoviesFromBoxOffice(boxOfficeMovies)
-			filteredMovies := applyAdditionalFilters(movies, mj.movieSettings)
-			mj.boxOfficeMovies = getTopNMovies(filteredMovies, int(mj.movieSettings.BoxOffice.Int32))
+			params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
+			boxOfficeMovies, err := helpers.Trakt.GetBoxOfficeMovies(gctx, params)
+			if err != nil {
+				log.Error("[movie-job] Error fetching box office movies from Trakt", "error", err)
+			} else {
+				movies := extractMoviesFromBoxOffice(boxOfficeMovies)
+				filteredMovies := applyAdditionalFilters(movies, mj.movieSettings)
+				mj.boxOfficeMovies = getTopNMovies(filteredMovies, int(mj.movieSettings.BoxOffice.Int32))
+
+				// Make requests to Radarr for Box Office movies
+				requestMoviesToRadarr(helpers.Radarr, mj.boxOfficeMovies, mj.radarrSettings)
+			}
 		}
 	}
 
 	// Fetch Popular Movies
 	if mj.movieSettings.Popular.Valid {
-		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
-		popularMovies, err := helpers.Trakt.GetPopularMovies(gctx, params)
-		if err != nil {
-			log.Error("[movie-job] Error fetching popular movies from Trakt", "error", err)
+		if mj.movieSettings.Popular.Int32 == 0 {
+			log.Warn("[movie-job] Popular movies are enabled but the limit is set to 0. Skipping...")
 		} else {
-			movies := extractMoviesFromPopular(popularMovies)
-			filteredMovies := applyAdditionalFilters(movies, mj.movieSettings)
-			mj.popularMovies = getTopNMovies(filteredMovies, int(mj.movieSettings.Popular.Int32))
+			params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
+			popularMovies, err := helpers.Trakt.GetPopularMovies(gctx, params)
+			if err != nil {
+				log.Error("[movie-job] Error fetching popular movies from Trakt", "error", err)
+			} else {
+				movies := extractMoviesFromPopular(popularMovies)
+				filteredMovies := applyAdditionalFilters(movies, mj.movieSettings)
+				mj.popularMovies = getTopNMovies(filteredMovies, int(mj.movieSettings.Popular.Int32))
+
+				// Make requests to Radarr for popular movies
+				requestMoviesToRadarr(helpers.Radarr, mj.popularMovies, mj.radarrSettings)
+			}
 		}
 	}
 
 	// Fetch Trending Movies
 	if mj.movieSettings.Trending.Valid {
-		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
-		trendingMovies, err := helpers.Trakt.GetTrendingMovies(gctx, params)
-		if err != nil {
-			log.Error("[movie-job] Error fetching trending movies from Trakt", "error", err)
+		if mj.movieSettings.Trending.Int32 == 0 {
+			log.Warn("[movie-job] Trending movies are enabled but the limit is set to 0. Skipping...")
 		} else {
-			movies := extractMoviesFromTrending(trendingMovies)
-			filteredMovies := applyAdditionalFilters(movies, mj.movieSettings)
-			mj.trendingMovies = getTopNMovies(filteredMovies, int(mj.movieSettings.Trending.Int32))
+			params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
+			trendingMovies, err := helpers.Trakt.GetTrendingMovies(gctx, params)
+			if err != nil {
+				log.Error("[movie-job] Error fetching trending movies from Trakt", "error", err)
+			} else {
+				movies := extractMoviesFromTrending(trendingMovies)
+				filteredMovies := applyAdditionalFilters(movies, mj.movieSettings)
+				mj.trendingMovies = getTopNMovies(filteredMovies, int(mj.movieSettings.Trending.Int32))
+
+				// Make requests to Radarr for popular movies
+				requestMoviesToRadarr(helpers.Radarr, mj.trendingMovies, mj.radarrSettings)
+			}
 		}
 	}
 
