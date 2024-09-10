@@ -259,22 +259,88 @@ func (o *ombiService) GetSonarrEnabled() (bool, error) {
 	return isEnabled, nil
 }
 
-type GetSonarrProfilesResponse struct{}
+type GetSonarrProfilesResponse []SonarrQualityProfile
+
+type SonarrQualityProfile struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
 
 func (o *ombiService) GetSonnarProfiles() (GetSonarrProfilesResponse, error) {
-	return GetSonarrProfilesResponse{}, nil
+	url, err := o.FetchOmbiURLFromDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetSonarrProfilesResponse
+	_, err = url.Get("/api/v1/sonarr/profiles").ReceiveSuccess(&response)
+	if err != nil {
+		return nil, errors.ErrInternalServerError().SetDetail("Failed to get Sonarr quality profiles via Ombi")
+	}
+
+	return response, nil
 }
 
-type GetSonarrRootFoldersResponse struct{}
+type GetSonarrRootFoldersResponse []SonarrRootFolder
+
+type SonarrRootFolder struct {
+	ID        int    `json:"id"`
+	Path      string `json:"path"`
+	Freespace int64  `json:"freespace"`
+}
 
 func (o *ombiService) GetSonarrRootFolders() (GetSonarrRootFoldersResponse, error) {
-	return GetSonarrRootFoldersResponse{}, nil
+	url, err := o.FetchOmbiURLFromDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetSonarrRootFoldersResponse
+	_, err = url.Get("/api/v1/sonarr/rootfolders").ReceiveSuccess(&response)
+	if err != nil {
+		return nil, errors.ErrInternalServerError().SetDetail("Failed to get Sonarr root folders via Ombi")
+	}
+
+	return response, nil
 }
 
-type RequestShowBody struct{}
+type RequestShowBody struct {
+	FirstSeason         bool    `json:"firstSeason"`
+	LatestSeason        bool    `json:"latestSeason"`
+	RequestAll          bool    `json:"requestAll"`
+	TheMovieDBID        int     `json:"theMovieDbId"`
+	RequestOnBehalf     string  `json:"requestOnBehalf"`
+	LanguageCode        string  `json:"languageCode"`
+	QualityPathOverride *string `json:"qualityProfileOverride"`
+	RootFolderOverride  *string `json:"rootFolderOverride"`
+}
 
-type RequestShowResponse struct{}
+type RequestShowResponse struct {
+	Result       bool   `json:"result"`
+	Message      string `json:"message"`
+	IsError      bool   `json:"isError"`
+	ErrorMessage string `json:"errorMessage"`
+	ErrorCode    string `json:"errorCode"`
+	RequestID    int    `json:"requestId"`
+}
+
+var ErrShowAlreadyRequested = fmt.Errorf("show already requested")
 
 func (o *ombiService) RequestShow(body RequestShowBody) (RequestShowResponse, error) {
-	return RequestShowResponse{}, nil
+	url, err := o.FetchOmbiURLFromDB()
+	if err != nil {
+		return RequestShowResponse{}, err
+	}
+
+	var response RequestShowResponse
+	_, err = url.New().Post("/api/v2/requests/tv").BodyJSON(body).ReceiveSuccess(&response)
+	if err != nil {
+		return RequestShowResponse{}, errors.ErrInternalServerError().SetDetail("Failed to request movie via Ombi")
+	}
+
+	if response.ErrorCode == "MovieAlreadyRequested" || response.ErrorCode == "AlreadyRequested" || response.IsError {
+		return response, ErrShowAlreadyRequested
+	}
+
+	return RequestShowResponse(response), nil
 }

@@ -1,6 +1,8 @@
 package scheduler
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -9,12 +11,14 @@ import (
 	"github.com/mahcks/blockbusterr/internal/db"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/helpers"
+	"github.com/mahcks/blockbusterr/internal/helpers/ombi"
 	"github.com/mahcks/blockbusterr/internal/helpers/sonarr"
 	"github.com/mahcks/blockbusterr/internal/helpers/trakt"
-	"github.com/mahcks/blockbusterr/pkg/utils"
+	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
 type sonarrJob struct {
+	ombiSettings   db.OmbiSettings
 	sonarrSettings db.SonarrSettings
 	showSettings   db.ShowSettings
 
@@ -23,8 +27,8 @@ type sonarrJob struct {
 	trendingShows    []trakt.Show
 }
 
-// SonarrJobFunc defines the logic for the Sonarr job
-func (s Scheduler) SonarrJobFunc(gctx global.Context, helpers helpers.Helpers) {
+// ShowJobFunc defines the logic for the TV show job
+func (s Scheduler) ShowJobFunc(gctx global.Context, helpers helpers.Helpers) {
 	log.Info("[scheduler] Running show job...")
 
 	// Start time tracking
@@ -32,6 +36,12 @@ func (s Scheduler) SonarrJobFunc(gctx global.Context, helpers helpers.Helpers) {
 
 	sj := sonarrJob{}
 	var err error
+
+	ombiEnabled, err := gctx.Crate().SQL.Queries().GetSettingByKey(gctx, structures.SettingOmbiEnabled.String())
+	if err != nil {
+		log.Error("[show-job] Error getting Ombi enabled setting", "error", err)
+		return
+	}
 
 	// Step 1. Get all settings from Sonarr table
 	sj.sonarrSettings, err = gctx.Crate().SQL.Queries().GetSonarrSettings(gctx)
@@ -50,72 +60,66 @@ func (s Scheduler) SonarrJobFunc(gctx global.Context, helpers helpers.Helpers) {
 	// Query a large number of shows from each list (e.g., 1000)
 	largeShowQueryLimit := 1000
 
-	utils.PrettyPrintStruct(sj.showSettings)
-
 	// Fetch Anticipated Shows
-	if sj.showSettings.Anticipated.Valid {
-		if sj.showSettings.Anticipated.Int32 == 0 {
-			log.Warn("[sonarr-job] Anticipated shows are enabled but the limit is set to 0. Skipping...")
+	if sj.showSettings.Anticipated.Valid && sj.showSettings.Anticipated.Int32 > 0 {
+		params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit)
+		anticipatedShows, err := helpers.Trakt.GetAnticipatedShows(gctx, params)
+		if err != nil {
+			log.Error("[show-job] Error fetching anticipated shows from Trakt", "error", err)
 		} else {
-			params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit)
-			anticipatedShows, err := helpers.Trakt.GetAnticipatedShows(gctx, params)
-
-			if err != nil {
-				log.Error("[sonarr-job] Error fetching anticipated shows from Trakt", "error", err)
-			} else {
-				shows := extractShowsFromAnticipated(anticipatedShows)
-				filteredShows := applyAdditionalFiltersToShows(shows, sj.showSettings)
-				sj.anticipatedShows = getTopNShows(filteredShows, int(sj.showSettings.Anticipated.Int32))
-
-				// Make requests to Sonarr for Anticipated shows
-				requestShowsToSonarr(helpers.Sonarr, sj.anticipatedShows, sj.sonarrSettings)
-			}
+			sj.anticipatedShows = filterAndLimitShows(extractShowsFromAnticipated(anticipatedShows), sj.showSettings, int(sj.showSettings.Anticipated.Int32))
 		}
 	}
 
 	// Fetch Popular Shows
-	if sj.showSettings.Popular.Valid {
-		if sj.showSettings.Popular.Int32 == 0 {
-			log.Warn("[sonarr-job] Popular shows are enabled but the limit is set to 0. Skipping...")
+	if sj.showSettings.Popular.Valid && sj.showSettings.Popular.Int32 > 0 {
+		params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit)
+		popularShows, err := helpers.Trakt.GetPopularShows(gctx, params)
+		if err != nil {
+			log.Error("[show-job] Error fetching popular shows from Trakt", "error", err)
 		} else {
-			params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit)
-			popularShows, err := helpers.Trakt.GetPopularShows(gctx, params)
-			if err != nil {
-				log.Error("[sonarr-job] Error fetching popular shows from Trakt", "error", err)
-			} else {
-				shows := extractShowsFromPopular(popularShows)
-				filteredShows := applyAdditionalFiltersToShows(shows, sj.showSettings)
-				sj.popularShows = getTopNShows(filteredShows, int(sj.showSettings.Popular.Int32))
-
-				// Make requests to Sonarr for popular shows
-				requestShowsToSonarr(helpers.Sonarr, sj.popularShows, sj.sonarrSettings)
-			}
+			sj.popularShows = filterAndLimitShows(extractShowsFromPopular(popularShows), sj.showSettings, int(sj.showSettings.Popular.Int32))
 		}
 	}
 
 	// Fetch Trending Shows
-	if sj.showSettings.Trending.Valid {
-		if sj.showSettings.Trending.Int32 == 0 {
-			log.Warn("[sonarr-job] Trending shows are enabled but the limit is set to 0. Skipping...")
+	if sj.showSettings.Trending.Valid && sj.showSettings.Trending.Int32 > 0 {
+		params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit)
+		trendingShows, err := helpers.Trakt.GetTrendingShows(gctx, params)
+		if err != nil {
+			log.Error("[show-job] Error fetching trending shows from Trakt", "error", err)
 		} else {
-			params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit)
-			trendingShows, err := helpers.Trakt.GetTrendingShows(gctx, params)
-			if err != nil {
-				log.Error("[sonarr-job] Error fetching trending shows from Trakt", "error", err)
-			} else {
-				shows := extractShowsFromTrending(trendingShows)
-				filteredShows := applyAdditionalFiltersToShows(shows, sj.showSettings)
-				sj.trendingShows = getTopNShows(filteredShows, int(sj.showSettings.Trending.Int32))
-
-				// Make requests to Sonarr for trending shows
-				requestShowsToSonarr(helpers.Sonarr, sj.trendingShows, sj.sonarrSettings)
-			}
+			sj.trendingShows = filterAndLimitShows(extractShowsFromTrending(trendingShows), sj.showSettings, int(sj.showSettings.Trending.Int32))
 		}
 	}
 
-	log.Debug("[sonarr-job] Anticipated Shows", "count", len(sj.anticipatedShows))
-	log.Debug("[sonarr-job] Popular Shows", "count", len(sj.popularShows))
-	log.Debug("[sonarr-job] Trending Shows", "count", len(sj.trendingShows))
+	// If Ombi is enabled, use Ombi settings and request shows via Ombi
+	if ombiEnabled.Value.String == "true" {
+		sj.ombiSettings, err = gctx.Crate().SQL.Queries().GetOmbiSettings(gctx)
+		if err != nil {
+			log.Error("[show-job] Error getting Ombi settings", "error", err)
+			return
+		}
+
+		// Request shows via Ombi
+		requestShowsToOmbi(helpers.Ombi, sj.anticipatedShows, sj.ombiSettings)
+		requestShowsToOmbi(helpers.Ombi, sj.popularShows, sj.ombiSettings)
+		requestShowsToOmbi(helpers.Ombi, sj.trendingShows, sj.ombiSettings)
+
+		log.Debug("[ombi-job] Anticipated Shows", "count", len(sj.anticipatedShows))
+		log.Debug("[ombi-job] Popular Shows", "count", len(sj.popularShows))
+		log.Debug("[ombi-job] Trending Shows", "count", len(sj.trendingShows))
+
+	} else {
+		// If Ombi is not enabled, fallback to Sonarr
+		requestShowsToSonarr(helpers.Sonarr, sj.anticipatedShows, sj.sonarrSettings)
+		requestShowsToSonarr(helpers.Sonarr, sj.popularShows, sj.sonarrSettings)
+		requestShowsToSonarr(helpers.Sonarr, sj.trendingShows, sj.sonarrSettings)
+
+		log.Debug("[sonarr-job] Anticipated Shows", "count", len(sj.anticipatedShows))
+		log.Debug("[sonarr-job] Popular Shows", "count", len(sj.popularShows))
+		log.Debug("[sonarr-job] Trending Shows", "count", len(sj.trendingShows))
+	}
 
 	duration := time.Since(startTime)
 	durationInSeconds := float64(duration.Milliseconds()) / 1000
@@ -184,6 +188,14 @@ func buildTraktParamsFromShowSettings(settings db.ShowSettings, limit int) *trak
 
 	// Return the configured parameters
 	return params
+}
+
+func filterAndLimitShows(shows []trakt.Show, settings db.ShowSettings, limit int) []trakt.Show {
+	// Apply additional filters like allowed countries, allowed languages, and blacklists
+	filteredShows := applyAdditionalFiltersToShows(shows, settings)
+
+	// Limit the number of shows to the specified limit
+	return getTopNShows(filteredShows, limit)
 }
 
 func applyAdditionalFiltersToShows(shows []trakt.Show, settings db.ShowSettings) []trakt.Show {
@@ -274,46 +286,6 @@ func extractShowsFromAnticipated(anticipatedShows []trakt.AnticipatedShow) []tra
 	return shows
 }
 
-func requestShowsToSonarr(s sonarr.Service, shows []trakt.Show, sonarrSettings db.SonarrSettings) {
-	// Fetch quality profile and root folder from Sonarr
-	qualityProfileID, rootFolderPath, err := fetchSonarrSettings(s, sonarrSettings)
-	if err != nil {
-		log.Error("[sonarr-job: sonarr] Error fetching Sonarr settings", "error", err)
-		return
-	}
-
-	for _, show := range shows {
-		// Prepare the request body for Sonarr
-
-		body := sonarr.RequestSeriesBody{
-			Title:            show.Title,
-			TVDbId:           show.IDs.TVDB,
-			Monitored:        true,
-			QualityProfileID: qualityProfileID,
-			RootFolderPath:   rootFolderPath,
-		}
-
-		body.AddOptions.SearchForMissingEpisodes = true
-
-		utils.PrettyPrintStruct(body)
-
-		// Make the request to Sonarr
-		/* _, err := s.RequestSeries(context.Background(), body)
-		if err != nil {
-			if errors.Is(err, sonarr.ErrShowAlreadyExists) {
-				// Log a warning if the show already exists in Sonarr
-				log.Warnf(`[sonarr-job] Skipping "%s" as it already exists in Sonarr...`, show.Title)
-			} else {
-				// Log an error for any other issues
-				log.Errorf("[sonarr-job] Failed to request show %s: %v", show.Title, err)
-			}
-		} else {
-			// Log a success message if the show was added successfully
-			log.Infof("[sonarr-job] Show requested successfully: %s", show.Title)
-		} */
-	}
-}
-
 func fetchSonarrSettings(r sonarr.Service, sonarrSettings db.SonarrSettings) (int, string, error) {
 	// Get quality profiles from Sonarr
 	qualityProfiles, err := r.GetQualityProfiles()
@@ -353,4 +325,81 @@ func fetchSonarrSettings(r sonarr.Service, sonarrSettings db.SonarrSettings) (in
 
 	// Return the matched quality profile ID and root folder path
 	return qualityProfileID, rootFolderPath, nil
+}
+
+func requestShowsToOmbi(o ombi.Service, shows []trakt.Show, ombiSettings db.OmbiSettings) {
+	for _, show := range shows {
+		body := ombi.RequestShowBody{
+			TheMovieDBID: show.IDs.TMDB,
+			RequestAll:   true,
+			LanguageCode: "en",
+		}
+
+		// Set the request on behalf of a specific user if configured
+		if ombiSettings.UserID.Valid && ombiSettings.UserID.String != "" {
+			body.RequestOnBehalf = ombiSettings.UserID.String
+		}
+
+		// Set the quality profile override if configured
+		if ombiSettings.ShowRootFolder.Valid || ombiSettings.ShowRootFolder.Int32 != 0 {
+			rootFolder := fmt.Sprintf("%d", ombiSettings.ShowRootFolder.Int32)
+			body.RootFolderOverride = &rootFolder
+		}
+
+		// Set the quality profile override if configured
+		if ombiSettings.ShowQuality.Valid || ombiSettings.ShowQuality.Int32 != 0 {
+			qualityProfile := fmt.Sprintf("%d", ombiSettings.ShowQuality.Int32)
+			body.QualityPathOverride = &qualityProfile
+		}
+
+		// Request the show via Ombi
+		_, err := o.RequestShow(body)
+		if err != nil {
+			if errors.Is(err, ombi.ErrShowAlreadyRequested) {
+				log.Warnf(`[ombi-job] Skipping "%s" as it was already requested...`, show.Title)
+			} else {
+				log.Errorf("[ombi-job] Failed to request show %s via Ombi: %v", show.Title, err)
+			}
+		} else {
+			log.Infof("[ombi-job] Show requested successfully via Ombi: %s", show.Title)
+		}
+	}
+}
+
+func requestShowsToSonarr(s sonarr.Service, shows []trakt.Show, sonarrSettings db.SonarrSettings) {
+	// Fetch quality profile and root folder from Sonarr
+	qualityProfileID, rootFolderPath, err := fetchSonarrSettings(s, sonarrSettings)
+	if err != nil {
+		log.Error("[sonarr-job: sonarr] Error fetching Sonarr settings", "error", err)
+		return
+	}
+
+	for _, show := range shows {
+		// Prepare the request body for Sonarr
+
+		body := sonarr.RequestSeriesBody{
+			Title:            show.Title,
+			TVDbId:           show.IDs.TVDB,
+			Monitored:        true,
+			QualityProfileID: qualityProfileID,
+			RootFolderPath:   rootFolderPath,
+		}
+
+		body.AddOptions.SearchForMissingEpisodes = true
+
+		// Make the request to Sonarr
+		_, err := s.RequestSeries(context.Background(), body)
+		if err != nil {
+			if errors.Is(err, sonarr.ErrShowAlreadyExists) {
+				// Log a warning if the show already exists in Sonarr
+				log.Warnf(`[sonarr-job] Skipping "%s" as it already exists in Sonarr...`, show.Title)
+			} else {
+				// Log an error for any other issues
+				log.Errorf("[sonarr-job] Failed to request show %s: %v", show.Title, err)
+			}
+		} else {
+			// Log a success message if the show was added successfully
+			log.Infof("[sonarr-job] Show requested successfully: %s", show.Title)
+		}
+	}
 }

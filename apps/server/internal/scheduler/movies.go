@@ -27,8 +27,8 @@ type radarrJob struct {
 	trendingMovies    []trakt.Movie
 }
 
-// RadarrJobFunc defines the logic for the Radarr job
-func (s Scheduler) RadarrJobFunc(gctx global.Context, helpers helpers.Helpers) {
+// MovieJobFunc defines the logic for the Radarr job
+func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 	log.Info("[scheduler] Running movie job...")
 	var err error
 
@@ -43,14 +43,14 @@ func (s Scheduler) RadarrJobFunc(gctx global.Context, helpers helpers.Helpers) {
 
 	mj := radarrJob{}
 
-	// Step 1. Get all settings from Radarr table
+	// Get all settings from Radarr table
 	mj.radarrSettings, err = gctx.Crate().SQL.Queries().GetRadarrSettings(gctx)
 	if err != nil {
 		log.Errorf("[radarr-job] Error getting Radarr settings: %v", err)
 		return
 	}
 
-	// Step 2. Get all the settings for movies
+	// Get all the settings for movies
 	mj.movieSettings, err = gctx.Crate().SQL.Queries().GetMovieSettings(gctx)
 	if err != nil {
 		log.Error("[radarr-job] Error getting movie settings", "error", err)
