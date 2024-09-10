@@ -25,6 +25,7 @@ const (
 
 	// SettingSetupComplete is a flag to indicate if the setup is complete
 	SettingSetupComplete Setting = "SETUP_COMPLETE"
+	SettingOmbiEnabled   Setting = "OMBI_ENABLED"
 )
 
 func IsValidSettingKey(key Setting) bool {

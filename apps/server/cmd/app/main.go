@@ -16,6 +16,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/rest"
 	"github.com/mahcks/blockbusterr/internal/scheduler"
 	"github.com/mahcks/blockbusterr/internal/services/sqlite"
+	"github.com/mahcks/blockbusterr/pkg/utils"
 )
 
 var (
@@ -75,6 +76,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize helpers: %v", err)
 	}
+
+	users, err := helpersInstance.Ombi.GetRadarrRootFolders()
+	if err != nil {
+		log.Fatalf("Failed to get users: %v", err)
+	}
+
+	utils.PrettyPrintStruct(users)
 
 	// Setup the scheduler
 	scheduler.Setup(gctx, *helpersInstance)
