@@ -13,6 +13,8 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/helpers"
+	"github.com/mahcks/blockbusterr/internal/notifications"
+	"github.com/mahcks/blockbusterr/internal/notifications/discord"
 	"github.com/mahcks/blockbusterr/internal/rest"
 	"github.com/mahcks/blockbusterr/internal/scheduler"
 	"github.com/mahcks/blockbusterr/internal/services/sqlite"
@@ -69,6 +71,25 @@ func main() {
 		}
 		log.Info("SQLite database setup complete")
 	}
+
+	// Initialize notifications
+	notficationsInstance, err := notifications.Setup(gctx)
+	if err != nil {
+		log.Fatalf("Failed to initialize notifications: %v", err)
+	}
+
+	notficationsInstance.Discord.SendDiscordEmbed("https://discord.com/api/webhooks/1282948906157609021/oocIcgHqGCK-HP7BY1Fy0D45nDEO3ELICmr6N_QegMBNlNC9Lbp_iAu2cWOhHKeybVNR", discord.Embed{
+		Title:       "Test",
+		Description: "This is a test",
+		Color:       0x00FF00,
+		Fields: []discord.EmbedField{
+			{
+				Name:   "Field 1",
+				Value:  "Value 1",
+				Inline: true,
+			},
+		},
+	})
 
 	// Initialize helpers
 	helpersInstance, err := helpers.SetupHelpers(gctx)
