@@ -14,6 +14,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/helpers"
 	"github.com/mahcks/blockbusterr/internal/rest"
+	"github.com/mahcks/blockbusterr/internal/scheduler"
 	"github.com/mahcks/blockbusterr/internal/services/sqlite"
 )
 
@@ -76,7 +77,9 @@ func main() {
 	}
 
 	// Setup the scheduler
-	// scheduler.Setup(gctx, *helpersInstance)
+	if Version != "dev" {
+		scheduler.Setup(gctx, *helpersInstance)
+	}
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
