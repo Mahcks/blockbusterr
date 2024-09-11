@@ -370,7 +370,7 @@ export default function Ombi() {
                   name="trending"
                   label="Trending Shows"
                   placeholder="Enter # of trending shows"
-                  description="The number of movies to pull from the Trakt trending list."
+                  description="The number of shows to pull from the Trakt trending list."
                 />
               </div>
 
