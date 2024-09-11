@@ -181,7 +181,7 @@ export default function MovieSettingsForm({
             description="Comma-separated list of blacklisted TMDb IDs."
           />
         </div>
-        <Button type="submit">Submit</Button>
+        <Button type="submit">Save</Button>
       </form>
     </Form>
   );

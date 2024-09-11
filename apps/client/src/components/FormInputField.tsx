@@ -17,6 +17,7 @@ interface FormInputFieldProps {
   label: string;
   placeholder: string;
   description?: string;
+  disabled?: boolean;
 }
 
 const FormInputField: React.FC<FormInputFieldProps> = ({
@@ -25,6 +26,7 @@ const FormInputField: React.FC<FormInputFieldProps> = ({
   label,
   placeholder,
   description,
+  disabled = false,
 }) => {
   return (
     <FormField
@@ -35,6 +37,7 @@ const FormInputField: React.FC<FormInputFieldProps> = ({
           <FormLabel>{label}</FormLabel>
           <FormControl>
             <Input
+              disabled={disabled}
               type="text"
               value={field.value}
               onChange={(e) => field.onChange(e.target.value)}

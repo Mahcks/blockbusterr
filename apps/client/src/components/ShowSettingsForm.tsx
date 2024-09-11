@@ -177,7 +177,7 @@ export default function ShowSettingsForm({
             description="Comma-separated list of blacklisted TVDb IDs."
           />
         </div>
-        <Button type="submit">Submit</Button>
+        <Button type="submit">Save</Button>
       </form>
     </Form>
   );
