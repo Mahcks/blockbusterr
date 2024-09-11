@@ -1,5 +1,4 @@
 import "@/index.css";
-import NavBar from "@/components/NavBar";
 
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -9,6 +8,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import SidebarNav from "@/components/SideBarNav";
 
 // Sample data for the carousel items
 const items = Array.from({ length: 50 }, (_, i) => ({
@@ -18,10 +18,9 @@ const items = Array.from({ length: 50 }, (_, i) => ({
 
 function Root() {
   return (
-    <div>
-      <NavBar />
-      <div className="flex min-h-screen flex-col pr-5 pl-5">
-        <p className="text-red-500">Home</p>
+    <div className="min-h-screen">
+      <SidebarNav />
+      <div className="flex min-h-screen flex-col pr-5 pl-60 pt-5">
         <div>
           <Carousel
             opts={{

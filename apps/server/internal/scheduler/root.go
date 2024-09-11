@@ -44,7 +44,7 @@ func Setup(gctx global.Context, helpers helpers.Helpers) *Scheduler {
 	// Skip the movie interval if it's set to 0
 	if movieInterval.Int32 != 0 {
 		svc.StartMovieJob(int(movieInterval.Int32), func() {
-			svc.RadarrJobFunc(gctx, helpers)
+			svc.MovieJobFunc(gctx, helpers)
 		})
 	}
 
@@ -62,7 +62,7 @@ func Setup(gctx global.Context, helpers helpers.Helpers) *Scheduler {
 	// Skip the show interval if it's set to 0
 	if sonarrInterval.Int32 != 0 {
 		svc.StartShowJob(int(sonarrInterval.Int32), func() {
-			svc.SonarrJobFunc(gctx, helpers)
+			svc.ShowJobFunc(gctx, helpers)
 		})
 	}
 
