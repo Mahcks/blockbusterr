@@ -2,14 +2,18 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Home, Settings, HelpCircle } from "lucide-react";
+import { Menu, HelpCircle, LayoutDashboard } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useSetupStatus } from "@/context/SetupContext";
 
 const Logo = () => {
-  return <p className="text-xl font-bold text-foreground mb-10 ml-3">blockbusterr</p>;
+  return (
+    <p className="text-xl font-bold text-foreground mb-10 ml-3">blockbusterr</p>
+  );
 };
 
 export default function SidebarNav() {
+  const { ombiEnabled } = useSetupStatus();
   const [open, setOpen] = useState(false);
 
   const NavItems = () => (
@@ -18,23 +22,36 @@ export default function SidebarNav() {
         className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
         to="/"
       >
-        <Home className="h-4 w-4" />
-        Home
+        <LayoutDashboard className="h-4 w-4" />
+        Dashboard
       </Link>
-      <Link
-        className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
-        to="/settings"
-      >
-        <Settings className="h-4 w-4" />
-        Settings
-      </Link>
-      <Link
-        className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
-        to="/help"
-      >
-        <HelpCircle className="h-4 w-4" />
-        Help
-      </Link>
+
+      {!ombiEnabled ? (
+        <>
+          <Link
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
+            to="/radarr"
+          >
+            <HelpCircle className="h-4 w-4" />
+            Radarr
+          </Link>
+          <Link
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
+            to="/sonarr"
+          >
+            <HelpCircle className="h-4 w-4" />
+            Sonarr
+          </Link>
+        </>
+      ) : (
+        <Link
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
+          to="/ombi"
+        >
+          <HelpCircle className="h-4 w-4" />
+          Ombi
+        </Link>
+      )}
     </>
   );
 

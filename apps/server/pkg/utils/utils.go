@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -49,4 +50,21 @@ func PrettyPrintStruct(data interface{}) {
 		return
 	}
 	fmt.Println(string(prettyJSON))
+}
+
+// Utility function to convert sql.NullInt32 to *int for JSON serialization
+func NullIntToPointer(ni sql.NullInt32) *int {
+	if ni.Valid {
+		val := int(ni.Int32)
+		return &val
+	}
+	return nil
+}
+
+// Utility function to convert sql.NullString to *string for JSON serialization
+func NullStringToPointer(ns sql.NullString) *string {
+	if ns.Valid {
+		return &ns.String
+	}
+	return nil
 }

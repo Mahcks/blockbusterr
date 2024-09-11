@@ -32,7 +32,8 @@ func IsValidSettingKey(key Setting) bool {
 	switch key {
 	case SettingTraktClientID,
 		SettingTraktClientSecret,
-		SettingSetupComplete:
+		SettingSetupComplete,
+		SettingOmbiEnabled:
 		return true
 	default:
 		return false
