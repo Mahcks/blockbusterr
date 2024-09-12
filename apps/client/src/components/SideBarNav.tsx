@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, HelpCircle, LayoutDashboard, Cog } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom"; // Import useLocation
 import { useSetupStatus } from "@/context/SetupContext";
 import { Separator } from "@/components/ui/separator";
 
@@ -16,11 +16,14 @@ const Logo = () => {
 export default function SidebarNav() {
   const { ombiEnabled } = useSetupStatus();
   const [open, setOpen] = useState(false);
+  const location = useLocation(); // Get the current location
 
   const NavItems = () => (
     <>
       <Link
-        className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
+        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground ${
+          location.pathname === "/" ? "font-bold text-foreground" : ""
+        }`}
         to="/"
       >
         <LayoutDashboard className="h-4 w-4" />
@@ -28,7 +31,9 @@ export default function SidebarNav() {
       </Link>
 
       <Link
-        className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
+        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground ${
+          location.pathname === "/settings" ? "font-bold text-foreground" : ""
+        }`}
         to="/settings"
       >
         <Cog className="h-4 w-4" />
@@ -40,14 +45,18 @@ export default function SidebarNav() {
       {!ombiEnabled ? (
         <>
           <Link
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground ${
+              location.pathname === "/radarr" ? "font-bold text-foreground" : ""
+            }`}
             to="/radarr"
           >
             <HelpCircle className="h-4 w-4" />
             Radarr
           </Link>
           <Link
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground ${
+              location.pathname === "/sonarr" ? "font-bold text-foreground" : ""
+            }`}
             to="/sonarr"
           >
             <HelpCircle className="h-4 w-4" />
@@ -56,7 +65,9 @@ export default function SidebarNav() {
         </>
       ) : (
         <Link
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
+          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground ${
+            location.pathname === "/ombi" ? "font-bold text-foreground" : ""
+          }`}
           to="/ombi"
         >
           <HelpCircle className="h-4 w-4" />
