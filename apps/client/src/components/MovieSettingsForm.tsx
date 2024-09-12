@@ -73,7 +73,8 @@ export default function MovieSettingsForm({
           label="Interval (hours)"
           placeholder="Enter interval"
           description="Set the interval for pulling movies from all lists."
-        />
+          isNumber
+          />
 
         {/* 2x2 grid for Anticipated, Box Office, Popular, Trending */}
         <div className="grid grid-cols-2 gap-4">
@@ -83,6 +84,7 @@ export default function MovieSettingsForm({
             label="Anticipated Movies"
             placeholder="Enter # of anticipated movies"
             description="The number of movies to pull from the Trakt anticipated list."
+            isNumber
           />
           <FormInputField
             form={movieForm}
@@ -90,13 +92,15 @@ export default function MovieSettingsForm({
             label="Box Office Movies"
             placeholder="Enter # of box office movies"
             description="The number of movies to pull from the Trakt box office list."
+            isNumber
           />
-          <FormInputField
+            <FormInputField
             form={movieForm}
             name="popular"
             label="Popular Movies"
             placeholder="Enter # of popular movies"
             description="The number of movies to pull from the Trakt popular list."
+            isNumber
           />
           <FormInputField
             form={movieForm}
@@ -104,6 +108,7 @@ export default function MovieSettingsForm({
             label="Trending Movies"
             placeholder="Enter # of trending movies"
             description="The number of movies to pull from the Trakt trending list."
+            isNumber
           />
         </div>
 
@@ -117,6 +122,7 @@ export default function MovieSettingsForm({
             label="Minimum Run Time"
             placeholder="Enter minimum runtime"
             description="The minimum length a movie can be in minutes. (0 for no limit)"
+            isNumber
           />
           <FormInputField
             form={movieForm}
@@ -124,6 +130,7 @@ export default function MovieSettingsForm({
             label="Max Run Time"
             placeholder="Enter maximum runtime"
             description="The maximum length a movie can be in minutes. (0 for no limit)"
+            isNumber
           />
           <FormInputField
             form={movieForm}
@@ -131,6 +138,7 @@ export default function MovieSettingsForm({
             label="Minimum Year"
             placeholder="Enter minimum year"
             description="The minimum year a movie can be released. (0 for no limit)"
+            isNumber
           />
           <FormInputField
             form={movieForm}
@@ -138,6 +146,7 @@ export default function MovieSettingsForm({
             label="Maximum Year"
             placeholder="Enter maximum year"
             description="The maximum year a movie can be released. (0 for no limit)"
+            isNumber
           />
         </div>
 

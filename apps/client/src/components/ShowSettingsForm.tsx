@@ -76,6 +76,7 @@ export default function ShowSettingsForm({
           label="Interval (hours)"
           placeholder="Enter interval"
           description="Set the interval for pulling shows from all lists."
+          isNumber
         />
 
         {/* 2x2 grid for Anticipated, Popular, Trending */}
@@ -86,6 +87,7 @@ export default function ShowSettingsForm({
             label="Anticipated Shows"
             placeholder="Enter # of anticipated shows"
             description="The number of shows to pull from the Trakt anticipated list."
+            isNumber
           />
           <FormInputField
             form={showForm}
@@ -93,13 +95,15 @@ export default function ShowSettingsForm({
             label="Popular Shows"
             placeholder="Enter # of popular shows"
             description="The number of shows to pull from the Trakt popular list."
-          />
+            isNumber
+         />
           <FormInputField
             form={showForm}
             name="trending"
             label="Trending Shows"
             placeholder="Enter # of trending shows"
             description="The number of shows to pull from the Trakt trending list."
+            isNumber
           />
         </div>
 
@@ -113,6 +117,7 @@ export default function ShowSettingsForm({
             label="Minimum Run Time"
             placeholder="Enter minimum runtime"
             description="The minimum length an episode can be in minutes. (0 for no limit)"
+            isNumber
           />
           <FormInputField
             form={showForm}
@@ -120,6 +125,7 @@ export default function ShowSettingsForm({
             label="Max Run Time"
             placeholder="Enter maximum runtime"
             description="The maximum length an episode can be in minutes. (0 for no limit)"
+            isNumber
           />
           <FormInputField
             form={showForm}
@@ -127,6 +133,7 @@ export default function ShowSettingsForm({
             label="Minimum Year"
             placeholder="Enter minimum year"
             description="The minimum year a show can be released. (0 for no limit)"
+            isNumber
           />
           <FormInputField
             form={showForm}
@@ -134,6 +141,7 @@ export default function ShowSettingsForm({
             label="Maximum Year"
             placeholder="Enter maximum year"
             description="The maximum year a show can be released. (0 for no limit)"
+            isNumber
           />
         </div>
 

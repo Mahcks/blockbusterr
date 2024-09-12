@@ -18,6 +18,7 @@ interface FormInputFieldProps {
   placeholder: string;
   description?: string;
   disabled?: boolean;
+  isNumber?: boolean; // Added prop to indicate if the input should be treated as a number
 }
 
 const FormInputField: React.FC<FormInputFieldProps> = ({
@@ -27,6 +28,7 @@ const FormInputField: React.FC<FormInputFieldProps> = ({
   placeholder,
   description,
   disabled = false,
+  isNumber = false, // Default to false if not provided
 }) => {
   return (
     <FormField
@@ -38,9 +40,13 @@ const FormInputField: React.FC<FormInputFieldProps> = ({
           <FormControl>
             <Input
               disabled={disabled}
-              type="text"
-              value={field.value}
-              onChange={(e) => field.onChange(e.target.value)}
+              type={isNumber ? "number" : "text"} // Set input type based on isNumber prop
+              value={field.value ?? ""} // Ensure value is never undefined or null
+              onChange={(e) =>
+                field.onChange(
+                  isNumber ? e.target.valueAsNumber : e.target.value
+                )
+              } // Use valueAsNumber for number inputs to handle numeric values correctly
               placeholder={placeholder}
             />
           </FormControl>

@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, HelpCircle, LayoutDashboard, Cog } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSetupStatus } from "@/context/SetupContext";
+import { Separator } from "@/components/ui/separator";
 
 const Logo = () => {
   return (
@@ -33,6 +34,8 @@ export default function SidebarNav() {
         <Cog className="h-4 w-4" />
         Settings
       </Link>
+
+      <Separator />
 
       {!ombiEnabled ? (
         <>
