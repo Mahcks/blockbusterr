@@ -245,7 +245,7 @@ export default function Radarr() {
               name="interval"
               label="Interval (hours)"
               placeholder="Enter interval"
-              description="Set the interval for pulling movies from all lists."
+              description="Set the interval for pulling movies from all lists. (Setting this to zero will skip this job.)"
               isNumber
             />
 
