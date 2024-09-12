@@ -50,6 +50,9 @@ const movieFormSchema = z.object({
   url: z.string(),
   root_folder: z.string().optional(), // These are optional to avoid validation issues for Ombi
   quality_profile: z.string().optional(),
+  minimum_availability: z
+    .enum(["announced", "inCinemas", "released"])
+    .optional(),
 });
 
 export default function Radarr() {
@@ -135,6 +138,7 @@ export default function Radarr() {
         url: radarrSettings.base_url ?? "",
         root_folder: radarrSettings.root_folder?.toString() ?? "",
         quality_profile: radarrSettings.quality?.toString() ?? "",
+        minimum_availability: radarrSettings.minimum_availability as "announced" | "inCinemas" | "released" | undefined,
       };
       reset(transformedDefaultValues); // Reset the form with fetched values
     }
@@ -230,6 +234,32 @@ export default function Radarr() {
                             {qualityProfile.name}
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={movieForm.control}
+                name="minimum_availability"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Minimum Availability</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value ?? "released"} // Default to "released" if no value
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select availability" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="announced">Announced</SelectItem>
+                        <SelectItem value="inCinemas">In Cinemas</SelectItem>
+                        <SelectItem value="released">Released</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
