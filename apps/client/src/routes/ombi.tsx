@@ -48,7 +48,9 @@ export default function Ombi() {
 
         {/* Movie Form */}
         <TabsContent value="movies">
-          {movieSettings && <MovieSettingsForm defaultValues={movieSettings} />}
+          {movieSettings && (
+            <MovieSettingsForm defaultValues={movieSettings} isRadarr={false} />
+          )}
         </TabsContent>
 
         {/* Show Form */}

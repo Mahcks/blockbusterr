@@ -1,18 +1,39 @@
-import { MovieSettings } from "@/lib/types";
+import {
+  MovieSettings,
+  RadarrQualityProfile,
+  RadarrRootFolder,
+} from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Separator } from "@radix-ui/react-select";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import * as React from "react";
 
 import { Button } from "@/components/ui/button";
-import { Form } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  /* FormDescription, */
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import FormInputField from "@/components/FormInputField";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import Loading from "./Loading";
 
 // Validation schema
 const movieFormSchema = z.object({
   interval: z.number(),
   anticipated: z.number(),
-  boxOffice: z.number(),
+  box_office: z.number(),
   popular: z.number(),
   trending: z.number(),
   min_runtime: z.number(),
@@ -24,15 +45,56 @@ const movieFormSchema = z.object({
   blacklisted_genres: z.string(),
   blacklisted_title_keywords: z.string(),
   blacklisted_tmdb_ids: z.string(),
+
+  // Radarr-specific fields
+  root_folder: z.string().optional(), // These are optional to avoid validation issues for Ombi
+  quality_profile: z.string().optional(),
 });
 
 interface MovieSettingsFormProps {
   defaultValues: MovieSettings; // Prop to pass in the fetched movie settings
+  isRadarr: boolean; // Flag to determine if Radarr-specific fields should be shown
 }
 
 export default function MovieSettingsForm({
   defaultValues,
+  isRadarr = false,
 }: MovieSettingsFormProps) {
+  // Keeps track of radarr profiles from the API
+  const [radarrRootFolders, setRadarrRootFolder] = React.useState<
+    RadarrRootFolder[]
+  >([]);
+  // Fetch the quality profiles for radarr
+  const [radarrQualityPorfiles, setRadarrQualityProfiles] = React.useState<
+    RadarrQualityProfile[]
+  >([]);
+  const [loading, setLoading] = React.useState(false);
+
+  const fetchRadarrData = async () => {
+    try {
+      const rootFoldersResponse = await fetch(
+        `${import.meta.env.VITE_API_URL}/radarr/rootfolders`
+      );
+      const rootFolderData = await rootFoldersResponse.json();
+      setRadarrRootFolder(rootFolderData);
+
+      const qualityProfilesResponse = await fetch(
+        `${import.meta.env.VITE_API_URL}/radarr/profiles`
+      );
+      const qualityProfilesData = await qualityProfilesResponse.json();
+      setRadarrQualityProfiles(qualityProfilesData);
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to fetch Radarr root folders:", error);
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchRadarrData();
+  }, []);
+
   const transformedDefaultValues = {
     ...defaultValues,
     allowed_countries: defaultValues.allowed_countries
@@ -54,12 +116,16 @@ export default function MovieSettingsForm({
 
   const movieForm = useForm<z.infer<typeof movieFormSchema>>({
     resolver: zodResolver(movieFormSchema),
-    defaultValues: transformedDefaultValues
+    defaultValues: transformedDefaultValues,
   });
 
   const onSubmitMovie = (values: z.infer<typeof movieFormSchema>) => {
     console.log("Movie Settings:", values);
   };
+
+  if (loading) {
+    <Loading />;
+  }
 
   return (
     <Form {...movieForm}>
@@ -67,6 +133,78 @@ export default function MovieSettingsForm({
         onSubmit={movieForm.handleSubmit(onSubmitMovie)}
         className="space-y-8"
       >
+        {/* Radarr-Specific Fields */}
+        {isRadarr && (
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={movieForm.control}
+              name="root_folder"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Select root folder</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a root folder to use..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {radarrRootFolders.map((folder) => (
+                        <SelectItem
+                          key={folder.id}
+                          value={folder.id.toString()}
+                        >
+                          {folder.path} (Free space:{" "}
+                          {(folder.free_space / 1_073_741_824).toFixed(1)} GB)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {/*  <FormDescription></FormDescription> */}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={movieForm.control}
+              name="quality_profile"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Select quality profile</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a quality profile to use..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {radarrQualityPorfiles.map((qualityProfile) => (
+                        <SelectItem
+                          key={qualityProfile.id}
+                          value={qualityProfile.id.toString()}
+                        >
+                          {qualityProfile.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {/*  <FormDescription></FormDescription> */}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
+
+        <Separator />
+
         <FormInputField
           form={movieForm}
           name="interval"
@@ -74,7 +212,7 @@ export default function MovieSettingsForm({
           placeholder="Enter interval"
           description="Set the interval for pulling movies from all lists."
           isNumber
-          />
+        />
 
         {/* 2x2 grid for Anticipated, Box Office, Popular, Trending */}
         <div className="grid grid-cols-2 gap-4">
@@ -88,13 +226,13 @@ export default function MovieSettingsForm({
           />
           <FormInputField
             form={movieForm}
-            name="boxOffice"
+            name="box_office"
             label="Box Office Movies"
             placeholder="Enter # of box office movies"
             description="The number of movies to pull from the Trakt box office list."
             isNumber
           />
-            <FormInputField
+          <FormInputField
             form={movieForm}
             name="popular"
             label="Popular Movies"

@@ -1,3 +1,9 @@
+CREATE TABLE `trakt` (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `client_id` TEXT NOT NULL,
+    `client_secret` TEXT NOT NULL
+)
+
 CREATE TABLE `settings` (
   `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `key` TEXT UNIQUE NOT NULL,

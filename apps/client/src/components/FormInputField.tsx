@@ -19,6 +19,7 @@ interface FormInputFieldProps {
   description?: string;
   disabled?: boolean;
   isNumber?: boolean; // Added prop to indicate if the input should be treated as a number
+  isPassword?: boolean; // Added prop to indicate if the input should be a password field
 }
 
 const FormInputField: React.FC<FormInputFieldProps> = ({
@@ -29,6 +30,7 @@ const FormInputField: React.FC<FormInputFieldProps> = ({
   description,
   disabled = false,
   isNumber = false, // Default to false if not provided
+  isPassword = false, // Default to false if not provided
 }) => {
   return (
     <FormField
@@ -40,7 +42,7 @@ const FormInputField: React.FC<FormInputFieldProps> = ({
           <FormControl>
             <Input
               disabled={disabled}
-              type={isNumber ? "number" : "text"} // Set input type based on isNumber prop
+              type={isPassword ? "password" : isNumber ? "number" : "text"} // Set input type based on isPassword and isNumber props
               value={field.value ?? ""} // Ensure value is never undefined or null
               onChange={(e) =>
                 field.onChange(

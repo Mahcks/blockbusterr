@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, HelpCircle, LayoutDashboard, Cog } from "lucide-react";
+import { Menu, LayoutDashboard, Cog } from "lucide-react";
 import { Link, useLocation } from "react-router-dom"; // Import useLocation
 import { useSetupStatus } from "@/context/SetupContext";
 import { Separator } from "@/components/ui/separator";
@@ -42,6 +42,16 @@ export default function SidebarNav() {
 
       <Separator />
 
+      <Link
+        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground ${
+          location.pathname === "/trakt" ? "font-bold text-foreground" : ""
+        }`}
+        to="/trakt"
+      >
+        <img src="/trakt.png" alt="Trakt" className="h-4 w-4" />
+        Trakt
+      </Link>
+
       {!ombiEnabled ? (
         <>
           <Link
@@ -50,7 +60,7 @@ export default function SidebarNav() {
             }`}
             to="/radarr"
           >
-            <HelpCircle className="h-4 w-4" />
+            <img src="/radarr.png" alt="Sonarr" className="h-4 w-4" />
             Radarr
           </Link>
           <Link
@@ -59,7 +69,7 @@ export default function SidebarNav() {
             }`}
             to="/sonarr"
           >
-            <HelpCircle className="h-4 w-4" />
+            <img src="/sonarr.png" alt="Sonarr" className="h-4 w-4" />
             Sonarr
           </Link>
         </>
@@ -70,7 +80,7 @@ export default function SidebarNav() {
           }`}
           to="/ombi"
         >
-          <HelpCircle className="h-4 w-4" />
+          <img src="/ombi.png" alt="Ombi" className="h-4 w-4" />
           Ombi
         </Link>
       )}
