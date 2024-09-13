@@ -10,6 +10,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/radarr"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/settings"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/shows"
+	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/sonarr"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/trakt"
 )
 
@@ -40,6 +41,11 @@ func New(gctx global.Context, helpers *helpers.Helpers, router fiber.Router) {
 	router.Get("/radarr/settings", ctx(radarr.GetRadarrSettings))
 	router.Get("/radarr/profiles", ctx(radarr.GetRadarrProfiles))
 	router.Get("/radarr/rootfolders", ctx(radarr.GetRadarrRootFolders))
+
+	sonarr := sonarr.NewRouteGroup(gctx, helpers)
+	router.Get("/sonarr/settings", ctx(sonarr.GetSonarrSettings))
+	router.Get("/sonarr/profiles", ctx(sonarr.GetSonarrProfiles))
+	router.Get("/sonarr/rootfolders", ctx(sonarr.GetSonarrRootFolders))
 
 	trakt := trakt.NewRouteGroup(gctx, helpers)
 	router.Get("/trakt/settings", ctx(trakt.GetTraktSettings))

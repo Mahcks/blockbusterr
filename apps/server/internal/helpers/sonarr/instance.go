@@ -50,7 +50,7 @@ type RootFolder struct {
 	ID              int                        `json:"id"`
 	Path            string                     `json:"path"`
 	Accessible      bool                       `json:"accessible"`
-	FreeSpace       int                        `json:"freeSpace"`
+	FreeSpace       int64                      `json:"freeSpace"`
 	UnmappedFolders []RootFolderUnmappedFolder `json:"unmappedFolders"`
 }
 

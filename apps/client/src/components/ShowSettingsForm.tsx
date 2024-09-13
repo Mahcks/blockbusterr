@@ -1,12 +1,12 @@
 import { ShowSettings } from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Separator } from "@radix-ui/react-select";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import FormInputField from "@/components/FormInputField";
+import { Separator } from "@radix-ui/react-separator";
 
 // Validation schema
 const showFormSchema = z.object({

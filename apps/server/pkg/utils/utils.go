@@ -68,3 +68,10 @@ func NullStringToPointer(ns sql.NullString) *string {
 	}
 	return nil
 }
+
+func NullBoolToPointer(nb sql.NullBool) *bool {
+	if nb.Valid {
+		return &nb.Bool
+	}
+	return nil
+}
