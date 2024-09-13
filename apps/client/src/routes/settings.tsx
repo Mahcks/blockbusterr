@@ -39,15 +39,40 @@ export default function Settings() {
 
   const { reset } = settingsForm;
 
-  const onSubmitSettings = (values: z.infer<typeof settingsFormSchema>) => {
-    console.log("Settings:", values);
+  // Save settings via API
+  const saveSettings = async (values: z.infer<typeof settingsFormSchema>) => {
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}/settings`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          key: "OMBI_ENABLED",
+          value: (values.ombi_or_sonarr_radarr === "ombi").toString(),
+        }),
+      });
+      await context.checkOmbiStatus(); // Refresh OMBI status in context after saving
+    } catch (error) {
+      console.error("Error saving settings:", error);
+    }
   };
 
+  // Form submission handler
+  const onSubmitSettings = async (
+    values: z.infer<typeof settingsFormSchema>
+  ) => {
+    await saveSettings(values); // Call saveSettings function
+    console.log("Settings saved:", values);
+  };
+
+  // Reset form values after fetching the context data
   React.useEffect(() => {
-    // Update form values after data is fetched
-    reset({
-      ombi_or_sonarr_radarr: context.ombiEnabled ? "ombi" : "radarr-sonarr",
-    });
+    if (context.ombiEnabled !== null) {
+      reset({
+        ombi_or_sonarr_radarr: context.ombiEnabled ? "ombi" : "radarr-sonarr",
+      });
+    }
   }, [context.ombiEnabled, reset]);
 
   return (
@@ -62,7 +87,7 @@ export default function Settings() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Select Mode</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a mode to use..." />
@@ -75,8 +100,8 @@ export default function Settings() {
               </Select>
               <FormDescription>
                 {field.value === "ombi"
-                  ? "Use Ombi for requesting movies and TV shows. (Please note this will disable the other mode.)"
-                  : "Use Radarr/Sonarr for requesting movies and TV shows. (Please note this will disable the other mode.)"}
+                  ? "Use Ombi for requesting movies and TV shows. (Please note this will disable the other mode, but will save the settings.)"
+                  : "Use Radarr/Sonarr for requesting movies and TV shows. (Please note this will disable the other mode, but will save the settings.)"}
               </FormDescription>
               <FormMessage />
             </FormItem>
