@@ -28,3 +28,14 @@ func (q *Queries) GetTraktSettings(ctx context.Context) (TraktSettings, error) {
 
 	return settings, nil
 }
+
+func (q *Queries) UpdateTraktSettings(ctx context.Context, clientID, clientSecret string) error {
+	query := `UPDATE trakt SET client_id = $1, client_secret = $2 WHERE id = 1`
+
+	_, err := q.db.ExecContext(ctx, query, clientID, clientSecret)
+	if err != nil {
+		return fmt.Errorf("error updating trakt settings: %v", err)
+	}
+
+	return nil
+}

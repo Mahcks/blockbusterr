@@ -49,4 +49,5 @@ func New(gctx global.Context, helpers *helpers.Helpers, router fiber.Router) {
 
 	trakt := trakt.NewRouteGroup(gctx, helpers)
 	router.Get("/trakt/settings", ctx(trakt.GetTraktSettings))
+	router.Put("/trakt/settings", ctx(trakt.UpdateTraktSettings))
 }
