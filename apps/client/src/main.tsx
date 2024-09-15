@@ -10,6 +10,7 @@ import Ombi from "@/routes/ombi";
 import { SetupProvider } from "@/context/SetupContext";
 import Settings from "@/routes/settings";
 import Trakt from "@/routes/trakt";
+import { WebsocketProvider } from "@/context/WebsocketContext";
 
 const router = createBrowserRouter([
   {
@@ -43,9 +44,9 @@ const router = createBrowserRouter([
 ]);
 
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>
+  <WebsocketProvider>
     <SetupProvider>
       <RouterProvider router={router} />
     </SetupProvider>
-  </StrictMode>
+  </WebsocketProvider>
 );

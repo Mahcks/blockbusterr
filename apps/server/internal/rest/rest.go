@@ -13,6 +13,8 @@ import (
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/helpers"
 	v1 "github.com/mahcks/blockbusterr/internal/rest/v1"
+	"github.com/mahcks/blockbusterr/internal/scheduler"
+	"github.com/mahcks/blockbusterr/internal/websocket"
 	commonErrors "github.com/mahcks/blockbusterr/pkg/errors"
 )
 
@@ -38,7 +40,7 @@ type APIError struct {
 	Details    map[string]interface{} `json:"details,omitempty"`
 }
 
-func New(gctx global.Context, helpers *helpers.Helpers) error {
+func New(gctx global.Context, hub *websocket.Hub, helpers *helpers.Helpers, scheduler *scheduler.Scheduler) error {
 	if helpers == nil {
 		return errors.New("helpers is nil")
 	}
@@ -89,7 +91,7 @@ func New(gctx global.Context, helpers *helpers.Helpers) error {
 	}))
 
 	v1Group := app.Group("/v1")
-	v1.New(gctx, helpers, v1Group)
+	v1.New(gctx, hub, helpers, scheduler, v1Group)
 
 	errCh := make(chan error)
 	// Listen for connections in a separate goroutine.

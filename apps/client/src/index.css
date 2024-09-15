@@ -38,3 +38,25 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Change the color of the resize handle */
+.react-grid-item > .react-resizable-handle::after {
+  border-right: 2px solid gray !important;
+  border-bottom: 2px solid gray !important;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: gray !important;
+  opacity: 0.2;
+  transition-duration: 100ms;
+  z-index: 2;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+}
+
+.drag-handle {
+  cursor: move;
+}

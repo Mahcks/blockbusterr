@@ -2,7 +2,7 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { TraktSettings } from "@/lib/types";
+import { TraktSettings } from "@/types/trakt";
 import Loading from "@/components/Loading";
 import FormInputField from "@/components/FormInputField";
 import { Button } from "@/components/ui/button";

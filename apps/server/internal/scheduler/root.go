@@ -11,10 +11,14 @@ import (
 )
 
 type Scheduler struct {
-	gctx       global.Context
-	scheduler  gocron.Scheduler
-	movieJobID string
-	showJobID  string
+	gctx             global.Context
+	scheduler        gocron.Scheduler
+	movieJobID       string
+	showJobID        string
+	movieJob         gocron.Job
+	movieJobInterval int
+	showJob          gocron.Job
+	showJobInterval  int
 }
 
 // Setup initializes a new scheduler instance
@@ -108,8 +112,12 @@ func (s *Scheduler) scheduleJob(interval int, jobFunc func(), jobType string) {
 
 	if jobType == "movie" {
 		s.movieJobID = job.ID().String()
+		s.movieJob = job
+		s.movieJobInterval = interval
 	} else if jobType == "show" {
 		s.showJobID = job.ID().String()
+		s.showJob = job
+		s.showJobInterval = interval
 	}
 
 	// Start the scheduler asynchronously (non-blocking)
@@ -155,4 +163,62 @@ func (s *Scheduler) UpdateMovieJobInterval(newInterval int, jobFunc func()) {
 func (s *Scheduler) UpdateShowJobInterval(newInterval int, jobFunc func()) {
 	log.Info("[scheduler] Updating Show job interval", "newInterval (hours)", newInterval)
 	s.StartShowJob(newInterval, jobFunc)
+}
+
+// JobStatus holds information about the current state of a job
+type JobStatus struct {
+	JobID    string    `json:"job_id"`
+	JobType  string    `json:"job_type"`
+	LastRun  time.Time `json:"last_run"`
+	NextRun  time.Time `json:"next_run"`
+	Interval int       `json:"interval"` // in hours
+}
+
+// GetJobStatus returns the status of the movie and show jobs
+func (s *Scheduler) GetJobStatus() []JobStatus {
+	statuses := []JobStatus{}
+
+	// Movie Job Status
+	if s.movieJob != nil {
+		lastRan, err := s.movieJob.LastRun()
+		if err != nil {
+			log.Error("[scheduler] Failed to get last run time for movie job", "error", err)
+		}
+
+		nextRun, err := s.movieJob.NextRun()
+		if err != nil {
+			log.Error("[scheduler] Failed to get next run time for movie job", "error", err)
+		}
+
+		statuses = append(statuses, JobStatus{
+			JobID:    s.movieJob.ID().String(),
+			JobType:  "movie",
+			LastRun:  lastRan,
+			NextRun:  nextRun,
+			Interval: s.movieJobInterval,
+		})
+	}
+
+	// Show Job Status
+	if s.showJob != nil {
+		lastRan, err := s.showJob.LastRun()
+		if err != nil {
+			log.Error("[scheduler] Failed to get last run time for movie job", "error", err)
+		}
+
+		nextRun, err := s.showJob.NextRun()
+		if err != nil {
+			log.Error("[scheduler] Failed to get next run time for movie job", "error", err)
+		}
+
+		statuses = append(statuses, JobStatus{
+			JobID:    s.showJob.ID().String(),
+			JobType:  "show",
+			LastRun:  lastRan,
+			NextRun:  nextRun,
+			Interval: s.showJobInterval,
+		})
+	}
+
+	return statuses
 }
