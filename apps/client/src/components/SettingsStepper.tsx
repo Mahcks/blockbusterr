@@ -197,7 +197,7 @@ export default function SettingsStepper() {
                   id="sonarr-base-url"
                   value={settings["sonarr-base-url"] || ""}
                   onChange={(e) => handleSettingChange("sonarr-base-url", e.target.value)}
-                  placeholder="Enter Sonarr Base URL"
+                  placeholder="http://localhost:8989"
                 />
               </div>
               <div className="space-y-2">
@@ -257,7 +257,7 @@ export default function SettingsStepper() {
                   id="radarr-base-url"
                   value={settings["radarr-base-url"] || ""}
                   onChange={(e) => handleSettingChange("radarr-base-url", e.target.value)}
-                  placeholder="Enter Radarr Base URL"
+                  placeholder="http://localhost:7878"
                 />
               </div>
               <div className="space-y-2">
