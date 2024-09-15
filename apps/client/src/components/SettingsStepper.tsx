@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn, formatBytes } from "@/lib/utils"
-import { Separator } from "./ui/separator"
+import { Separator } from "@/components/ui/separator"
 
 type Step = {
   title: string
