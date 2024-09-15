@@ -1,12 +1,6 @@
 import Loading from "@/components/Loading";
 import * as React from "react";
 
-import {
-  ShowSettings,
-  SonarrQualityProfile,
-  SonarrRootFolder,
-  SonarrSettings,
-} from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -28,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ShowSettings } from "@/types/shows";
+import { SonarrSettings, SonarrRootFolder, SonarrQualityProfile } from "@/types/sonarr";
 
 const showFormSchema = z.object({
   interval: z.number(),

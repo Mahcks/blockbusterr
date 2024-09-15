@@ -1,8 +1,4 @@
-import {
-  MovieSettings,
-  RadarrQualityProfile,
-  RadarrRootFolder,
-} from "@/lib/types";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -27,7 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import Loading from "./Loading";
+import Loading from "@/components/Loading";
+import { RadarrQualityProfile, RadarrRootFolder } from "@/types/radarr";
+import { MovieSettings } from "@/types/movies";
 
 // Validation schema
 const movieFormSchema = z.object({

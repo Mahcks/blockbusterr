@@ -22,11 +22,12 @@ import {
 import { Separator } from "@/components/ui/separator";
 import Loading from "@/components/Loading";
 import {
-  MovieSettings,
   RadarrQualityProfile,
   RadarrRootFolder,
   RadarrSettings,
-} from "@/lib/types";
+} from "@/types/radarr";
+
+import { MovieSettings } from "@/types/movies";
 
 // Validation schema
 const movieFormSchema = z.object({
