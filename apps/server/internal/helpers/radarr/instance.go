@@ -2,6 +2,7 @@ package radarr
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dghubble/sling"
@@ -49,7 +50,7 @@ type RootFolder struct {
 	ID              int                        `json:"id"`
 	Path            string                     `json:"path"`
 	Accessible      bool                       `json:"accessible"`
-	FreeSpace       int                        `json:"freeSpace"`
+	FreeSpace       int64                      `json:"freeSpace"`
 	UnmappedFolders []RootFolderUnmappedFolder `json:"unmappedFolders"`
 }
 
@@ -259,6 +260,7 @@ func (r *radarrService) RequestMovie(body RequestMovieBody) (RequestMovieRespons
 
 	// If Radarr returns an array of errors, iterate through them
 	if len(responseErrors) > 0 {
+		var errorMessages []string
 		for _, err := range responseErrors {
 			// Check if the error code is for an existing movie
 			if err.ErrorCode == "MovieExistsValidator" {
@@ -266,10 +268,12 @@ func (r *radarrService) RequestMovie(body RequestMovieBody) (RequestMovieRespons
 			}
 
 			// Collect other error messages
-			errorMessages := fmt.Sprintf("%s - %s (Code: %s, Severity: %s)",
+			errorMessage := fmt.Sprintf("%s - %s (Code: %s, Severity: %s)",
 				err.PropertyName, err.ErrorMessage, err.ErrorCode, err.Severity)
-			return RequestMovieResponse{}, fmt.Errorf("radarr api error: %s", errorMessages)
+			errorMessages = append(errorMessages, errorMessage)
 		}
+		// Return all collected error messages
+		return RequestMovieResponse{}, fmt.Errorf("radarr api error(s): %s", strings.Join(errorMessages, "; "))
 	}
 
 	// If no specific errors were captured, return a generic error

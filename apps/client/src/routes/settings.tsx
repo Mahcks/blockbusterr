@@ -1,108 +1,137 @@
 import * as React from "react";
-import NavBar from "@/components/NavBar";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
-import MovieSettings from "@/components/MovieSettings";
-import TVShowSettings from "@/components/TVShowSettings";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-const categories = [
-  {
-    value: "movies",
-    label: "Movies",
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { useSetupStatus } from "@/context/SetupContext";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// Zod schema definition, adaptable to add more modes
+const settingsFormSchema = z.object({
+  mode: z.enum(["ombi", "radarr-sonarr"]), // Add new modes here
+});
+
+// Define mode-specific behavior and description
+const modes = {
+  ombi: {
+    label: "Ombi",
+    description:
+      "Use Ombi for requesting movies and TV shows. (Please note this will disable the other mode, but will save the settings.)",
   },
-  {
-    value: "tv-shows",
-    label: "TV Shows",
+  "radarr-sonarr": {
+    label: "Radarr/Sonarr",
+    description:
+      "Use Radarr/Sonarr for requesting movies and TV shows. (Please note this will disable the other mode, but will save the settings.)",
   },
-];
+};
+
+// Extendable to support more modes
+type Mode = keyof typeof modes;
 
 export default function Settings() {
-  // Deals with the state of the settings category
-  const [openCategory, setOpenCategory] = React.useState(false);
-  const [settingsCategory, setSettingsCategory] = React.useState("movies");
+  const context = useSetupStatus(); // Get context values
 
-  // Conditionally render content based on settingsCategory
-  const renderSettingsPage = () => {
-    switch (settingsCategory) {
-      case "movies":
-        return <MovieSettings />;
-      case "tv-shows":
-        return <TVShowSettings />;
-      default:
-        return null;
+  const settingsForm = useForm<z.infer<typeof settingsFormSchema>>({
+    resolver: zodResolver(settingsFormSchema),
+    defaultValues: {
+      mode: context.mode ?? "ombi", // Use context mode or default to "ombi"
+    },
+  });
+
+  const { reset } = settingsForm;
+
+  // Save settings via API
+  const saveSettings = async (values: z.infer<typeof settingsFormSchema>) => {
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}/settings`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          key: "MODE",
+          value: values.mode,
+        }),
+      });
+      await context.checkMode(); // Refresh mode in context after saving
+    } catch (error) {
+      console.error("Error saving settings:", error);
     }
   };
 
+  // Form submission handler
+  const onSubmitSettings = async (
+    values: z.infer<typeof settingsFormSchema>
+  ) => {
+    await saveSettings(values); // Call saveSettings function
+    console.log("Settings saved:", values);
+  };
+
+  // Reset form values after fetching the context data
+  React.useEffect(() => {
+    if (context.mode !== null) {
+      reset({
+        mode: context.mode,
+      });
+    }
+  }, [context.mode, reset]);
+
+  const selectedMode = settingsForm.watch("mode") as Mode; // Get the selected mode
+
   return (
-    <div>
-      <NavBar />
-
-      <div className="flex min-h-screen flex-col pr-5 pl-5">
-        <Popover open={openCategory} onOpenChange={setOpenCategory}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={openCategory}
-              className="w-[200px] justify-between"
-            >
-              {settingsCategory
-                ? categories.find(
-                    (category) => category.value === settingsCategory
-                  )?.label
-                : "Select setting..."}
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[200px] p-0">
-            <Command>
-              <CommandList>
-                <CommandEmpty>No setting found.</CommandEmpty>
-                <CommandGroup>
-                  {categories.map((category) => (
-                    <CommandItem
-                      key={category.value}
-                      value={category.value}
-                      onSelect={(currentValue) => {
-                        setSettingsCategory(
-                          currentValue === settingsCategory ? "" : currentValue
-                        );
-                        setOpenCategory(false);
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          settingsCategory === category.value
-                            ? "opacity-100"
-                            : "opacity-0"
-                        )}
-                      />
-                      {category.label}
-                    </CommandItem>
+    <Form {...settingsForm}>
+      <form
+        onSubmit={settingsForm.handleSubmit(onSubmitSettings)}
+        className="space-y-4"
+      >
+        {/* Select the Mode */}
+        <FormField
+          control={settingsForm.control}
+          name="mode" // Use 'mode' consistently
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Select Mode</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a mode to use..." />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {Object.keys(modes).map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {modes[key as Mode].label}
+                    </SelectItem>
                   ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                {modes[selectedMode]?.description}
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        {/* Render the settings page based on the selected category */}
-        <div className="mt-5">{renderSettingsPage()}</div>
-      </div>
-    </div>
+        <Button type="submit">Save</Button>
+      </form>
+    </Form>
   );
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/rest"
 	"github.com/mahcks/blockbusterr/internal/scheduler"
 	"github.com/mahcks/blockbusterr/internal/services/sqlite"
+	"github.com/mahcks/blockbusterr/internal/websocket"
 )
 
 var (
@@ -61,6 +62,10 @@ func main() {
 	gctx, cancel := global.WithCancel(global.New(context.Background()))
 	var err error
 
+	// Initialize websocket hub
+	hub := websocket.NewHub(gctx)
+	go hub.Run()
+
 	{
 		log.Info("Setting up SQLite database")
 		gctx.Crate().SQL, err = sqlite.Setup(gctx)
@@ -98,7 +103,7 @@ func main() {
 	}
 
 	// Setup the scheduler
-	scheduler.Setup(gctx, *helpersInstance)
+	schedulerInstance := scheduler.Setup(gctx, *helpersInstance)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
@@ -133,7 +138,7 @@ func main() {
 		defer wg.Done()
 
 		log.Info("Starting API server")
-		if err := rest.New(gctx, helpersInstance); err != nil {
+		if err := rest.New(gctx, hub, helpersInstance, schedulerInstance); err != nil {
 			log.Error("Error starting API server", "error", err)
 			cancel()
 			return

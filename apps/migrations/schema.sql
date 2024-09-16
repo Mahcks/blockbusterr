@@ -1,3 +1,9 @@
+CREATE TABLE `trakt` (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `client_id` TEXT NOT NULL,
+    `client_secret` TEXT NOT NULL
+)
+
 CREATE TABLE `settings` (
   `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `key` TEXT UNIQUE NOT NULL,
@@ -7,6 +13,18 @@ CREATE TABLE `settings` (
 );
 
 INSERT INTO settings (key, value, type) VALUES ('SETUP_COMPLETE', 'false', 'boolean');
+
+CREATE TABLE ombi (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,                    -- Primary key with auto-increment
+    `api_key` TEXT,                                                     -- API key required to make requests to Ombi (nullable)
+    `url` TEXT,                                                         -- Base URL for the Ombi server (nullable)
+    `user_id` TEXT,                                                    -- User ID to use for Ombi (nullable)
+    `language` TEXT,                                                    -- Language to use for getting movies from Ombi (nullable)
+    `movie_quality` INTEGER,                                                  -- Quality profile ID to use for Ombi (nullable)
+    `movie_root_folder` INTEGER,                                               -- The root folder ID to use for Ombi (nullable)
+    `show_quality` INTEGER,                                                  -- Quality profile ID to use for Ombi (nullable)
+    `show_root_folder` INTEGER                                               -- The root folder ID to use for Ombi (nullable)
+);
 
 CREATE TABLE radarr (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,                    -- Primary key with auto-increment

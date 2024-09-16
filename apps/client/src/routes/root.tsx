@@ -1,57 +1,56 @@
 import "@/index.css";
-import NavBar from "@/components/NavBar";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
+import { Responsive, WidthProvider } from "react-grid-layout";
+import JobStatusWidget from "@/components/Widgets/JobStatus";
+import RecentlyAddedWidget from "@/components/Widgets/RecentlyAdded";
+import { GripVertical } from "lucide-react";
+import LogWidget from "@/components/Widgets/LogWidget";
 
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+const ResponsiveGridLayout = WidthProvider(Responsive);
+const initialLayouts = {
+  lg: [
+    { i: "a", x: 16, y: 0, w: 6, h: 3, minH: 2, minW: 2 },
+    { i: "b", x: 0, y: 0, w: 16, h: 3 },
+    { i: "c", x: 0, y: 3, w: 16, h: 4 },
+  ],
+};
 
-// Sample data for the carousel items
-const items = Array.from({ length: 50 }, (_, i) => ({
-  id: i + 1,
-  title: `Item ${i + 1}`,
-}));
+const widgetComponents: {
+  [key: string]: { component: React.ComponentType<unknown>; title: string };
+} = {
+  a: { component: JobStatusWidget, title: "Job Status" },
+  b: { component: RecentlyAddedWidget, title: "Recently Added" },
+  c: { component: LogWidget, title: "Logs" },
+};
 
 function Root() {
   return (
-    <div>
-      <NavBar />
-      <div className="flex min-h-screen flex-col pr-5 pl-5">
-        <p className="text-red-500">Home</p>
-        <div>
-          <Carousel
-            opts={{
-              align: "start",
-              loop: true,
-            }}
-            className="w-full max-w-7xl mx-auto"
-          >
-            <CarouselContent className="-ml-2 md:-ml-4">
-              {items.map((item) => (
-                <CarouselItem
-                  key={item.id}
-                  className="pl-2 md:pl-4 basis-1/2 sm:basis-1/3 md:basis-1/5 lg:basis-1/10"
-                >
-                  <Card>
-                    <CardContent className="flex aspect-square items-center justify-center p-6">
-                      <span className="text-3xl font-semibold">
-                        {item.title}
-                      </span>
-                    </CardContent>
-                  </Card>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious />
-            <CarouselNext />
-          </Carousel>
-        </div>
-      </div>
-    </div>
+    <ResponsiveGridLayout
+      className="layout"
+      layouts={initialLayouts}
+      breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+      cols={{ lg: 22, md: 16, sm: 10, xs: 8, xxs: 6 }}
+      rowHeight={100}
+      width={1200}
+      onLayoutChange={(layout) => console.log(layout)}
+      draggableHandle=".drag-handle"
+    >
+      {initialLayouts.lg.map((layout) => {
+        const { component: Component, title } = widgetComponents[layout.i]; // Get component and title
+        return (
+          <div key={layout.i} className="bg-slate-900 rounded-md p-2 h-full overflow-hidden">
+            <div className="flex items-center mb-2">
+              <GripVertical className="drag-handle cursor-move mr-2 align-middle" />
+              <h2 className="text-white text-base font-bold mt-[0.2 rem] align-middle">
+                {title}
+              </h2>
+            </div>
+            <Component />
+          </div>
+        );
+      })}
+    </ResponsiveGridLayout>
   );
 }
 

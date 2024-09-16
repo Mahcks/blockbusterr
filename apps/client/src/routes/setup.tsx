@@ -1,5 +1,9 @@
-import SetupStepper from "@/components/FirstTimeSetup";
+import SettingsStepper from "@/components/SettingsStepper"
 
 export default function Setup() {
-  return <SetupStepper />;
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <SettingsStepper />
+    </div>
+  )
 }
