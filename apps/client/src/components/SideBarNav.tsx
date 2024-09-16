@@ -14,7 +14,7 @@ const Logo = () => {
 };
 
 export default function SidebarNav() {
-  const { ombiEnabled } = useSetupStatus();
+  const { mode } = useSetupStatus();
   const [open, setOpen] = useState(false);
   const location = useLocation(); // Get the current location
 
@@ -52,7 +52,7 @@ export default function SidebarNav() {
         Trakt
       </Link>
 
-      {!ombiEnabled ? (
+      {mode !== "ombi" ? (
         <>
           <Link
             className={`flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground ${

@@ -10,9 +10,9 @@ import LogWidget from "@/components/Widgets/LogWidget";
 const ResponsiveGridLayout = WidthProvider(Responsive);
 const initialLayouts = {
   lg: [
-    { i: "a", x: 16, y: 3, w: 6, h: 4, minH: 4, minW: 4 },
-    { i: "b", x: 6, y: 0, w: 16, h: 3 },
-    { i: "c", x: 0, y: 0, w: 10, h: 4 },
+    { i: "a", x: 16, y: 0, w: 6, h: 3, minH: 2, minW: 2 },
+    { i: "b", x: 0, y: 0, w: 16, h: 3 },
+    { i: "c", x: 0, y: 3, w: 16, h: 4 },
   ],
 };
 
@@ -40,7 +40,7 @@ function Root() {
         const { component: Component, title } = widgetComponents[layout.i]; // Get component and title
         return (
           <div key={layout.i} className="bg-slate-900 rounded-md p-2 h-full overflow-hidden">
-            <div className="flex items-center mb-3">
+            <div className="flex items-center mb-2">
               <GripVertical className="drag-handle cursor-move mr-2 align-middle" />
               <h2 className="text-white text-base font-bold mt-[0.2 rem] align-middle">
                 {title}

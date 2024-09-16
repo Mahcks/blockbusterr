@@ -23,17 +23,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Zod schema definition, adaptable to add more modes
 const settingsFormSchema = z.object({
-  ombi_or_sonarr_radarr: z.enum(["ombi", "radarr-sonarr"]),
+  mode: z.enum(["ombi", "radarr-sonarr"]), // Add new modes here
 });
 
+// Define mode-specific behavior and description
+const modes = {
+  ombi: {
+    label: "Ombi",
+    description:
+      "Use Ombi for requesting movies and TV shows. (Please note this will disable the other mode, but will save the settings.)",
+  },
+  "radarr-sonarr": {
+    label: "Radarr/Sonarr",
+    description:
+      "Use Radarr/Sonarr for requesting movies and TV shows. (Please note this will disable the other mode, but will save the settings.)",
+  },
+};
+
+// Extendable to support more modes
+type Mode = keyof typeof modes;
+
 export default function Settings() {
-  const context = useSetupStatus();
+  const context = useSetupStatus(); // Get context values
 
   const settingsForm = useForm<z.infer<typeof settingsFormSchema>>({
     resolver: zodResolver(settingsFormSchema),
     defaultValues: {
-      ombi_or_sonarr_radarr: context.ombiEnabled ? "ombi" : "radarr-sonarr",
+      mode: context.mode ?? "ombi", // Use context mode or default to "ombi"
     },
   });
 
@@ -48,11 +66,11 @@ export default function Settings() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          key: "OMBI_ENABLED",
-          value: (values.ombi_or_sonarr_radarr === "ombi").toString(),
+          key: "MODE",
+          value: values.mode,
         }),
       });
-      await context.checkOmbiStatus(); // Refresh OMBI status in context after saving
+      await context.checkMode(); // Refresh mode in context after saving
     } catch (error) {
       console.error("Error saving settings:", error);
     }
@@ -68,12 +86,14 @@ export default function Settings() {
 
   // Reset form values after fetching the context data
   React.useEffect(() => {
-    if (context.ombiEnabled !== null) {
+    if (context.mode !== null) {
       reset({
-        ombi_or_sonarr_radarr: context.ombiEnabled ? "ombi" : "radarr-sonarr",
+        mode: context.mode,
       });
     }
-  }, [context.ombiEnabled, reset]);
+  }, [context.mode, reset]);
+
+  const selectedMode = settingsForm.watch("mode") as Mode; // Get the selected mode
 
   return (
     <Form {...settingsForm}>
@@ -81,9 +101,10 @@ export default function Settings() {
         onSubmit={settingsForm.handleSubmit(onSubmitSettings)}
         className="space-y-4"
       >
+        {/* Select the Mode */}
         <FormField
           control={settingsForm.control}
-          name="ombi_or_sonarr_radarr"
+          name="mode" // Use 'mode' consistently
           render={({ field }) => (
             <FormItem>
               <FormLabel>Select Mode</FormLabel>
@@ -94,14 +115,15 @@ export default function Settings() {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="ombi">Ombi</SelectItem>
-                  <SelectItem value="radarr-sonarr">Radarr/Sonarr</SelectItem>
+                  {Object.keys(modes).map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {modes[key as Mode].label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormDescription>
-                {field.value === "ombi"
-                  ? "Use Ombi for requesting movies and TV shows. (Please note this will disable the other mode, but will save the settings.)"
-                  : "Use Radarr/Sonarr for requesting movies and TV shows. (Please note this will disable the other mode, but will save the settings.)"}
+                {modes[selectedMode]?.description}
               </FormDescription>
               <FormMessage />
             </FormItem>

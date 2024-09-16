@@ -26,6 +26,7 @@ const (
 	// SettingSetupComplete is a flag to indicate if the setup is complete
 	SettingSetupComplete Setting = "SETUP_COMPLETE"
 	SettingOmbiEnabled   Setting = "OMBI_ENABLED"
+	SettingMode          Setting = "MODE"
 )
 
 func IsValidSettingKey(key Setting) bool {
@@ -33,7 +34,8 @@ func IsValidSettingKey(key Setting) bool {
 	case SettingTraktClientID,
 		SettingTraktClientSecret,
 		SettingSetupComplete,
-		SettingOmbiEnabled:
+		SettingOmbiEnabled,
+		SettingMode:
 		return true
 	default:
 		return false
