@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/helpers/ombi"
 	"github.com/mahcks/blockbusterr/internal/helpers/sonarr"
 	"github.com/mahcks/blockbusterr/internal/helpers/trakt"
+	"github.com/mahcks/blockbusterr/internal/notifications"
 	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
@@ -62,7 +64,7 @@ func (s Scheduler) ShowJobFunc(gctx global.Context, helpers helpers.Helpers) {
 
 	// Fetch Anticipated Shows
 	if sj.showSettings.Anticipated.Valid && sj.showSettings.Anticipated.Int32 > 0 {
-		params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit)
+		params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit, true)
 		anticipatedShows, err := helpers.Trakt.GetAnticipatedShows(gctx, params)
 		if err != nil {
 			log.Error("[show-job] Error fetching anticipated shows from Trakt", "error", err)
@@ -73,7 +75,7 @@ func (s Scheduler) ShowJobFunc(gctx global.Context, helpers helpers.Helpers) {
 
 	// Fetch Popular Shows
 	if sj.showSettings.Popular.Valid && sj.showSettings.Popular.Int32 > 0 {
-		params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit)
+		params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit, false)
 		popularShows, err := helpers.Trakt.GetPopularShows(gctx, params)
 		if err != nil {
 			log.Error("[show-job] Error fetching popular shows from Trakt", "error", err)
@@ -84,7 +86,7 @@ func (s Scheduler) ShowJobFunc(gctx global.Context, helpers helpers.Helpers) {
 
 	// Fetch Trending Shows
 	if sj.showSettings.Trending.Valid && sj.showSettings.Trending.Int32 > 0 {
-		params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit)
+		params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit, false)
 		trendingShows, err := helpers.Trakt.GetTrendingShows(gctx, params)
 		if err != nil {
 			log.Error("[show-job] Error fetching trending shows from Trakt", "error", err)
@@ -102,9 +104,9 @@ func (s Scheduler) ShowJobFunc(gctx global.Context, helpers helpers.Helpers) {
 		}
 
 		// Request shows via Ombi
-		requestShowsToOmbi(helpers.Ombi, sj.anticipatedShows, sj.ombiSettings)
-		requestShowsToOmbi(helpers.Ombi, sj.popularShows, sj.ombiSettings)
-		requestShowsToOmbi(helpers.Ombi, sj.trendingShows, sj.ombiSettings)
+		requestShowsToOmbi(helpers.Ombi, s.notifications, sj.anticipatedShows, sj.ombiSettings)
+		requestShowsToOmbi(helpers.Ombi, s.notifications, sj.popularShows, sj.ombiSettings)
+		requestShowsToOmbi(helpers.Ombi, s.notifications, sj.trendingShows, sj.ombiSettings)
 
 		log.Debug("[ombi-job] Anticipated Shows", "count", len(sj.anticipatedShows))
 		log.Debug("[ombi-job] Popular Shows", "count", len(sj.popularShows))
@@ -112,9 +114,9 @@ func (s Scheduler) ShowJobFunc(gctx global.Context, helpers helpers.Helpers) {
 
 	} else {
 		// If Ombi is not enabled, fallback to Sonarr
-		requestShowsToSonarr(helpers.Sonarr, sj.anticipatedShows, sj.sonarrSettings)
-		requestShowsToSonarr(helpers.Sonarr, sj.popularShows, sj.sonarrSettings)
-		requestShowsToSonarr(helpers.Sonarr, sj.trendingShows, sj.sonarrSettings)
+		requestShowsToSonarr(helpers.Sonarr, s.notifications, sj.anticipatedShows, sj.sonarrSettings)
+		requestShowsToSonarr(helpers.Sonarr, s.notifications, sj.popularShows, sj.sonarrSettings)
+		requestShowsToSonarr(helpers.Sonarr, s.notifications, sj.trendingShows, sj.sonarrSettings)
 
 		log.Debug("[sonarr-job] Anticipated Shows", "count", len(sj.anticipatedShows))
 		log.Debug("[sonarr-job] Popular Shows", "count", len(sj.popularShows))
@@ -129,7 +131,7 @@ func (s Scheduler) ShowJobFunc(gctx global.Context, helpers helpers.Helpers) {
 }
 
 // Helper function to build Trakt API request parameters from the show settings
-func buildTraktParamsFromShowSettings(settings db.ShowSettings, limit int) *trakt.TraktMovieParams {
+func buildTraktParamsFromShowSettings(settings db.ShowSettings, limit int, isAnticipated bool) *trakt.TraktMovieParams {
 	params := &trakt.TraktMovieParams{}
 	params.Extended = "full"
 
@@ -154,23 +156,19 @@ func buildTraktParamsFromShowSettings(settings db.ShowSettings, limit int) *trak
 		params.Languages = strings.Join(allowedLanguages, ",")
 	}
 
-	// Apply runtime filter
-	if settings.MinRuntime.Valid || settings.MaxRuntime.Valid {
-		minRuntime := 0
-		maxRuntime := 0
+	// Apply year filter (with custom logic for anticipated items)
+	if isAnticipated {
+		// For anticipated shows or movies, allow future years
+		minYear := time.Now().Year()
+		maxYear := minYear + 10 // Set a future year limit
 
-		if settings.MinRuntime.Valid {
-			minRuntime = int(settings.MinRuntime.Int32)
+		if settings.MinYear.Valid {
+			minYear = int(settings.MinYear.Int32)
 		}
-		if settings.MaxRuntime.Valid {
-			maxRuntime = int(settings.MaxRuntime.Int32)
-		}
-
-		params.Runtime = fmt.Sprintf("%d-%d", minRuntime, maxRuntime)
-	}
-
-	// Apply year filter (if applicable)
-	if settings.MinYear.Valid || settings.MaxYear.Valid {
+		// Don't apply MaxYear for anticipated items
+		params.Years = fmt.Sprintf("%d-%d", minYear, maxYear)
+	} else {
+		// Regular logic for non-anticipated shows/movies
 		minYear := 0
 		maxYear := 0
 
@@ -327,7 +325,7 @@ func fetchSonarrSettings(r sonarr.Service, sonarrSettings db.SonarrSettings) (in
 	return qualityProfileID, rootFolderPath, nil
 }
 
-func requestShowsToOmbi(o ombi.Service, shows []trakt.Show, ombiSettings db.OmbiSettings) {
+func requestShowsToOmbi(o ombi.Service, notifications *notifications.NotificationManager, shows []trakt.Show, ombiSettings db.OmbiSettings) {
 	for _, show := range shows {
 		body := ombi.RequestShowBody{
 			TheMovieDBID: show.IDs.TMDB,
@@ -362,11 +360,21 @@ func requestShowsToOmbi(o ombi.Service, shows []trakt.Show, ombiSettings db.Ombi
 			}
 		} else {
 			log.Infof("[ombi-job] Show requested successfully via Ombi: %s", show.Title)
+			showPayload, err := json.Marshal(show)
+			if err != nil {
+				log.Errorf("[ombi-job] Failed to marshal show payload: %v", err)
+				continue
+			}
+
+			err = notifications.SendNotification(structures.SHOWADDEDALERT, showPayload)
+			if err != nil {
+				log.Errorf("[ombi-job] Failed to send notification for show %s: %v", show.Title, err)
+			}
 		}
 	}
 }
 
-func requestShowsToSonarr(s sonarr.Service, shows []trakt.Show, sonarrSettings db.SonarrSettings) {
+func requestShowsToSonarr(s sonarr.Service, notifications *notifications.NotificationManager, shows []trakt.Show, sonarrSettings db.SonarrSettings) {
 	// Fetch quality profile and root folder from Sonarr
 	qualityProfileID, rootFolderPath, err := fetchSonarrSettings(s, sonarrSettings)
 	if err != nil {
@@ -400,6 +408,16 @@ func requestShowsToSonarr(s sonarr.Service, shows []trakt.Show, sonarrSettings d
 		} else {
 			// Log a success message if the show was added successfully
 			log.Infof("[sonarr-job] Show requested successfully: %s", show.Title)
+			showPayload, err := json.Marshal(show)
+			if err != nil {
+				log.Errorf("[sonarr-job] Failed to marshal show payload: %v", err)
+				continue
+			}
+
+			err = notifications.SendNotification(structures.SHOWADDEDALERT, showPayload)
+			if err != nil {
+				log.Errorf("[sonarr-job] Failed to send notification for show %s: %v", show.Title, err)
+			}
 		}
 	}
 }

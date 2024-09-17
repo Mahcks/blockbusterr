@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/helpers"
+	"github.com/mahcks/blockbusterr/internal/notifications"
 	"github.com/mahcks/blockbusterr/internal/rest"
 	"github.com/mahcks/blockbusterr/internal/scheduler"
 	"github.com/mahcks/blockbusterr/internal/services/sqlite"
@@ -75,6 +76,12 @@ func main() {
 		log.Info("SQLite database setup complete")
 	}
 
+	// Initialize notifications
+	notificationManager, err := notifications.NewNotificationManager(gctx)
+	if err != nil {
+		log.Fatal("Failed to initialize notification manager:", err)
+	}
+
 	// Initialize helpers
 	helpersInstance, err := helpers.SetupHelpers(gctx)
 	if err != nil {
@@ -82,7 +89,7 @@ func main() {
 	}
 
 	// Setup the scheduler
-	schedulerInstance := scheduler.Setup(gctx, *helpersInstance)
+	schedulerInstance := scheduler.Setup(gctx, *helpersInstance, notificationManager)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)

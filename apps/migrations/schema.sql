@@ -155,3 +155,10 @@ CREATE TABLE show_blacklisted_tvdb_ids (
     `tvdb_id` INTEGER NOT NULL,                                            -- TVDB ID of shows to be blacklisted
     FOREIGN KEY (`show_settings_id`) REFERENCES show_settings(`id`)        -- Foreign key constraint
 );
+
+CREATE TABLE notifications_config (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `platform` TEXT NOT NULL UNIQUE,
+    `enabled` BOOLEAN NOT NULL,
+    `webhook_url` TEXT NOT NULL
+);

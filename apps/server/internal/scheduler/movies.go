@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/helpers/ombi"
 	"github.com/mahcks/blockbusterr/internal/helpers/radarr"
 	"github.com/mahcks/blockbusterr/internal/helpers/trakt"
+	"github.com/mahcks/blockbusterr/internal/notifications"
 	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
@@ -62,7 +64,7 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 
 	// Fetch Anticipated Movies
 	if mj.movieSettings.Anticipated.Valid && mj.movieSettings.Anticipated.Int32 > 0 {
-		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
+		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit, true)
 		anticipatedMovies, err := helpers.Trakt.GetAnticipatedMovies(gctx, params)
 		if err != nil {
 			log.Error("[movie-job] Error fetching anticipated movies from Trakt", "error", err)
@@ -73,7 +75,7 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 
 	// Fetch BoxOffice Movies
 	if mj.movieSettings.BoxOffice.Valid && mj.movieSettings.BoxOffice.Int32 > 0 {
-		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
+		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit, false)
 		boxOfficeMovies, err := helpers.Trakt.GetBoxOfficeMovies(gctx, params)
 		if err != nil {
 			log.Error("[movie-job] Error fetching box office movies from Trakt", "error", err)
@@ -84,7 +86,7 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 
 	// Fetch Popular Movies
 	if mj.movieSettings.Popular.Valid && mj.movieSettings.Popular.Int32 > 0 {
-		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
+		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit, false)
 		popularMovies, err := helpers.Trakt.GetPopularMovies(gctx, params)
 		if err != nil {
 			log.Error("[movie-job] Error fetching popular movies from Trakt", "error", err)
@@ -95,7 +97,7 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 
 	// Fetch Trending Movies
 	if mj.movieSettings.Trending.Valid && mj.movieSettings.Trending.Int32 > 0 {
-		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit)
+		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit, false)
 		trendingMovies, err := helpers.Trakt.GetTrendingMovies(gctx, params)
 		if err != nil {
 			log.Error("[movie-job] Error fetching trending movies from Trakt", "error", err)
@@ -113,10 +115,10 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 		}
 
 		// Request movies via Ombi
-		requestMoviesToOmbi(helpers.Ombi, mj.anticipatedMovies, mj.ombiSettings)
-		requestMoviesToOmbi(helpers.Ombi, mj.boxOfficeMovies, mj.ombiSettings)
-		requestMoviesToOmbi(helpers.Ombi, mj.popularMovies, mj.ombiSettings)
-		requestMoviesToOmbi(helpers.Ombi, mj.trendingMovies, mj.ombiSettings)
+		requestMoviesToOmbi(helpers.Ombi, s.notifications, mj.anticipatedMovies, mj.ombiSettings)
+		requestMoviesToOmbi(helpers.Ombi, s.notifications, mj.boxOfficeMovies, mj.ombiSettings)
+		requestMoviesToOmbi(helpers.Ombi, s.notifications, mj.popularMovies, mj.ombiSettings)
+		requestMoviesToOmbi(helpers.Ombi, s.notifications, mj.trendingMovies, mj.ombiSettings)
 
 		log.Debug("[ombi-job] Anticipated Movies", "count", len(mj.anticipatedMovies))
 		log.Debug("[ombi-job] Box Office Movies", "count", len(mj.boxOfficeMovies))
@@ -130,10 +132,10 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 			return
 		}
 		// Request movies via Radarr
-		requestMoviesToRadarr(helpers.Radarr, mj.anticipatedMovies, mj.radarrSettings)
-		requestMoviesToRadarr(helpers.Radarr, mj.boxOfficeMovies, mj.radarrSettings)
-		requestMoviesToRadarr(helpers.Radarr, mj.popularMovies, mj.radarrSettings)
-		requestMoviesToRadarr(helpers.Radarr, mj.trendingMovies, mj.radarrSettings)
+		requestMoviesToRadarr(helpers.Radarr, s.notifications, mj.anticipatedMovies, mj.radarrSettings)
+		requestMoviesToRadarr(helpers.Radarr, s.notifications, mj.boxOfficeMovies, mj.radarrSettings)
+		requestMoviesToRadarr(helpers.Radarr, s.notifications, mj.popularMovies, mj.radarrSettings)
+		requestMoviesToRadarr(helpers.Radarr, s.notifications, mj.trendingMovies, mj.radarrSettings)
 
 		log.Debug("[radarr-job] Anticipated Movies", "count", len(mj.anticipatedMovies))
 		log.Debug("[radarr-job] Box Office Movies", "count", len(mj.boxOfficeMovies))
@@ -155,7 +157,8 @@ func filterAndLimitMovies(movies []trakt.Movie, settings db.MovieSettings, limit
 }
 
 // Helper function to build Trakt API request parameters from the settings
-func buildTraktParamsFromSettings(settings db.MovieSettings, limit int) *trakt.TraktMovieParams {
+// Helper function to build Trakt API request parameters from the settings
+func buildTraktParamsFromSettings(settings db.MovieSettings, limit int, isAnticipated bool) *trakt.TraktMovieParams {
 	params := &trakt.TraktMovieParams{}
 	params.Extended = "full"
 
@@ -180,16 +183,6 @@ func buildTraktParamsFromSettings(settings db.MovieSettings, limit int) *trakt.T
 		params.Languages = strings.Join(allowedLanguages, ",")
 	}
 
-	// Build genre filters (if needed)
-	if len(settings.BlacklistedGenres) > 0 {
-		genres := []string{}
-		for _, genre := range settings.BlacklistedGenres {
-			genres = append(genres, genre.Genre)
-		}
-		// Invert the blacklisted genres to only request allowed genres
-		params.Genres = strings.Join(genres, ",")
-	}
-
 	// Apply runtime filter
 	if settings.MinRuntime.Valid || settings.MaxRuntime.Valid {
 		minRuntime := 0
@@ -205,8 +198,19 @@ func buildTraktParamsFromSettings(settings db.MovieSettings, limit int) *trakt.T
 		params.Runtime = fmt.Sprintf("%d-%d", minRuntime, maxRuntime)
 	}
 
-	// Apply year filter (if applicable)
-	if settings.MinYear.Valid || settings.MaxYear.Valid {
+	// Apply year filter (with custom logic for anticipated items)
+	if isAnticipated {
+		// For anticipated shows or movies, allow future years
+		minYear := time.Now().Year()
+		maxYear := minYear + 10 // Set a future year limit
+
+		if settings.MinYear.Valid {
+			minYear = int(settings.MinYear.Int32)
+		}
+		// Don't apply MaxYear for anticipated items
+		params.Years = fmt.Sprintf("%d-%d", minYear, maxYear)
+	} else {
+		// Regular logic for non-anticipated shows/movies
 		minYear := 0
 		maxYear := 0
 
@@ -363,7 +367,7 @@ func fetchRadarrSettings(r radarr.Service, radarrSettings db.RadarrSettings) (in
 }
 
 // Request movies to Ombi
-func requestMoviesToOmbi(o ombi.Service, movies []trakt.Movie, ombiSettings db.OmbiSettings) {
+func requestMoviesToOmbi(o ombi.Service, notifications *notifications.NotificationManager, movies []trakt.Movie, ombiSettings db.OmbiSettings) {
 	for _, movie := range movies {
 
 		body := ombi.RequestMovieBody{
@@ -403,11 +407,22 @@ func requestMoviesToOmbi(o ombi.Service, movies []trakt.Movie, ombiSettings db.O
 		} else {
 			// Log a success message if the movie was added successfully
 			log.Infof("[ombi-job] Movie requested successfully: %s", movie.Title)
+			// Send notification that movie was added
+			moviePayload, err := json.Marshal(movie)
+			if err != nil {
+				log.Errorf("[ombi-job] Failed to marshal movie payload: %v", err)
+				continue
+			}
+
+			err = notifications.SendNotification(structures.MOVIEADDEDALERT, moviePayload)
+			if err != nil {
+				log.Errorf("[ombi-job] Failed to send notification for movie %s: %v", movie.Title, err)
+			}
 		}
 	}
 }
 
-func requestMoviesToRadarr(r radarr.Service, movies []trakt.Movie, radarrSettings db.RadarrSettings) {
+func requestMoviesToRadarr(r radarr.Service, notifications *notifications.NotificationManager, movies []trakt.Movie, radarrSettings db.RadarrSettings) {
 	// Fetch quality profile and root folder from Radarr
 	qualityProfileID, rootFolderPath, err := fetchRadarrSettings(r, radarrSettings)
 	if err != nil {
@@ -448,6 +463,18 @@ func requestMoviesToRadarr(r radarr.Service, movies []trakt.Movie, radarrSetting
 		} else {
 			// Log a success message if the movie was added successfully
 			log.Infof("[radarr-job] Movie requested successfully: %s", movie.Title)
+
+			// Send notification that movie was added
+			moviePayload, err := json.Marshal(movie)
+			if err != nil {
+				log.Errorf("[radarr-job] Failed to marshal movie payload: %v", err)
+				continue
+			}
+
+			err = notifications.SendNotification(structures.MOVIEADDEDALERT, moviePayload)
+			if err != nil {
+				log.Errorf("[radarr-job] Failed to send notification for movie %s: %v", movie.Title, err)
+			}
 		}
 	}
 }
