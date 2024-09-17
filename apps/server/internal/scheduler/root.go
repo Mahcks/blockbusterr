@@ -8,11 +8,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/helpers"
+	"github.com/mahcks/blockbusterr/internal/notifications"
 )
 
 type Scheduler struct {
 	gctx             global.Context
 	scheduler        gocron.Scheduler
+	notifications    *notifications.NotificationManager
 	movieJobID       string
 	showJobID        string
 	movieJob         gocron.Job
@@ -22,9 +24,10 @@ type Scheduler struct {
 }
 
 // Setup initializes a new scheduler instance
-func Setup(gctx global.Context, helpers helpers.Helpers) *Scheduler {
+func Setup(gctx global.Context, helpers helpers.Helpers, notifications *notifications.NotificationManager) *Scheduler {
 	svc := &Scheduler{
-		gctx: gctx,
+		gctx:          gctx,
+		notifications: notifications,
 	}
 	var err error
 

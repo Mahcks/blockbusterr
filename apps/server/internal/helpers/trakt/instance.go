@@ -2,12 +2,10 @@ package trakt
 
 import (
 	"context"
-	"database/sql"
+	"fmt"
 
 	"github.com/dghubble/sling"
 	"github.com/mahcks/blockbusterr/internal/global"
-	"github.com/mahcks/blockbusterr/pkg/errors"
-	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
 type Service interface {
@@ -142,19 +140,13 @@ type ShowAirs struct {
 }
 
 func (t *traktService) FetchClientIDFromDB(ctx context.Context) (string, error) {
-	var clientID string
-
 	// Use parameterized query with context to prevent SQL injection
-	query := `SELECT value FROM settings WHERE key = ?`
-
-	err := t.gctx.Crate().SQL.DB().QueryRowContext(ctx, query, structures.SettingTraktClientID).Scan(&clientID)
+	traktSetings, err := t.gctx.Crate().SQL.Queries().GetTraktSettings(ctx)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", errors.ErrMissingEnvironmentVariable().SetDetail("%s is missing", structures.SettingTraktClientID.String())
-		}
 		return "", err
 	}
-	return clientID, nil
+
+	return traktSetings.ClientID, nil
 }
 
 type GetTrendingMoviesResponse []TrendingMovie
@@ -301,9 +293,13 @@ func (t *traktService) GetAnticipatedShows(ctx context.Context, params *TraktMov
 	}
 
 	var response GetAnticipatedShowsResponse
-	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/shows/trending").ReceiveSuccess(&response)
+	res, err := t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/shows/anticipated").ReceiveSuccess(&response)
 	if err != nil {
 		return GetAnticipatedShowsResponse{}, err
+	}
+
+	if res.StatusCode != 200 {
+		return GetAnticipatedShowsResponse{}, fmt.Errorf("failed to get anticipated shows: %v", res.Status)
 	}
 
 	return response, err
@@ -340,9 +336,15 @@ func (t *traktService) GetTrendingShows(ctx context.Context, params *TraktMovieP
 	}
 
 	var response GetTrendingShowsResponse
-	_, err = t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/shows/trending").ReceiveSuccess(&response)
+	res, err := t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/shows/trending").ReceiveSuccess(&response)
 	if err != nil {
 		return GetTrendingShowsResponse{}, err
+	}
+
+	fmt.Println(res.Request.URL)
+
+	if res.StatusCode != 200 {
+		return GetTrendingShowsResponse{}, fmt.Errorf("failed to get trending shows: %v", res.Status)
 	}
 
 	return response, err
