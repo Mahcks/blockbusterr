@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -39,19 +40,19 @@ func Setup(gctx global.Context, helpers helpers.Helpers, notifications *notifica
 
 	// Schedule each list job with its cron expression
 	if movieSettings.CronAnticipated.Valid {
-		svc.scheduleMovieJob(movieSettings.CronAnticipated.String, svc.AnticipatedJobFunc, "Anticipated")
+		svc.scheduleMovieJob(movieSettings.CronAnticipated.String, svc.AnticipatedJobFunc, "movie-anticipated")
 	}
 
 	if movieSettings.CronBoxOffice.Valid {
-		svc.scheduleMovieJob(movieSettings.CronBoxOffice.String, svc.BoxOfficeJobFunc, "Box Office")
+		svc.scheduleMovieJob(movieSettings.CronBoxOffice.String, svc.BoxOfficeJobFunc, "movie-box_office")
 	}
 
 	if movieSettings.CronPopular.Valid {
-		svc.scheduleMovieJob(movieSettings.CronPopular.String, svc.PopularJobFunc, "Popular")
+		svc.scheduleMovieJob(movieSettings.CronPopular.String, svc.PopularJobFunc, "movie-popular")
 	}
 
 	if movieSettings.CronTrending.Valid {
-		svc.scheduleMovieJob(movieSettings.CronTrending.String, svc.TrendingJobFunc, "Trending")
+		svc.scheduleMovieJob(movieSettings.CronTrending.String, svc.TrendingJobFunc, "movie-trending")
 	}
 
 	// Setup individual cron jobs for each show list
@@ -63,15 +64,15 @@ func Setup(gctx global.Context, helpers helpers.Helpers, notifications *notifica
 
 	// Schedule each show list job with its cron expression
 	if showSettings.CronJobAnticipated.Valid {
-		svc.scheduleShowJob(showSettings.CronJobAnticipated.String, svc.AnticipatedShowJobFunc, "Show Anticipated")
+		svc.scheduleShowJob(showSettings.CronJobAnticipated.String, svc.AnticipatedShowJobFunc, "show-anticipated")
 	}
 
 	if showSettings.CronJobPopular.Valid {
-		svc.scheduleShowJob(showSettings.CronJobPopular.String, svc.PopularShowJobFunc, "Show Popular")
+		svc.scheduleShowJob(showSettings.CronJobPopular.String, svc.PopularShowJobFunc, "show-popular")
 	}
 
 	if showSettings.CronJobTrending.Valid {
-		svc.scheduleShowJob(showSettings.CronJobTrending.String, svc.TrendingShowJobFunc, "Show Trending")
+		svc.scheduleShowJob(showSettings.CronJobTrending.String, svc.TrendingShowJobFunc, "show-trending")
 	}
 
 	// Start the scheduler
@@ -98,8 +99,8 @@ func (s *Scheduler) scheduleMovieJob(cronExpr string, jobFunc func(), listType s
 	log.Infof("[scheduler] %s movie job scheduled with cron expression: %s", listType, cronExpr)
 
 	// Run the job immediately once after scheduling
-	log.Infof("[scheduler] Running %s movie job immediately", listType)
 	jobFunc()
+	s.RunJobOnDemand(listType, true)
 }
 
 // scheduleShowJob schedules a show list job using a cron expression
@@ -121,7 +122,7 @@ func (s *Scheduler) scheduleShowJob(cronExpr string, jobFunc func(), listType st
 
 	// Run the job immediately once after scheduling
 	log.Infof("[scheduler] Running %s show job immediately", listType)
-	jobFunc()
+	s.RunJobOnDemand(listType, false)
 }
 
 // StopJob stops a specific movie job by listType
@@ -141,6 +142,7 @@ func (s *Scheduler) StopJob(listType string, isMovie bool) {
 
 // JobStatus holds information about the current state of a job
 type JobStatus struct {
+	JobID   string    `json:"job_id"`
 	JobType string    `json:"job_type"`
 	LastRun time.Time `json:"last_run"`
 	NextRun time.Time `json:"next_run"`
@@ -154,6 +156,7 @@ func (s *Scheduler) GetJobStatus() []JobStatus {
 	for listType, jobID := range s.movieJobIDs {
 		entry := s.cron.Entry(jobID)
 		statuses = append(statuses, JobStatus{
+			JobID:   fmt.Sprintf("%d", jobID),
 			JobType: listType,
 			LastRun: entry.Prev,
 			NextRun: entry.Next,
@@ -164,6 +167,7 @@ func (s *Scheduler) GetJobStatus() []JobStatus {
 	for listType, jobID := range s.showJobIDs {
 		entry := s.cron.Entry(jobID)
 		statuses = append(statuses, JobStatus{
+			JobID:   fmt.Sprintf("%d", jobID),
 			JobType: listType,
 			LastRun: entry.Prev,
 			NextRun: entry.Next,
@@ -171,4 +175,23 @@ func (s *Scheduler) GetJobStatus() []JobStatus {
 	}
 
 	return statuses
+}
+
+// RunJobOnDemand runs a specific job immediately without affecting the cron schedule
+func (s *Scheduler) RunJobOnDemand(listType string, isMovie bool) error {
+	if isMovie {
+		if jobID, exists := s.movieJobIDs[listType]; exists {
+			log.Infof("[scheduler] Running %s movie job on demand", listType)
+			s.cron.Entry(jobID).Job.Run()
+			return nil
+		}
+		return fmt.Errorf("no movie job found for %s", listType)
+	} else {
+		if jobID, exists := s.showJobIDs[listType]; exists {
+			log.Infof("[scheduler] Running %s show job on demand", listType)
+			s.cron.Entry(jobID).Job.Run()
+			return nil
+		}
+		return fmt.Errorf("no show job found for %s", listType)
+	}
 }
