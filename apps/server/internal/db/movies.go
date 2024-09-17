@@ -19,6 +19,12 @@ type MovieSettings struct {
 	MaxYear        sql.NullInt32  `db:"max_year"`        // Blacklist movies released after the specified year. If left empty/is zero, it'll be the current year
 	RottenTomatoes sql.NullString `db:"rotten_tomatoes"` // Rotten Tomatoes rating filter for movies
 
+	// Cron fields for individual list scheduling
+	CronAnticipated sql.NullString `db:"cron_job_anticipated"` // Cron expression for the anticipated list
+	CronBoxOffice   sql.NullString `db:"cron_job_box_office"`  // Cron expression for the box office list
+	CronPopular     sql.NullString `db:"cron_job_popular"`     // Cron expression for the popular list
+	CronTrending    sql.NullString `db:"cron_job_trending"`    // Cron expression for the trending list
+
 	AllowedCountries         []MovieAllowedCountries    // List of allowed countries
 	AllowedLanguages         []MovieAllowedLanguages    // List of allowed languages
 	BlacklistedGenres        []BlacklistedGenres        // List of blacklisted genres
@@ -66,15 +72,15 @@ func (q *Queries) GetMovieSettings(ctx context.Context) (MovieSettings, error) {
 	}
 	defer tx.Rollback()
 
-	// Query for the main movie settings
+	// Query for the main movie settings including the cron fields
 	err = tx.QueryRowContext(ctx, `
-		SELECT id, interval, anticipated, box_office, popular, trending, 
-		       max_runtime, min_runtime, min_year, max_year, rotten_tomatoes
+		SELECT id, anticipated, box_office, popular, trending,
+		       max_runtime, min_runtime, min_year, max_year, rotten_tomatoes,
+		       cron_job_anticipated, cron_job_box_office, cron_job_popular, cron_job_trending
 		FROM movie_settings
 		LIMIT 1;
 	`).Scan(
 		&settings.ID,
-		&settings.Interval,
 		&settings.Anticipated,
 		&settings.BoxOffice,
 		&settings.Popular,
@@ -84,6 +90,10 @@ func (q *Queries) GetMovieSettings(ctx context.Context) (MovieSettings, error) {
 		&settings.MinYear,
 		&settings.MaxYear,
 		&settings.RottenTomatoes,
+		&settings.CronAnticipated,
+		&settings.CronBoxOffice,
+		&settings.CronPopular,
+		&settings.CronTrending,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {

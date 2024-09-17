@@ -29,42 +29,32 @@ type sonarrJob struct {
 	trendingShows    []trakt.Show
 }
 
-// ShowJobFunc defines the logic for the TV show job
-func (s Scheduler) ShowJobFunc(gctx global.Context, helpers helpers.Helpers) {
-	log.Info("[scheduler] Running show job...")
+// AnticipatedShowJobFunc handles fetching and processing anticipated shows
+func (s Scheduler) AnticipatedShowJobFunc() {
+	log.Info("[scheduler] Running anticipated shows job...")
 
-	// Start time tracking
 	startTime := time.Now()
-
 	sj := sonarrJob{}
+	gctx := s.gctx
+	helpers := s.helpers
 	var err error
 
+	// Get Ombi enabled setting
 	ombiEnabled, err := gctx.Crate().SQL.Queries().GetSettingByKey(gctx, structures.SettingOmbiEnabled.String())
 	if err != nil {
 		log.Error("[show-job] Error getting Ombi enabled setting", "error", err)
 		return
 	}
 
-	// Step 1. Get all settings from Sonarr table
-	sj.sonarrSettings, err = gctx.Crate().SQL.Queries().GetSonarrSettings(gctx)
+	// Get Sonarr and Show settings
+	sj.sonarrSettings, sj.showSettings, err = getSonarrAndShowSettings(gctx)
 	if err != nil {
-		log.Errorf("[sonarr-job] Error getting Sonarr settings: %v", err)
 		return
 	}
-
-	// Step 2. Get all the settings for shows
-	sj.showSettings, err = gctx.Crate().SQL.Queries().GetShowSettings(gctx)
-	if err != nil {
-		log.Error("[sonarr-job] Error getting show settings", "error", err)
-		return
-	}
-
-	// Query a large number of shows from each list (e.g., 1000)
-	largeShowQueryLimit := 1000
 
 	// Fetch Anticipated Shows
 	if sj.showSettings.Anticipated.Valid && sj.showSettings.Anticipated.Int32 > 0 {
-		params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit, true)
+		params := buildTraktParamsFromShowSettings(sj.showSettings, 1000, true)
 		anticipatedShows, err := helpers.Trakt.GetAnticipatedShows(gctx, params)
 		if err != nil {
 			log.Error("[show-job] Error fetching anticipated shows from Trakt", "error", err)
@@ -73,9 +63,38 @@ func (s Scheduler) ShowJobFunc(gctx global.Context, helpers helpers.Helpers) {
 		}
 	}
 
+	// Process Ombi or Sonarr
+	processShows(s, helpers, sj.anticipatedShows, sj.sonarrSettings, sj.ombiSettings, ombiEnabled.Value.String, "Anticipated")
+
+	log.Infof("[scheduler] Completed anticipated shows job in %.2f seconds!", time.Since(startTime).Seconds())
+}
+
+// PopularShowJobFunc handles fetching and processing popular shows
+func (s Scheduler) PopularShowJobFunc() {
+	log.Info("[scheduler] Running popular shows job...")
+	gctx := s.gctx
+	helpers := s.helpers
+
+	startTime := time.Now()
+	sj := sonarrJob{}
+	var err error
+
+	// Get Ombi enabled setting
+	ombiEnabled, err := gctx.Crate().SQL.Queries().GetSettingByKey(gctx, structures.SettingOmbiEnabled.String())
+	if err != nil {
+		log.Error("[show-job] Error getting Ombi enabled setting", "error", err)
+		return
+	}
+
+	// Get Sonarr and Show settings
+	sj.sonarrSettings, sj.showSettings, err = getSonarrAndShowSettings(gctx)
+	if err != nil {
+		return
+	}
+
 	// Fetch Popular Shows
 	if sj.showSettings.Popular.Valid && sj.showSettings.Popular.Int32 > 0 {
-		params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit, false)
+		params := buildTraktParamsFromShowSettings(sj.showSettings, 1000, false)
 		popularShows, err := helpers.Trakt.GetPopularShows(gctx, params)
 		if err != nil {
 			log.Error("[show-job] Error fetching popular shows from Trakt", "error", err)
@@ -84,9 +103,39 @@ func (s Scheduler) ShowJobFunc(gctx global.Context, helpers helpers.Helpers) {
 		}
 	}
 
+	// Process Ombi or Sonarr
+	processShows(s, helpers, sj.popularShows, sj.sonarrSettings, sj.ombiSettings, ombiEnabled.Value.String, "Popular")
+
+	log.Infof("[scheduler] Completed popular shows job in %.2f seconds!", time.Since(startTime).Seconds())
+}
+
+// TrendingShowJobFunc handles fetching and processing trending shows
+func (s Scheduler) TrendingShowJobFunc() {
+	log.Info("[scheduler] Running trending shows job...")
+
+	startTime := time.Now()
+	sj := sonarrJob{}
+	gctx := s.gctx
+	helpers := s.helpers
+
+	var err error
+
+	// Get Ombi enabled setting
+	ombiEnabled, err := gctx.Crate().SQL.Queries().GetSettingByKey(gctx, structures.SettingOmbiEnabled.String())
+	if err != nil {
+		log.Error("[show-job] Error getting Ombi enabled setting", "error", err)
+		return
+	}
+
+	// Get Sonarr and Show settings
+	sj.sonarrSettings, sj.showSettings, err = getSonarrAndShowSettings(gctx)
+	if err != nil {
+		return
+	}
+
 	// Fetch Trending Shows
 	if sj.showSettings.Trending.Valid && sj.showSettings.Trending.Int32 > 0 {
-		params := buildTraktParamsFromShowSettings(sj.showSettings, largeShowQueryLimit, false)
+		params := buildTraktParamsFromShowSettings(sj.showSettings, 1000, false)
 		trendingShows, err := helpers.Trakt.GetTrendingShows(gctx, params)
 		if err != nil {
 			log.Error("[show-job] Error fetching trending shows from Trakt", "error", err)
@@ -95,39 +144,45 @@ func (s Scheduler) ShowJobFunc(gctx global.Context, helpers helpers.Helpers) {
 		}
 	}
 
-	// If Ombi is enabled, use Ombi settings and request shows via Ombi
-	if ombiEnabled.Value.String == "true" {
-		sj.ombiSettings, err = gctx.Crate().SQL.Queries().GetOmbiSettings(gctx)
-		if err != nil {
-			log.Error("[show-job] Error getting Ombi settings", "error", err)
-			return
-		}
+	// Process Ombi or Sonarr
+	processShows(s, helpers, sj.trendingShows, sj.sonarrSettings, sj.ombiSettings, ombiEnabled.Value.String, "Trending")
 
-		// Request shows via Ombi
-		requestShowsToOmbi(helpers.Ombi, s.notifications, sj.anticipatedShows, sj.ombiSettings)
-		requestShowsToOmbi(helpers.Ombi, s.notifications, sj.popularShows, sj.ombiSettings)
-		requestShowsToOmbi(helpers.Ombi, s.notifications, sj.trendingShows, sj.ombiSettings)
+	log.Infof("[scheduler] Completed trending shows job in %.2f seconds!", time.Since(startTime).Seconds())
+}
 
-		log.Debug("[ombi-job] Anticipated Shows", "count", len(sj.anticipatedShows))
-		log.Debug("[ombi-job] Popular Shows", "count", len(sj.popularShows))
-		log.Debug("[ombi-job] Trending Shows", "count", len(sj.trendingShows))
+// Helper function to get Sonarr and Show settings
+func getSonarrAndShowSettings(gctx global.Context) (db.SonarrSettings, db.ShowSettings, error) {
+	sj := sonarrJob{}
+	var err error
 
-	} else {
-		// If Ombi is not enabled, fallback to Sonarr
-		requestShowsToSonarr(helpers.Sonarr, s.notifications, sj.anticipatedShows, sj.sonarrSettings)
-		requestShowsToSonarr(helpers.Sonarr, s.notifications, sj.popularShows, sj.sonarrSettings)
-		requestShowsToSonarr(helpers.Sonarr, s.notifications, sj.trendingShows, sj.sonarrSettings)
-
-		log.Debug("[sonarr-job] Anticipated Shows", "count", len(sj.anticipatedShows))
-		log.Debug("[sonarr-job] Popular Shows", "count", len(sj.popularShows))
-		log.Debug("[sonarr-job] Trending Shows", "count", len(sj.trendingShows))
+	// Get all settings from Sonarr table
+	sj.sonarrSettings, err = gctx.Crate().SQL.Queries().GetSonarrSettings(gctx)
+	if err != nil {
+		log.Errorf("[sonarr-job] Error getting Sonarr settings: %v", err)
+		return sj.sonarrSettings, sj.showSettings, err
 	}
 
-	duration := time.Since(startTime)
-	durationInSeconds := float64(duration.Milliseconds()) / 1000
-	roundedDuration := fmt.Sprintf("%.2f", durationInSeconds)
+	// Get all the settings for shows
+	sj.showSettings, err = gctx.Crate().SQL.Queries().GetShowSettings(gctx)
+	if err != nil {
+		log.Error("[sonarr-job] Error getting show settings", "error", err)
+		return sj.sonarrSettings, sj.showSettings, err
+	}
 
-	log.Infof("[scheduler] Completed Sonarr job in %v seconds!", roundedDuration)
+	return sj.sonarrSettings, sj.showSettings, nil
+}
+
+// Helper function to process shows (Ombi or Sonarr)
+func processShows(s Scheduler, helpers helpers.Helpers, shows []trakt.Show, sonarrSettings db.SonarrSettings, ombiSettings db.OmbiSettings, ombiEnabled string, jobType string) {
+	if ombiEnabled == "true" {
+		// If Ombi is enabled, request shows via Ombi
+		requestShowsToOmbi(helpers.Ombi, s.notifications, shows, ombiSettings)
+	} else {
+		// Otherwise, request shows via Sonarr
+		requestShowsToSonarr(helpers.Sonarr, s.notifications, shows, sonarrSettings)
+	}
+
+	log.Infof("[scheduler] %s shows processed. Total: %d", jobType, len(shows))
 }
 
 // Helper function to build Trakt API request parameters from the show settings
@@ -384,7 +439,6 @@ func requestShowsToSonarr(s sonarr.Service, notifications *notifications.Notific
 
 	for _, show := range shows {
 		// Prepare the request body for Sonarr
-
 		body := sonarr.RequestSeriesBody{
 			Title:            show.Title,
 			TVDbId:           show.IDs.TVDB,

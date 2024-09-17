@@ -16,11 +16,14 @@ func (rg *RouteGroup) GetMovieSettings(ctx *respond.Ctx) error {
 	// Map the DB MovieSettings struct to the structures.MovieSettings struct for JSON response
 	response := structures.MovieSettings{
 		ID:                       settings.ID,
-		Interval:                 nullIntToPointer(settings.Interval), // Convert sql.NullInt32 to *int
 		Anticipated:              nullIntToPointer(settings.Anticipated),
+		CronJobAnticipated:       nullStringToPointer(settings.CronAnticipated),
 		BoxOffice:                nullIntToPointer(settings.BoxOffice),
+		CronJobBoxOffice:         nullStringToPointer(settings.CronBoxOffice),
 		Popular:                  nullIntToPointer(settings.Popular),
+		CronJobPopular:           nullStringToPointer(settings.CronPopular),
 		Trending:                 nullIntToPointer(settings.Trending),
+		CronJobTrending:          nullStringToPointer(settings.CronTrending),
 		MaxRuntime:               nullIntToPointer(settings.MaxRuntime),
 		MinRuntime:               nullIntToPointer(settings.MinRuntime),
 		MinYear:                  nullIntToPointer(settings.MinYear),

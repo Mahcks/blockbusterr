@@ -4,23 +4,19 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
-	"github.com/go-co-op/gocron/v2"
-	"github.com/google/uuid"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/helpers"
 	"github.com/mahcks/blockbusterr/internal/notifications"
+	"github.com/robfig/cron/v3"
 )
 
 type Scheduler struct {
-	gctx             global.Context
-	scheduler        gocron.Scheduler
-	notifications    *notifications.NotificationManager
-	movieJobID       string
-	showJobID        string
-	movieJob         gocron.Job
-	movieJobInterval int
-	showJob          gocron.Job
-	showJobInterval  int
+	gctx          global.Context
+	cron          *cron.Cron
+	notifications *notifications.NotificationManager
+	helpers       helpers.Helpers
+	movieJobIDs   map[string]cron.EntryID
+	showJobIDs    map[string]cron.EntryID
 }
 
 // Setup initializes a new scheduler instance
@@ -28,198 +24,149 @@ func Setup(gctx global.Context, helpers helpers.Helpers, notifications *notifica
 	svc := &Scheduler{
 		gctx:          gctx,
 		notifications: notifications,
+		helpers:       helpers,
+		cron:          cron.New(),
+		movieJobIDs:   make(map[string]cron.EntryID),
+		showJobIDs:    make(map[string]cron.EntryID),
 	}
-	var err error
 
-	svc.scheduler, err = gocron.NewScheduler()
+	// Setup individual cron jobs for each movie list
+	movieSettings, err := gctx.Crate().SQL.Queries().GetMovieSettings(gctx)
 	if err != nil {
-		log.Error("[scheduler] Failed to create new scheduler", "error", err)
+		log.Error("[scheduler] Failed to get movie settings from database", "error", err)
 		return nil
 	}
 
-	movieInterval, err := gctx.Crate().SQL.Queries().GetMovieInterval(gctx)
+	// Schedule each list job with its cron expression
+	if movieSettings.CronAnticipated.Valid {
+		svc.scheduleMovieJob(movieSettings.CronAnticipated.String, svc.AnticipatedJobFunc, "Anticipated")
+	}
+
+	if movieSettings.CronBoxOffice.Valid {
+		svc.scheduleMovieJob(movieSettings.CronBoxOffice.String, svc.BoxOfficeJobFunc, "Box Office")
+	}
+
+	if movieSettings.CronPopular.Valid {
+		svc.scheduleMovieJob(movieSettings.CronPopular.String, svc.PopularJobFunc, "Popular")
+	}
+
+	if movieSettings.CronTrending.Valid {
+		svc.scheduleMovieJob(movieSettings.CronTrending.String, svc.TrendingJobFunc, "Trending")
+	}
+
+	// Setup individual cron jobs for each show list
+	showSettings, err := gctx.Crate().SQL.Queries().GetShowSettings(gctx)
 	if err != nil {
-		log.Error("[scheduler] Failed to get movie interval from database", "error", err)
+		log.Error("[scheduler] Failed to get show settings from database", "error", err)
 		return nil
 	}
 
-	if !movieInterval.Valid {
-		log.Error("[scheduler] Movie interval is not set!")
-		return nil
+	// Schedule each show list job with its cron expression
+	if showSettings.CronJobAnticipated.Valid {
+		svc.scheduleShowJob(showSettings.CronJobAnticipated.String, svc.AnticipatedShowJobFunc, "Show Anticipated")
 	}
 
-	// Skip the movie interval if it's set to 0
-	if movieInterval.Int32 != 0 {
-		svc.StartMovieJob(int(movieInterval.Int32), func() {
-			svc.MovieJobFunc(gctx, helpers)
-		})
+	if showSettings.CronJobPopular.Valid {
+		svc.scheduleShowJob(showSettings.CronJobPopular.String, svc.PopularShowJobFunc, "Show Popular")
 	}
 
-	sonarrInterval, err := gctx.Crate().SQL.Queries().GetShowInterval(gctx)
-	if err != nil {
-		log.Error("[scheduler] Failed to get show interval from database", "error", err)
-		return nil
+	if showSettings.CronJobTrending.Valid {
+		svc.scheduleShowJob(showSettings.CronJobTrending.String, svc.TrendingShowJobFunc, "Show Trending")
 	}
 
-	if !sonarrInterval.Valid {
-		log.Error("[scheduler] Show interval is not set!")
-		return nil
-	}
-
-	// Skip the show interval if it's set to 0
-	if sonarrInterval.Int32 != 0 {
-		svc.StartShowJob(int(sonarrInterval.Int32), func() {
-			svc.ShowJobFunc(gctx, helpers)
-		})
-	}
+	// Start the scheduler
+	svc.cron.Start()
 
 	return svc
 }
 
-// StartMovieJob starts a Movie job with a dynamic interval in hours
-func (s *Scheduler) StartMovieJob(interval int, jobFunc func()) {
-	// If a Movie job is already running, stop it first
-	if s.movieJobID != "" {
-		log.Info("[scheduler] Stopping existing Movie job...")
-		s.StopJob(s.movieJobID)
+// scheduleMovieJob schedules a movie list job using a cron expression
+func (s *Scheduler) scheduleMovieJob(cronExpr string, jobFunc func(), listType string) {
+	// If a job is already scheduled, stop it first
+	if jobID, exists := s.movieJobIDs[listType]; exists {
+		s.cron.Remove(jobID)
 	}
 
-	// Schedule a new Movie job
-	s.scheduleJob(interval, jobFunc, "movie")
-}
-
-// StartShowJob starts a Show job with a dynamic interval in hours
-func (s *Scheduler) StartShowJob(interval int, jobFunc func()) {
-	// If a Show job is already running, stop it first
-	if s.showJobID != "" {
-		log.Info("[scheduler] Stopping existing Show job...")
-		s.StopJob(s.showJobID)
-	}
-
-	// Schedule a new Show job
-	s.scheduleJob(interval, jobFunc, "show")
-}
-
-// scheduleJob handles creating and starting a new job
-func (s *Scheduler) scheduleJob(interval int, jobFunc func(), jobType string) {
-	// Create the new job definition
-	jobDefinition := gocron.DurationJob(time.Duration(interval) * time.Hour)
-	task := gocron.NewTask(jobFunc)
-
-	// Add the job to the scheduler
-	job, err := s.scheduler.NewJob(jobDefinition, task)
+	// Schedule the new job
+	jobID, err := s.cron.AddFunc(cronExpr, jobFunc)
 	if err != nil {
-		log.Error("[scheduler] Failed to create new job", "error", err, "jobType", jobType)
+		log.Error("[scheduler] Failed to schedule movie job", "listType", listType, "cronExpr", cronExpr, "error", err)
 		return
 	}
 
-	if jobType == "movie" {
-		s.movieJobID = job.ID().String()
-		s.movieJob = job
-		s.movieJobInterval = interval
-	} else if jobType == "show" {
-		s.showJobID = job.ID().String()
-		s.showJob = job
-		s.showJobInterval = interval
+	s.movieJobIDs[listType] = jobID
+	log.Infof("[scheduler] %s movie job scheduled with cron expression: %s", listType, cronExpr)
+
+	// Run the job immediately once after scheduling
+	log.Infof("[scheduler] Running %s movie job immediately", listType)
+	jobFunc()
+}
+
+// scheduleShowJob schedules a show list job using a cron expression
+func (s *Scheduler) scheduleShowJob(cronExpr string, jobFunc func(), listType string) {
+	// If a job is already scheduled, stop it first
+	if jobID, exists := s.showJobIDs[listType]; exists {
+		s.cron.Remove(jobID)
 	}
 
-	// Start the scheduler asynchronously (non-blocking)
-	s.scheduler.Start()
-
-	// Run the job immediately once
-	log.Info("[scheduler] Running", jobType, "job immediately")
-	err = job.RunNow()
+	// Schedule the new job
+	jobID, err := s.cron.AddFunc(cronExpr, jobFunc)
 	if err != nil {
-		log.Error("[scheduler] Failed to run", jobType, "job immediately", "error", err)
+		log.Error("[scheduler] Failed to schedule show job", "listType", listType, "cronExpr", cronExpr, "error", err)
 		return
 	}
 
-	log.Info("[scheduler] Job scheduled with interval (hours)", "jobType", jobType, "interval", interval)
+	s.showJobIDs[listType] = jobID
+	log.Infof("[scheduler] %s show job scheduled with cron expression: %s", listType, cronExpr)
+
+	// Run the job immediately once after scheduling
+	log.Infof("[scheduler] Running %s show job immediately", listType)
+	jobFunc()
 }
 
-// StopJob stops the job with the given job ID
-func (s *Scheduler) StopJob(jobID string) {
-	if jobID != "" {
-		jobUUID, err := uuid.Parse(jobID)
-		if err != nil {
-			log.Error("[scheduler] Failed to parse job ID", "error", err)
-			return
+// StopJob stops a specific movie job by listType
+func (s *Scheduler) StopJob(listType string, isMovie bool) {
+	if isMovie {
+		if jobID, exists := s.movieJobIDs[listType]; exists {
+			s.cron.Remove(jobID)
+			log.Infof("[scheduler] %s movie job stopped successfully", listType)
 		}
-
-		// Remove job by ID
-		err = s.scheduler.RemoveJob(jobUUID)
-		if err != nil {
-			log.Error("[scheduler] Failed to remove job", "error", err)
-			return
+	} else {
+		if jobID, exists := s.showJobIDs[listType]; exists {
+			s.cron.Remove(jobID)
+			log.Infof("[scheduler] %s show job stopped successfully", listType)
 		}
-		log.Info("[scheduler] Job stopped successfully")
 	}
-}
-
-// UpdateMovieJobInterval allows dynamic interval changes for the Movie job
-func (s *Scheduler) UpdateMovieJobInterval(newInterval int, jobFunc func()) {
-	log.Info("[scheduler] Updating Movie job interval", "newInterval (hours)", newInterval)
-	s.StartMovieJob(newInterval, jobFunc)
-}
-
-// UpdateShowJobInterval allows dynamic interval changes for the Show job
-func (s *Scheduler) UpdateShowJobInterval(newInterval int, jobFunc func()) {
-	log.Info("[scheduler] Updating Show job interval", "newInterval (hours)", newInterval)
-	s.StartShowJob(newInterval, jobFunc)
 }
 
 // JobStatus holds information about the current state of a job
 type JobStatus struct {
-	JobID    string    `json:"job_id"`
-	JobType  string    `json:"job_type"`
-	LastRun  time.Time `json:"last_run"`
-	NextRun  time.Time `json:"next_run"`
-	Interval int       `json:"interval"` // in hours
+	JobType string    `json:"job_type"`
+	LastRun time.Time `json:"last_run"`
+	NextRun time.Time `json:"next_run"`
 }
 
 // GetJobStatus returns the status of the movie and show jobs
 func (s *Scheduler) GetJobStatus() []JobStatus {
-	statuses := []JobStatus{}
+	var statuses []JobStatus
 
-	// Movie Job Status
-	if s.movieJob != nil {
-		lastRan, err := s.movieJob.LastRun()
-		if err != nil {
-			log.Error("[scheduler] Failed to get last run time for movie job", "error", err)
-		}
-
-		nextRun, err := s.movieJob.NextRun()
-		if err != nil {
-			log.Error("[scheduler] Failed to get next run time for movie job", "error", err)
-		}
-
+	// Movie Job Statuses
+	for listType, jobID := range s.movieJobIDs {
+		entry := s.cron.Entry(jobID)
 		statuses = append(statuses, JobStatus{
-			JobID:    s.movieJob.ID().String(),
-			JobType:  "movie",
-			LastRun:  lastRan,
-			NextRun:  nextRun,
-			Interval: s.movieJobInterval,
+			JobType: listType,
+			LastRun: entry.Prev,
+			NextRun: entry.Next,
 		})
 	}
 
-	// Show Job Status
-	if s.showJob != nil {
-		lastRan, err := s.showJob.LastRun()
-		if err != nil {
-			log.Error("[scheduler] Failed to get last run time for movie job", "error", err)
-		}
-
-		nextRun, err := s.showJob.NextRun()
-		if err != nil {
-			log.Error("[scheduler] Failed to get next run time for movie job", "error", err)
-		}
-
+	// Show Job Statuses
+	for listType, jobID := range s.showJobIDs {
+		entry := s.cron.Entry(jobID)
 		statuses = append(statuses, JobStatus{
-			JobID:    s.showJob.ID().String(),
-			JobType:  "show",
-			LastRun:  lastRan,
-			NextRun:  nextRun,
-			Interval: s.showJobInterval,
+			JobType: listType,
+			LastRun: entry.Prev,
+			NextRun: entry.Next,
 		})
 	}
 
