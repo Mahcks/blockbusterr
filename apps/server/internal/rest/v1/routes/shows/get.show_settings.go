@@ -17,10 +17,12 @@ func (rg *RouteGroup) GetShowSettings(ctx *respond.Ctx) error {
 	// Map the DB ShowSettings struct to the structures.ShowSettings struct for JSON response
 	response := structures.ShowSettings{
 		ID:                       settings.ID,
-		Interval:                 utils.NullIntToPointer(settings.Interval), // Convert sql.NullInt32 to *int
 		Anticipated:              utils.NullIntToPointer(settings.Anticipated),
+		CronJobAnticipated:       utils.NullStringToPointer(settings.CronJobAnticipated),
 		Popular:                  utils.NullIntToPointer(settings.Popular),
+		CronJobPopular:           utils.NullStringToPointer(settings.CronJobPopular),
 		Trending:                 utils.NullIntToPointer(settings.Trending),
+		CronJobTrending:          utils.NullStringToPointer(settings.CronJobTrending),
 		MaxRuntime:               utils.NullIntToPointer(settings.MaxRuntime),
 		MinRuntime:               utils.NullIntToPointer(settings.MinRuntime),
 		MinYear:                  utils.NullIntToPointer(settings.MinYear),

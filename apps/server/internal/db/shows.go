@@ -7,15 +7,19 @@ import (
 )
 
 type ShowSettings struct {
-	ID                       int                            `db:"id"`          // Primary key with auto-increment
-	Interval                 sql.NullInt32                  `db:"interval"`    // The rate at which shows are pulled from show databases like Trakt (in hours)
-	Anticipated              sql.NullInt32                  `db:"anticipated"` // How many shows after every interval will grab from the anticipated list
-	Popular                  sql.NullInt32                  `db:"popular"`     // How many shows after every interval will grab from the popular list
-	Trending                 sql.NullInt32                  `db:"trending"`    // How many shows after every interval will grab from the trending list
-	MaxRuntime               sql.NullInt32                  `db:"max_runtime"` // Blacklisted shows with runtime longer than the specified time (in minutes)
-	MinRuntime               sql.NullInt32                  `db:"min_runtime"` // Blacklisted shows with runtime shorter than the specified time (in minutes)
-	MinYear                  sql.NullInt32                  `db:"min_year"`    // Blacklist shows released before the specified year
-	MaxYear                  sql.NullInt32                  `db:"max_year"`    // Blacklist shows released after the specified year
+	ID          int           `db:"id"`          // Primary key with auto-increment
+	Anticipated sql.NullInt32 `db:"anticipated"` // How many shows after every interval will grab from the anticipated list
+	Popular     sql.NullInt32 `db:"popular"`     // How many shows after every interval will grab from the popular list
+	Trending    sql.NullInt32 `db:"trending"`    // How many shows after every interval will grab from the trending list
+	MaxRuntime  sql.NullInt32 `db:"max_runtime"` // Blacklisted shows with runtime longer than the specified time (in minutes)
+	MinRuntime  sql.NullInt32 `db:"min_runtime"` // Blacklisted shows with runtime shorter than the specified time (in minutes)
+	MinYear     sql.NullInt32 `db:"min_year"`    // Blacklist shows released before the specified year
+	MaxYear     sql.NullInt32 `db:"max_year"`    // Blacklist shows released after the specified year
+
+	CronJobAnticipated sql.NullString `db:"cron_job_anticipated"` // Cron expression for the anticipated list
+	CronJobPopular     sql.NullString `db:"cron_job_popular"`     // Cron expression for the popular list
+	CronJobTrending    sql.NullString `db:"cron_job_trending"`    // Cron expression for the trending list
+
 	AllowedCountries         []ShowAllowedCountries         // List of allowed countries
 	AllowedLanguages         []ShowAllowedLanguages         // List of allowed languages
 	BlacklistedGenres        []ShowBlacklistedGenres        // List of blacklisted genres
@@ -72,16 +76,18 @@ func (q *Queries) GetShowSettings(ctx context.Context) (ShowSettings, error) {
 
 	// Query for the main show settings
 	err = tx.QueryRowContext(ctx, `
-		SELECT id, interval, anticipated, popular, trending, 
+		SELECT id, anticipated, cron_job_anticipated, popular, cron_job_popular, trending, cron_job_trending, 
 		       max_runtime, min_runtime, min_year, max_year
 		FROM show_settings
 		LIMIT 1;
 	`).Scan(
 		&settings.ID,
-		&settings.Interval,
 		&settings.Anticipated,
+		&settings.CronJobAnticipated,
 		&settings.Popular,
+		&settings.CronJobPopular,
 		&settings.Trending,
+		&settings.CronJobTrending,
 		&settings.MaxRuntime,
 		&settings.MinRuntime,
 		&settings.MinYear,

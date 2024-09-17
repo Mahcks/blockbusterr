@@ -1,41 +1,83 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Clock, Film, Tv } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { JobStatus } from "@/types/job";
-import * as React from "react";
 
-export default function JobStatusWidget() {
-  const [status, setStatus] = React.useState<JobStatus[] | null>(null);
-
-  const fetchJobStatus = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/jobs/status`);
-      const data = await response.json();
-      setStatus(data);
-    } catch {
-      console.error("Error fetching job status");
-    }
+type GroupedJobs = {
+  [key: string]: {
+    [key: string]: string;
   };
+};
 
-  React.useEffect(() => {
+export default function VerticalJobStatusWidget() {
+  const [jobStatus, setJobStatus] = useState<JobStatus[] | null>(null);
+
+  useEffect(() => {
+    const fetchJobStatus = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/jobs/status`
+        );
+        if (!response.ok) throw new Error("Failed to fetch job status");
+        const data = await response.json();
+        setJobStatus(data);
+      } catch (error) {
+        console.error("Error fetching job status:", error);
+        setJobStatus(null);
+      }
+    };
+
     fetchJobStatus();
   }, []);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
+  const groupJobs = (jobs: JobStatus[]): GroupedJobs => {
+    return jobs.reduce((acc, job) => {
+      const [mediaType, jobType] = job.job_type.split("-");
+      if (!acc[mediaType]) acc[mediaType] = {};
+      acc[mediaType][jobType] = new Date(job.next_run).toLocaleString();
+      return acc;
+    }, {} as GroupedJobs);
   };
 
+  if (!jobStatus)
+    return <div className="text-center p-4">Loading job statuses...</div>;
+
+  const groupedJobs = groupJobs(jobStatus);
+
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-1 w-full h-[90%]">
-      {status?.map((job) => (
-        <div key={job.job_id} className="bg-slate-800 p-4 rounded-lg w-full h-full">
-          <h2 className="text-xl font-semibold">
-            {job.job_type === "movie" ? "Movie" : "Show"}
-          </h2>
-          <p className="text-gray-300">Runs every {job.interval} hours</p>
-          <p className="text-gray-300">
-            Next run: {formatDate(job.next_run.toString())}
-          </p>
-        </div>
-      ))}
-    </div>
+    <Card className="w-full max-w-md mx-auto">
+      <CardContent className="mt-4">
+        {Object.entries(groupedJobs).map(([mediaType, jobs], index, array) => (
+          <div key={mediaType}>
+            <div className="flex items-center space-x-2 mb-2">
+              {mediaType === "movie" ? (
+                <Film className="w-5 h-5" />
+              ) : (
+                <Tv className="w-5 h-5" />
+              )}
+              <h3 className="text-lg font-semibold capitalize">{mediaType}s</h3>
+            </div>
+            <div className="space-y-2 ml-7 mb-4">
+              {Object.entries(jobs).map(([jobType, nextRun]) => (
+                <div
+                  key={jobType}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span className="capitalize">{jobType}</span>
+                  <span className="flex items-center text-muted-foreground">
+                    <Clock className="w-4 h-4 mr-1" />
+                    {nextRun}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {index < array.length - 1 && <Separator className="my-4" />}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }

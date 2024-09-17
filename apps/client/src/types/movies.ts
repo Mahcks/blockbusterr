@@ -1,10 +1,13 @@
 export interface MovieSettings {
     id: number;
-    interval?: number; // The rate at which movies are pulled from movie databases like Trakt (in hours)
     anticipated?: number; // How many movies after every interval will grab from the anticipated list
+    cron_job_anticipated?: string; // Cron job for the anticipated list
     box_office?: number; // How many movies after every interval will grab from the box office list
+    cron_job_box_office?: string; // Cron job for the box office list
     popular?: number; // How many movies after every interval will grab from the popular list
+    cron_job_popular?: string; // Cron job for the popular list
     trending?: number; // How many movies after every interval will grab from the trending list
+    cron_job_trending?: string; // Cron job for the trending list
     max_runtime?: number; // Blacklist movies with runtime longer than the specified time (in minutes)
     min_runtime?: number; // Blacklist movies with runtime shorter than the specified time (in minutes)
     min_year?: number; // Blacklist movies released before the specified year. If empty, ignore the year.

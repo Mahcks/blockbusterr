@@ -2,21 +2,24 @@ package structures
 
 type MovieSettings struct {
 	ID                       int                       `json:"id"`
-	Interval                 *int                      `json:"interval,omitempty"`         // The rate at which movies are pulled from movie databases like Trakt (in hours)
-	Anticipated              *int                      `json:"anticipated,omitempty"`      // How many movies after every interval will grab from the anticipated list
-	BoxOffice                *int                      `json:"box_office,omitempty"`       // How many movies after every interval will grab from the box office list
-	Popular                  *int                      `json:"popular,omitempty"`          // How many movies after every interval will grab from the popular list
-	Trending                 *int                      `json:"trending,omitempty"`         // How many movies after every interval will grab from the trending list
-	MaxRuntime               *int                      `json:"max_runtime,omitempty"`      // Blacklist movies with runtime longer than the specified time (in minutes)
-	MinRuntime               *int                      `json:"min_runtime,omitempty"`      // Blacklist movies with runtime shorter than the specified time (in minutes)
-	MinYear                  *int                      `json:"min_year,omitempty"`         // Blacklist movies released before the specified year. If empty, ignore the year.
-	MaxYear                  *int                      `json:"max_year,omitempty"`         // Blacklist movies released after the specified year. If empty, use the current year.
-	RottenTomatoes           *string                   `json:"rotten_tomatoes,omitempty"`  // Rotten Tomatoes rating filter for movies
-	AllowedCountries         []MovieAllowedCountry     `json:"allowed_countries"`          // List of allowed countries
-	AllowedLanguages         []MovieAllowedLanguage    `json:"allowed_languages"`          // List of allowed languages
-	BlacklistedGenres        []BlacklistedGenre        `json:"blacklisted_genres"`         // List of blacklisted genres
-	BlacklistedTitleKeywords []BlacklistedTitleKeyword `json:"blacklisted_title_keywords"` // List of blacklisted title keywords
-	BlacklistedTMDBIDs       []BlacklistedTMDBID       `json:"blacklisted_tmdb_ids"`       // List of blacklisted TMDb IDs
+	Anticipated              *int                      `json:"anticipated,omitempty"`          // How many movies after every interval will grab from the anticipated list
+	CronJobAnticipated       *string                   `json:"cron_job_anticipated,omitempty"` // Cron expression for the anticipated list
+	BoxOffice                *int                      `json:"box_office,omitempty"`           // How many movies after every interval will grab from the box office list
+	CronJobBoxOffice         *string                   `json:"cron_job_box_office,omitempty"`  // Cron expression for the box office list
+	Popular                  *int                      `json:"popular,omitempty"`              // How many movies after every interval will grab from the popular list
+	CronJobPopular           *string                   `json:"cron_job_popular,omitempty"`     // Cron expression for the popular list
+	Trending                 *int                      `json:"trending,omitempty"`             // How many movies after every interval will grab from the trending list
+	CronJobTrending          *string                   `json:"cron_job_trending,omitempty"`    // Cron expression for the trending list
+	MaxRuntime               *int                      `json:"max_runtime,omitempty"`          // Blacklist movies with runtime longer than the specified time (in minutes)
+	MinRuntime               *int                      `json:"min_runtime,omitempty"`          // Blacklist movies with runtime shorter than the specified time (in minutes)
+	MinYear                  *int                      `json:"min_year,omitempty"`             // Blacklist movies released before the specified year. If empty, ignore the year.
+	MaxYear                  *int                      `json:"max_year,omitempty"`             // Blacklist movies released after the specified year. If empty, use the current year.
+	RottenTomatoes           *string                   `json:"rotten_tomatoes,omitempty"`      // Rotten Tomatoes rating filter for movies
+	AllowedCountries         []MovieAllowedCountry     `json:"allowed_countries"`              // List of allowed countries
+	AllowedLanguages         []MovieAllowedLanguage    `json:"allowed_languages"`              // List of allowed languages
+	BlacklistedGenres        []BlacklistedGenre        `json:"blacklisted_genres"`             // List of blacklisted genres
+	BlacklistedTitleKeywords []BlacklistedTitleKeyword `json:"blacklisted_title_keywords"`     // List of blacklisted title keywords
+	BlacklistedTMDBIDs       []BlacklistedTMDBID       `json:"blacklisted_tmdb_ids"`           // List of blacklisted TMDb IDs
 }
 
 type MovieAllowedCountry struct {

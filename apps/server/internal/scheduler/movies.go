@@ -9,8 +9,6 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/mahcks/blockbusterr/internal/db"
-	"github.com/mahcks/blockbusterr/internal/global"
-	"github.com/mahcks/blockbusterr/internal/helpers"
 	"github.com/mahcks/blockbusterr/internal/helpers/ombi"
 	"github.com/mahcks/blockbusterr/internal/helpers/radarr"
 	"github.com/mahcks/blockbusterr/internal/helpers/trakt"
@@ -29,38 +27,20 @@ type radarrJob struct {
 	trendingMovies    []trakt.Movie
 }
 
-// MovieJobFunc defines the logic for the Radarr job
-func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
-	log.Info("[scheduler] Running movie job...")
-	var err error
-
-	// Start time tracking
-	startTime := time.Now()
-
-	ombiEnabled, err := gctx.Crate().SQL.Queries().GetSettingByKey(gctx, structures.SettingOmbiEnabled.String())
-	if err != nil {
-		log.Error("[radarr-job] Error getting Ombi enabled setting", "error", err)
-		return
-	}
-
+// AnticipatedJobFunc fetches and processes anticipated movies
+func (s Scheduler) AnticipatedJobFunc() {
+	log.Info("[scheduler] Running Anticipated Movies job...")
 	mj := radarrJob{}
+	gctx := s.gctx
+	helpers := s.helpers
 
-	// Get all settings from Radarr table
-	mj.radarrSettings, err = gctx.Crate().SQL.Queries().GetRadarrSettings(gctx)
-	if err != nil {
-		log.Errorf("[radarr-job] Error getting Radarr settings: %v", err)
-		return
-	}
-
-	// Get all the settings for movies
-	mj.movieSettings, err = gctx.Crate().SQL.Queries().GetMovieSettings(gctx)
-	if err != nil {
-		log.Error("[radarr-job] Error getting movie settings", "error", err)
-		return
-	}
-
-	// Query a large number of movies from each list (e.g., 1000)
 	largeMovieQueryLimit := 1000
+
+	// Get movie settings and handle errors
+	if err := s.initializeMovieJob(&mj); err != nil {
+		log.Error("[scheduler] Failed to initialize movie job", "error", err)
+		return
+	}
 
 	// Fetch Anticipated Movies
 	if mj.movieSettings.Anticipated.Valid && mj.movieSettings.Anticipated.Int32 > 0 {
@@ -70,10 +50,27 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 			log.Error("[movie-job] Error fetching anticipated movies from Trakt", "error", err)
 		} else {
 			mj.anticipatedMovies = filterAndLimitMovies(extractMoviesFromAnticipated(anticipatedMovies), mj.movieSettings, int(mj.movieSettings.Anticipated.Int32))
+			s.processMovies(mj.anticipatedMovies, mj)
 		}
 	}
+}
 
-	// Fetch BoxOffice Movies
+// BoxOfficeJobFunc fetches and processes box office movies
+func (s Scheduler) BoxOfficeJobFunc() {
+	log.Info("[scheduler] Running Box Office Movies job...")
+	mj := radarrJob{}
+	gctx := s.gctx
+	helpers := s.helpers
+
+	largeMovieQueryLimit := 1000
+
+	// Get movie settings and handle errors
+	if err := s.initializeMovieJob(&mj); err != nil {
+		log.Error("[scheduler] Failed to initialize movie job", "error", err)
+		return
+	}
+
+	// Fetch Box Office Movies
 	if mj.movieSettings.BoxOffice.Valid && mj.movieSettings.BoxOffice.Int32 > 0 {
 		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit, false)
 		boxOfficeMovies, err := helpers.Trakt.GetBoxOfficeMovies(gctx, params)
@@ -81,7 +78,24 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 			log.Error("[movie-job] Error fetching box office movies from Trakt", "error", err)
 		} else {
 			mj.boxOfficeMovies = filterAndLimitMovies(extractMoviesFromBoxOffice(boxOfficeMovies), mj.movieSettings, int(mj.movieSettings.BoxOffice.Int32))
+			s.processMovies(mj.boxOfficeMovies, mj)
 		}
+	}
+}
+
+// PopularJobFunc fetches and processes popular movies
+func (s Scheduler) PopularJobFunc() {
+	log.Info("[scheduler] Running Popular Movies job...")
+	mj := radarrJob{}
+	gctx := s.gctx
+	helpers := s.helpers
+
+	largeMovieQueryLimit := 1000
+
+	// Get movie settings and handle errors
+	if err := s.initializeMovieJob(&mj); err != nil {
+		log.Error("[scheduler] Failed to initialize movie job", "error", err)
+		return
 	}
 
 	// Fetch Popular Movies
@@ -92,7 +106,24 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 			log.Error("[movie-job] Error fetching popular movies from Trakt", "error", err)
 		} else {
 			mj.popularMovies = filterAndLimitMovies(extractMoviesFromPopular(popularMovies), mj.movieSettings, int(mj.movieSettings.Popular.Int32))
+			s.processMovies(mj.popularMovies, mj)
 		}
+	}
+}
+
+// TrendingJobFunc fetches and processes trending movies
+func (s Scheduler) TrendingJobFunc() {
+	log.Info("[scheduler] Running Trending Movies job...")
+	mj := radarrJob{}
+	gctx := s.gctx
+	helpers := s.helpers
+
+	largeMovieQueryLimit := 1000
+
+	// Get movie settings and handle errors
+	if err := s.initializeMovieJob(&mj); err != nil {
+		log.Error("[scheduler] Failed to initialize movie job", "error", err)
+		return
 	}
 
 	// Fetch Trending Movies
@@ -103,51 +134,57 @@ func (s Scheduler) MovieJobFunc(gctx global.Context, helpers helpers.Helpers) {
 			log.Error("[movie-job] Error fetching trending movies from Trakt", "error", err)
 		} else {
 			mj.trendingMovies = filterAndLimitMovies(extractMoviesFromTrending(trendingMovies), mj.movieSettings, int(mj.movieSettings.Trending.Int32))
+			s.processMovies(mj.trendingMovies, mj)
 		}
 	}
+}
 
+// initializeMovieJob handles common setup logic for all movie jobs
+func (s Scheduler) initializeMovieJob(mj *radarrJob) error {
+	gctx := s.gctx
+
+	// Get all settings for Radarr
+	var err error
+	mj.radarrSettings, err = gctx.Crate().SQL.Queries().GetRadarrSettings(gctx)
+	if err != nil {
+		return fmt.Errorf("error getting Radarr settings: %w", err)
+	}
+
+	// Get all settings for movies
+	mj.movieSettings, err = gctx.Crate().SQL.Queries().GetMovieSettings(gctx)
+	if err != nil {
+		return fmt.Errorf("error getting movie settings: %w", err)
+	}
+
+	return nil
+}
+
+// processMovies handles the logic for processing and sending movie requests to Ombi or Radarr
+func (s Scheduler) processMovies(movies []trakt.Movie, mj radarrJob) {
+	gctx := s.gctx
+	helpers := s.helpers
+
+	// Check if Ombi is enabled
+	ombiEnabled, err := gctx.Crate().SQL.Queries().GetSettingByKey(gctx, structures.SettingOmbiEnabled.String())
+	if err != nil {
+		log.Error("[scheduler] Error getting Ombi enabled setting", "error", err)
+		return
+	}
+
+	// If Ombi is enabled, request movies via Ombi
 	if ombiEnabled.Value.String == "true" {
-		// Ombi is enabled, use Ombi settings
 		mj.ombiSettings, err = gctx.Crate().SQL.Queries().GetOmbiSettings(gctx)
 		if err != nil {
-			log.Error("[movie-job] Error getting Ombi settings", "error", err)
+			log.Error("[scheduler] Error getting Ombi settings", "error", err)
 			return
 		}
 
 		// Request movies via Ombi
-		requestMoviesToOmbi(helpers.Ombi, s.notifications, mj.anticipatedMovies, mj.ombiSettings)
-		requestMoviesToOmbi(helpers.Ombi, s.notifications, mj.boxOfficeMovies, mj.ombiSettings)
-		requestMoviesToOmbi(helpers.Ombi, s.notifications, mj.popularMovies, mj.ombiSettings)
-		requestMoviesToOmbi(helpers.Ombi, s.notifications, mj.trendingMovies, mj.ombiSettings)
-
-		log.Debug("[ombi-job] Anticipated Movies", "count", len(mj.anticipatedMovies))
-		log.Debug("[ombi-job] Box Office Movies", "count", len(mj.boxOfficeMovies))
-		log.Debug("[ombi-job] Popular Movies", "count", len(mj.popularMovies))
-		log.Debug("[ombi-job] Trending Movies", "count", len(mj.trendingMovies))
+		requestMoviesToOmbi(helpers.Ombi, s.notifications, movies, mj.ombiSettings)
 	} else {
-		// Radarr is used, get Radarr settings
-		mj.radarrSettings, err = gctx.Crate().SQL.Queries().GetRadarrSettings(gctx)
-		if err != nil {
-			log.Error("[movie-job] Error getting Radarr settings", "error", err)
-			return
-		}
-		// Request movies via Radarr
-		requestMoviesToRadarr(helpers.Radarr, s.notifications, mj.anticipatedMovies, mj.radarrSettings)
-		requestMoviesToRadarr(helpers.Radarr, s.notifications, mj.boxOfficeMovies, mj.radarrSettings)
-		requestMoviesToRadarr(helpers.Radarr, s.notifications, mj.popularMovies, mj.radarrSettings)
-		requestMoviesToRadarr(helpers.Radarr, s.notifications, mj.trendingMovies, mj.radarrSettings)
-
-		log.Debug("[radarr-job] Anticipated Movies", "count", len(mj.anticipatedMovies))
-		log.Debug("[radarr-job] Box Office Movies", "count", len(mj.boxOfficeMovies))
-		log.Debug("[radarr-job] Popular Movies", "count", len(mj.popularMovies))
-		log.Debug("[radarr-job] Trending Movies", "count", len(mj.trendingMovies))
+		// Otherwise, use Radarr to request movies
+		requestMoviesToRadarr(helpers.Radarr, s.notifications, movies, mj.radarrSettings)
 	}
-
-	duration := time.Since(startTime)
-	durationInSeconds := float64(duration.Milliseconds()) / 1000
-	roundedDuration := fmt.Sprintf("%.2f", durationInSeconds)
-
-	log.Infof("[scheduler] Completed movie job in %v seconds!", roundedDuration)
 }
 
 // Helper function to filter and limit movies based on settings

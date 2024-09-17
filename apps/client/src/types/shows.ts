@@ -1,9 +1,11 @@
 export interface ShowSettings {
     id: number;
-    interval?: number; // The rate at which shows are pulled from show databases like Trakt (in hours)
     anticipated?: number; // How many shows after every interval will grab from the anticipated list
+    cron_job_anticipated?: string; // Cron job for the anticipated list
     popular?: number; // How many shows after every interval will grab from the popular list
+    cron_job_popular?: string; // Cron job for the popular list
     trending?: number; // How many shows after every interval will grab from the trending list
+    cron_job_trending?: string; // Cron job for the trending list
     max_runtime?: number; // Blacklist shows with runtime longer than the specified time (in minutes)
     min_runtime?: number; // Blacklist shows with runtime shorter than the specified time (in minutes)
     min_year?: number; // Blacklist shows released before the specified year. If empty, ignore the year.

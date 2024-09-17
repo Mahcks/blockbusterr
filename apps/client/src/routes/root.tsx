@@ -10,9 +10,9 @@ import LogWidget from "@/components/Widgets/LogWidget";
 const ResponsiveGridLayout = WidthProvider(Responsive);
 const initialLayouts = {
   lg: [
-    { i: "a", x: 16, y: 0, w: 6, h: 3, minH: 2, minW: 2 },
+    { i: "a", x: 16, y: 0, w: 6, h: 4, minH: 2, minW: 2 },
     { i: "b", x: 0, y: 0, w: 16, h: 3 },
-    { i: "c", x: 0, y: 3, w: 16, h: 4 },
+    { i: "c", x: 0, y: 3, w: 16, h: 5 },
   ],
 };
 
