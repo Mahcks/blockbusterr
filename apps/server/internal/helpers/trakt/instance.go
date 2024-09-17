@@ -341,8 +341,6 @@ func (t *traktService) GetTrendingShows(ctx context.Context, params *TraktMovieP
 		return GetTrendingShowsResponse{}, err
 	}
 
-	fmt.Println(res.Request.URL)
-
 	if res.StatusCode != 200 {
 		return GetTrendingShowsResponse{}, fmt.Errorf("failed to get trending shows: %v", res.Status)
 	}
