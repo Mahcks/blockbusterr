@@ -76,16 +76,16 @@ func main() {
 		log.Info("SQLite database setup complete")
 	}
 
-	// Initialize notifications
-	notificationManager, err := notifications.NewNotificationManager(gctx)
-	if err != nil {
-		log.Fatal("Failed to initialize notification manager:", err)
-	}
-
 	// Initialize helpers
 	helpersInstance, err := helpers.SetupHelpers(gctx)
 	if err != nil {
 		log.Fatalf("Failed to initialize helpers: %v", err)
+	}
+
+	// Initialize notifications
+	notificationManager, err := notifications.NewNotificationManager(gctx, helpersInstance)
+	if err != nil {
+		log.Fatal("Failed to initialize notification manager:", err)
 	}
 
 	// Setup the scheduler
