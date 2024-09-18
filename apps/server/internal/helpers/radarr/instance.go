@@ -59,8 +59,6 @@ func (r *radarrService) FetchRadarrURLFromDB(url, apiKey *string) (*sling.Sling,
 		Set("Content-Type", "application/json").
 		Set("X-Api-Key", realAPIKey)
 
-	fmt.Println(realURL, realAPIKey)
-
 	// Return the configured Radarr URL
 	return base, nil
 }

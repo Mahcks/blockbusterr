@@ -376,3 +376,8 @@ INSERT INTO
     notifications_config (`platform`, `enabled`, `webhook_url`)
 VALUES
     ('discord', 0, '');
+
+CREATE TABLE IF NOT EXISTS omdb (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `api_key` TEXT
+);
