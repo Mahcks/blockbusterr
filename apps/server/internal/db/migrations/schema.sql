@@ -381,3 +381,15 @@ CREATE TABLE IF NOT EXISTS omdb (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
     `api_key` TEXT
 );
+
+-- Table to keep track of recently added media
+CREATE TABLE IF NOT EXISTS recently_added (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `type` TEXT CHECK(type IN ('MOVIE', 'SHOW')),
+    `title` TEXT NOT NULL,
+    `year` INTEGER NOT NULL,
+    `summary` TEXT NOT NULL,
+    `imdb_id` TEXT NOT NULL UNIQUE,
+    `poster` TEXT NOT NULL,
+    `added_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+);

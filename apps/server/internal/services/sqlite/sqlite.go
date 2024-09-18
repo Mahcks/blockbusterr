@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/charmbracelet/log"
 	"github.com/mahcks/blockbusterr/internal/db"
@@ -38,6 +39,12 @@ func Setup(ctx context.Context, Version string) (Service, error) {
 
 	// Initialize the queries
 	svc.queries = db.NewQueries(svc.db)
+
+	// Check if queries are properly initialized
+	if svc.queries == nil {
+		log.Error("Failed to initialize queries")
+		return nil, fmt.Errorf("queries initialization failed")
+	}
 
 	go func() {
 		<-ctx.Done()

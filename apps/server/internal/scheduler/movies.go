@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/mahcks/blockbusterr/internal/db"
+	"github.com/mahcks/blockbusterr/internal/global"
+	"github.com/mahcks/blockbusterr/internal/helpers"
 	"github.com/mahcks/blockbusterr/internal/helpers/ombi"
 	"github.com/mahcks/blockbusterr/internal/helpers/radarr"
 	"github.com/mahcks/blockbusterr/internal/helpers/trakt"
@@ -17,6 +20,9 @@ import (
 )
 
 type radarrJob struct {
+	gctx    global.Context
+	helpers helpers.Helpers
+
 	ombiSettings   db.OmbiSettings
 	radarrSettings db.RadarrSettings
 	movieSettings  db.MovieSettings
@@ -30,7 +36,10 @@ type radarrJob struct {
 // AnticipatedJobFunc fetches and processes anticipated movies
 func (s Scheduler) AnticipatedJobFunc() {
 	log.Info("[scheduler] Running Anticipated Movies job...")
-	mj := radarrJob{}
+	mj := radarrJob{
+		gctx:    s.gctx,
+		helpers: s.helpers,
+	}
 	gctx := s.gctx
 	helpers := s.helpers
 
@@ -183,7 +192,7 @@ func (s Scheduler) processMovies(movies []trakt.Movie, mj radarrJob) {
 		requestMoviesToOmbi(helpers.Ombi, s.notifications, movies, mj.ombiSettings)
 	} else {
 		// Otherwise, use Radarr to request movies
-		requestMoviesToRadarr(helpers.Radarr, s.notifications, movies, mj.radarrSettings)
+		requestMoviesToRadarr(s.gctx, helpers, s.notifications, movies, mj.radarrSettings)
 	}
 }
 
@@ -459,9 +468,9 @@ func requestMoviesToOmbi(o ombi.Service, notifications *notifications.Notificati
 	}
 }
 
-func requestMoviesToRadarr(r radarr.Service, notifications *notifications.NotificationManager, movies []trakt.Movie, radarrSettings db.RadarrSettings) {
+func requestMoviesToRadarr(gctx global.Context, helpers helpers.Helpers, notifications *notifications.NotificationManager, movies []trakt.Movie, radarrSettings db.RadarrSettings) {
 	// Fetch quality profile and root folder from Radarr
-	qualityProfileID, rootFolderPath, err := fetchRadarrSettings(r, radarrSettings)
+	qualityProfileID, rootFolderPath, err := fetchRadarrSettings(helpers.Radarr, radarrSettings)
 	if err != nil {
 		log.Error("[radarr-job: radarr] Error fetching Radarr settings", "error", err)
 		return
@@ -488,7 +497,7 @@ func requestMoviesToRadarr(r radarr.Service, notifications *notifications.Notifi
 		body.AddOptions.SearchForMovie = true
 
 		// Make the request to Radarr
-		_, err := r.RequestMovie(nil, nil, body)
+		_, err := helpers.Radarr.RequestMovie(nil, nil, body)
 		if err != nil {
 			if errors.Is(err, radarr.ErrMovieAlreadyExists) {
 				// Log a warning if the movie already exists in Radarr
@@ -500,6 +509,28 @@ func requestMoviesToRadarr(r radarr.Service, notifications *notifications.Notifi
 		} else {
 			// Log a success message if the movie was added successfully
 			log.Infof("[radarr-job] Movie requested successfully: %s", movie.Title)
+
+			// Get movie poster
+			media, err := helpers.OMDb.GetMedia(context.Background(), movie.IDs.IMDB)
+			if err != nil {
+				log.Errorf("[radarr-job] Failed to get movie poster for %s: %v", movie.Title, err)
+				continue
+			}
+
+			// Add movie to recently added
+			err = gctx.Crate().SQL.Queries().AddToRecentlyAddedMedia(
+				context.Background(),
+				"MOVIE",
+				media.Title,
+				movie.Year,
+				media.Plot,
+				media.IMDBID,
+				media.Poster,
+			)
+			if err != nil {
+				log.Errorf("[radarr-job] Failed to add movie %s to recently added: %v", movie.Title, err)
+				continue
+			}
 
 			// Send notification that movie was added
 			moviePayload, err := json.Marshal(movie)

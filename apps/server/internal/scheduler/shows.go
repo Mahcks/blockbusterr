@@ -179,7 +179,7 @@ func processShows(s Scheduler, helpers helpers.Helpers, shows []trakt.Show, sona
 		requestShowsToOmbi(helpers.Ombi, s.notifications, shows, ombiSettings)
 	} else {
 		// Otherwise, request shows via Sonarr
-		requestShowsToSonarr(helpers.Sonarr, s.notifications, shows, sonarrSettings)
+		requestShowsToSonarr(s.gctx, helpers, s.notifications, shows, sonarrSettings)
 	}
 
 	log.Infof("[scheduler] %s shows processed. Total: %d", jobType, len(shows))
@@ -429,9 +429,9 @@ func requestShowsToOmbi(o ombi.Service, notifications *notifications.Notificatio
 	}
 }
 
-func requestShowsToSonarr(s sonarr.Service, notifications *notifications.NotificationManager, shows []trakt.Show, sonarrSettings db.SonarrSettings) {
+func requestShowsToSonarr(gctx global.Context, helpers helpers.Helpers, notifications *notifications.NotificationManager, shows []trakt.Show, sonarrSettings db.SonarrSettings) {
 	// Fetch quality profile and root folder from Sonarr
-	qualityProfileID, rootFolderPath, err := fetchSonarrSettings(s, sonarrSettings)
+	qualityProfileID, rootFolderPath, err := fetchSonarrSettings(helpers.Sonarr, sonarrSettings)
 	if err != nil {
 		log.Error("[sonarr-job: sonarr] Error fetching Sonarr settings", "error", err)
 		return
@@ -450,7 +450,7 @@ func requestShowsToSonarr(s sonarr.Service, notifications *notifications.Notific
 		body.AddOptions.SearchForMissingEpisodes = true
 
 		// Make the request to Sonarr
-		_, err := s.RequestSeries(context.Background(), nil, nil, body)
+		_, err := helpers.Sonarr.RequestSeries(context.Background(), nil, nil, body)
 		if err != nil {
 			if errors.Is(err, sonarr.ErrShowAlreadyExists) {
 				// Log a warning if the show already exists in Sonarr
@@ -462,6 +462,29 @@ func requestShowsToSonarr(s sonarr.Service, notifications *notifications.Notific
 		} else {
 			// Log a success message if the show was added successfully
 			log.Infof("[sonarr-job] Show requested successfully: %s", show.Title)
+
+			// Get show poster
+			media, err := helpers.OMDb.GetMedia(context.Background(), show.IDs.IMDB)
+			if err != nil {
+				log.Errorf("[sonarr-job] Failed to get show poster for %s: %v", show.Title, err)
+				continue
+			}
+
+			// Add show to recently added
+			err = gctx.Crate().SQL.Queries().AddToRecentlyAddedMedia(
+				context.Background(),
+				"SHOW",
+				media.Title,
+				show.Year,
+				media.Plot,
+				media.IMDBID,
+				media.Poster,
+			)
+			if err != nil {
+				log.Errorf("[sonarr-job] Failed to add show %s to recently added: %v", show.Title, err)
+				continue
+			}
+
 			showPayload, err := json.Marshal(show)
 			if err != nil {
 				log.Errorf("[sonarr-job] Failed to marshal show payload: %v", err)

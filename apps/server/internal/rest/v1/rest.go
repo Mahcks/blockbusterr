@@ -8,6 +8,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/rest/v1/respond"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/jobs"
+	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/media"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/movies"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/omdb"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/radarr"
@@ -66,4 +67,7 @@ func New(gctx global.Context, hub *ws.Hub, helpers *helpers.Helpers, scheduler *
 
 	jobs := jobs.NewRouteGroup(gctx, helpers, scheduler)
 	router.Get("/jobs/status", ctx(jobs.GetJobStatus))
+
+	media := media.NewRouteGroup(gctx, helpers)
+	router.Get("/media/recentlyadded", ctx(media.GetMediaRecentlyAdded))
 }

@@ -9,7 +9,7 @@ import (
 )
 
 type Service interface {
-	GetMedia(ctx context.Context, imdbID string) (Media, error)
+	GetMedia(ctx context.Context, imdbID string) (*Media, error)
 }
 
 type omdbService struct {
@@ -20,10 +20,10 @@ type omdbService struct {
 func (o *omdbService) FetchAPIKeyFromDB(ctx context.Context) (string, error) {
 	omdb, err := o.gctx.Crate().SQL.Queries().GetOMDbSettings(ctx)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get OMDb settings: %v", err)
 	}
 
-	if omdb.APIKey.String == "" || !omdb.APIKey.Valid {
+	if !omdb.APIKey.Valid || omdb.APIKey.String == "" {
 		return "", fmt.Errorf("no OMDb API key found")
 	}
 
@@ -68,10 +68,10 @@ type Rating struct {
 	Value  string `json:"Value"`
 }
 
-func (o *omdbService) GetMedia(ctx context.Context, imdbID string) (Media, error) {
+func (o *omdbService) GetMedia(ctx context.Context, imdbID string) (*Media, error) {
 	apiKey, err := o.FetchAPIKeyFromDB(ctx)
 	if err != nil {
-		return Media{}, err
+		return nil, err
 	}
 
 	var response Media
@@ -82,8 +82,8 @@ func (o *omdbService) GetMedia(ctx context.Context, imdbID string) (Media, error
 		}).
 		ReceiveSuccess(&response)
 	if err != nil {
-		return Media{}, err
+		return nil, err
 	}
 
-	return response, nil
+	return &response, nil
 }
