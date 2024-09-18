@@ -9,6 +9,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/jobs"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/movies"
+	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/omdb"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/radarr"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/settings"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes/shows"
@@ -58,6 +59,10 @@ func New(gctx global.Context, hub *ws.Hub, helpers *helpers.Helpers, scheduler *
 	trakt := trakt.NewRouteGroup(gctx, helpers)
 	router.Get("/trakt/settings", ctx(trakt.GetTraktSettings))
 	router.Put("/trakt/settings", ctx(trakt.UpdateTraktSettings))
+
+	omdb := omdb.NewRouteGroup(gctx, helpers)
+	router.Get("/omdb/settings", ctx(omdb.GetOMDbSettings))
+	router.Put("/omdb/settings", ctx(omdb.UpdateOMDbSettings))
 
 	jobs := jobs.NewRouteGroup(gctx, helpers, scheduler)
 	router.Get("/jobs/status", ctx(jobs.GetJobStatus))

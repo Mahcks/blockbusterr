@@ -48,6 +48,10 @@ const steps: Step[] = [
     title: "Trakt Details",
     description: "Enter your Trakt client ID and client secret",
   },
+  {
+    title: "OMDb API",
+    description: "Enter your OMDb API key",
+  },
   { title: "Mode Selection", description: "Choose your preferred mode" },
   {
     title: "Additional Settings",
@@ -64,6 +68,7 @@ export default function SettingsStepper() {
   const [currentStep, setCurrentStep] = useState(0);
   const [traktClientId, setTraktClientId] = useState("");
   const [traktClientSecret, setTraktClientSecret] = useState("");
+  const [omdbApiKey, setOmdbApiKey] = useState("");
   const [selectedMode, setSelectedMode] = useState<string>(modes[0].value);
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [sonarrRootFolders, setSonarrRootFolders] = useState<Folder[]>([]);
@@ -265,7 +270,23 @@ export default function SettingsStepper() {
             </div>
           </div>
         );
+
       case 1:
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="omdb-api-key">OMDb API Key</Label>
+              <Input
+                id="omdb-api-key"
+                value={omdbApiKey}
+                onChange={(e) => setOmdbApiKey(e.target.value)}
+                placeholder="API key here..."
+              />
+            </div>
+          </div>
+        );
+
+      case 2:
         return (
           <RadioGroup value={selectedMode} onValueChange={setSelectedMode}>
             {modes.map((mode) => (
@@ -276,7 +297,7 @@ export default function SettingsStepper() {
             ))}
           </RadioGroup>
         );
-      case 2:
+      case 3:
         return renderModeSettings();
       default:
         return null;

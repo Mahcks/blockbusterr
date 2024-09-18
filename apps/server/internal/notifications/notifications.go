@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/mahcks/blockbusterr/internal/global"
+	"github.com/mahcks/blockbusterr/internal/helpers"
 	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
@@ -17,7 +18,7 @@ type NotificationManager struct {
 }
 
 // NewNotificationManager loads the notification settings from the database and initializes the providers
-func NewNotificationManager(gctx global.Context) (*NotificationManager, error) {
+func NewNotificationManager(gctx global.Context, helpers *helpers.Helpers) (*NotificationManager, error) {
 	// Fetch notification settings from the database
 	settings, err := gctx.Crate().SQL.Queries().GetNotificationSettings(gctx)
 	if err != nil {
@@ -29,7 +30,7 @@ func NewNotificationManager(gctx global.Context) (*NotificationManager, error) {
 
 	// Check if Discord notifications are enabled and add the provider
 	if settings.Platform == "discord" && settings.Enabled {
-		discordNotifier := NewDiscordNotification(settings.WebhookURL, "Blockbusterr")
+		discordNotifier := NewDiscordNotification(helpers, settings.WebhookURL, "Blockbusterr")
 		providers = append(providers, discordNotifier)
 	}
 

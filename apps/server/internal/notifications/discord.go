@@ -2,24 +2,28 @@ package notifications
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/mahcks/blockbusterr/internal/helpers"
 	"github.com/mahcks/blockbusterr/internal/helpers/trakt"
 	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
 type DiscordNotification struct {
+	helpers    *helpers.Helpers
 	WebhookURL string
 	Client     *http.Client
 	Username   string
 }
 
-func NewDiscordNotification(webhookURL, username string) *DiscordNotification {
+func NewDiscordNotification(helpers *helpers.Helpers, webhookURL, username string) *DiscordNotification {
 	return &DiscordNotification{
+		helpers:    helpers,
 		WebhookURL: webhookURL,
 		Client:     &http.Client{Timeout: 10 * time.Second},
 		Username:   username,
@@ -27,7 +31,12 @@ func NewDiscordNotification(webhookURL, username string) *DiscordNotification {
 }
 
 type DiscordEmbed struct {
-	Title       string `json:"title"`
+	Title     string `json:"title"`
+	Thumbnail *struct {
+		URL string `json:"url"`
+		W   int    `json:"width"`
+		H   int    `json:"height"`
+	} `json:"thumbnail,omitempty"`
 	Description string `json:"description"`
 	Color       int    `json:"color,omitempty"`
 	Author      *struct {
@@ -52,9 +61,16 @@ type DiscordWebhookPayload struct {
 }
 
 // CreateEmbed generates a Discord embed payload based on the movie information
-func (d *DiscordNotification) CreateEmbed(title, description string, year int, genre string, rating float64) DiscordEmbed {
+func (d *DiscordNotification) CreateEmbed(title, poster, description string, year int, genre string, rating float64) DiscordEmbed {
 	return DiscordEmbed{
-		Title:       title,
+		Title: title,
+		Thumbnail: &struct {
+			URL string "json:\"url\""
+			W   int    "json:\"width\""
+			H   int    "json:\"height\""
+		}{
+			URL: poster,
+		},
 		Description: description,
 		Color:       0x00ff00, // Green color
 		Author: &struct {
@@ -81,8 +97,14 @@ func (d *DiscordNotification) SendNotification(notificationType structures.Notif
 			return fmt.Errorf("failed to unmarshal movie payload: %w", err)
 		}
 
+		omdbMedia, err := d.helpers.OMDb.GetMedia(context.Background(), movie.IDs.IMDB)
+		if err != nil {
+			return fmt.Errorf("failed to fetch movie details from OMDb: %w", err)
+		}
+
 		embed := d.CreateEmbed(
 			movie.Title,
+			omdbMedia.Poster,
 			movie.Overview,
 			movie.Year,
 			strings.Join(movie.Genres, ", "),
@@ -103,8 +125,14 @@ func (d *DiscordNotification) SendNotification(notificationType structures.Notif
 			return fmt.Errorf("failed to unmarshal show payload: %w", err)
 		}
 
+		omdbMedia, err := d.helpers.OMDb.GetMedia(context.Background(), show.IDs.IMDB)
+		if err != nil {
+			return fmt.Errorf("failed to fetch movie details from OMDb: %w", err)
+		}
+
 		embed := d.CreateEmbed(
 			show.Title,
+			omdbMedia.Poster,
 			show.Overview,
 			show.Year,
 			strings.Join(show.Genres, ", "),
