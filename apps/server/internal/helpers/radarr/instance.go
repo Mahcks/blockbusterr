@@ -6,21 +6,36 @@ import (
 	"time"
 
 	"github.com/dghubble/sling"
+	"github.com/gofiber/fiber/v2"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/pkg/errors"
 )
 
 type Service interface {
-	GetRootFolders() (GetRootFoldersResponse, error)
-	GetQualityProfiles() (GetQualityProfilesResponse, error)
-	RequestMovie(RequestMovieBody) (RequestMovieResponse, error)
+	GetRootFolders(url, apiKey *string) (GetRootFoldersResponse, error)
+	GetQualityProfiles(url, apiKey *string) (GetQualityProfilesResponse, error)
+	RequestMovie(url *string, apiKey *string, body RequestMovieBody) (RequestMovieResponse, error)
 }
 
 type radarrService struct {
 	gctx global.Context
 }
 
-func (r *radarrService) FetchRadarrURLFromDB() (*sling.Sling, error) {
+var ErrUnauthorizedRadarrRequest = errors.ErrUnauthorized().SetDetail("Unauthorized access to Radarr")
+
+func (r *radarrService) FetchRadarrURLFromDB(url, apiKey *string) (*sling.Sling, error) {
+	// If both the URL and API key are provided, use them and skip fetching from DB
+	if url != nil && apiKey != nil {
+		// Use the provided URL and API key
+		base := sling.New().Base(*url).
+			Set("Content-Type", "application/json").
+			Set("X-Api-Key", *apiKey)
+
+		// Return the configured Radarr URL
+		return base, nil
+	}
+
+	// Fetch Radarr settings from the database if URL or API key is not provided
 	radarrSettings, err := r.gctx.Crate().SQL.Queries().GetRadarrSettings(r.gctx)
 	if err != nil {
 		return nil, err
@@ -36,9 +51,15 @@ func (r *radarrService) FetchRadarrURLFromDB() (*sling.Sling, error) {
 		return nil, errors.ErrInternalServerError().SetDetail("Radarr API Key is set but empty")
 	}
 
-	base := sling.New().Base(radarrSettings.URL.String).
+	// Use the database values for URL and API key if they are not provided
+	realURL := radarrSettings.URL.String
+	realAPIKey := radarrSettings.APIKey.String
+
+	base := sling.New().Base(realURL).
 		Set("Content-Type", "application/json").
-		Set("X-Api-Key", radarrSettings.APIKey.String)
+		Set("X-Api-Key", realAPIKey)
+
+	fmt.Println(realURL, realAPIKey)
 
 	// Return the configured Radarr URL
 	return base, nil
@@ -60,16 +81,20 @@ type RootFolderUnmappedFolder struct {
 	RelativePath string `json:"relativePath"`
 }
 
-func (r *radarrService) GetRootFolders() (GetRootFoldersResponse, error) {
-	url, err := r.FetchRadarrURLFromDB()
+func (r *radarrService) GetRootFolders(url, apiKey *string) (GetRootFoldersResponse, error) {
+	baseURL, err := r.FetchRadarrURLFromDB(url, apiKey)
 	if err != nil {
 		return nil, err
 	}
 
 	var response GetRootFoldersResponse
-	_, err = url.New().Get("/api/v3/rootfolder").Receive(&response, nil)
+	res, err := baseURL.New().Get("/api/v3/rootfolder").Receive(&response, nil)
 	if err != nil {
 		return nil, errors.ErrInternalServerError().SetDetail("Failed to get Radarr root folders")
+	}
+
+	if res.StatusCode == fiber.ErrUnauthorized.Code {
+		return nil, ErrUnauthorizedRadarrRequest
 	}
 
 	return response, nil
@@ -106,16 +131,20 @@ type QualityProfileLanguage struct {
 	Name string `json:"name"`
 }
 
-func (r *radarrService) GetQualityProfiles() (GetQualityProfilesResponse, error) {
-	url, err := r.FetchRadarrURLFromDB()
+func (r *radarrService) GetQualityProfiles(url, apiKey *string) (GetQualityProfilesResponse, error) {
+	baseURL, err := r.FetchRadarrURLFromDB(url, apiKey)
 	if err != nil {
-		return nil, err
+		return GetQualityProfilesResponse{}, err
 	}
 
 	var response GetQualityProfilesResponse
-	_, err = url.New().Get("/api/v3/qualityprofile").Receive(&response, nil)
+	res, err := baseURL.New().Get("/api/v3/qualityprofile").Receive(&response, nil)
 	if err != nil {
 		return nil, errors.ErrInternalServerError().SetDetail("Failed to get Radarr quality profiles")
+	}
+
+	if res.StatusCode == fiber.ErrUnauthorized.Code {
+		return nil, ErrUnauthorizedRadarrRequest
 	}
 
 	return response, nil
@@ -237,8 +266,8 @@ type RequestMovieError struct {
 // Define a custom error for when a movie already exists in Radarr
 var ErrMovieAlreadyExists = fmt.Errorf("movie already exists in Radarr")
 
-func (r *radarrService) RequestMovie(body RequestMovieBody) (RequestMovieResponse, error) {
-	url, err := r.FetchRadarrURLFromDB()
+func (r *radarrService) RequestMovie(url *string, apiKey *string, body RequestMovieBody) (RequestMovieResponse, error) {
+	baseURL, err := r.FetchRadarrURLFromDB(url, apiKey)
 	if err != nil {
 		return RequestMovieResponse{}, err
 	}
@@ -247,7 +276,7 @@ func (r *radarrService) RequestMovie(body RequestMovieBody) (RequestMovieRespons
 	var responseErrors []RequestMovieError
 
 	// Send the POST request to Radarr and capture the response or errors
-	apiResponse, err := url.New().Post("/api/v3/movie").BodyJSON(body).Receive(&response, &responseErrors)
+	apiResponse, err := baseURL.New().Post("/api/v3/movie").BodyJSON(body).Receive(&response, &responseErrors)
 	if err != nil {
 		return RequestMovieResponse{}, err
 	}
@@ -256,6 +285,10 @@ func (r *radarrService) RequestMovie(body RequestMovieBody) (RequestMovieRespons
 	if apiResponse.StatusCode >= 200 && apiResponse.StatusCode < 300 {
 		// Successful response, return the movie data
 		return response, nil
+	}
+
+	if apiResponse.StatusCode == fiber.ErrUnauthorized.Code {
+		return RequestMovieResponse{}, ErrUnauthorizedRadarrRequest
 	}
 
 	// If Radarr returns an array of errors, iterate through them

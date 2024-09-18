@@ -6,21 +6,28 @@ import (
 	"time"
 
 	"github.com/dghubble/sling"
+	"github.com/gofiber/fiber/v2"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/pkg/errors"
 )
 
 type Service interface {
-	GetRootFolders() (GetRootFoldersResponse, error)
-	GetQualityProfiles() (GetQualityProfilesResponse, error)
-	RequestSeries(ctx context.Context, body RequestSeriesBody) (RequestSeriesResponse, error)
+	GetRootFolders(url, apiKey *string) (GetRootFoldersResponse, error)
+	GetQualityProfiles(url, apiKey *string) (GetQualityProfilesResponse, error)
+	RequestSeries(ctx context.Context, url *string, apiKey *string, body RequestSeriesBody) (RequestSeriesResponse, error)
 }
 
 type sonarrService struct {
 	gctx global.Context
 }
 
-func (r *sonarrService) FetchSonarrURLFromDB() (*sling.Sling, error) {
+func (r *sonarrService) FetchSonarrURLFromDB(url, apiKey *string) (*sling.Sling, error) {
+	if url != nil && apiKey != nil {
+		return sling.New().Base(*url).
+			Set("Content-Type", "application/json").
+			Set("X-Api-Key", *apiKey), nil
+	}
+
 	sonarrSettings, err := r.gctx.Crate().SQL.Queries().GetSonarrSettings(r.gctx)
 	if err != nil {
 		return nil, err
@@ -36,9 +43,12 @@ func (r *sonarrService) FetchSonarrURLFromDB() (*sling.Sling, error) {
 		return nil, errors.ErrInternalServerError().SetDetail("Sonarr API Key is set but empty")
 	}
 
-	base := sling.New().Base(sonarrSettings.URL.String).
+	realURL := sonarrSettings.URL.String
+	realAPIKey := sonarrSettings.APIKey.String
+
+	base := sling.New().Base(realURL).
 		Set("Content-Type", "application/json").
-		Set("X-Api-Key", sonarrSettings.APIKey.String)
+		Set("X-Api-Key", realAPIKey)
 
 	// Return the configured Radarr URL
 	return base, nil
@@ -60,16 +70,20 @@ type RootFolderUnmappedFolder struct {
 	RelativePath string `json:"relativePath"`
 }
 
-func (r *sonarrService) GetRootFolders() (GetRootFoldersResponse, error) {
-	url, err := r.FetchSonarrURLFromDB()
+func (r *sonarrService) GetRootFolders(url, apiKey *string) (GetRootFoldersResponse, error) {
+	baseURL, err := r.FetchSonarrURLFromDB(url, apiKey)
 	if err != nil {
 		return nil, err
 	}
 
 	var response GetRootFoldersResponse
-	_, err = url.New().Get("/api/v3/rootfolder").Receive(&response, nil)
+	res, err := baseURL.New().Get("/api/v3/rootfolder").Receive(&response, nil)
 	if err != nil {
 		return nil, errors.ErrInternalServerError().SetDetail("Failed to get Radarr root folders")
+	}
+
+	if res.StatusCode == fiber.ErrUnauthorized.Code {
+		return nil, ErrUnauthorizedSonarrRequest
 	}
 
 	return response, nil
@@ -103,16 +117,20 @@ type QualityProfile struct {
 	ID                int    `json:"id"`
 }
 
-func (r *sonarrService) GetQualityProfiles() (GetQualityProfilesResponse, error) {
-	url, err := r.FetchSonarrURLFromDB()
+func (r *sonarrService) GetQualityProfiles(url, apiKey *string) (GetQualityProfilesResponse, error) {
+	baseURL, err := r.FetchSonarrURLFromDB(url, apiKey)
 	if err != nil {
 		return nil, err
 	}
 
 	var response GetQualityProfilesResponse
-	_, err = url.New().Get("/api/v3/qualityprofile").Receive(&response, nil)
+	res, err := baseURL.New().Get("/api/v3/qualityprofile").Receive(&response, nil)
 	if err != nil {
 		return nil, errors.ErrInternalServerError().SetDetail("Failed to get Radarr quality profiles")
+	}
+
+	if res.StatusCode == fiber.ErrUnauthorized.Code {
+		return nil, ErrUnauthorizedSonarrRequest
 	}
 
 	return response, nil
@@ -235,10 +253,13 @@ type RequestShowError struct {
 }
 
 // Define custom error for when a show already exists in Sonarr
-var ErrShowAlreadyExists = fmt.Errorf("movie already exists in sonarr")
+var (
+	ErrShowAlreadyExists         = fmt.Errorf("movie already exists in sonarr")
+	ErrUnauthorizedSonarrRequest = errors.ErrUnauthorized().SetDetail("Unauthorized access to Sonarr")
+)
 
-func (r *sonarrService) RequestSeries(ctx context.Context, body RequestSeriesBody) (RequestSeriesResponse, error) {
-	url, err := r.FetchSonarrURLFromDB()
+func (r *sonarrService) RequestSeries(ctx context.Context, url *string, apiKey *string, body RequestSeriesBody) (RequestSeriesResponse, error) {
+	baseURL, err := r.FetchSonarrURLFromDB(url, apiKey)
 	if err != nil {
 		return RequestSeriesResponse{}, err
 	}
@@ -246,7 +267,7 @@ func (r *sonarrService) RequestSeries(ctx context.Context, body RequestSeriesBod
 	var response RequestSeriesResponse
 	var responseErrors []RequestShowError
 
-	apiResponse, err := url.New().Post("/api/v3/series").BodyJSON(body).Receive(&response, &responseErrors)
+	apiResponse, err := baseURL.New().Post("/api/v3/series").BodyJSON(body).Receive(&response, &responseErrors)
 	if err != nil {
 		return RequestSeriesResponse{}, errors.ErrInternalServerError().SetDetail("Failed to request series")
 	}
@@ -255,6 +276,10 @@ func (r *sonarrService) RequestSeries(ctx context.Context, body RequestSeriesBod
 	if apiResponse.StatusCode >= 200 && apiResponse.StatusCode < 300 {
 		// Successful response, return the movie data
 		return response, nil
+	}
+
+	if apiResponse.StatusCode == fiber.ErrUnauthorized.Code {
+		return RequestSeriesResponse{}, ErrUnauthorizedSonarrRequest
 	}
 
 	// If Radarr returns an array of errors, iterate through them

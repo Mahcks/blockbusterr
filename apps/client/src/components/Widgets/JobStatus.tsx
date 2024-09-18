@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Clock, Film, Tv } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { JobStatus } from "@/types/job";
 
@@ -48,11 +47,10 @@ export default function VerticalJobStatusWidget() {
   const groupedJobs = groupJobs(jobStatus);
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardContent className="mt-4">
+    <div className="w-[full] max-w-md mx-auto h-[250px] bg-inherit px-5">
         {Object.entries(groupedJobs).map(([mediaType, jobs], index, array) => (
           <div key={mediaType}>
-            <div className="flex items-center space-x-2 mb-2">
+            <div className="flex items-center space-x-2 mb-1">
               {mediaType === "movie" ? (
                 <Film className="w-5 h-5" />
               ) : (
@@ -60,7 +58,7 @@ export default function VerticalJobStatusWidget() {
               )}
               <h3 className="text-lg font-semibold capitalize">{mediaType}s</h3>
             </div>
-            <div className="space-y-2 ml-7 mb-4">
+            <div className="space-y-1 ml-7 mb-2">
               {Object.entries(jobs).map(([jobType, nextRun]) => (
                 <div
                   key={jobType}
@@ -74,10 +72,9 @@ export default function VerticalJobStatusWidget() {
                 </div>
               ))}
             </div>
-            {index < array.length - 1 && <Separator className="my-4" />}
+            {index < array.length - 1 && <Separator className="my-3" />}
           </div>
         ))}
-      </CardContent>
-    </Card>
+    </div>
   );
 }

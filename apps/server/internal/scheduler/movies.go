@@ -364,7 +364,7 @@ func extractMoviesFromBoxOffice(boxOfficeMovies []trakt.TraktBoxOfficeMovie) []t
 
 func fetchRadarrSettings(r radarr.Service, radarrSettings db.RadarrSettings) (int, string, error) {
 	// Get quality profiles from Radarr
-	qualityProfiles, err := r.GetQualityProfiles()
+	qualityProfiles, err := r.GetQualityProfiles(nil, nil)
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to get Radarr quality profiles: %w", err)
 	}
@@ -382,7 +382,7 @@ func fetchRadarrSettings(r radarr.Service, radarrSettings db.RadarrSettings) (in
 	}
 
 	// Get root folders from Radarr
-	rootFolders, err := r.GetRootFolders()
+	rootFolders, err := r.GetRootFolders(nil, nil)
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to get Radarr root folders: %w", err)
 	}
@@ -488,7 +488,7 @@ func requestMoviesToRadarr(r radarr.Service, notifications *notifications.Notifi
 		body.AddOptions.SearchForMovie = true
 
 		// Make the request to Radarr
-		_, err := r.RequestMovie(body)
+		_, err := r.RequestMovie(nil, nil, body)
 		if err != nil {
 			if errors.Is(err, radarr.ErrMovieAlreadyExists) {
 				// Log a warning if the movie already exists in Radarr

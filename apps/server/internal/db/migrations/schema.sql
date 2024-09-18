@@ -2,7 +2,9 @@ CREATE TABLE `trakt` (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
     `client_id` TEXT NOT NULL,
     `client_secret` TEXT NOT NULL
-) CREATE TABLE `settings` (
+);
+
+CREATE TABLE `settings` (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
     `key` TEXT UNIQUE NOT NULL,
     `value` TEXT NOT NULL,
@@ -14,6 +16,11 @@ INSERT INTO
     settings (key, value, type)
 VALUES
     ('SETUP_COMPLETE', 'false', 'boolean');
+
+INSERT INTO
+    settings (key, value, type)
+VALUES
+    ('MODE', 'radarr-sonarr', 'text');
 
 CREATE TABLE ombi (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -49,6 +56,23 @@ CREATE TABLE radarr (
     `root_folder` INTEGER -- The root folder ID to use for Radarr (nullable)
 );
 
+INSERT INTO
+    radarr (
+        api_key,
+        url,
+        minimum_availability,
+        quality,
+        root_folder
+    )
+VALUES
+    (
+        null,
+        null,
+        'announced',
+        null,
+        null
+    );
+
 CREATE TABLE movie_settings (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
     -- Primary key with auto-increment
@@ -79,6 +103,39 @@ CREATE TABLE movie_settings (
     `rotten_tomatoes` TEXT -- Rotten Tomatoes rating filter for movies
 );
 
+INSERT INTO
+    movie_settings (
+        anticipated,
+        cron_job_anticipated,
+        box_office,
+        cron_job_box_office,
+        popular,
+        cron_job_popular,
+        trending,
+        cron_job_trending,
+        max_runtime,
+        min_runtime,
+        min_year,
+        max_year,
+        rotten_tomatoes
+    )
+VALUES
+    (
+        10,
+        '0 0 * * 1',
+        10,
+        '0 0 * * *',
+        5,
+        '0 0 * * *',
+        5,
+        '0 0 * * *',
+        180,
+        30,
+        0,
+        0,
+        ''
+    );
+
 CREATE TABLE movie_allowed_countries (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
     -- Primary key with auto-increment
@@ -88,6 +145,12 @@ CREATE TABLE movie_allowed_countries (
     -- Country code for allowed countries (e.g., 'us', 'gb')
     FOREIGN KEY (`movie_settings_id`) REFERENCES movie_settings(`id`) -- Foreign key constraint
 );
+
+INSERT INTO
+    movie_allowed_countries (movie_settings_id, country_code)
+VALUES
+    (1, 'us'),
+    (1, 'gb');
 
 CREATE TABLE movie_allowed_languages (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -169,6 +232,33 @@ CREATE TABLE show_settings (
     `max_year` INTEGER -- Blacklist shows released after the specified year
 );
 
+INSERT INTO
+    show_settings (
+        anticipated,
+        cron_job_anticipated,
+        popular,
+        cron_job_popular,
+        trending,
+        cron_job_trending,
+        max_runtime,
+        min_runtime,
+        min_year,
+        max_year
+    )
+VALUES
+    (
+        10,
+        '0 0 * * 1',
+        10,
+        '0 0 * * *',
+        5,
+        '0 0 * * *',
+        180,
+        30,
+        0,
+        0
+    );
+
 -- Table for allowed countries in shows settings
 CREATE TABLE show_allowed_countries (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -179,6 +269,13 @@ CREATE TABLE show_allowed_countries (
     -- Country code for allowed countries (e.g., 'us', 'gb')
     FOREIGN KEY (`show_settings_id`) REFERENCES show_settings(`id`) -- Foreign key constraint
 );
+
+INSERT INTO
+    show_allowed_countries (show_settings_id, country_code)
+VALUES
+    (1, 'us'),
+    (1, 'gb'),
+    (1, 'gb');
 
 -- Table for allowed languages in shows settings
 CREATE TABLE show_allowed_languages (
@@ -191,6 +288,11 @@ CREATE TABLE show_allowed_languages (
     FOREIGN KEY (`show_settings_id`) REFERENCES show_settings(`id`) -- Foreign key constraint
 );
 
+INSERT INTO
+    show_allowed_languages (show_settings_id, language_code)
+VALUES
+    (1, 'en');
+
 -- Table for blacklisted genres in shows settings
 CREATE TABLE show_blacklisted_genres (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -202,6 +304,17 @@ CREATE TABLE show_blacklisted_genres (
     FOREIGN KEY (`show_settings_id`) REFERENCES show_settings(`id`) -- Foreign key constraint
 );
 
+INSERT INTO
+    show_blacklisted_genres (show_settings_id, genre)
+VALUES
+    (1, 'game-show'),
+    (1, 'home-and-garden'),
+    (1, 'children'),
+    (1, 'anime'),
+    (1, 'news'),
+    (1, 'documentary'),
+    (1, 'special-interest');
+
 -- Table for blacklisted networks in shows settings
 CREATE TABLE show_blacklisted_networks (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -212,6 +325,23 @@ CREATE TABLE show_blacklisted_networks (
     -- Network to be blacklisted (e.g., 'twitch', 'youtube')
     FOREIGN KEY (`show_settings_id`) REFERENCES show_settings(`id`) -- Foreign key constraint
 );
+
+INSERT INTO
+    show_blacklisted_networks (show_settings_id, network)
+VALUES
+    (1, 'fox sports'),
+    (1, 'yahoo!'),
+    (1, 'espn'),
+    (1, 'cartoon network'),
+    (1, 'teletoon'),
+    (1, 'the movie network'),
+    (1, 'cbbc'),
+    (1, 'cnn'),
+    (1, 'reelzchannel'),
+    (1, 'hallmark'),
+    (1, 'nickelodeon'),
+    (1, 'twitch'),
+    (1, 'youtube');
 
 -- Table for blacklisted title keywords in shows settings
 CREATE TABLE show_blacklisted_title_keywords (
@@ -235,9 +365,14 @@ CREATE TABLE show_blacklisted_tvdb_ids (
     FOREIGN KEY (`show_settings_id`) REFERENCES show_settings(`id`) -- Foreign key constraint
 );
 
-CREATE TABLE notifications_config (
+CREATE TABLE IF NOT EXISTS notifications_config (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
     `platform` TEXT NOT NULL UNIQUE,
     `enabled` BOOLEAN NOT NULL,
     `webhook_url` TEXT NOT NULL
 );
+
+INSERT INTO
+    notifications_config (`platform`, `enabled`, `webhook_url`)
+VALUES
+    ('discord', 0, '');

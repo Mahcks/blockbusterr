@@ -100,7 +100,7 @@ func (s *Scheduler) scheduleMovieJob(cronExpr string, jobFunc func(), listType s
 
 	// Run the job immediately once after scheduling
 	jobFunc()
-	s.RunJobOnDemand(listType, true)
+	// s.RunJobOnDemand(listType, true)
 }
 
 // scheduleShowJob schedules a show list job using a cron expression
@@ -122,7 +122,7 @@ func (s *Scheduler) scheduleShowJob(cronExpr string, jobFunc func(), listType st
 
 	// Run the job immediately once after scheduling
 	log.Infof("[scheduler] Running %s show job immediately", listType)
-	s.RunJobOnDemand(listType, false)
+	// s.RunJobOnDemand(listType, false)
 }
 
 // StopJob stops a specific movie job by listType

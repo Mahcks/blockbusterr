@@ -341,7 +341,7 @@ func extractShowsFromAnticipated(anticipatedShows []trakt.AnticipatedShow) []tra
 
 func fetchSonarrSettings(r sonarr.Service, sonarrSettings db.SonarrSettings) (int, string, error) {
 	// Get quality profiles from Sonarr
-	qualityProfiles, err := r.GetQualityProfiles()
+	qualityProfiles, err := r.GetQualityProfiles(nil, nil)
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to get Sonarr quality profiles: %w", err)
 	}
@@ -359,7 +359,7 @@ func fetchSonarrSettings(r sonarr.Service, sonarrSettings db.SonarrSettings) (in
 	}
 
 	// Get root folders from Sonarr
-	rootFolders, err := r.GetRootFolders()
+	rootFolders, err := r.GetRootFolders(nil, nil)
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to get Sonarr root folders: %w", err)
 	}
@@ -450,7 +450,7 @@ func requestShowsToSonarr(s sonarr.Service, notifications *notifications.Notific
 		body.AddOptions.SearchForMissingEpisodes = true
 
 		// Make the request to Sonarr
-		_, err := s.RequestSeries(context.Background(), body)
+		_, err := s.RequestSeries(context.Background(), nil, nil, body)
 		if err != nil {
 			if errors.Is(err, sonarr.ErrShowAlreadyExists) {
 				// Log a warning if the show already exists in Sonarr

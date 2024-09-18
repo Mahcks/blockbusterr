@@ -26,8 +26,15 @@ export function SetupProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/settings?key=SETUP_COMPLETE`
       );
-      const data = await res.json();
-      setSetupComplete(data.value === "true");
+
+      // Check if the response is valid and in JSON format
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        setSetupComplete(data.value === "true");
+      } else {
+        throw new Error(`Unexpected content-type: ${contentType}`);
+      }
     } catch (error) {
       console.error("Error checking setup status", error);
     }
@@ -38,9 +45,16 @@ export function SetupProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/settings?key=MODE`
       );
-      const data = await res.json();
-      // Cast the response value to the expected types
-      setMode(data.value as "ombi" | "radarr-sonarr");
+
+      // Check if the response is valid and in JSON format
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        // Cast the response value to the expected types
+        setMode(data.value as "ombi" | "radarr-sonarr");
+      } else {
+        throw new Error(`Unexpected content-type: ${contentType}`);
+      }
     } catch (error) {
       console.error("Error checking mode", error);
     }

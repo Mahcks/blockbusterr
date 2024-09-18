@@ -67,7 +67,7 @@ func main() {
 
 	{
 		log.Info("Setting up SQLite database")
-		gctx.Crate().SQL, err = sqlite.Setup(gctx)
+		gctx.Crate().SQL, err = sqlite.Setup(gctx, Version)
 		if err != nil {
 			log.Error("Error setting up SQLite database", "error", err)
 			cancel()

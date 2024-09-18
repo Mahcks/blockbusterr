@@ -1,16 +1,36 @@
 package sonarr
 
 import (
+	"errors"
+
+	"github.com/mahcks/blockbusterr/internal/helpers/radarr"
 	"github.com/mahcks/blockbusterr/internal/helpers/sonarr"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/respond"
-	"github.com/mahcks/blockbusterr/pkg/errors"
+	commonErrors "github.com/mahcks/blockbusterr/pkg/errors"
 	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
 func (rg *RouteGroup) GetSonarrProfiles(ctx *respond.Ctx) error {
-	profiles, err := rg.helpers.Sonarr.GetQualityProfiles()
+	// Extract Sonarr URL and API key from the query params and headers
+	var sonarrURL *string
+	if url := ctx.Query("url"); url != "" {
+		sonarrURL = &url
+	}
+
+	var apiKey *string
+	headers := ctx.GetReqHeaders()
+	if apiKeyArray, exists := headers["X-Api-Key"]; exists && len(apiKeyArray) > 0 {
+		apiKey = &apiKeyArray[0]
+	}
+
+	profiles, err := rg.helpers.Sonarr.GetQualityProfiles(sonarrURL, apiKey)
 	if err != nil {
-		return errors.ErrInternalServerError().SetDetail("Failed to retrieve Sonarr profiles")
+		// Check if it's an unauthorized error and return 401 if true
+		if errors.Is(err, radarr.ErrUnauthorizedRadarrRequest) {
+			return commonErrors.ErrUnauthorized().SetDetail("Unauthorized access to Radarr")
+		}
+
+		return commonErrors.ErrInternalServerError().SetDetail("Failed to retrieve Sonarr profiles")
 	}
 
 	// Convert profiles to the desired structure

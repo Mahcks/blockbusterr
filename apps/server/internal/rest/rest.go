@@ -24,6 +24,7 @@ var allowedHeaders = []string{
 	"Accept-Encoding",
 	"Authorization",
 	"Cookie",
+	"X-Api-Key",
 }
 
 type APIErrorResponseBodyError struct {

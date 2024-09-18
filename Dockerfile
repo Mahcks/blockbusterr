@@ -30,7 +30,7 @@ COPY apps/client/ .
 
 # Pass environment variables at build time
 ARG VITE_API_URL
-ENV VITE_API_URL='api/v1'
+ENV VITE_API_URL='v1'
 
 # Install dependencies and build the client
 RUN npm install && npm run build
@@ -61,7 +61,7 @@ COPY nginx.conf /etc/nginx/nginx.conf
 
 # Create a data directory for SQLite and copy migrations (if any)
 RUN mkdir -p /app/data
-COPY ./apps/migrations /migrations
+COPY ./apps/server/internal/db/migrations /migrations
 
 # Copy the SQLite initialization script
 COPY init-db.sh /app/init-db.sh

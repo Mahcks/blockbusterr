@@ -8,14 +8,22 @@ import (
 	"github.com/mahcks/blockbusterr/internal/db"
 )
 
-func Setup(ctx context.Context) (Service, error) {
+func Setup(ctx context.Context, Version string) (Service, error) {
 	svc := &sqliteService{}
 	var err error
 
-	svc.db, err = sql.Open("sqlite3", "blockbusterr.db")
-	if err != nil {
-		log.Error("Error opening SQLite database", "error", err)
-		return nil, err
+	if Version == "dev" {
+		svc.db, err = sql.Open("sqlite3", "blockbusterr.db")
+		if err != nil {
+			log.Error("Error opening SQLite database", "error", err)
+			return nil, err
+		}
+	} else {
+		svc.db, err = sql.Open("sqlite3", "/app/data/settings.db")
+		if err != nil {
+			log.Error("Error opening SQLite database", "error", err)
+			return nil, err
+		}
 	}
 
 	log.Info("SQLite database opened")
