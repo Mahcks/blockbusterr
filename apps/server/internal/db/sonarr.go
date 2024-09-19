@@ -16,6 +16,8 @@ type SonarrSettings struct {
 	SeasonFolder sql.NullBool   `db:"season_folder"` // Whether to use season folders
 }
 
+var ErrNoSonarrSettings = fmt.Errorf("no sonarr settings found")
+
 func (q *Queries) GetSonarrSettings(ctx context.Context) (SonarrSettings, error) {
 	var settings SonarrSettings
 	query := `
@@ -37,7 +39,7 @@ func (q *Queries) GetSonarrSettings(ctx context.Context) (SonarrSettings, error)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// Handle the case where there are no settings
-			return settings, fmt.Errorf("no sonarr settings found")
+			return settings, ErrNoSonarrSettings
 		}
 		return settings, err
 	}

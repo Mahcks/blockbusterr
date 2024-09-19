@@ -203,7 +203,7 @@ CREATE TABLE sonarr (
     -- Language to use for getting shows from Sonarr (nullable)
     `quality` INTEGER,
     -- Quality profile ID to use for Sonarr (nullable)
-    `root_folder` INTEGER -- The root folder ID to use for Sonarr (nullable)
+    `root_folder` INTEGER, -- The root folder ID to use for Sonarr (nullable)
     `season_folder` INTEGER -- Season folder setting for Sonarr (nullable)
 );
 

@@ -2,13 +2,18 @@ package trakt
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dghubble/sling"
+	"github.com/mahcks/blockbusterr/internal/db"
 	"github.com/mahcks/blockbusterr/internal/global"
 )
 
 type Service interface {
+	// Ping the Trakt API to check if the client ID is set
+	Ping(ctx context.Context) error
+
 	GetTrendingMovies(ctx context.Context, params *TraktMovieParams) (GetTrendingMoviesResponse, error)
 	GetPopularMovies(ctx context.Context, params *TraktMovieParams) (GetPopularMoviesResponse, error)
 	GetAnticipatedMovies(ctx context.Context, params *TraktMovieParams) ([]TraktAnticipatedMovie, error)
@@ -141,10 +146,16 @@ type ShowAirs struct {
 	Timezone string `json:"timezone"`
 }
 
+var ErrNoTraktSettings = errors.New("no trakt settings found")
+
 func (t *traktService) FetchClientIDFromDB(ctx context.Context) (string, error) {
 	// Use parameterized query with context to prevent SQL injection
 	traktSetings, err := t.gctx.Crate().SQL.Queries().GetTraktSettings(ctx)
 	if err != nil {
+		if errors.Is(err, db.ErrNoTraktSettings) {
+			return "", ErrNoTraktSettings
+		}
+
 		return "", err
 	}
 
@@ -383,4 +394,19 @@ func (t *traktService) GetListItems(ctx context.Context, params *GetListItemsPar
 	}
 
 	return response, nil
+}
+
+func (t *traktService) Ping(ctx context.Context) error {
+	clientID, err := t.FetchClientIDFromDB(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Use the /countries/movies since it doesn't require any parameters
+	_, err = t.base.New().Set("trakt-api-key", clientID).Get("/countries/movies").ReceiveSuccess(nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

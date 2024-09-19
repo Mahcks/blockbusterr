@@ -64,6 +64,8 @@ type ShowBlacklistedTVDBIDs struct {
 	TVDBID         int `db:"tvdb_id"`          // TVDB ID to blacklist
 }
 
+var ErrNoShowSettings = fmt.Errorf("no show settings found")
+
 func (q *Queries) GetShowSettings(ctx context.Context) (ShowSettings, error) {
 	var settings ShowSettings
 
@@ -95,7 +97,7 @@ func (q *Queries) GetShowSettings(ctx context.Context) (ShowSettings, error) {
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return settings, fmt.Errorf("no show settings found")
+			return settings, ErrNoShowSettings
 		}
 		return settings, err
 	}

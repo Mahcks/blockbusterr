@@ -18,6 +18,8 @@ type OmbiSettings struct {
 	ShowRootFolder  sql.NullInt32  `db:"show_root_folder"`  // The root folder to use for Ombi
 }
 
+var ErrNoOmbiSettings = fmt.Errorf("no ombi settings found")
+
 func (q *Queries) GetOmbiSettings(ctx context.Context) (OmbiSettings, error) {
 	var settings OmbiSettings
 	query := `
@@ -39,9 +41,9 @@ func (q *Queries) GetOmbiSettings(ctx context.Context) (OmbiSettings, error) {
 		&settings.ShowRootFolder,
 	)
 	if err != nil {
+		// Handle the case where there are no settings
 		if err == sql.ErrNoRows {
-			// Handle the case where there are no settings
-			return settings, fmt.Errorf("no Ombi settings found")
+			return settings, ErrNoOmbiSettings
 		}
 
 		// Return any other error that occurred during the query

@@ -34,7 +34,12 @@ type radarrJob struct {
 }
 
 // AnticipatedJobFunc fetches and processes anticipated movies
-func (s Scheduler) AnticipatedJobFunc() {
+func (s Scheduler) AnticipatedJobFunc(pingSuccessful bool) {
+	if !pingSuccessful {
+		log.Warn("[scheduler] Skipping Anticipated Movies job because of missing Trakt client ID.")
+		return
+	}
+
 	log.Info("[scheduler] Running Anticipated Movies job...")
 	mj := radarrJob{
 		gctx:    s.gctx,
@@ -47,7 +52,7 @@ func (s Scheduler) AnticipatedJobFunc() {
 
 	// Get movie settings and handle errors
 	if err := s.initializeMovieJob(&mj); err != nil {
-		log.Error("[scheduler] Failed to initialize movie job", "error", err)
+		log.Error("[scheduler] Failed to initialize anticipated movie job", "error", err)
 		return
 	}
 
@@ -56,7 +61,13 @@ func (s Scheduler) AnticipatedJobFunc() {
 		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit, true)
 		anticipatedMovies, err := helpers.Trakt.GetAnticipatedMovies(gctx, params)
 		if err != nil {
-			log.Error("[movie-job] Error fetching anticipated movies from Trakt", "error", err)
+			if errors.Is(err, trakt.ErrNoTraktSettings) {
+				log.Warn("[movie-anticipated-job] Couldn't complete the job because Trakt client ID isn't set!")
+				return
+			} else {
+				log.Error("[movie-anticipated-job] Error fetching anticipated movies from Trakt", "error", err)
+				return
+			}
 		} else {
 			mj.anticipatedMovies = filterAndLimitMovies(extractMoviesFromAnticipated(anticipatedMovies), mj.movieSettings, int(mj.movieSettings.Anticipated.Int32))
 			s.processMovies(mj.anticipatedMovies, mj)
@@ -65,7 +76,12 @@ func (s Scheduler) AnticipatedJobFunc() {
 }
 
 // BoxOfficeJobFunc fetches and processes box office movies
-func (s Scheduler) BoxOfficeJobFunc() {
+func (s Scheduler) BoxOfficeJobFunc(pingSuccessful bool) {
+	if !pingSuccessful {
+		log.Warn("[scheduler] Skipping box office movie job because of missing Trakt client ID.")
+		return
+	}
+
 	log.Info("[scheduler] Running Box Office Movies job...")
 	mj := radarrJob{}
 	gctx := s.gctx
@@ -84,7 +100,13 @@ func (s Scheduler) BoxOfficeJobFunc() {
 		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit, false)
 		boxOfficeMovies, err := helpers.Trakt.GetBoxOfficeMovies(gctx, params)
 		if err != nil {
-			log.Error("[movie-job] Error fetching box office movies from Trakt", "error", err)
+			if errors.Is(err, trakt.ErrNoTraktSettings) {
+				log.Warn("[movie-box_office-job] Couldn't complete the job because Trakt client ID isn't set!")
+				return
+			} else {
+				log.Error("[movie-box_office-job] Error fetching box office movies from Trakt", "error", err)
+				return
+			}
 		} else {
 			mj.boxOfficeMovies = filterAndLimitMovies(extractMoviesFromBoxOffice(boxOfficeMovies), mj.movieSettings, int(mj.movieSettings.BoxOffice.Int32))
 			s.processMovies(mj.boxOfficeMovies, mj)
@@ -93,7 +115,12 @@ func (s Scheduler) BoxOfficeJobFunc() {
 }
 
 // PopularJobFunc fetches and processes popular movies
-func (s Scheduler) PopularJobFunc() {
+func (s Scheduler) PopularJobFunc(pingSuccessful bool) {
+	if !pingSuccessful {
+		log.Warn("[scheduler] Skipping popular movie job because of missing Trakt client ID.")
+		return
+	}
+
 	log.Info("[scheduler] Running Popular Movies job...")
 	mj := radarrJob{}
 	gctx := s.gctx
@@ -112,7 +139,13 @@ func (s Scheduler) PopularJobFunc() {
 		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit, false)
 		popularMovies, err := helpers.Trakt.GetPopularMovies(gctx, params)
 		if err != nil {
-			log.Error("[movie-job] Error fetching popular movies from Trakt", "error", err)
+			if errors.Is(err, trakt.ErrNoTraktSettings) {
+				log.Warn("[movie-popular-job] Couldn't complete the job because Trakt client ID isn't set!")
+				return
+			} else {
+				log.Error("[movie-popular-job] Error fetching popular movies from Trakt", "error", err)
+				return
+			}
 		} else {
 			mj.popularMovies = filterAndLimitMovies(extractMoviesFromPopular(popularMovies), mj.movieSettings, int(mj.movieSettings.Popular.Int32))
 			s.processMovies(mj.popularMovies, mj)
@@ -121,7 +154,12 @@ func (s Scheduler) PopularJobFunc() {
 }
 
 // TrendingJobFunc fetches and processes trending movies
-func (s Scheduler) TrendingJobFunc() {
+func (s Scheduler) TrendingJobFunc(pingSuccessful bool) {
+	if !pingSuccessful {
+		log.Warn("[scheduler] Skipping trending movie job because of missing Trakt client ID.")
+		return
+	}
+
 	log.Info("[scheduler] Running Trending Movies job...")
 	mj := radarrJob{}
 	gctx := s.gctx
@@ -140,7 +178,13 @@ func (s Scheduler) TrendingJobFunc() {
 		params := buildTraktParamsFromSettings(mj.movieSettings, largeMovieQueryLimit, false)
 		trendingMovies, err := helpers.Trakt.GetTrendingMovies(gctx, params)
 		if err != nil {
-			log.Error("[movie-job] Error fetching trending movies from Trakt", "error", err)
+			if errors.Is(err, trakt.ErrNoTraktSettings) {
+				log.Error("[movie-trending-job] Couldn't complete the job because Trakt client ID isn't set!")
+				return
+			} else {
+				log.Error("[movie-trending-job] Error fetching trending movies from Trakt", "error", err)
+				return
+			}
 		} else {
 			mj.trendingMovies = filterAndLimitMovies(extractMoviesFromTrending(trendingMovies), mj.movieSettings, int(mj.movieSettings.Trending.Int32))
 			s.processMovies(mj.trendingMovies, mj)
@@ -174,16 +218,21 @@ func (s Scheduler) processMovies(movies []trakt.Movie, mj radarrJob) {
 	helpers := s.helpers
 
 	// Check if Ombi is enabled
-	ombiEnabled, err := gctx.Crate().SQL.Queries().GetSettingByKey(gctx, structures.SettingOmbiEnabled.String())
+	ombiEnabled, err := gctx.Crate().SQL.Queries().GetSettingByKey(gctx, structures.SettingMode.String())
 	if err != nil {
 		log.Error("[scheduler] Error getting Ombi enabled setting", "error", err)
 		return
 	}
 
 	// If Ombi is enabled, request movies via Ombi
-	if ombiEnabled.Value.String == "true" {
+	if ombiEnabled.Value.String == "ombi" {
 		mj.ombiSettings, err = gctx.Crate().SQL.Queries().GetOmbiSettings(gctx)
 		if err != nil {
+			if errors.Is(err, db.ErrNoOmbiSettings) {
+				log.Warn("[scheduler] Skipping Ombi job because Ombi settings are not configured")
+				return
+			}
+
 			log.Error("[scheduler] Error getting Ombi settings", "error", err)
 			return
 		}

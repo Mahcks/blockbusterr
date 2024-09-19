@@ -38,21 +38,36 @@ func Setup(gctx global.Context, helpers helpers.Helpers, notifications *notifica
 		return nil
 	}
 
-	// Schedule each list job with its cron expression
+	// Ping Trakt API once and store the result
+	err = helpers.Trakt.Ping(gctx)
+	pingSuccessful := true
+	if err != nil {
+		pingSuccessful = false
+	}
+
+	// Schedule each list job with its cron expression, but the jobs themselves check ping status
 	if movieSettings.CronAnticipated.Valid {
-		svc.scheduleMovieJob(movieSettings.CronAnticipated.String, svc.AnticipatedJobFunc, "movie-anticipated")
+		svc.scheduleMovieJob(movieSettings.CronAnticipated.String, func() {
+			svc.AnticipatedJobFunc(pingSuccessful)
+		}, "movie-anticipated")
 	}
 
 	if movieSettings.CronBoxOffice.Valid {
-		svc.scheduleMovieJob(movieSettings.CronBoxOffice.String, svc.BoxOfficeJobFunc, "movie-box_office")
+		svc.scheduleMovieJob(movieSettings.CronBoxOffice.String, func() {
+			svc.BoxOfficeJobFunc(pingSuccessful)
+		}, "movie-box_office")
 	}
 
 	if movieSettings.CronPopular.Valid {
-		svc.scheduleMovieJob(movieSettings.CronPopular.String, svc.PopularJobFunc, "movie-popular")
+		svc.scheduleMovieJob(movieSettings.CronPopular.String, func() {
+			svc.PopularJobFunc(pingSuccessful)
+		}, "movie-popular")
 	}
 
 	if movieSettings.CronTrending.Valid {
-		svc.scheduleMovieJob(movieSettings.CronTrending.String, svc.TrendingJobFunc, "movie-trending")
+		svc.scheduleMovieJob(movieSettings.CronTrending.String, func() {
+			svc.TrendingJobFunc(pingSuccessful)
+		}, "movie-trending")
 	}
 
 	// Setup individual cron jobs for each show list
@@ -64,15 +79,21 @@ func Setup(gctx global.Context, helpers helpers.Helpers, notifications *notifica
 
 	// Schedule each show list job with its cron expression
 	if showSettings.CronJobAnticipated.Valid {
-		svc.scheduleShowJob(showSettings.CronJobAnticipated.String, svc.AnticipatedShowJobFunc, "show-anticipated")
+		svc.scheduleShowJob(showSettings.CronJobAnticipated.String, func() {
+			svc.AnticipatedShowJobFunc(pingSuccessful)
+		}, "show-anticipated")
 	}
 
 	if showSettings.CronJobPopular.Valid {
-		svc.scheduleShowJob(showSettings.CronJobPopular.String, svc.PopularShowJobFunc, "show-popular")
+		svc.scheduleShowJob(showSettings.CronJobPopular.String, func() {
+			svc.PopularShowJobFunc(pingSuccessful)
+		}, "show-popular")
 	}
 
 	if showSettings.CronJobTrending.Valid {
-		svc.scheduleShowJob(showSettings.CronJobTrending.String, svc.TrendingShowJobFunc, "show-trending")
+		svc.scheduleShowJob(showSettings.CronJobTrending.String, func() {
+			svc.TrendingShowJobFunc(pingSuccessful)
+		}, "show-trending")
 	}
 
 	// Start the scheduler
@@ -99,7 +120,7 @@ func (s *Scheduler) scheduleMovieJob(cronExpr string, jobFunc func(), listType s
 	log.Infof("[scheduler] %s movie job scheduled with cron expression: %s", listType, cronExpr)
 
 	// Run the job immediately once after scheduling
-	jobFunc()
+	// log.Infof("[scheduler] Running %s show movie immediately", listType)
 	s.RunJobOnDemand(listType, true)
 }
 
@@ -121,7 +142,7 @@ func (s *Scheduler) scheduleShowJob(cronExpr string, jobFunc func(), listType st
 	log.Infof("[scheduler] %s show job scheduled with cron expression: %s", listType, cronExpr)
 
 	// Run the job immediately once after scheduling
-	log.Infof("[scheduler] Running %s show job immediately", listType)
+	// log.Infof("[scheduler] Running %s show job immediately", listType)
 	s.RunJobOnDemand(listType, false)
 }
 

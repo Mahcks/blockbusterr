@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -10,6 +12,8 @@ type TraktSettings struct {
 	ClientID     string `db:"client_id"`
 	ClientSecret string `db:"client_secret"`
 }
+
+var ErrNoTraktSettings = errors.New("no trakt settings found")
 
 func (q *Queries) GetTraktSettings(ctx context.Context) (TraktSettings, error) {
 	var settings TraktSettings
@@ -22,8 +26,11 @@ func (q *Queries) GetTraktSettings(ctx context.Context) (TraktSettings, error) {
 		&settings.ClientSecret,
 	)
 	if err != nil {
-		fmt.Println(err)
-		return TraktSettings{}, fmt.Errorf("error fetching trakt settings: %v", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return TraktSettings{}, ErrNoTraktSettings
+		} else {
+			return TraktSettings{}, fmt.Errorf("error fetching trakt settings: %v", err)
+		}
 	}
 
 	return settings, nil

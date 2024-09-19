@@ -47,8 +47,9 @@ func main() {
 	} else {
 		// Production logger with JSON output and info level
 		logger = log.NewWithOptions(os.Stdout, log.Options{
-			Level:           log.InfoLevel,
-			Formatter:       log.JSONFormatter,
+			Level: log.DebugLevel,
+			// Formatter:       log.JSONFormatter,
+			ReportCaller:    true,
 			ReportTimestamp: true,
 		})
 	}

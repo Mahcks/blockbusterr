@@ -6,7 +6,6 @@ import (
 	"github.com/dghubble/sling"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/pkg/errors"
-	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
 type Service interface {
@@ -33,38 +32,24 @@ type ombiService struct {
 }
 
 func (o *ombiService) FetchOmbiURLFromDB() (*sling.Sling, error) {
-	// Fetch setting by key
-	urlSetting, err := o.gctx.Crate().SQL.Queries().GetSettingByKey(o.gctx, structures.SettingOmbiURL.String())
+	// Get Ombi enabled setting
+	ombiSettings, err := o.gctx.Crate().SQL.Queries().GetOmbiSettings(o.gctx)
 	if err != nil {
 		return nil, err
-	}
-
-	// If no setting is found
-	if urlSetting == nil {
-		return nil, errors.ErrNotFound().SetDetail("Ombi URL setting not found in the database")
 	}
 
 	// If setting is found but value is empty
-	if !urlSetting.Value.Valid || urlSetting.Value.String == "" {
+	if !ombiSettings.URL.Valid || ombiSettings.URL.String == "" {
 		return nil, errors.ErrInternalServerError().SetDetail("Ombi URL is set but empty")
 	}
 
-	apiKeySetting, err := o.gctx.Crate().SQL.Queries().GetSettingByKey(o.gctx, structures.SettingOmbiAPIKey.String())
-	if err != nil {
-		return nil, err
-	}
-
-	if apiKeySetting == nil {
-		return nil, errors.ErrNotFound().SetDetail("Ombi API Key setting not found in the database")
-	}
-
-	if !apiKeySetting.Value.Valid || apiKeySetting.Value.String == "" {
+	if !ombiSettings.APIKey.Valid || ombiSettings.APIKey.String == "" {
 		return nil, errors.ErrInternalServerError().SetDetail("Ombi API Key is set but empty")
 	}
 
-	base := sling.New().Base(urlSetting.Value.String).
+	base := sling.New().Base(ombiSettings.URL.String).
 		Set("Content-Type", "application/json").
-		Set("ApiKey", apiKeySetting.Value.String)
+		Set("ApiKey", ombiSettings.APIKey.String)
 
 	// Return the Ombi URL
 	return base, nil
@@ -231,7 +216,6 @@ func (o *ombiService) RequestMovie(body RequestMovieBody) (RequestMovieResponse,
 	var response RequestMovieResponse
 	_, err = url.New().Post("/api/v1/request/movie").BodyJSON(body).ReceiveSuccess(&response)
 	if err != nil {
-		fmt.Println("ERROR", err)
 		return RequestMovieResponse{}, errors.ErrInternalServerError().SetDetail("Failed to request movie via Ombi")
 	}
 
