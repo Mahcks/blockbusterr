@@ -28,7 +28,7 @@ func (rg *RouteGroup) GetMovieSettings(ctx *respond.Ctx) error {
 		MinRuntime:               nullIntToPointer(settings.MinRuntime),
 		MinYear:                  nullIntToPointer(settings.MinYear),
 		MaxYear:                  nullIntToPointer(settings.MaxYear),
-		RottenTomatoes:           nullStringToPointer(settings.RottenTomatoes), // Convert sql.NullString to *string
+		RottenTomatoes:           nullStringToPointer(settings.RottenTomatoes),
 		AllowedCountries:         mapAllowedCountries(settings.AllowedCountries),
 		AllowedLanguages:         mapAllowedLanguages(settings.AllowedLanguages),
 		BlacklistedGenres:        mapBlacklistedGenres(settings.BlacklistedGenres),

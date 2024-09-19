@@ -19,6 +19,8 @@ type Service interface {
 	GetAnticipatedShows(ctx context.Context, params *TraktMovieParams) (GetAnticipatedShowsResponse, error)
 	GetPopularShows(ctx context.Context, params *TraktMovieParams) (GetPopularShowsResponse, error)
 	GetTrendingShows(ctx context.Context, params *TraktMovieParams) (GetTrendingShowsResponse, error)
+
+	GetListItems(ctx context.Context, parms *GetListItemsParams) (GetListItemsResponse, error)
 }
 
 type traktService struct {
@@ -346,4 +348,39 @@ func (t *traktService) GetTrendingShows(ctx context.Context, params *TraktMovieP
 	}
 
 	return response, err
+}
+
+type GetListItemsParams struct {
+	ListID    int    `url:"id"`
+	MediaType string `url:"type"`
+}
+
+type GetListItemsResponse []ListItem
+
+type ListItem struct {
+	Rake     int     `json:"rank"`
+	ID       int     `json:"id"`
+	ListedAt string  `json:"listed_at"`
+	Notes    *string `json:"notes"`
+	Type     string  `json:"type"`
+	Movie    Movie   `json:"movie"`
+}
+
+func (t *traktService) GetListItems(ctx context.Context, params *GetListItemsParams) (GetListItemsResponse, error) {
+	clientID, err := t.FetchClientIDFromDB(ctx)
+	if err != nil {
+		return GetListItemsResponse{}, err
+	}
+
+	var response GetListItemsResponse
+	res, err := t.base.New().Set("trakt-api-key", clientID).QueryStruct(params).Get("/shows/trending").ReceiveSuccess(&response)
+	if err != nil {
+		return GetListItemsResponse{}, err
+	}
+
+	if res.StatusCode != 200 {
+		return GetListItemsResponse{}, fmt.Errorf("failed to get trending shows: %v", res.Status)
+	}
+
+	return response, nil
 }

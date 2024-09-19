@@ -189,7 +189,7 @@ func (s Scheduler) processMovies(movies []trakt.Movie, mj radarrJob) {
 		}
 
 		// Request movies via Ombi
-		requestMoviesToOmbi(helpers.Ombi, s.notifications, movies, mj.ombiSettings)
+		requestMoviesToOmbi(s.gctx, helpers, s.notifications, movies, mj.ombiSettings)
 	} else {
 		// Otherwise, use Radarr to request movies
 		requestMoviesToRadarr(s.gctx, helpers, s.notifications, movies, mj.radarrSettings)
@@ -413,7 +413,7 @@ func fetchRadarrSettings(r radarr.Service, radarrSettings db.RadarrSettings) (in
 }
 
 // Request movies to Ombi
-func requestMoviesToOmbi(o ombi.Service, notifications *notifications.NotificationManager, movies []trakt.Movie, ombiSettings db.OmbiSettings) {
+func requestMoviesToOmbi(gctx global.Context, helpers helpers.Helpers, notifications *notifications.NotificationManager, movies []trakt.Movie, ombiSettings db.OmbiSettings) {
 	for _, movie := range movies {
 
 		body := ombi.RequestMovieBody{
@@ -441,7 +441,7 @@ func requestMoviesToOmbi(o ombi.Service, notifications *notifications.Notificati
 			body.QualityPathOverride = &qualityProfile
 		}
 
-		_, err := o.RequestMovie(body)
+		_, err := helpers.Ombi.RequestMovie(body)
 		if err != nil {
 			if errors.Is(err, ombi.ErrMovieAlreadyRequested) {
 				// Log a warning if the movie already exists in Radarr
@@ -453,6 +453,29 @@ func requestMoviesToOmbi(o ombi.Service, notifications *notifications.Notificati
 		} else {
 			// Log a success message if the movie was added successfully
 			log.Infof("[ombi-job] Movie requested successfully: %s", movie.Title)
+
+			// Get movie poster
+			media, err := helpers.OMDb.GetMedia(context.Background(), movie.IDs.IMDB)
+			if err != nil {
+				log.Errorf("[radarr-job] Failed to get movie poster for %s: %v", movie.Title, err)
+				continue
+			}
+
+			// Add movie to recently added
+			err = gctx.Crate().SQL.Queries().AddToRecentlyAddedMedia(
+				context.Background(),
+				"MOVIE",
+				media.Title,
+				movie.Year,
+				media.Plot,
+				media.IMDBID,
+				media.Poster,
+			)
+			if err != nil {
+				log.Errorf("[radarr-job] Failed to add movie %s to recently added: %v", movie.Title, err)
+				continue
+			}
+
 			// Send notification that movie was added
 			moviePayload, err := json.Marshal(movie)
 			if err != nil {
