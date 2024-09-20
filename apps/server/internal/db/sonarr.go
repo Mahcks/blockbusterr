@@ -47,6 +47,35 @@ func (q *Queries) GetSonarrSettings(ctx context.Context) (SonarrSettings, error)
 	return settings, nil
 }
 
+func (q *Queries) UpdateSonarrSettings(ctx context.Context, apiKey, url, language string, quality, rootFolder int32, seasonFolder bool) error {
+	query := `
+		UPDATE sonarr
+		SET api_key = $1, url = $2, language = $3, quality = $4, root_folder = $5, season_folder = $6
+		WHERE id = 1;
+	`
+
+	_, err := q.db.ExecContext(ctx, query, apiKey, url, language, quality, rootFolder, seasonFolder)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (q *Queries) CreateSonarrSettings(ctx context.Context, apiKey, url, language string, quality, rootFolder int32, seasonFolder bool) error {
+	query := `
+		INSERT INTO sonarr (api_key, url, language, quality, root_folder, season_folder)
+		VALUES ($1, $2, $3, $4, $5, $6);
+	`
+
+	_, err := q.db.ExecContext(ctx, query, apiKey, url, language, quality, rootFolder, seasonFolder)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (q *Queries) GetShowInterval(ctx context.Context) (sql.NullInt32, error) {
 	var interval sql.NullInt32
 

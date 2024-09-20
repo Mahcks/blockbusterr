@@ -46,3 +46,13 @@ func (q *Queries) UpdateTraktSettings(ctx context.Context, clientID, clientSecre
 
 	return nil
 }
+
+func (q *Queries) CreateTraktSettings(ctx context.Context, clientID, clientSecret string) error {
+	query := `INSERT INTO trakt (client_id, client_secret) VALUES ($1, $2)`
+	_, err := q.db.ExecContext(ctx, query, clientID, clientSecret)
+	if err != nil {
+		return fmt.Errorf("error creating trakt settings: %v", err)
+	}
+
+	return nil
+}

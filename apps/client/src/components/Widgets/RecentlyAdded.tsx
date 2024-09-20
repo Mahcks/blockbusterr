@@ -13,10 +13,10 @@ export default function MoviePosterCarousel() {
   const [items, setItems] = React.useState<RecentlyAddedMedia[]>([]);
   const [page, setPage] = React.useState(1);
   const [loading, setLoading] = React.useState<boolean>(true);
-  const [hasMore, setHasMore] = React.useState<boolean>(true); // To track if there's more data
+  const [hasMore, setHasMore] = React.useState<boolean>(true);
 
   const observer = React.useRef<IntersectionObserver | null>(null);
-  const pageSize = 10; // Define the page size
+  const pageSize = 10;
 
   // Function to fetch recently added media with pagination
   const fetchRecentlyAddedMedia = async (page: number) => {
@@ -55,7 +55,7 @@ export default function MoviePosterCarousel() {
   // Callback function for the IntersectionObserver
   const lastMediaElementRef = React.useCallback(
     (node: HTMLDivElement | null) => {
-      if (loading || !hasMore || !node) return; // Prevent observing if still loading, no more items, or node is null
+      if (loading || !hasMore || !node) return;
       if (observer.current) observer.current.disconnect();
       observer.current = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && hasMore) {
@@ -67,8 +67,18 @@ export default function MoviePosterCarousel() {
     [loading, hasMore]
   );
 
+  // If still loading and no items have been fetched yet
   if (loading && items.length === 0) {
     return <div>Loading...</div>;
+  }
+
+  // If loading is complete and no items are available
+  if (!loading && items.length === 0) {
+    return (
+      <div className="text-center text-gray-500 mt-8">
+        No recently added media... check back later!
+      </div>
+    ); // Display an alternative content
   }
 
   return (
@@ -88,7 +98,7 @@ export default function MoviePosterCarousel() {
               return (
                 <CarouselItem
                   key={item.id}
-                  ref={hasMore ? lastMediaElementRef : null} // Attach ref only if there are more items to load
+                  ref={hasMore ? lastMediaElementRef : null}
                   className="pl-1 md:pl-4 xs:basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6"
                 >
                   <div className="relative w-[160px] h-[250px] aspect-w-2 aspect-h-3 overflow-hidden rounded-md group">

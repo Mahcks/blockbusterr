@@ -41,6 +41,8 @@ func New(gctx global.Context, hub *ws.Hub, helpers *helpers.Helpers, scheduler *
 	router.Delete("/settings", ctx(settings.DeleteSetting))
 	router.Put("/settings", ctx(settings.PutSetting))
 
+	router.Post("/settings/setup", ctx(settings.PostSettingSetup))
+
 	movies := movies.NewRouteGroup(gctx, helpers)
 	router.Get("/movie/settings", ctx(movies.GetMovieSettings))
 
