@@ -42,3 +42,14 @@ func (q *Queries) UpdateOMDbSettings(ctx context.Context, apiKey string) error {
 
 	return nil
 }
+
+func (q *Queries) CreateOMDbSettings(ctx context.Context, apiKey string) error {
+	query := `INSERT INTO omdb (api_key) VALUES ($1)`
+
+	_, err := q.db.ExecContext(ctx, query, apiKey)
+	if err != nil {
+		return fmt.Errorf("error creating trakt settings: %v", err)
+	}
+
+	return nil
+}

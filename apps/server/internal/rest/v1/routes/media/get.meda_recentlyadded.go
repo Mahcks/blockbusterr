@@ -31,14 +31,14 @@ func (rg *RouteGroup) GetMediaRecentlyAdded(ctx *respond.Ctx) error {
 
 	for _, recentlyAddedMedia := range recentlyAdded {
 		media = append(media, structures.RecentlyAddedMedia{
-			ID:      recentlyAddedMedia.ID,
-			Title:   recentlyAddedMedia.Title,
-			Type:    recentlyAddedMedia.Type,
-			Summary: recentlyAddedMedia.Summary,
-			IMDBID:  recentlyAddedMedia.IMDBID,
-			Year:    recentlyAddedMedia.Year,
-			Poster:  recentlyAddedMedia.Poster,
-			AddedAt: recentlyAddedMedia.AddedAt,
+			ID:        recentlyAddedMedia.ID,
+			Title:     recentlyAddedMedia.Title,
+			MediaType: recentlyAddedMedia.MediaType,
+			Summary:   recentlyAddedMedia.Summary,
+			IMDBID:    recentlyAddedMedia.IMDBID,
+			Year:      recentlyAddedMedia.Year,
+			Poster:    recentlyAddedMedia.Poster,
+			AddedAt:   recentlyAddedMedia.AddedAt,
 		})
 	}
 

@@ -45,6 +45,13 @@ func (rg *RouteGroup) PostSettingSetup(ctx *respond.Ctx) error {
 		return errors.ErrInternalServerError().SetDetail("Failed to insert Trakt settings")
 	}
 
+	// Insert OMDb API key
+	err = rg.gctx.Crate().SQL.Queries().CreateOMDbSettings(ctx.Context(), payload.OMDbAPIKey)
+	if err != nil {
+		log.Error("error creating OMDb settings", "error", err)
+		return errors.ErrInternalServerError().SetDetail("Failed to insert OMDb settings")
+	}
+
 	switch payload.SelectedMode {
 	case "ombi":
 		fmt.Println("OMBI SELECTED")

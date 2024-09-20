@@ -1,6 +1,6 @@
 export interface RecentlyAddedMedia {
     id: number;
-    type: string;
+    media_type: string;
     title: string;
     year: number;
     summary: string;

@@ -124,11 +124,11 @@ VALUES
         10,
         '0 0 * * 1',
         10,
-        '0 0 * * *',
+        '0 * * * *',
         5,
-        '0 0 * * *',
+        '0 * * * *',
         5,
-        '0 0 * * *',
+        '0 * * * *',
         180,
         30,
         0,
@@ -250,9 +250,9 @@ VALUES
         10,
         '0 0 * * 1',
         10,
-        '0 0 * * *',
+        '0 * * * *',
         5,
-        '0 0 * * *',
+        '0 * * * *',
         180,
         30,
         0,
@@ -377,15 +377,15 @@ INSERT INTO
 VALUES
     ('discord', 0, '');
 
-CREATE TABLE IF NOT EXISTS omdb (
+CREATE TABLE `omdb` (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
     `api_key` TEXT
 );
 
 -- Table to keep track of recently added media
-CREATE TABLE IF NOT EXISTS recently_added (
+CREATE TABLE `recently_added` (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
-    `type` TEXT CHECK(type IN ('MOVIE', 'SHOW')),
+    `media_type` TEXT CHECK(media_type IN ('MOVIE', 'SHOW')),
     `title` TEXT NOT NULL,
     `year` INTEGER NOT NULL,
     `summary` TEXT NOT NULL,

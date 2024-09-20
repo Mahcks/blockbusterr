@@ -9,21 +9,21 @@ import (
 )
 
 type RecentlyAddedMedia struct {
-	ID      int       `db:"id"`       // Primary key with auto-increment
-	Type    string    `db:"type"`     // Type of media (MOVIE, SHOW)
-	Title   string    `db:"title"`    // Title of the media
-	Year    int       `db:"year"`     // Year the media was released
-	Summary string    `db:"summary"`  // Summary of the media
-	IMDBID  string    `db:"imdb_id"`  // IMDb ID of the media
-	Poster  string    `db:"poster"`   // URL to the poster of the media
-	AddedAt time.Time `db:"added_at"` // Time the media was added
+	ID        int       `db:"id"`         // Primary key with auto-increment
+	MediaType string    `db:"media_type"` // Type of media (MOVIE, SHOW)
+	Title     string    `db:"title"`      // Title of the media
+	Year      int       `db:"year"`       // Year the media was released
+	Summary   string    `db:"summary"`    // Summary of the media
+	IMDBID    string    `db:"imdb_id"`    // IMDb ID of the media
+	Poster    string    `db:"poster"`     // URL to the poster of the media
+	AddedAt   time.Time `db:"added_at"`   // Time the media was added
 }
 
 func (q *Queries) GetRecentlyAddedMedia(ctx context.Context, limit, offset int) ([]RecentlyAddedMedia, error) {
 	var recentlyAddedList []RecentlyAddedMedia
 
 	query := `
-		SELECT id, type, title, year, summary, imdb_id, poster, added_at
+		SELECT id, media_type, title, year, summary, imdb_id, poster, added_at
 		FROM recently_added
 		ORDER BY added_at DESC
 		LIMIT $1 OFFSET $2;
@@ -39,7 +39,7 @@ func (q *Queries) GetRecentlyAddedMedia(ctx context.Context, limit, offset int) 
 		var recentlyAdded RecentlyAddedMedia
 		err := rows.Scan(
 			&recentlyAdded.ID,
-			&recentlyAdded.Type,
+			&recentlyAdded.MediaType,
 			&recentlyAdded.Title,
 			&recentlyAdded.Year,
 			&recentlyAdded.Summary,
@@ -65,7 +65,7 @@ func (q *Queries) GetRecentlyAddedMedia(ctx context.Context, limit, offset int) 
 
 func (q *Queries) AddToRecentlyAddedMedia(ctx context.Context, mediaType string, title string, year int, summary string, imdbID string, poster string) error {
 	query := `
-		INSERT INTO recently_added (type, title, year, summary, imdb_id, poster)
+		INSERT INTO recently_added (media_type, title, year, summary, imdb_id, poster)
 		VALUES (?, ?, ?, ?, ?, ?);
 	`
 

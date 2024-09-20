@@ -34,70 +34,50 @@ func Setup(gctx global.Context, helpers helpers.Helpers, notifications *notifica
 	// Setup individual cron jobs for each movie list
 	movieSettings, err := gctx.Crate().SQL.Queries().GetMovieSettings(gctx)
 	if err != nil {
-		log.Error("[scheduler] Failed to get movie settings from database", "error", err)
+		log.Error("[Scheduler] Failed to retrieve movie settings from the database. Please check your database connection and try again.", "error", err)
 		return nil
 	}
 
-	// Ping Trakt API once and store the result
-	err = helpers.Trakt.Ping(gctx)
-	pingSuccessful := true
-	if err != nil {
-		pingSuccessful = false
-	}
-
-	// Schedule each list job with its cron expression, but the jobs themselves check ping status
+	// Schedule each list job with its cron expression
 	if movieSettings.CronAnticipated.Valid {
-		svc.scheduleMovieJob(movieSettings.CronAnticipated.String, func() {
-			svc.AnticipatedJobFunc(pingSuccessful)
-		}, "movie-anticipated")
+		svc.scheduleMovieJob(movieSettings.CronAnticipated.String, svc.AnticipatedJobFunc, "movie-anticipated")
 	}
 
 	if movieSettings.CronBoxOffice.Valid {
-		svc.scheduleMovieJob(movieSettings.CronBoxOffice.String, func() {
-			svc.BoxOfficeJobFunc(pingSuccessful)
-		}, "movie-box_office")
+		svc.scheduleMovieJob(movieSettings.CronBoxOffice.String, svc.BoxOfficeJobFunc, "movie-box_office")
 	}
 
 	if movieSettings.CronPopular.Valid {
-		svc.scheduleMovieJob(movieSettings.CronPopular.String, func() {
-			svc.PopularJobFunc(pingSuccessful)
-		}, "movie-popular")
+		svc.scheduleMovieJob(movieSettings.CronPopular.String, svc.PopularJobFunc, "movie-popular")
 	}
 
 	if movieSettings.CronTrending.Valid {
-		svc.scheduleMovieJob(movieSettings.CronTrending.String, func() {
-			svc.TrendingJobFunc(pingSuccessful)
-		}, "movie-trending")
+		svc.scheduleMovieJob(movieSettings.CronTrending.String, svc.TrendingJobFunc, "movie-trending")
 	}
 
 	// Setup individual cron jobs for each show list
 	showSettings, err := gctx.Crate().SQL.Queries().GetShowSettings(gctx)
 	if err != nil {
-		log.Error("[scheduler] Failed to get show settings from database", "error", err)
+		log.Error("[Scheduler] Failed to retrieve show settings from the database. Please check your database connection and try again.", "error", err)
 		return nil
 	}
 
 	// Schedule each show list job with its cron expression
 	if showSettings.CronJobAnticipated.Valid {
-		svc.scheduleShowJob(showSettings.CronJobAnticipated.String, func() {
-			svc.AnticipatedShowJobFunc(pingSuccessful)
-		}, "show-anticipated")
+		svc.scheduleShowJob(showSettings.CronJobAnticipated.String, svc.AnticipatedShowJobFunc, "show-anticipated")
 	}
 
 	if showSettings.CronJobPopular.Valid {
-		svc.scheduleShowJob(showSettings.CronJobPopular.String, func() {
-			svc.PopularShowJobFunc(pingSuccessful)
-		}, "show-popular")
+		svc.scheduleShowJob(showSettings.CronJobPopular.String, svc.PopularShowJobFunc, "show-popular")
 	}
 
 	if showSettings.CronJobTrending.Valid {
-		svc.scheduleShowJob(showSettings.CronJobTrending.String, func() {
-			svc.TrendingShowJobFunc(pingSuccessful)
-		}, "show-trending")
+		svc.scheduleShowJob(showSettings.CronJobTrending.String, svc.TrendingShowJobFunc, "show-trending")
 	}
 
 	// Start the scheduler
 	svc.cron.Start()
+	log.Info("[Scheduler] Scheduler started successfully.")
 
 	return svc
 }
@@ -107,20 +87,20 @@ func (s *Scheduler) scheduleMovieJob(cronExpr string, jobFunc func(), listType s
 	// If a job is already scheduled, stop it first
 	if jobID, exists := s.movieJobIDs[listType]; exists {
 		s.cron.Remove(jobID)
+		log.Infof("[Scheduler] Existing %s movie job stopped.", listType)
 	}
 
 	// Schedule the new job
 	jobID, err := s.cron.AddFunc(cronExpr, jobFunc)
 	if err != nil {
-		log.Error("[scheduler] Failed to schedule movie job", "listType", listType, "cronExpr", cronExpr, "error", err)
+		log.Error("[Scheduler] Could not schedule %s movie job. Please check cron expression %s and verify your settings.", listType, cronExpr, "error", err)
 		return
 	}
 
 	s.movieJobIDs[listType] = jobID
-	log.Infof("[scheduler] %s movie job scheduled with cron expression: %s", listType, cronExpr)
+	log.Infof("[Scheduler] Successfully scheduled %s movie job with cron expression: %s.", listType, cronExpr)
 
 	// Run the job immediately once after scheduling
-	// log.Infof("[scheduler] Running %s show movie immediately", listType)
 	s.RunJobOnDemand(listType, true)
 }
 
@@ -129,20 +109,20 @@ func (s *Scheduler) scheduleShowJob(cronExpr string, jobFunc func(), listType st
 	// If a job is already scheduled, stop it first
 	if jobID, exists := s.showJobIDs[listType]; exists {
 		s.cron.Remove(jobID)
+		log.Infof("[Scheduler] Existing %s show job stopped.", listType)
 	}
 
 	// Schedule the new job
 	jobID, err := s.cron.AddFunc(cronExpr, jobFunc)
 	if err != nil {
-		log.Error("[scheduler] Failed to schedule show job", "listType", listType, "cronExpr", cronExpr, "error", err)
+		log.Error("[Scheduler] Could not schedule %s show job. Please check cron expression %s and verify your settings.", listType, cronExpr, "error", err)
 		return
 	}
 
 	s.showJobIDs[listType] = jobID
-	log.Infof("[scheduler] %s show job scheduled with cron expression: %s", listType, cronExpr)
+	log.Infof("[Scheduler] Successfully scheduled %s show job with cron expression: %s.", listType, cronExpr)
 
 	// Run the job immediately once after scheduling
-	// log.Infof("[scheduler] Running %s show job immediately", listType)
 	s.RunJobOnDemand(listType, false)
 }
 
@@ -151,12 +131,16 @@ func (s *Scheduler) StopJob(listType string, isMovie bool) {
 	if isMovie {
 		if jobID, exists := s.movieJobIDs[listType]; exists {
 			s.cron.Remove(jobID)
-			log.Infof("[scheduler] %s movie job stopped successfully", listType)
+			log.Infof("[Scheduler] Successfully stopped %s movie job.", listType)
+		} else {
+			log.Warnf("[Scheduler] No %s movie job found to stop.", listType)
 		}
 	} else {
 		if jobID, exists := s.showJobIDs[listType]; exists {
 			s.cron.Remove(jobID)
-			log.Infof("[scheduler] %s show job stopped successfully", listType)
+			log.Infof("[Scheduler] Successfully stopped %s show job.", listType)
+		} else {
+			log.Warnf("[Scheduler] No %s show job found to stop.", listType)
 		}
 	}
 }
@@ -202,17 +186,17 @@ func (s *Scheduler) GetJobStatus() []JobStatus {
 func (s *Scheduler) RunJobOnDemand(listType string, isMovie bool) error {
 	if isMovie {
 		if jobID, exists := s.movieJobIDs[listType]; exists {
-			log.Infof("[scheduler] Running %s movie job on demand", listType)
+			log.Infof("[Scheduler] Manually triggered %s movie job.", listType)
 			s.cron.Entry(jobID).Job.Run()
 			return nil
 		}
-		return fmt.Errorf("no movie job found for %s", listType)
+		return fmt.Errorf("[Scheduler] No movie job found for %s", listType)
 	} else {
 		if jobID, exists := s.showJobIDs[listType]; exists {
-			log.Infof("[scheduler] Running %s show job on demand", listType)
+			log.Infof("[Scheduler] Manually triggered %s show job.", listType)
 			s.cron.Entry(jobID).Job.Run()
 			return nil
 		}
-		return fmt.Errorf("no show job found for %s", listType)
+		return fmt.Errorf("[Scheduler] No show job found for %s", listType)
 	}
 }
