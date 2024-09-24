@@ -26,20 +26,35 @@ import {
   RadarrRootFolder,
   RadarrSettings,
 } from "@/types/radarr";
+import cronValidator from "cron-validate";
 
 import { MovieSettings } from "@/types/movies";
+import FormCronJobField from "@/components/FormCronJobField";
+
+const cronExpressionSchema = z.string().refine(
+  (value) => {
+    const result = cronValidator(value, { preset: "default" });
+    return result.isValid();
+  },
+  {
+    message: "Invalid cron expression",
+  }
+);
 
 // Validation schema
 const movieFormSchema = z.object({
-  interval: z.number(),
   anticipated: z.number(),
+  cron_job_anticipated: cronExpressionSchema,
   box_office: z.number(),
+  cron_job_box_office: cronExpressionSchema,
   popular: z.number(),
+  cron_job_popular: cronExpressionSchema,
   trending: z.number(),
-  min_runtime: z.number(),
-  max_runtime: z.number(),
-  min_year: z.number(),
-  max_year: z.number(),
+  cron_job_trending: cronExpressionSchema,
+  min_runtime: z.number().optional(),
+  max_runtime: z.number().optional(),
+  min_year: z.number().optional(),
+  max_year: z.number().optional(),
   allowed_countries: z.string(),
   allowed_languages: z.string(),
   blacklisted_genres: z.string(),
@@ -49,7 +64,7 @@ const movieFormSchema = z.object({
   // Radarr-specific fields
   api_key: z.string(),
   url: z.string(),
-  root_folder: z.string().optional(), // These are optional to avoid validation issues for Ombi
+  root_folder: z.string().optional(),
   quality_profile: z.string().optional(),
   minimum_availability: z
     .enum(["announced", "inCinemas", "released"])
@@ -139,14 +154,60 @@ export default function Radarr() {
         url: radarrSettings.base_url ?? "",
         root_folder: radarrSettings.root_folder?.toString() ?? "",
         quality_profile: radarrSettings.quality?.toString() ?? "",
-        minimum_availability: radarrSettings.minimum_availability as "announced" | "inCinemas" | "released" | undefined,
+        minimum_availability: radarrSettings.minimum_availability as
+          | "announced"
+          | "inCinemas"
+          | "released"
+          | undefined,
       };
       reset(transformedDefaultValues); // Reset the form with fetched values
     }
   }, [movieSettings, radarrSettings, reset]);
 
-  const onSubmitMovie = (values: z.infer<typeof movieFormSchema>) => {
-    console.log("Movie Settings:", values);
+  const onSubmitMovie = async (values: z.infer<typeof movieFormSchema>) => {
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}/movie/settings`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          anticipated: values.anticipated,
+          cron_job_anticipated: values.cron_job_anticipated,
+          box_office: values.box_office,
+          cron_job_box_office: values.cron_job_box_office,
+          popular: values.popular,
+          cron_job_popular: values.cron_job_popular,
+          trending: values.trending,
+          cron_job_trending: values.cron_job_trending,
+          min_runtime: values.min_runtime,
+          max_runtime: values.max_runtime,
+          min_year: values.min_year,
+          max_year: values.max_year,
+          allowed_countries: values.allowed_countries,
+          allowed_languages: values.allowed_languages,
+          blacklisted_genres: values.blacklisted_genres,
+          blacklisted_title_keywords: values.blacklisted_title_keywords,
+          blacklisted_tmdb_ids: values.blacklisted_tmdb_ids,
+        }),
+      });
+
+      await fetch(`${import.meta.env.VITE_API_URL}/radarr/settings`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          api_key: values.api_key,
+          base_url: values.url,
+          minimum_availability: values.minimum_availability,
+          quality_profile: Number(values.quality_profile),
+          root_folder: Number(values.root_folder),
+        }),
+      });
+    } catch (error) {
+      console.error("Error saving movie settings:", error);
+    }
   };
 
   if (loading) {
@@ -271,15 +332,6 @@ export default function Radarr() {
 
             <Separator />
 
-            <FormInputField
-              form={movieForm}
-              name="interval"
-              label="Interval (hours)"
-              placeholder="Enter interval"
-              description="Set the interval for pulling movies from all lists. (Setting this to zero will skip this job.)"
-              isNumber
-            />
-
             <div className="grid grid-cols-2 gap-4">
               <FormInputField
                 form={movieForm}
@@ -289,6 +341,14 @@ export default function Radarr() {
                 description="The number of movies to pull from the Trakt anticipated list."
                 isNumber
               />
+              <FormCronJobField
+                form={movieForm}
+                name="cron_job_anticipated"
+                label="Cron Job Anticipated"
+                placeholder="0 0 * * *"
+                description="Schedule for fetching anticipated movies."
+              />
+
               <FormInputField
                 form={movieForm}
                 name="box_office"
@@ -297,6 +357,14 @@ export default function Radarr() {
                 description="The number of movies to pull from the Trakt box office list."
                 isNumber
               />
+              <FormCronJobField
+                form={movieForm}
+                name="cron_job_box_office"
+                label="Cron Job Box Office"
+                placeholder="0 0 * * *"
+                description="The cron job schedule for fetching box office movies."
+              />
+
               <FormInputField
                 form={movieForm}
                 name="popular"
@@ -305,6 +373,14 @@ export default function Radarr() {
                 description="The number of movies to pull from the Trakt popular list."
                 isNumber
               />
+              <FormCronJobField
+                form={movieForm}
+                name="cron_job_popular"
+                label="Cron Job Popular"
+                placeholder="0 0 * * *"
+                description="The cron job schedule for fetching popular movies."
+              />
+
               <FormInputField
                 form={movieForm}
                 name="trending"
@@ -312,6 +388,13 @@ export default function Radarr() {
                 placeholder="Enter # of trending movies"
                 description="The number of movies to pull from the Trakt trending list."
                 isNumber
+              />
+              <FormCronJobField
+                form={movieForm}
+                name="cron_job_trending"
+                label="Cron Job Trending"
+                placeholder="0 0 * * *"
+                description="The cron job schedule for fetching trending movies."
               />
             </div>
 

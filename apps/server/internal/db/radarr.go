@@ -44,7 +44,7 @@ func (q *Queries) GetRadarrSettings(ctx context.Context) (RadarrSettings, error)
 	return settings, nil
 }
 
-func (q *Queries) UpdateRadarrSettings(ctx context.Context, apiKey, url, minimumAvailability string, quality, rootFolder int32) error {
+func (q *Queries) UpdateRadarrSettings(ctx context.Context, apiKey, url, minimumAvailability sql.NullString, quality, rootFolder sql.NullInt32) error {
 	query := `
 		UPDATE radarr
 		SET api_key = $1, url = $2, minimum_availability = $3, quality = $4, root_folder = $5

@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/respond"
 	"github.com/mahcks/blockbusterr/pkg/errors"
+	"github.com/mahcks/blockbusterr/pkg/utils"
 )
 
 type SetupSettings struct {
@@ -69,11 +70,11 @@ func (rg *RouteGroup) PostSettingSetup(ctx *respond.Ctx) error {
 
 		err = rg.gctx.Crate().SQL.Queries().UpdateRadarrSettings(
 			ctx.Context(),
-			payload.RadarrAPIKey,
-			payload.RadarrBaseURL,
-			"announced",
-			int32(convertedRadarrQualityProfile),
-			int32(convertedRadarrRootFolder),
+			utils.StringToNullString(payload.RadarrAPIKey),
+			utils.StringToNullString(payload.RadarrBaseURL),
+			utils.StringToNullString("announced"),
+			utils.Int32ToNullInt32(int32(convertedRadarrQualityProfile)),
+			utils.Int32ToNullInt32(int32(convertedRadarrRootFolder)),
 		)
 		if err != nil {
 			log.Error("error updating Radarr settings", "error", err)
@@ -105,8 +106,7 @@ func (rg *RouteGroup) PostSettingSetup(ctx *respond.Ctx) error {
 			return errors.ErrInternalServerError().SetDetail("Failed to update Sonarr settings")
 		}
 
-		fmt.Println("RADARR-SONARR SELECTED")
 	}
 
-	return ctx.JSON(fiber.Map{"message": "Setting inserted/updated"})
+	return ctx.JSON(fiber.Map{"success": true})
 }

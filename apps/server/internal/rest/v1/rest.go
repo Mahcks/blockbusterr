@@ -45,12 +45,14 @@ func New(gctx global.Context, hub *ws.Hub, helpers *helpers.Helpers, scheduler *
 
 	movies := movies.NewRouteGroup(gctx, helpers)
 	router.Get("/movie/settings", ctx(movies.GetMovieSettings))
+	router.Put("/movie/settings", ctx(movies.UpdateMovieSettings))
 
 	shows := shows.NewRouteGroup(gctx, helpers)
 	router.Get("/show/settings", ctx(shows.GetShowSettings))
 
 	radarr := radarr.NewRouteGroup(gctx, helpers)
 	router.Get("/radarr/settings", ctx(radarr.GetRadarrSettings))
+	router.Put("/radarr/settings", ctx(radarr.UpdateRadarrSettings))
 	router.Get("/radarr/profiles", ctx(radarr.GetRadarrProfiles))
 	router.Get("/radarr/rootfolders", ctx(radarr.GetRadarrRootFolders))
 

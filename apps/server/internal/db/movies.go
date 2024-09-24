@@ -210,6 +210,31 @@ func (q *Queries) GetMovieSettings(ctx context.Context) (MovieSettings, error) {
 	return settings, nil
 }
 
+func (q *Queries) UpdateMovieSettings(ctx context.Context, anticipated, boxOffice, popular, trending, maxRuntime, minRuntime, minYear, maxYear sql.NullInt32, rottenTomatoes sql.NullString, cronAnticipated, cronBoxOffice, cronPopular, cronTrending sql.NullString) error {
+	tx, err := q.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, `
+		UPDATE movie_settings
+		SET anticipated = $1, box_office = $2, popular = $3, trending = $4,
+		    max_runtime = $5, min_runtime = $6, min_year = $7, max_year = $8, rotten_tomatoes = $9,
+		    cron_job_anticipated = $10, cron_job_box_office = $11, cron_job_popular = $12, cron_job_trending = $13
+		WHERE id = 1;
+	`, anticipated, boxOffice, popular, trending, maxRuntime, minRuntime, minYear, maxYear, rottenTomatoes, cronAnticipated, cronBoxOffice, cronPopular, cronTrending)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (q *Queries) GetMovieInterval(ctx context.Context) (sql.NullInt32, error) {
 	var interval sql.NullInt32
 

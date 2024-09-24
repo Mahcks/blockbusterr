@@ -92,3 +92,71 @@ func NullBoolToPointer(nb sql.NullBool) *bool {
 	}
 	return nil
 }
+
+// Utility function to convert *int to sql.NullInt32
+func PointerToNullInt32(ptr *int) sql.NullInt32 {
+	if ptr != nil {
+		return sql.NullInt32{
+			Int32: int32(*ptr),
+			Valid: true,
+		}
+	}
+	return sql.NullInt32{
+		Int32: 0,
+		Valid: false,
+	}
+}
+
+func Int32ToNullInt32(i int32) sql.NullInt32 {
+	if i != 0 {
+		return sql.NullInt32{
+			Int32: i,
+			Valid: true,
+		}
+	}
+	return sql.NullInt32{
+		Int32: 0,
+		Valid: false,
+	}
+}
+
+// Utility function to convert *string to sql.NullString
+func PointerToNullString(ptr *string) sql.NullString {
+	if ptr != nil {
+		return sql.NullString{
+			String: *ptr,
+			Valid:  true,
+		}
+	}
+	return sql.NullString{
+		String: "",
+		Valid:  false,
+	}
+}
+
+func StringToNullString(str string) sql.NullString {
+	if str != "" {
+		return sql.NullString{
+			String: str,
+			Valid:  true,
+		}
+	}
+	return sql.NullString{
+		String: "",
+		Valid:  false,
+	}
+}
+
+// Utility function to convert *bool to sql.NullBool
+func PointerToNullBool(ptr *bool) sql.NullBool {
+	if ptr != nil {
+		return sql.NullBool{
+			Bool:  *ptr,
+			Valid: true,
+		}
+	}
+	return sql.NullBool{
+		Bool:  false,
+		Valid: false,
+	}
+}
