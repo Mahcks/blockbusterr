@@ -5,7 +5,7 @@ import { Responsive, WidthProvider } from "react-grid-layout";
 import JobStatusWidget from "@/components/Widgets/JobStatus";
 import RecentlyAddedWidget from "@/components/Widgets/RecentlyAdded";
 import { GripVertical } from "lucide-react";
-import LogWidget from "@/components/Widgets/LogWidget";
+import LogWidget from "@/components/Widgets/LogWidget/LogWidget";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 const initialLayouts = {
@@ -39,14 +39,19 @@ function Root() {
       {initialLayouts.lg.map((layout) => {
         const { component: Component, title } = widgetComponents[layout.i]; // Get component and title
         return (
-          <div key={layout.i} className="bg-[hsl(var(--secondary))] rounded-md p-2 h-full overflow-hidden">
+          <div
+            key={layout.i}
+            className="bg-[hsl(var(--primary-foreground))] rounded-md p-2 h-full flex flex-col overflow-hidden"
+          >
             <div className="flex items-center mb-2">
               <GripVertical className="drag-handle cursor-move mr-2 align-middle" />
               <h2 className="text-white text-base font-bold mt-[0.2 rem] align-middle">
                 {title}
               </h2>
             </div>
-            <Component />
+            <div className="flex-1 overflow-hidden">
+              <Component />
+            </div>
           </div>
         );
       })}

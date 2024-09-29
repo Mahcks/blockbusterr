@@ -36,6 +36,7 @@ func (s Scheduler) AnticipatedJobFunc() {
 	err := s.helpers.Trakt.Ping(context.Background())
 	if err != nil {
 		log.Warn("[Scheduler] Skipping 'Anticipated Movies' job. Trakt credentials are missing.")
+		s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelWarn, "Scheduler", "Skipping 'Anticipated Movies' job. Trakt credentials are missing.")
 		return
 	}
 
@@ -62,6 +63,7 @@ func (s Scheduler) AnticipatedJobFunc() {
 		if err != nil {
 			if errors.Is(err, trakt.ErrNoTraktSettings) {
 				log.Warn("[Scheduler] 'Anticipated Movies' job could not be completed. Trakt Client ID is not set.")
+				s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelWarn, "Scheduler", "'Anticipated Movies' job could not be completed. Trakt Client ID is not set.")
 				return
 			} else {
 				log.Error("[Scheduler] Error fetching 'Anticipated Movies' from Trakt.", "error", err)
@@ -75,6 +77,7 @@ func (s Scheduler) AnticipatedJobFunc() {
 	}
 
 	log.Infof("[Scheduler] Completed 'Anticipated Movies' job in %.2f seconds.", time.Since(startTime).Seconds())
+	s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelInfo, "Scheduler", fmt.Sprintf("Completed 'Anticipated Movies' job in %.2f seconds.", time.Since(startTime).Seconds()))
 }
 
 // BoxOfficeJobFunc fetches and processes box office movies
@@ -82,6 +85,7 @@ func (s Scheduler) BoxOfficeJobFunc() {
 	err := s.helpers.Trakt.Ping(context.Background())
 	if err != nil {
 		log.Warn("[Scheduler] Skipping 'Box Office Movies' job. Trakt credentials are missing.")
+		s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelWarn, "Scheduler", "Skipping 'Box Office Movies' job. Trakt credentials are missing.")
 		return
 	}
 
@@ -94,6 +98,7 @@ func (s Scheduler) BoxOfficeJobFunc() {
 	// Initialize movie settings
 	if err := s.initializeMovieJob(&mj); err != nil {
 		log.Error("[Scheduler] Failed to initialize 'Box Office Movies' job. Check your settings and try again.", "error", err)
+		s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelError, "Scheduler", "Failed to initialize 'Box Office Movies' job. Check your settings and try again.")
 		return
 	}
 
@@ -104,9 +109,11 @@ func (s Scheduler) BoxOfficeJobFunc() {
 		if err != nil {
 			if errors.Is(err, trakt.ErrNoTraktSettings) {
 				log.Warn("[Scheduler] 'Box Office Movies' job could not be completed. Trakt Client ID is not set.")
+				s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelWarn, "Scheduler", "'Box Office Movies' job could not be completed. Trakt Client ID is not set.")
 				return
 			} else {
 				log.Error("[Scheduler] Error fetching 'Box Office Movies' from Trakt.", "error", err)
+				s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelError, "Scheduler", "Error fetching 'Box Office Movies' from Trakt.")
 				return
 			}
 		}
@@ -117,6 +124,7 @@ func (s Scheduler) BoxOfficeJobFunc() {
 	}
 
 	log.Infof("[Scheduler] Completed 'Box Office Movies' job in %.2f seconds.", time.Since(startTime).Seconds())
+	s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelInfo, "Scheduler", fmt.Sprintf("Completed 'Box Office Movies' job in %.2f seconds.", time.Since(startTime).Seconds()))
 }
 
 // PopularJobFunc fetches and processes popular movies
@@ -124,6 +132,7 @@ func (s Scheduler) PopularJobFunc() {
 	err := s.helpers.Trakt.Ping(context.Background())
 	if err != nil {
 		log.Warn("[Scheduler] Skipping 'Popular Movies' job. Trakt credentials are missing.")
+		s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelWarn, "Scheduler", "Skipping 'Popular Movies' job. Trakt credentials are missing.")
 		return
 	}
 
@@ -136,6 +145,7 @@ func (s Scheduler) PopularJobFunc() {
 	// Initialize movie settings
 	if err := s.initializeMovieJob(&mj); err != nil {
 		log.Error("[Scheduler] Failed to initialize 'Popular Movies' job. Check your settings and try again.", "error", err)
+		s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelError, "Scheduler", "Failed to initialize 'Popular Movies' job. Check your settings and try again.")
 		return
 	}
 
@@ -146,9 +156,11 @@ func (s Scheduler) PopularJobFunc() {
 		if err != nil {
 			if errors.Is(err, trakt.ErrNoTraktSettings) {
 				log.Warn("[Scheduler] 'Popular Movies' job could not be completed. Trakt Client ID is not set.")
+				s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelWarn, "Scheduler", "'Popular Movies' job could not be completed. Trakt Client ID is not set.")
 				return
 			} else {
 				log.Error("[Scheduler] Error fetching 'Popular Movies' from Trakt.", "error", err)
+				s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelError, "Scheduler", "Error fetching 'Popular Movies' from Trakt.")
 				return
 			}
 		}
@@ -159,6 +171,7 @@ func (s Scheduler) PopularJobFunc() {
 	}
 
 	log.Infof("[Scheduler] Completed 'Popular Movies' job in %.2f seconds.", time.Since(startTime).Seconds())
+	s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelInfo, "Scheduler", fmt.Sprintf("Completed 'Popular Movies' job in %.2f seconds.", time.Since(startTime).Seconds()))
 }
 
 // TrendingJobFunc fetches and processes trending movies
@@ -166,6 +179,7 @@ func (s Scheduler) TrendingJobFunc() {
 	err := s.helpers.Trakt.Ping(context.Background())
 	if err != nil {
 		log.Warn("[Scheduler] Skipping 'Trending Movies' job. Trakt credentials are missing.")
+		s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelWarn, "Scheduler", "Skipping 'Trending Movies' job. Trakt credentials are missing.")
 		return
 	}
 
@@ -178,6 +192,7 @@ func (s Scheduler) TrendingJobFunc() {
 	// Initialize movie settings
 	if err := s.initializeMovieJob(&mj); err != nil {
 		log.Error("[Scheduler] Failed to initialize 'Trending Movies' job. Check your settings and try again.", "error", err)
+		s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelError, "Scheduler", "Failed to initialize 'Trending Movies' job. Check your settings and try again.")
 		return
 	}
 
@@ -188,9 +203,11 @@ func (s Scheduler) TrendingJobFunc() {
 		if err != nil {
 			if errors.Is(err, trakt.ErrNoTraktSettings) {
 				log.Warn("[Scheduler] 'Trending Movies' job could not be completed. Trakt Client ID is not set.")
+				s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelWarn, "Scheduler", "'Trending Movies' job could not be completed. Trakt Client ID is not set.")
 				return
 			} else {
 				log.Error("[Scheduler] Error fetching 'Trending Movies' from Trakt.", "error", err)
+				s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelError, "Scheduler", "Error fetching 'Trending Movies' from Trakt.")
 				return
 			}
 		}
@@ -201,6 +218,7 @@ func (s Scheduler) TrendingJobFunc() {
 	}
 
 	log.Infof("[Scheduler] Completed 'Trending Movies' job in %.2f seconds.", time.Since(startTime).Seconds())
+	s.gctx.Crate().SQL.Queries().InsertLog(s.gctx, structures.LogLevelInfo, "Scheduler", fmt.Sprintf("Completed 'Trending Movies' job in %.2f seconds.", time.Since(startTime).Seconds()))
 }
 
 // initializeMovieJob handles common setup logic for all movie jobs

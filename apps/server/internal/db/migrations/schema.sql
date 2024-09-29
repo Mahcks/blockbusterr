@@ -393,3 +393,11 @@ CREATE TABLE `recently_added` (
     `poster` TEXT NOT NULL,
     `added_at` DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE `logs` (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `level` TEXT NOT NULL,
+    `label` TEXT NOT NULL,
+    `message` TEXT NOT NULL,
+    `timestamp` DATETIME DEFAULT CURRENT_TIMESTAMP
+);
