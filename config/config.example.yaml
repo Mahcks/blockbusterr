@@ -1,0 +1,105 @@
+# Blockbusterr Configuration
+# Copy this file to config.yaml and fill in your settings
+# Web UI runs on port 9090 by default (change with Docker port mapping)
+# To disable Web UI, set environment variable: DISABLE_UI=true
+
+trakt:
+  # Get your Trakt API credentials from https://trakt.tv/oauth/applications
+  client_id: ""
+  client_secret: ""
+
+radarr:
+  # Radarr connection settings
+  url: ""  # Example: http://localhost:7878
+  api_key: ""
+  quality_profile: 1  # Update after connecting - check Radarr Settings > Profiles
+  root_folder: ""  # Example: /movies
+
+sonarr:
+  # Sonarr connection settings
+  url: ""  # Example: http://localhost:8989
+  api_key: ""
+  quality_profile: 1  # Update after connecting - check Sonarr Settings > Profiles
+  root_folder: ""  # Example: /tv
+
+jobs:
+  # How often to run all enabled jobs
+  # Supports duration format (e.g. "1h", "30m", "2h30m") or cron expressions (e.g. "0 */2 * * *")
+  # Examples:
+  #   "1h" - Every 1 hour
+  #   "30m" - Every 30 minutes  
+  #   "0 */2 * * *" - Every 2 hours (at minute 0)
+  #   "0 0 * * *" - Daily at midnight
+  #   "0 2 * * *" - Daily at 2 AM
+  #   "0 */6 * * *" - Every 6 hours
+  sync_interval: 24h
+
+  # Movie Jobs
+  trending_movies:
+    enabled: false
+    limit: 20
+  
+  popular_movies:
+    enabled: false
+    limit: 20
+  
+  box_office:
+    enabled: false
+    limit: 10
+  
+  favorited_movies:
+    enabled: false
+    limit: 20
+    period: weekly  # Options: weekly, monthly, yearly, all
+  
+  played_movies:
+    enabled: false
+    limit: 20
+    period: weekly
+  
+  watched_movies:
+    enabled: false
+    limit: 20
+    period: weekly
+  
+  collected_movies:
+    enabled: false
+    limit: 20
+    period: weekly
+  
+  anticipated_movies:
+    enabled: false
+    limit: 20
+
+  # TV Show Jobs
+  trending_shows:
+    enabled: false
+    limit: 10
+  
+  popular_shows:
+    enabled: false
+    limit: 10
+  
+  favorited_shows:
+    enabled: false
+    limit: 10
+    period: weekly  # Options: weekly, monthly, yearly, all
+  
+  played_shows:
+    enabled: false
+    limit: 10
+    period: weekly
+  
+  watched_shows:
+    enabled: false
+    limit: 10
+    period: weekly
+  
+  collected_shows:
+    enabled: false
+    limit: 10
+    period: weekly
+  
+  anticipated_shows:
+    enabled: false
+    limit: 10

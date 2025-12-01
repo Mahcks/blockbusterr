@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  blockbusterr:
+    image: mahcks/blockbusterr:latest
+    container_name: blockbusterr
+    restart: unless-stopped
+    ports:
+      - "9090:9090"  # Change host port: "8080:9090" or "443:9090"
+    volumes:
+      # Persist database, activity logs, and configuration
+      - ./data:/app/data
+    environment:
+      # Optional: Override config values with environment variables
+      # TRAKT_CLIENT_ID: your_client_id
+      # TRAKT_CLIENT_SECRET: your_client_secret
+      # RADARR_URL: http://radarr:7878
+      # RADARR_API_KEY: your_radarr_key
+      # SONARR_URL: http://sonarr:8989
+      # SONARR_API_KEY: your_sonarr_key
+      # DISABLE_UI: true  # Set to disable Web UI (enabled by default)
+      - TZ=America/New_York  # Set your timezone
+
+# Example: Run alongside Radarr and Sonarr
+#   radarr:
+#     image: linuxserver/radarr:latest
+#     container_name: radarr
+#     restart: unless-stopped
+#     ports:
+#       - "7878:7878"
+#     volumes:
+#       - ./radarr-config:/config
+#       - /path/to/movies:/movies
+#     environment:
+#       - PUID=1000
+#       - PGID=1000
+#       - TZ=America/New_York
+#
+#   sonarr:
+#     image: linuxserver/sonarr:latest
+#     container_name: sonarr
+#     restart: unless-stopped
+#     ports:
+#       - "8989:8989"
+#     volumes:
+#       - ./sonarr-config:/config
+#       - /path/to/tv:/tv
+#     environment:
+#       - PUID=1000
+#       - PGID=1000
+#       - TZ=America/New_York

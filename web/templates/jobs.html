@@ -1,0 +1,1384 @@
+{{define "jobs"}}
+<div class="space-y-6">
+  <!-- Information Box -->
+  <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
+    <div class="flex items-start">
+      <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+      </svg>
+      <div>
+        <h4 class="font-semibold text-blue-300 mb-1">About Jobs</h4>
+        <p class="text-sm text-slate-300">
+          Jobs automatically fetch content from Trakt and add them to Radarr/Sonarr based on the sync interval. 
+          You can edit settings for each job individually and test them using "Run Now". 
+          Existing content is automatically detected and skipped to avoid duplicates.
+          {{if eq .Version "dev"}}<span class="font-semibold text-yellow-400">⚠️ Running in DEV mode - jobs will run in dry-run (no content will be added).</span>{{end}}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Settings Section -->
+  <div class="bg-slate-800/50 backdrop-blur rounded-lg p-6 border border-slate-700">
+    <h2 class="text-2xl font-semibold text-slate-100 mb-6 flex items-center">
+      <svg class="w-6 h-6 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      Global Settings
+    </h2>
+
+    <form hx-post="/jobs/config/save" hx-target="#global-message" hx-swap="innerHTML" class="space-y-4">
+      <div class="grid md:grid-cols-2 gap-4">
+        <div>
+          <label for="sync_interval" class="block text-sm font-medium text-slate-300 mb-2">
+            Sync Interval <span class="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            id="sync_interval"
+            name="jobs.sync_interval"
+            value="{{.Config.Jobs.SyncInterval}}"
+            placeholder="1h"
+            class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+          <p class="text-xs text-slate-400 mt-1">How often jobs run automatically (e.g., 1h, 30m, 2h30m)</p>
+        </div>
+        <div class="flex items-end">
+          <button
+            type="submit"
+            class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+          >
+            Save Global Settings
+          </button>
+        </div>
+      </div>
+      <div id="global-message"></div>
+    </form>
+  </div>
+
+  <!-- Movie Jobs Section -->
+  <div class="bg-slate-800/50 backdrop-blur rounded-lg p-6 border border-slate-700 mb-6">
+    <h2 class="text-2xl font-semibold text-slate-100 mb-2 flex items-center">
+      <svg class="w-6 h-6 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
+      </svg>
+      Movie Jobs
+    </h2>
+    <p class="text-sm text-slate-400 mb-6">Automatically discover and add movies from Trakt to Radarr</p>
+  </div>
+
+  <!-- Movie Job Cards -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Trending Movies Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-yellow-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+          </svg>
+          Trending Movies
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.TrendingMovies.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.TrendingMovies.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Movies currently being watched and talked about on Trakt</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#trending-movies-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.trending_shows.enabled" value="{{if .Config.Jobs.TrendingShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_shows.limit" value="{{.Config.Jobs.TrendingShows.Limit}}" />
+          <input type="hidden" name="jobs.popular_movies.enabled" value="{{if .Config.Jobs.PopularMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_movies.limit" value="{{.Config.Jobs.PopularMovies.Limit}}" />
+          <input type="hidden" name="jobs.popular_shows.enabled" value="{{if .Config.Jobs.PopularShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_shows.limit" value="{{.Config.Jobs.PopularShows.Limit}}" />
+          <input type="hidden" name="jobs.box_office.enabled" value="{{if .Config.Jobs.BoxOffice.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.box_office.limit" value="{{.Config.Jobs.BoxOffice.Limit}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.trending_movies.enabled"
+                {{if .Config.Jobs.TrendingMovies.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="trending_movies_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="trending_movies_limit"
+              name="jobs.trending_movies.limit"
+              value="{{.Config.Jobs.TrendingMovies.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('trending-movies', this)"
+              {{if not .Config.Jobs.TrendingMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="trending-movies-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Popular Movies Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-purple-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
+          </svg>
+          Popular Movies
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.PopularMovies.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.PopularMovies.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Most popular movies on Trakt based on user ratings and views</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#popular-movies-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.trending_movies.enabled" value="{{if .Config.Jobs.TrendingMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_movies.limit" value="{{.Config.Jobs.TrendingMovies.Limit}}" />
+          <input type="hidden" name="jobs.trending_shows.enabled" value="{{if .Config.Jobs.TrendingShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_shows.limit" value="{{.Config.Jobs.TrendingShows.Limit}}" />
+          <input type="hidden" name="jobs.popular_shows.enabled" value="{{if .Config.Jobs.PopularShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_shows.limit" value="{{.Config.Jobs.PopularShows.Limit}}" />
+          <input type="hidden" name="jobs.box_office.enabled" value="{{if .Config.Jobs.BoxOffice.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.box_office.limit" value="{{.Config.Jobs.BoxOffice.Limit}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.popular_movies.enabled"
+                {{if .Config.Jobs.PopularMovies.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="popular_movies_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="popular_movies_limit"
+              name="jobs.popular_movies.limit"
+              value="{{.Config.Jobs.PopularMovies.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('popular-movies', this)"
+              {{if not .Config.Jobs.PopularMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="popular-movies-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Box Office Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-green-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"></path>
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"></path>
+          </svg>
+          Box Office
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.BoxOffice.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.BoxOffice.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Top grossing movies at the box office</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#box-office-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.trending_movies.enabled" value="{{if .Config.Jobs.TrendingMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_movies.limit" value="{{.Config.Jobs.TrendingMovies.Limit}}" />
+          <input type="hidden" name="jobs.trending_shows.enabled" value="{{if .Config.Jobs.TrendingShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_shows.limit" value="{{.Config.Jobs.TrendingShows.Limit}}" />
+          <input type="hidden" name="jobs.popular_movies.enabled" value="{{if .Config.Jobs.PopularMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_movies.limit" value="{{.Config.Jobs.PopularMovies.Limit}}" />
+          <input type="hidden" name="jobs.popular_shows.enabled" value="{{if .Config.Jobs.PopularShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_shows.limit" value="{{.Config.Jobs.PopularShows.Limit}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.box_office.enabled"
+                {{if .Config.Jobs.BoxOffice.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3">
+            <p class="text-sm text-slate-300">
+              <span class="font-semibold text-blue-400">Note:</span> Box Office fetches the top 10 highest grossing movies from Trakt.
+            </p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('box-office', this)"
+              {{if not .Config.Jobs.BoxOffice.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="box-office-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Favorited Movies Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-pink-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-pink-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
+          </svg>
+          Favorited Movies
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.FavoritedMovies.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.FavoritedMovies.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Movies most added to user favorites lists on Trakt</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#favorited-movies-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.trending_movies.enabled" value="{{if .Config.Jobs.TrendingMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_movies.limit" value="{{.Config.Jobs.TrendingMovies.Limit}}" />
+          <input type="hidden" name="jobs.trending_shows.enabled" value="{{if .Config.Jobs.TrendingShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_shows.limit" value="{{.Config.Jobs.TrendingShows.Limit}}" />
+          <input type="hidden" name="jobs.popular_movies.enabled" value="{{if .Config.Jobs.PopularMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_movies.limit" value="{{.Config.Jobs.PopularMovies.Limit}}" />
+          <input type="hidden" name="jobs.popular_shows.enabled" value="{{if .Config.Jobs.PopularShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_shows.limit" value="{{.Config.Jobs.PopularShows.Limit}}" />
+          <input type="hidden" name="jobs.box_office.enabled" value="{{if .Config.Jobs.BoxOffice.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.box_office.limit" value="{{.Config.Jobs.BoxOffice.Limit}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.favorited_movies.enabled"
+                {{if .Config.Jobs.FavoritedMovies.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="favorited_movies_period" class="block text-sm font-medium text-slate-300 mb-2">
+              Time Period
+            </label>
+            <select
+              id="favorited_movies_period"
+              name="jobs.favorited_movies.period"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="weekly" {{if eq .Config.Jobs.FavoritedMovies.Period "weekly"}}selected{{end}}>Weekly</option>
+              <option value="monthly" {{if eq .Config.Jobs.FavoritedMovies.Period "monthly"}}selected{{end}}>Monthly</option>
+              <option value="yearly" {{if eq .Config.Jobs.FavoritedMovies.Period "yearly"}}selected{{end}}>Yearly</option>
+              <option value="all" {{if eq .Config.Jobs.FavoritedMovies.Period "all"}}selected{{end}}>All Time</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Timeframe for favorited movies</p>
+          </div>
+
+          <div>
+            <label for="favorited_movies_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="favorited_movies_limit"
+              name="jobs.favorited_movies.limit"
+              value="{{.Config.Jobs.FavoritedMovies.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('favorited-movies', this)"
+              {{if not .Config.Jobs.FavoritedMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="favorited-movies-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Played Movies Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-indigo-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+          </svg>
+          Played Movies
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.PlayedMovies.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.PlayedMovies.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Movies with the highest play count from Trakt users</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#played-movies-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.trending_movies.enabled" value="{{if .Config.Jobs.TrendingMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_movies.limit" value="{{.Config.Jobs.TrendingMovies.Limit}}" />
+          <input type="hidden" name="jobs.trending_shows.enabled" value="{{if .Config.Jobs.TrendingShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_shows.limit" value="{{.Config.Jobs.TrendingShows.Limit}}" />
+          <input type="hidden" name="jobs.popular_movies.enabled" value="{{if .Config.Jobs.PopularMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_movies.limit" value="{{.Config.Jobs.PopularMovies.Limit}}" />
+          <input type="hidden" name="jobs.popular_shows.enabled" value="{{if .Config.Jobs.PopularShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_shows.limit" value="{{.Config.Jobs.PopularShows.Limit}}" />
+          <input type="hidden" name="jobs.box_office.enabled" value="{{if .Config.Jobs.BoxOffice.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.box_office.limit" value="{{.Config.Jobs.BoxOffice.Limit}}" />
+          <input type="hidden" name="jobs.favorited_movies.enabled" value="{{if .Config.Jobs.FavoritedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.favorited_movies.limit" value="{{.Config.Jobs.FavoritedMovies.Limit}}" />
+          <input type="hidden" name="jobs.favorited_movies.period" value="{{.Config.Jobs.FavoritedMovies.Period}}" />
+          <input type="hidden" name="jobs.watched_movies.enabled" value="{{if .Config.Jobs.WatchedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.watched_movies.limit" value="{{.Config.Jobs.WatchedMovies.Limit}}" />
+          <input type="hidden" name="jobs.watched_movies.period" value="{{.Config.Jobs.WatchedMovies.Period}}" />
+          <input type="hidden" name="jobs.collected_movies.enabled" value="{{if .Config.Jobs.CollectedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.collected_movies.limit" value="{{.Config.Jobs.CollectedMovies.Limit}}" />
+          <input type="hidden" name="jobs.collected_movies.period" value="{{.Config.Jobs.CollectedMovies.Period}}" />
+          <input type="hidden" name="jobs.anticipated_movies.enabled" value="{{if .Config.Jobs.AnticipatedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.anticipated_movies.limit" value="{{.Config.Jobs.AnticipatedMovies.Limit}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.played_movies.enabled"
+                {{if .Config.Jobs.PlayedMovies.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="played_movies_period" class="block text-sm font-medium text-slate-300 mb-2">
+              Time Period
+            </label>
+            <select
+              id="played_movies_period"
+              name="jobs.played_movies.period"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="weekly" {{if eq .Config.Jobs.PlayedMovies.Period "weekly"}}selected{{end}}>Weekly</option>
+              <option value="monthly" {{if eq .Config.Jobs.PlayedMovies.Period "monthly"}}selected{{end}}>Monthly</option>
+              <option value="yearly" {{if eq .Config.Jobs.PlayedMovies.Period "yearly"}}selected{{end}}>Yearly</option>
+              <option value="all" {{if eq .Config.Jobs.PlayedMovies.Period "all"}}selected{{end}}>All Time</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Timeframe for played movies</p>
+          </div>
+
+          <div>
+            <label for="played_movies_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="played_movies_limit"
+              name="jobs.played_movies.limit"
+              value="{{.Config.Jobs.PlayedMovies.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('played-movies', this)"
+              {{if not .Config.Jobs.PlayedMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="played-movies-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Watched Movies Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-cyan-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-cyan-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
+            <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path>
+          </svg>
+          Watched Movies
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.WatchedMovies.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.WatchedMovies.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Movies watched by the most unique users on Trakt</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#watched-movies-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.trending_movies.enabled" value="{{if .Config.Jobs.TrendingMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_movies.limit" value="{{.Config.Jobs.TrendingMovies.Limit}}" />
+          <input type="hidden" name="jobs.trending_shows.enabled" value="{{if .Config.Jobs.TrendingShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_shows.limit" value="{{.Config.Jobs.TrendingShows.Limit}}" />
+          <input type="hidden" name="jobs.popular_movies.enabled" value="{{if .Config.Jobs.PopularMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_movies.limit" value="{{.Config.Jobs.PopularMovies.Limit}}" />
+          <input type="hidden" name="jobs.popular_shows.enabled" value="{{if .Config.Jobs.PopularShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_shows.limit" value="{{.Config.Jobs.PopularShows.Limit}}" />
+          <input type="hidden" name="jobs.box_office.enabled" value="{{if .Config.Jobs.BoxOffice.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.box_office.limit" value="{{.Config.Jobs.BoxOffice.Limit}}" />
+          <input type="hidden" name="jobs.favorited_movies.enabled" value="{{if .Config.Jobs.FavoritedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.favorited_movies.limit" value="{{.Config.Jobs.FavoritedMovies.Limit}}" />
+          <input type="hidden" name="jobs.favorited_movies.period" value="{{.Config.Jobs.FavoritedMovies.Period}}" />
+          <input type="hidden" name="jobs.played_movies.enabled" value="{{if .Config.Jobs.PlayedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.played_movies.limit" value="{{.Config.Jobs.PlayedMovies.Limit}}" />
+          <input type="hidden" name="jobs.played_movies.period" value="{{.Config.Jobs.PlayedMovies.Period}}" />
+          <input type="hidden" name="jobs.collected_movies.enabled" value="{{if .Config.Jobs.CollectedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.collected_movies.limit" value="{{.Config.Jobs.CollectedMovies.Limit}}" />
+          <input type="hidden" name="jobs.collected_movies.period" value="{{.Config.Jobs.CollectedMovies.Period}}" />
+          <input type="hidden" name="jobs.anticipated_movies.enabled" value="{{if .Config.Jobs.AnticipatedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.anticipated_movies.limit" value="{{.Config.Jobs.AnticipatedMovies.Limit}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.watched_movies.enabled"
+                {{if .Config.Jobs.WatchedMovies.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="watched_movies_period" class="block text-sm font-medium text-slate-300 mb-2">
+              Time Period
+            </label>
+            <select
+              id="watched_movies_period"
+              name="jobs.watched_movies.period"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="weekly" {{if eq .Config.Jobs.WatchedMovies.Period "weekly"}}selected{{end}}>Weekly</option>
+              <option value="monthly" {{if eq .Config.Jobs.WatchedMovies.Period "monthly"}}selected{{end}}>Monthly</option>
+              <option value="yearly" {{if eq .Config.Jobs.WatchedMovies.Period "yearly"}}selected{{end}}>Yearly</option>
+              <option value="all" {{if eq .Config.Jobs.WatchedMovies.Period "all"}}selected{{end}}>All Time</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Timeframe for watched movies</p>
+          </div>
+
+          <div>
+            <label for="watched_movies_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="watched_movies_limit"
+              name="jobs.watched_movies.limit"
+              value="{{.Config.Jobs.WatchedMovies.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('watched-movies', this)"
+              {{if not .Config.Jobs.WatchedMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="watched-movies-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Collected Movies Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-amber-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"></path>
+          </svg>
+          Collected Movies
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.CollectedMovies.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.CollectedMovies.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Movies most collected in user libraries on Trakt</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#collected-movies-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.trending_movies.enabled" value="{{if .Config.Jobs.TrendingMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_movies.limit" value="{{.Config.Jobs.TrendingMovies.Limit}}" />
+          <input type="hidden" name="jobs.trending_shows.enabled" value="{{if .Config.Jobs.TrendingShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_shows.limit" value="{{.Config.Jobs.TrendingShows.Limit}}" />
+          <input type="hidden" name="jobs.popular_movies.enabled" value="{{if .Config.Jobs.PopularMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_movies.limit" value="{{.Config.Jobs.PopularMovies.Limit}}" />
+          <input type="hidden" name="jobs.popular_shows.enabled" value="{{if .Config.Jobs.PopularShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_shows.limit" value="{{.Config.Jobs.PopularShows.Limit}}" />
+          <input type="hidden" name="jobs.box_office.enabled" value="{{if .Config.Jobs.BoxOffice.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.box_office.limit" value="{{.Config.Jobs.BoxOffice.Limit}}" />
+          <input type="hidden" name="jobs.favorited_movies.enabled" value="{{if .Config.Jobs.FavoritedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.favorited_movies.limit" value="{{.Config.Jobs.FavoritedMovies.Limit}}" />
+          <input type="hidden" name="jobs.favorited_movies.period" value="{{.Config.Jobs.FavoritedMovies.Period}}" />
+          <input type="hidden" name="jobs.played_movies.enabled" value="{{if .Config.Jobs.PlayedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.played_movies.limit" value="{{.Config.Jobs.PlayedMovies.Limit}}" />
+          <input type="hidden" name="jobs.played_movies.period" value="{{.Config.Jobs.PlayedMovies.Period}}" />
+          <input type="hidden" name="jobs.watched_movies.enabled" value="{{if .Config.Jobs.WatchedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.watched_movies.limit" value="{{.Config.Jobs.WatchedMovies.Limit}}" />
+          <input type="hidden" name="jobs.watched_movies.period" value="{{.Config.Jobs.WatchedMovies.Period}}" />
+          <input type="hidden" name="jobs.anticipated_movies.enabled" value="{{if .Config.Jobs.AnticipatedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.anticipated_movies.limit" value="{{.Config.Jobs.AnticipatedMovies.Limit}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.collected_movies.enabled"
+                {{if .Config.Jobs.CollectedMovies.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="collected_movies_period" class="block text-sm font-medium text-slate-300 mb-2">
+              Time Period
+            </label>
+            <select
+              id="collected_movies_period"
+              name="jobs.collected_movies.period"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="weekly" {{if eq .Config.Jobs.CollectedMovies.Period "weekly"}}selected{{end}}>Weekly</option>
+              <option value="monthly" {{if eq .Config.Jobs.CollectedMovies.Period "monthly"}}selected{{end}}>Monthly</option>
+              <option value="yearly" {{if eq .Config.Jobs.CollectedMovies.Period "yearly"}}selected{{end}}>Yearly</option>
+              <option value="all" {{if eq .Config.Jobs.CollectedMovies.Period "all"}}selected{{end}}>All Time</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Timeframe for collected movies</p>
+          </div>
+
+          <div>
+            <label for="collected_movies_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="collected_movies_limit"
+              name="jobs.collected_movies.limit"
+              value="{{.Config.Jobs.CollectedMovies.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('collected-movies', this)"
+              {{if not .Config.Jobs.CollectedMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="collected-movies-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Anticipated Movies Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-violet-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-violet-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clip-rule="evenodd"></path>
+          </svg>
+          Anticipated Movies
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.AnticipatedMovies.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.AnticipatedMovies.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Upcoming movies users are most excited to see</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#anticipated-movies-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.trending_movies.enabled" value="{{if .Config.Jobs.TrendingMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_movies.limit" value="{{.Config.Jobs.TrendingMovies.Limit}}" />
+          <input type="hidden" name="jobs.trending_shows.enabled" value="{{if .Config.Jobs.TrendingShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_shows.limit" value="{{.Config.Jobs.TrendingShows.Limit}}" />
+          <input type="hidden" name="jobs.popular_movies.enabled" value="{{if .Config.Jobs.PopularMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_movies.limit" value="{{.Config.Jobs.PopularMovies.Limit}}" />
+          <input type="hidden" name="jobs.popular_shows.enabled" value="{{if .Config.Jobs.PopularShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_shows.limit" value="{{.Config.Jobs.PopularShows.Limit}}" />
+          <input type="hidden" name="jobs.box_office.enabled" value="{{if .Config.Jobs.BoxOffice.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.box_office.limit" value="{{.Config.Jobs.BoxOffice.Limit}}" />
+          <input type="hidden" name="jobs.favorited_movies.enabled" value="{{if .Config.Jobs.FavoritedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.favorited_movies.limit" value="{{.Config.Jobs.FavoritedMovies.Limit}}" />
+          <input type="hidden" name="jobs.favorited_movies.period" value="{{.Config.Jobs.FavoritedMovies.Period}}" />
+          <input type="hidden" name="jobs.played_movies.enabled" value="{{if .Config.Jobs.PlayedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.played_movies.limit" value="{{.Config.Jobs.PlayedMovies.Limit}}" />
+          <input type="hidden" name="jobs.played_movies.period" value="{{.Config.Jobs.PlayedMovies.Period}}" />
+          <input type="hidden" name="jobs.watched_movies.enabled" value="{{if .Config.Jobs.WatchedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.watched_movies.limit" value="{{.Config.Jobs.WatchedMovies.Limit}}" />
+          <input type="hidden" name="jobs.watched_movies.period" value="{{.Config.Jobs.WatchedMovies.Period}}" />
+          <input type="hidden" name="jobs.collected_movies.enabled" value="{{if .Config.Jobs.CollectedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.collected_movies.limit" value="{{.Config.Jobs.CollectedMovies.Limit}}" />
+          <input type="hidden" name="jobs.collected_movies.period" value="{{.Config.Jobs.CollectedMovies.Period}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.anticipated_movies.enabled"
+                {{if .Config.Jobs.AnticipatedMovies.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="anticipated_movies_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="anticipated_movies_limit"
+              name="jobs.anticipated_movies.limit"
+              value="{{.Config.Jobs.AnticipatedMovies.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('anticipated-movies', this)"
+              {{if not .Config.Jobs.AnticipatedMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="anticipated-movies-message"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- TV Shows Section -->
+  <div class="bg-slate-800/50 backdrop-blur rounded-lg p-6 border border-slate-700 mb-6 mt-8">
+    <h2 class="text-2xl font-semibold text-slate-100 mb-2 flex items-center">
+      <svg class="w-6 h-6 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path>
+      </svg>
+      TV Show Jobs
+    </h2>
+    <p class="text-sm text-slate-400 mb-6">Automatically discover and add TV shows from Trakt to Sonarr</p>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Trending Shows Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-yellow-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+          </svg>
+          Trending Shows
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.TrendingShows.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.TrendingShows.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">TV shows currently being watched and talked about on Trakt</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#trending-shows-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.trending_movies.enabled" value="{{if .Config.Jobs.TrendingMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_movies.limit" value="{{.Config.Jobs.TrendingMovies.Limit}}" />
+          <input type="hidden" name="jobs.popular_movies.enabled" value="{{if .Config.Jobs.PopularMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_movies.limit" value="{{.Config.Jobs.PopularMovies.Limit}}" />
+          <input type="hidden" name="jobs.popular_shows.enabled" value="{{if .Config.Jobs.PopularShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_shows.limit" value="{{.Config.Jobs.PopularShows.Limit}}" />
+          <input type="hidden" name="jobs.box_office.enabled" value="{{if .Config.Jobs.BoxOffice.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.box_office.limit" value="{{.Config.Jobs.BoxOffice.Limit}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.trending_shows.enabled"
+                {{if .Config.Jobs.TrendingShows.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="trending_shows_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="trending_shows_limit"
+              name="jobs.trending_shows.limit"
+              value="{{.Config.Jobs.TrendingShows.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('trending-shows', this)"
+              {{if not .Config.Jobs.TrendingShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="trending-shows-message"></div>
+        </form>
+      </div>
+    </div>
+    <!-- Popular Shows Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-purple-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
+          </svg>
+          Popular Shows
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.PopularShows.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.PopularShows.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Most popular TV shows on Trakt based on user ratings and views</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#popular-shows-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.trending_movies.enabled" value="{{if .Config.Jobs.TrendingMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_movies.limit" value="{{.Config.Jobs.TrendingMovies.Limit}}" />
+          <input type="hidden" name="jobs.trending_shows.enabled" value="{{if .Config.Jobs.TrendingShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_shows.limit" value="{{.Config.Jobs.TrendingShows.Limit}}" />
+          <input type="hidden" name="jobs.popular_movies.enabled" value="{{if .Config.Jobs.PopularMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_movies.limit" value="{{.Config.Jobs.PopularMovies.Limit}}" />
+          <input type="hidden" name="jobs.box_office.enabled" value="{{if .Config.Jobs.BoxOffice.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.box_office.limit" value="{{.Config.Jobs.BoxOffice.Limit}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.popular_shows.enabled"
+                {{if .Config.Jobs.PopularShows.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="popular_shows_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="popular_shows_limit"
+              name="jobs.popular_shows.limit"
+              value="{{.Config.Jobs.PopularShows.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('popular-shows', this)"
+              {{if not .Config.Jobs.PopularShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="popular-shows-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Favorited Shows Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-pink-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-pink-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
+          </svg>
+          Favorited Shows
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.FavoritedShows.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.FavoritedShows.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">TV shows most added to user favorites lists on Trakt</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#favorited-shows-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.favorited_shows.enabled"
+                {{if .Config.Jobs.FavoritedShows.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="favorited_shows_period" class="block text-sm font-medium text-slate-300 mb-2">
+              Time Period
+            </label>
+            <select
+              id="favorited_shows_period"
+              name="jobs.favorited_shows.period"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="weekly" {{if eq .Config.Jobs.FavoritedShows.Period "weekly"}}selected{{end}}>Weekly</option>
+              <option value="monthly" {{if eq .Config.Jobs.FavoritedShows.Period "monthly"}}selected{{end}}>Monthly</option>
+              <option value="yearly" {{if eq .Config.Jobs.FavoritedShows.Period "yearly"}}selected{{end}}>Yearly</option>
+              <option value="all" {{if eq .Config.Jobs.FavoritedShows.Period "all"}}selected{{end}}>All Time</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Timeframe for favorited shows</p>
+          </div>
+
+          <div>
+            <label for="favorited_shows_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="favorited_shows_limit"
+              name="jobs.favorited_shows.limit"
+              value="{{.Config.Jobs.FavoritedShows.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('favorited-shows', this)"
+              {{if not .Config.Jobs.FavoritedShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="favorited-shows-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Played Shows Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-indigo-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+          </svg>
+          Played Shows
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.PlayedShows.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.PlayedShows.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">TV shows with the highest play count from Trakt users</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#played-shows-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.played_shows.enabled"
+                {{if .Config.Jobs.PlayedShows.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="played_shows_period" class="block text-sm font-medium text-slate-300 mb-2">
+              Time Period
+            </label>
+            <select
+              id="played_shows_period"
+              name="jobs.played_shows.period"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="weekly" {{if eq .Config.Jobs.PlayedShows.Period "weekly"}}selected{{end}}>Weekly</option>
+              <option value="monthly" {{if eq .Config.Jobs.PlayedShows.Period "monthly"}}selected{{end}}>Monthly</option>
+              <option value="yearly" {{if eq .Config.Jobs.PlayedShows.Period "yearly"}}selected{{end}}>Yearly</option>
+              <option value="all" {{if eq .Config.Jobs.PlayedShows.Period "all"}}selected{{end}}>All Time</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Timeframe for played shows</p>
+          </div>
+
+          <div>
+            <label for="played_shows_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="played_shows_limit"
+              name="jobs.played_shows.limit"
+              value="{{.Config.Jobs.PlayedShows.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('played-shows', this)"
+              {{if not .Config.Jobs.PlayedShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="played-shows-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Watched Shows Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-cyan-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-cyan-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
+            <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path>
+          </svg>
+          Watched Shows
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.WatchedShows.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.WatchedShows.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Most watched TV shows by unique viewers on Trakt</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#watched-shows-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.watched_shows.enabled"
+                {{if .Config.Jobs.WatchedShows.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="watched_shows_period" class="block text-sm font-medium text-slate-300 mb-2">
+              Time Period
+            </label>
+            <select
+              id="watched_shows_period"
+              name="jobs.watched_shows.period"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="weekly" {{if eq .Config.Jobs.WatchedShows.Period "weekly"}}selected{{end}}>Weekly</option>
+              <option value="monthly" {{if eq .Config.Jobs.WatchedShows.Period "monthly"}}selected{{end}}>Monthly</option>
+              <option value="yearly" {{if eq .Config.Jobs.WatchedShows.Period "yearly"}}selected{{end}}>Yearly</option>
+              <option value="all" {{if eq .Config.Jobs.WatchedShows.Period "all"}}selected{{end}}>All Time</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Timeframe for watched shows</p>
+          </div>
+
+          <div>
+            <label for="watched_shows_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="watched_shows_limit"
+              name="jobs.watched_shows.limit"
+              value="{{.Config.Jobs.WatchedShows.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('watched-shows', this)"
+              {{if not .Config.Jobs.WatchedShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="watched-shows-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Collected Shows Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-teal-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-teal-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"></path>
+          </svg>
+          Collected Shows
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.CollectedShows.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.CollectedShows.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Most collected TV shows in user libraries on Trakt</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#collected-shows-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.collected_shows.enabled"
+                {{if .Config.Jobs.CollectedShows.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="collected_shows_period" class="block text-sm font-medium text-slate-300 mb-2">
+              Time Period
+            </label>
+            <select
+              id="collected_shows_period"
+              name="jobs.collected_shows.period"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="weekly" {{if eq .Config.Jobs.CollectedShows.Period "weekly"}}selected{{end}}>Weekly</option>
+              <option value="monthly" {{if eq .Config.Jobs.CollectedShows.Period "monthly"}}selected{{end}}>Monthly</option>
+              <option value="yearly" {{if eq .Config.Jobs.CollectedShows.Period "yearly"}}selected{{end}}>Yearly</option>
+              <option value="all" {{if eq .Config.Jobs.CollectedShows.Period "all"}}selected{{end}}>All Time</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Timeframe for collected shows</p>
+          </div>
+
+          <div>
+            <label for="collected_shows_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="collected_shows_limit"
+              name="jobs.collected_shows.limit"
+              value="{{.Config.Jobs.CollectedShows.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('collected-shows', this)"
+              {{if not .Config.Jobs.CollectedShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="collected-shows-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Anticipated Shows Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-amber-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+          </svg>
+          Anticipated Shows
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.AnticipatedShows.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.AnticipatedShows.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Most anticipated upcoming TV shows on Trakt</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#anticipated-shows-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.anticipated_shows.enabled"
+                {{if .Config.Jobs.AnticipatedShows.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="anticipated_shows_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="anticipated_shows_limit"
+              name="jobs.anticipated_shows.limit"
+              value="{{.Config.Jobs.AnticipatedShows.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('anticipated-shows', this)"
+              {{if not .Config.Jobs.AnticipatedShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="anticipated-shows-message"></div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function triggerJob(jobName, button) {
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = 'Running...';
+
+    fetch(`/v1/jobs/trigger/${jobName}`, {
+      method: 'POST'
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          showNotification(data.error, 'error');
+        } else {
+          showNotification(data.message, 'success');
+        }
+      })
+      .catch(error => {
+        showNotification('Failed to trigger job: ' + error.message, 'error');
+      })
+      .finally(() => {
+        button.disabled = false;
+        button.textContent = originalText;
+      });
+  }
+</script>
+{{end}}

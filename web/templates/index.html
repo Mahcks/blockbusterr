@@ -1,0 +1,531 @@
+{{define "index"}}
+<div class="bg-slate-800 rounded-lg border border-slate-700 p-6 mb-6">
+  <h2 class="text-2xl font-bold text-blue-400 mb-4">Welcome to Blockbusterr</h2>
+  <p class="text-slate-300 mb-4">
+    Automatically add trending, popular, and highly-rated movies and TV shows from Trakt.tv to your Radarr and Sonarr instances.
+  </p>
+  <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
+    <div class="flex items-start">
+      <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+      </svg>
+      <div class="text-sm text-slate-300">
+        <p class="font-semibold text-blue-300 mb-2">Getting Started:</p>
+        <ol class="list-decimal list-inside space-y-1">
+          <li>Get your Trakt API credentials from <a href="https://trakt.tv/oauth/applications" target="_blank" class="text-blue-400 hover:underline">trakt.tv/oauth/applications</a></li>
+          <li>Enter your Radarr and Sonarr connection details below</li>
+          <li>Test each connection to verify credentials</li>
+          <li>Load and select quality profiles and root folders</li>
+          <li>Save your configuration and head to the <a href="/jobs" class="text-blue-400 hover:underline">Jobs page</a> to enable automation</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="bg-slate-800 rounded-lg border border-slate-700 p-6 mb-6" id="config-form">
+  <h2 class="text-2xl font-bold text-blue-400 mb-8">Configuration</h2>
+
+  <form
+    hx-post="/config/save"
+    hx-target="#message-container"
+    hx-swap="innerHTML"
+    class="space-y-8"
+  >
+    <!-- Trakt Settings -->
+    <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
+      <h3 class="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path>
+        </svg>
+        Trakt Settings
+      </h3>
+      
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label for="trakt-client-id" class="block text-sm font-medium text-slate-300 mb-2">
+            Client ID <span class="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            id="trakt-client-id"
+            name="trakt.client_id"
+            value="{{.Config.Trakt.ClientID}}"
+            placeholder="Enter Trakt client ID"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          />
+        </div>
+
+        <div>
+          <label for="trakt-client-secret" class="block text-sm font-medium text-slate-300 mb-2">
+            Client Secret
+          </label>
+          <div class="relative">
+            <input
+              type="password"
+              id="trakt-client-secret"
+              name="trakt.client_secret"
+              value="{{.Config.Trakt.ClientSecret}}"
+              placeholder="Enter Trakt client secret"
+              autocomplete="off"
+              class="w-full px-4 py-2.5 pr-12 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            />
+            <button
+              type="button"
+              onclick="togglePassword('trakt-client-secret', this)"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
+            >
+              <svg class="eye-open w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              </svg>
+              <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onclick="testConnection('trakt', this)"
+        class="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        Test Connection
+      </button>
+    </div>
+
+    <!-- Radarr Settings -->
+    <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
+      <h3 class="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path>
+        </svg>
+        Radarr Settings
+      </h3>
+      
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label for="radarr-url" class="block text-sm font-medium text-slate-300 mb-2">
+            Server URL <span class="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            id="radarr-url"
+            name="radarr.url"
+            value="{{.Config.Radarr.URL}}"
+            placeholder="http://localhost:7878"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          />
+        </div>
+
+        <div>
+          <label for="radarr-api-key" class="block text-sm font-medium text-slate-300 mb-2">
+            API Key <span class="text-red-400">*</span>
+          </label>
+          <div class="relative">
+            <input
+              type="password"
+              id="radarr-api-key"
+              name="radarr.api_key"
+              value="{{.Config.Radarr.APIKey}}"
+              placeholder="Enter Radarr API key"
+              autocomplete="off"
+              class="w-full px-4 py-2.5 pr-12 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            />
+            <button
+              type="button"
+              onclick="togglePassword('radarr-api-key', this)"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
+            >
+              <svg class="eye-open w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              </svg>
+              <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onclick="testConnection('radarr', this)"
+        class="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2 mb-6"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        Test Connection
+      </button>
+
+      <div class="grid md:grid-cols-2 gap-4 pt-4 border-t border-slate-700">
+        <div>
+          <label for="radarr-quality-profile" class="block text-sm font-medium text-slate-300 mb-2">
+            Quality Profile
+          </label>
+          <select
+            id="radarr-quality-profile"
+            name="radarr.quality_profile"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          >
+            <option value="">Select a quality profile...</option>
+          </select>
+          <button
+            type="button"
+            onclick="loadRadarrProfiles()"
+            class="mt-2 text-sm text-blue-400 hover:text-blue-300 transition"
+          >
+            ↻ Load Quality Profiles
+          </button>
+        </div>
+
+        <div>
+          <label for="radarr-root-folder" class="block text-sm font-medium text-slate-300 mb-2">
+            Root Folder
+          </label>
+          <select
+            id="radarr-root-folder"
+            name="radarr.root_folder"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          >
+            <option value="">Select a root folder...</option>
+          </select>
+          <button
+            type="button"
+            onclick="loadRadarrRootFolders()"
+            class="mt-2 text-sm text-blue-400 hover:text-blue-300 transition"
+          >
+            ↻ Load Root Folders
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sonarr Settings -->
+    <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
+      <h3 class="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+        </svg>
+        Sonarr Settings
+      </h3>
+      
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label for="sonarr-url" class="block text-sm font-medium text-slate-300 mb-2">
+            Server URL <span class="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            id="sonarr-url"
+            name="sonarr.url"
+            value="{{.Config.Sonarr.URL}}"
+            placeholder="http://localhost:8989"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          />
+        </div>
+
+        <div>
+          <label for="sonarr-api-key" class="block text-sm font-medium text-slate-300 mb-2">
+            API Key <span class="text-red-400">*</span>
+          </label>
+          <div class="relative">
+            <input
+              type="password"
+              id="sonarr-api-key"
+              name="sonarr.api_key"
+              value="{{.Config.Sonarr.APIKey}}"
+              placeholder="Enter Sonarr API key"
+              autocomplete="off"
+              class="w-full px-4 py-2.5 pr-12 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            />
+            <button
+              type="button"
+              onclick="togglePassword('sonarr-api-key', this)"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
+            >
+              <svg class="eye-open w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              </svg>
+              <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onclick="testConnection('sonarr', this)"
+        class="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2 mb-6"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        Test Connection
+      </button>
+
+      <div class="grid md:grid-cols-2 gap-4 pt-4 border-t border-slate-700">
+        <div>
+          <label for="sonarr-quality-profile" class="block text-sm font-medium text-slate-300 mb-2">
+            Quality Profile
+          </label>
+          <select
+            id="sonarr-quality-profile"
+            name="sonarr.quality_profile"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          >
+            <option value="">Select a quality profile...</option>
+          </select>
+          <button
+            type="button"
+            onclick="loadSonarrProfiles()"
+            class="mt-2 text-sm text-blue-400 hover:text-blue-300 transition"
+          >
+            ↻ Load Quality Profiles
+          </button>
+        </div>
+
+        <div>
+          <label for="sonarr-root-folder" class="block text-sm font-medium text-slate-300 mb-2">
+            Root Folder
+          </label>
+          <select
+            id="sonarr-root-folder"
+            name="sonarr.root_folder"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          >
+            <option value="">Select a root folder...</option>
+          </select>
+          <button
+            type="button"
+            onclick="loadSonarrRootFolders()"
+            class="mt-2 text-sm text-blue-400 hover:text-blue-300 transition"
+          >
+            ↻ Load Root Folders
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <button
+      type="submit"
+      id="save-button"
+      class="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+      </svg>
+      Save Configuration
+    </button>
+  </form>
+</div>
+
+<div id="message-container" class="hidden"></div>
+
+<div class="bg-slate-800 rounded-lg border border-slate-700 p-6">
+  <h2 class="text-2xl font-bold text-blue-400 mb-4">About</h2>
+  <div class="space-y-2 text-slate-300">
+    <p><strong class="text-slate-100">Version:</strong> {{.Version}}</p>
+    <p>
+      <strong class="text-slate-100">Config File:</strong> {{if
+      .Config.ConfigFilePath}}{{.Config.ConfigFilePath}}{{else}}Not using config
+      file{{end}}
+    </p>
+  </div>
+</div>
+
+<style>
+  .htmx-request #save-button {
+    opacity: 0.7;
+    cursor: wait;
+  }
+  
+  .htmx-request #save-button svg {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+</style>
+
+<script>
+  // Format bytes to human readable size
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  // Ensure password field values are properly set on page load
+  document.addEventListener("DOMContentLoaded", function () {
+    const secretInput = document.getElementById("trakt-client-secret");
+    if (secretInput && secretInput.value) {
+      // Force the input to recognize its value attribute
+      secretInput.setAttribute("value", secretInput.value);
+    }
+
+    // Set saved values for dropdowns
+    const radarrQP = "{{.Config.Radarr.QualityProfile}}";
+    const radarrRF = "{{.Config.Radarr.RootFolder}}";
+    const sonarrQP = "{{.Config.Sonarr.QualityProfile}}";
+    const sonarrRF = "{{.Config.Sonarr.RootFolder}}";
+    const radarrURL = "{{.Config.Radarr.URL}}";
+    const sonarrURL = "{{.Config.Sonarr.URL}}";
+
+    if (radarrQP && radarrQP !== "0") {
+      document.getElementById("radarr-quality-profile").setAttribute("data-selected", radarrQP);
+    }
+    if (radarrRF) {
+      document.getElementById("radarr-root-folder").setAttribute("data-selected", radarrRF);
+    }
+    if (sonarrQP && sonarrQP !== "0") {
+      document.getElementById("sonarr-quality-profile").setAttribute("data-selected", sonarrQP);
+    }
+    if (sonarrRF) {
+      document.getElementById("sonarr-root-folder").setAttribute("data-selected", sonarrRF);
+    }
+
+    // Auto-load dropdowns if URLs are configured
+    if (radarrURL) {
+      loadRadarrProfiles(true);
+      loadRadarrRootFolders(true);
+    }
+    if (sonarrURL) {
+      loadSonarrProfiles(true);
+      loadSonarrRootFolders(true);
+    }
+  });
+
+  // Load Radarr quality profiles
+  window.loadRadarrProfiles = function(silent = false) {
+    const select = document.getElementById("radarr-quality-profile");
+    const savedValue = select.getAttribute("data-selected");
+    
+    fetch('/v1/radarr/quality-profiles')
+      .then(res => res.json())
+      .then(data => {
+        select.innerHTML = '<option value="">Select a quality profile...</option>';
+        if (data.data && data.data.length > 0) {
+          data.data.forEach(profile => {
+            const option = document.createElement('option');
+            option.value = profile.id;
+            option.textContent = profile.name;
+            if (savedValue && profile.id == savedValue) {
+              option.selected = true;
+            }
+            select.appendChild(option);
+          });
+          if (!silent) showNotification('Quality profiles loaded successfully', 'success');
+        } else {
+          if (!silent) showNotification('No quality profiles found', 'error');
+        }
+      })
+      .catch(err => {
+        if (!silent) showNotification('Failed to load quality profiles: ' + err.message, 'error');
+      });
+  };
+
+  // Load Radarr root folders
+  window.loadRadarrRootFolders = function(silent = false) {
+    const select = document.getElementById("radarr-root-folder");
+    const savedValue = select.getAttribute("data-selected");
+    
+    fetch('/v1/radarr/root-folders')
+      .then(res => res.json())
+      .then(data => {
+        select.innerHTML = '<option value="">Select a root folder...</option>';
+        if (data.data && data.data.length > 0) {
+          data.data.forEach(folder => {
+            const option = document.createElement('option');
+            option.value = folder.path;
+            const freeSpace = folder.freeSpace ? formatBytes(folder.freeSpace) : 'unknown';
+            option.textContent = `${folder.path} (${freeSpace} free)`;
+            if (savedValue && folder.path === savedValue) {
+              option.selected = true;
+            }
+            select.appendChild(option);
+          });
+          if (!silent) showNotification('Root folders loaded successfully', 'success');
+        } else {
+          if (!silent) showNotification('No root folders found', 'error');
+        }
+      })
+      .catch(err => {
+        if (!silent) showNotification('Failed to load root folders: ' + err.message, 'error');
+      });
+  };
+
+  // Load Sonarr quality profiles
+  window.loadSonarrProfiles = function(silent = false) {
+    const select = document.getElementById("sonarr-quality-profile");
+    const savedValue = select.getAttribute("data-selected");
+    
+    fetch('/v1/sonarr/quality-profiles')
+      .then(res => res.json())
+      .then(data => {
+        select.innerHTML = '<option value="">Select a quality profile...</option>';
+        if (data.data && data.data.length > 0) {
+          data.data.forEach(profile => {
+            const option = document.createElement('option');
+            option.value = profile.id;
+            option.textContent = profile.name;
+            if (savedValue && profile.id == savedValue) {
+              option.selected = true;
+            }
+            select.appendChild(option);
+          });
+          if (!silent) showNotification('Quality profiles loaded successfully', 'success');
+        } else {
+          if (!silent) showNotification('No quality profiles found', 'error');
+        }
+      })
+      .catch(err => {
+        if (!silent) showNotification('Failed to load quality profiles: ' + err.message, 'error');
+      });
+  };
+
+  // Load Sonarr root folders
+  window.loadSonarrRootFolders = function(silent = false) {
+    const select = document.getElementById("sonarr-root-folder");
+    const savedValue = select.getAttribute("data-selected");
+    
+    fetch('/v1/sonarr/root-folders')
+      .then(res => res.json())
+      .then(data => {
+        select.innerHTML = '<option value="">Select a root folder...</option>';
+        if (data.data && data.data.length > 0) {
+          data.data.forEach(folder => {
+            const option = document.createElement('option');
+            option.value = folder.path;
+            const freeSpace = folder.freeSpace ? formatBytes(folder.freeSpace) : 'unknown';
+            option.textContent = `${folder.path} (${freeSpace} free)`;
+            if (savedValue && folder.path === savedValue) {
+              option.selected = true;
+            }
+            select.appendChild(option);
+          });
+          if (!silent) showNotification('Root folders loaded successfully', 'success');
+        } else {
+          if (!silent) showNotification('No root folders found', 'error');
+        }
+      })
+      .catch(err => {
+        if (!silent) showNotification('Failed to load root folders: ' + err.message, 'error');
+      });
+  };
+</script>
+{{end}}

@@ -1,0 +1,127 @@
+{{define "activity"}}
+<div class="space-y-6">
+  <div class="mb-6">
+    <h2 class="text-2xl font-bold text-blue-400 mb-2">Activity Log</h2>
+    <p class="text-slate-300">Track all media additions and failures from Blockbusterr jobs</p>
+  </div>
+
+  <!-- Statistics -->
+  <div id="stats" hx-get="/v1/activity/stats" hx-trigger="load, every 30s" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <!-- Stats will be loaded here -->
+  </div>
+
+  <!-- Activity Log -->
+  <div class="bg-slate-800 rounded-lg shadow-lg p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-semibold">Recent Activity</h2>
+      <div class="flex gap-2">
+        <select id="limitSelect" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm" onchange="updateLimit()">
+          <option value="25">Last 25</option>
+          <option value="50" selected>Last 50</option>
+          <option value="100">Last 100</option>
+          <option value="200">Last 200</option>
+        </select>
+        <button 
+          hx-get="/v1/activity/logs?limit=50" 
+          hx-target="#activityTable" 
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm transition-colors">
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <div id="activityTable" 
+         hx-get="/v1/activity/logs?limit=50" 
+         hx-trigger="load, every 30s"
+         class="overflow-x-auto">
+      <!-- Activity table will be loaded here -->
+    </div>
+  </div>
+
+  <script>
+    function updateLimit() {
+      const limit = document.getElementById('limitSelect').value;
+      htmx.ajax('GET', `/v1/activity/logs?limit=${limit}`, {target: '#activityTable'});
+    }
+
+    // Handle stats response
+    htmx.on('htmx:afterSwap', function(evt) {
+      if (evt.detail.target.id === 'stats') {
+        const stats = JSON.parse(evt.detail.xhr.response);
+        evt.detail.target.innerHTML = `
+          <div class="bg-slate-800 rounded-lg p-4">
+            <div class="text-sm text-slate-400 mb-1">Total Added</div>
+            <div class="text-2xl font-bold text-green-400">${stats.total_added || 0}</div>
+          </div>
+          <div class="bg-slate-800 rounded-lg p-4">
+            <div class="text-sm text-slate-400 mb-1">Total Failed</div>
+            <div class="text-2xl font-bold text-red-400">${stats.total_failed || 0}</div>
+          </div>
+          <div class="bg-slate-800 rounded-lg p-4">
+            <div class="text-sm text-slate-400 mb-1">Movies</div>
+            <div class="text-2xl font-bold text-blue-400">${stats.total_movies || 0}</div>
+          </div>
+          <div class="bg-slate-800 rounded-lg p-4">
+            <div class="text-sm text-slate-400 mb-1">Shows</div>
+            <div class="text-2xl font-bold text-purple-400">${stats.total_shows || 0}</div>
+          </div>
+        `;
+      } else if (evt.detail.target.id === 'activityTable') {
+        const logs = JSON.parse(evt.detail.xhr.response);
+        if (!logs || logs.length === 0) {
+          evt.detail.target.innerHTML = '<div class="text-center py-8 text-slate-400">No activity logs yet. Jobs will appear here once they run.</div>';
+          return;
+        }
+        
+        let html = '<table class="w-full text-sm"><thead class="border-b border-slate-700"><tr class="text-left text-slate-400">';
+        html += '<th class="pb-2">Timestamp</th><th class="pb-2">Job</th><th class="pb-2">Type</th><th class="pb-2">Title</th><th class="pb-2">Year</th><th class="pb-2">Links</th><th class="pb-2">Status</th><th class="pb-2">Message</th></tr></thead><tbody>';
+        
+        logs.forEach(log => {
+          const timestamp = new Date(log.timestamp).toLocaleString();
+          const jobBadge = {
+            'trending_movies': '<span class="px-2 py-1 bg-blue-600 rounded text-xs">Trending Movies</span>',
+            'trending_shows': '<span class="px-2 py-1 bg-purple-600 rounded text-xs">Trending Shows</span>',
+            'popular_movies': '<span class="px-2 py-1 bg-green-600 rounded text-xs">Popular Movies</span>',
+            'popular_shows': '<span class="px-2 py-1 bg-yellow-600 rounded text-xs">Popular Shows</span>',
+            'box_office': '<span class="px-2 py-1 bg-red-600 rounded text-xs">Box Office</span>'
+          }[log.job_type] || log.job_type;
+          
+          const statusBadge = log.status === 'added' 
+            ? '<span class="px-2 py-1 bg-green-600 rounded text-xs">Added</span>'
+            : '<span class="px-2 py-1 bg-red-600 rounded text-xs">Failed</span>';
+          
+          const mediaIcon = log.media_type === 'movie' ? '🎬' : '📺';
+          
+          // Build links
+          let links = '<div class="flex gap-1">';
+          if (log.imdb_id) {
+            links += '<a href="https://www.imdb.com/title/' + log.imdb_id + '" target="_blank" class="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-xs" title="View on IMDb">IMDb</a>';
+          }
+          if (log.poster_url) {
+            const linkText = log.media_type === 'movie' ? 'TMDB' : 'TVDB';
+            links += '<a href="' + log.poster_url + '" target="_blank" class="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs" title="View on ' + linkText + '">' + linkText + '</a>';
+          }
+          if (!log.imdb_id && !log.poster_url) {
+            links += '<span class="text-slate-500 text-xs">-</span>';
+          }
+          links += '</div>';
+          
+          html += '<tr class="border-b border-slate-700 hover:bg-slate-700/50">' +
+            '<td class="py-3 text-slate-300">' + timestamp + '</td>' +
+            '<td class="py-3">' + jobBadge + '</td>' +
+            '<td class="py-3">' + mediaIcon + ' ' + log.media_type + '</td>' +
+            '<td class="py-3 font-medium">' + log.title + '</td>' +
+            '<td class="py-3 text-slate-400">' + log.year + '</td>' +
+            '<td class="py-3">' + links + '</td>' +
+            '<td class="py-3">' + statusBadge + '</td>' +
+            '<td class="py-3 text-slate-400 text-xs">' + (log.message || '-') + '</td>' +
+          '</tr>';
+        });
+        
+        html += '</tbody></table>';
+        evt.detail.target.innerHTML = html;
+      }
+    });
+  </script>
+</div>
+{{end}}

@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+bin/
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.iws
+*.code-workspace
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# Config files with sensitive data
+config.yaml
+config.dev.yaml
+
+# Database files
+data/*.db
+
+# Environment files
+.env
+.env.local
+
+# Documentation
+*.md
+LICENSE
+
+# Go test files
+*.test
+*.out
