@@ -6,8 +6,8 @@ FROM golang:${GOLANG_TAG} AS builder
 ARG VERSION=""
 ARG COMMIT=""
 
-# Install required tools
-RUN apk add --no-cache ca-certificates git
+# Install required tools (including gcc and musl-dev for CGO/SQLite)
+RUN apk add --no-cache ca-certificates git gcc musl-dev
 
 WORKDIR /app
 
@@ -18,8 +18,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application with version info
-RUN CGO_ENABLED=0 GOOS=linux go build \
+# Build the application with version info (CGO_ENABLED=1 for SQLite)
+RUN CGO_ENABLED=1 GOOS=linux go build \
     -o blockbusterr \
     -ldflags="-s -w -X 'main.Version=${VERSION}' -X 'main.Timestamp=${COMMIT}'" \
     ./cmd/app/main.go

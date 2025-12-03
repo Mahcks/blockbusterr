@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   blockbusterr:
-    image: mahcks/blockbusterr:latest
+    image: ghcr.io/mahcks/blockbusterr:latest
     container_name: blockbusterr
     restart: unless-stopped
     ports:
