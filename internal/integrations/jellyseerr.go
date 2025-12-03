@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -33,7 +34,7 @@ func NewJellyseerr(config JellyseerrConfig) *Jellyseerr {
 type MovieRequest struct {
 	MediaType string `json:"mediaType"`
 	MediaID   int    `json:"mediaId"` // TMDB ID
-	UserID    string `json:"userId,omitempty"`
+	UserID    *int   `json:"userId,omitempty"`
 }
 
 // ShowRequest represents a TV show request payload
@@ -41,7 +42,7 @@ type ShowRequest struct {
 	MediaType string `json:"mediaType"`
 	MediaID   int    `json:"mediaId"` // TVDB ID
 	Seasons   string `json:"seasons"` // "all" or specific seasons
-	UserID    string `json:"userId,omitempty"`
+	UserID    *int   `json:"userId,omitempty"`
 }
 
 // RequestResponse represents the API response
@@ -118,7 +119,9 @@ func (j *Jellyseerr) RequestMovie(tmdbID int) (*RequestResponse, error) {
 
 	// Add user ID if configured
 	if j.config.UserID != "" {
-		payload.UserID = j.config.UserID
+		if userID, err := strconv.Atoi(j.config.UserID); err == nil {
+			payload.UserID = &userID
+		}
 	}
 
 	resp, err := j.doRequest("POST", "/request", payload)
@@ -152,7 +155,9 @@ func (j *Jellyseerr) RequestShow(tvdbID int) (*RequestResponse, error) {
 
 	// Add user ID if configured
 	if j.config.UserID != "" {
-		payload.UserID = j.config.UserID
+		if userID, err := strconv.Atoi(j.config.UserID); err == nil {
+			payload.UserID = &userID
+		}
 	}
 
 	resp, err := j.doRequest("POST", "/request", payload)
