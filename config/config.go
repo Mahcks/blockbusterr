@@ -137,8 +137,17 @@ func New(version string) (*Config, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
+	// Check if CONFIG_PATH environment variable is set
+	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
+		v.AddConfigPath(configPath)
+	}
+
+	// Default config search paths
 	v.AddConfigPath("./config")
 	v.AddConfigPath("/home/nonroot/config")
+	v.AddConfigPath("/app/config")
+	v.AddConfigPath("/app/data")
+	v.AddConfigPath(".")
 
 	var configFileName string
 	if version == "dev" {

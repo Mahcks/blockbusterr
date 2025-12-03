@@ -10,7 +10,16 @@ services:
     volumes:
       # Persist database, activity logs, and configuration
       - ./data:/app/data
+      
+      # Optional: Mount your config file directly
+      # - ./config.yaml:/app/config/config.yaml:ro
+      
+      # Or mount a config directory
+      # - ./config:/app/config:ro
     environment:
+      # Optional: Specify custom config file location
+      # CONFIG_PATH: /app/config
+      
       # Optional: Override config values with environment variables
       # TRAKT_CLIENT_ID: your_client_id
       # TRAKT_CLIENT_SECRET: your_client_secret

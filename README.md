@@ -216,7 +216,58 @@ Access the web interface at `http://localhost:9090` (change port via Docker port
 - **Activity Log**: View detailed execution history with success/failure tracking
 - **Real-time Updates**: Live job status and instant notifications
 
-**Disable Web UI (Optional):**
+### Docker Configuration Options
+
+**Option 1: Use Web UI (Recommended)**
+
+The config is automatically saved to `/app/data/config.yaml` inside the container:
+
+```bash
+docker run -d \
+  --name blockbusterr \
+  -p 9090:9090 \
+  -v $(pwd)/data:/app/data \
+  mahcks/blockbusterr:latest
+```
+
+**Option 2: Mount Your Config File**
+
+```bash
+docker run -d \
+  --name blockbusterr \
+  -p 9090:9090 \
+  -v $(pwd)/config.yaml:/app/config/config.yaml:ro \
+  -v $(pwd)/data:/app/data \
+  mahcks/blockbusterr:latest
+```
+
+**Option 3: Custom Config Location**
+
+```bash
+docker run -d \
+  --name blockbusterr \
+  -p 9090:9090 \
+  -v $(pwd)/my-config:/config \
+  -v $(pwd)/data:/app/data \
+  -e CONFIG_PATH=/config \
+  mahcks/blockbusterr:latest
+```
+
+**Option 4: Environment Variables Only**
+
+```bash
+docker run -d \
+  --name blockbusterr \
+  -p 9090:9090 \
+  -v $(pwd)/data:/app/data \
+  -e TRAKT_CLIENT_ID=your_id \
+  -e TRAKT_CLIENT_SECRET=your_secret \
+  -e RADARR_URL=http://radarr:7878 \
+  -e RADARR_API_KEY=your_key \
+  mahcks/blockbusterr:latest
+```
+
+**Disable Web UI (Config File Only):**
 
 If you want to use only the config file without the web interface:
 
@@ -224,7 +275,7 @@ If you want to use only the config file without the web interface:
 docker run -d \
   --name blockbusterr \
   -p 9090:9090 \
-  -v $(pwd)/config.yaml:/app/config.yaml \
+  -v $(pwd)/config.yaml:/app/config/config.yaml \
   -v $(pwd)/data:/app/data \
   -e DISABLE_UI=true \
   mahcks/blockbusterr:latest
