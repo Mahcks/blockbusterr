@@ -30,7 +30,7 @@ docker run -d \
   -p 9090:9090 \
   -v $(pwd)/data:/app/data \
   -e TZ=America/New_York \
-  mahcks/blockbusterr:latest
+  ghcr.io/mahcks/blockbusterr:latest
 ```
 
 Or with docker-compose:
@@ -227,7 +227,7 @@ docker run -d \
   --name blockbusterr \
   -p 9090:9090 \
   -v $(pwd)/data:/app/data \
-  mahcks/blockbusterr:latest
+  ghcr.io/mahcks/blockbusterr:latest
 ```
 
 **Option 2: Mount Your Config File**
@@ -238,7 +238,7 @@ docker run -d \
   -p 9090:9090 \
   -v $(pwd)/config.yaml:/app/config/config.yaml:ro \
   -v $(pwd)/data:/app/data \
-  mahcks/blockbusterr:latest
+  ghcr.io/mahcks/blockbusterr:latest
 ```
 
 **Option 3: Custom Config Location**
@@ -250,7 +250,7 @@ docker run -d \
   -v $(pwd)/my-config:/config \
   -v $(pwd)/data:/app/data \
   -e CONFIG_PATH=/config \
-  mahcks/blockbusterr:latest
+  ghcr.io/mahcks/blockbusterr:latest
 ```
 
 **Option 4: Environment Variables Only**
@@ -264,7 +264,7 @@ docker run -d \
   -e TRAKT_CLIENT_SECRET=your_secret \
   -e RADARR_URL=http://radarr:7878 \
   -e RADARR_API_KEY=your_key \
-  mahcks/blockbusterr:latest
+  ghcr.io/mahcks/blockbusterr:latest
 ```
 
 **Disable Web UI (Config File Only):**
@@ -278,17 +278,17 @@ docker run -d \
   -v $(pwd)/config.yaml:/app/config/config.yaml \
   -v $(pwd)/data:/app/data \
   -e DISABLE_UI=true \
-  mahcks/blockbusterr:latest
+  ghcr.io/mahcks/blockbusterr:latest
 ```
 
 ## Building Docker Image
 
 ```bash
 # Build
-docker build -t mahcks/blockbusterr:latest .
+docker build -t ghcr.io/mahcks/blockbusterr:latest .
 
 # Push (if publishing)
-docker push mahcks/blockbusterr:latest
+docker push ghcr.io/mahcks/blockbusterr:latest
 ```
 
 ## Development
