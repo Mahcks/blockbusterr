@@ -16,6 +16,7 @@ func New(gctx global.Context, router fiber.Router) {
 	routes.RegisterTraktRoutes(rg, router)
 	routes.RegisterRadarrRoutes(rg, router)
 	routes.RegisterSonarrRoutes(rg, router)
+	rg.RegisterJellyseerrRoutes(router)
 
 	// Register jobs API routes
 	routes.AddJobsRoutes(router, gctx)

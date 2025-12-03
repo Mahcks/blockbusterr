@@ -22,6 +22,12 @@ sonarr:
   quality_profile: 1  # Update after connecting - check Sonarr Settings > Profiles
   root_folder: ""  # Example: /tv
 
+jellyseerr:
+  # Jellyseerr/Overseerr connection settings (optional - alternative to direct Radarr/Sonarr)
+  url: ""  # Example: http://localhost:5055
+  api_key: ""
+  user_id: ""  # Optional: Request as specific user ID (leave empty for default user)
+
 jobs:
   # How often to run all enabled jobs
   # Supports duration format (e.g. "1h", "30m", "2h30m") or cron expressions (e.g. "0 */2 * * *")
@@ -33,6 +39,9 @@ jobs:
   #   "0 2 * * *" - Daily at 2 AM
   #   "0 */6 * * *" - Every 6 hours
   sync_interval: 24h
+
+  # Mode: "direct" (add directly to Radarr/Sonarr) or "jellyseerr" (request via Jellyseerr)
+  mode: direct
 
   # Movie Jobs
   trending_movies:

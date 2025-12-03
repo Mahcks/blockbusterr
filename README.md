@@ -8,9 +8,12 @@ Automatically add trending, popular, and highly-rated movies and TV shows from T
   - Trending, Popular, Box Office
   - Favorited, Played, Watched, Collected (by time period)
   - Anticipated content
+- **Dual Integration Modes**:
+  - **Direct Mode**: Add content directly to Radarr/Sonarr
+  - **Jellyseerr Mode**: Request content via Jellyseerr/Overseerr with approval workflows
 - **Web UI**: Manage jobs, view activity logs, and configure settings
 - **Flexible Scheduling**: Use simple durations (`1h`, `30m`) or cron expressions (`0 */2 * * *`)
-- **Smart Duplicate Detection**: Prevents adding content that's already in Radarr/Sonarr
+- **Smart Duplicate Detection**: Prevents adding content that's already requested/added
 - **Activity Logging**: Track all job executions and API actions
 - **Configurable Limits**: Control how many items to add per job
 - **Time Periods**: Choose weekly, monthly, yearly, or all-time for historical lists
@@ -108,8 +111,15 @@ sonarr:
   quality_profile: 1
   root_folder: "/tv"
 
+# Optional: Jellyseerr integration (alternative to direct mode)
+jellyseerr:
+  url: "http://localhost:5055"
+  api_key: "your_jellyseerr_api_key"
+  user_id: ""  # Optional: request as specific user
+
 jobs:
   sync_interval: 24h  # or "0 2 * * *" for daily at 2 AM
+  mode: direct  # "direct" or "jellyseerr"
   
   trending_movies:
     enabled: true
@@ -150,7 +160,30 @@ RADARR_URL=http://radarr:7878
 RADARR_API_KEY=your_key
 SONARR_URL=http://sonarr:8989
 SONARR_API_KEY=your_key
+JELLYSEERR_URL=http://jellyseerr:5055
+JELLYSEERR_API_KEY=your_key
 ```
+
+## Integration Modes
+
+### Direct Mode (Default)
+Adds content directly to Radarr and Sonarr. Requires:
+- Radarr URL, API key, quality profile, and root folder
+- Sonarr URL, API key, quality profile, and root folder
+
+Content is immediately added and starts downloading based on your *arr settings.
+
+### Jellyseerr Mode
+Requests content via Jellyseerr/Overseerr. Requires:
+- Jellyseerr URL and API key
+- Optional: User ID to request as specific user
+
+Content goes through Jellyseerr's approval workflow (if configured) before being sent to Radarr/Sonarr. Perfect for multi-user setups with request management.
+
+**To enable Jellyseerr mode:**
+1. Configure Jellyseerr in the Configuration page
+2. Select "Jellyseerr Mode" in the Integration Mode section
+3. Save configuration
 
 ## Available Jobs
 

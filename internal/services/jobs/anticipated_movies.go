@@ -12,7 +12,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
-// RunAnticipatedMovies fetches most anticipated movies from Trakt and adds them to Radarr
+// RunAnticipatedMovies fetches most anticipated movies from Trakt and adds them to Radarr or requests via Jellyseerr
 func RunAnticipatedMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -23,15 +23,16 @@ func RunAnticipatedMovies(cfg *config.Config, db *database.Database, dryRun bool
 		log.Info("Starting anticipated movies job")
 	}
 
-	// Create clients
+	// Determine mode
+	mode := cfg.Jobs.Mode
+	if mode == "" {
+		mode = "direct" // Default to direct if not specified
+	}
+
+	// Create Trakt client
 	traktClient := integrations.NewTrakt(integrations.TraktConfig{
 		ClientID:     cfg.Trakt.ClientID,
 		ClientSecret: cfg.Trakt.ClientSecret,
-	})
-
-	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-		BaseURL: cfg.Radarr.URL,
-		APIKey:  cfg.Radarr.APIKey,
 	})
 
 	// Fetch anticipated movies from Trakt
@@ -42,6 +43,21 @@ func RunAnticipatedMovies(cfg *config.Config, db *database.Database, dryRun bool
 	}
 
 	log.Infof("Found %d anticipated movies from Trakt", len(anticipatedMovies))
+
+	// Route to appropriate handler based on mode
+	if mode == "jellyseerr" {
+		runAnticipatedMoviesJellyseerr(ctx, cfg, db, anticipatedMovies, dryRun)
+	} else {
+		runAnticipatedMoviesDirect(ctx, cfg, db, anticipatedMovies, dryRun)
+	}
+}
+
+// runAnticipatedMoviesDirect adds movies directly to Radarr
+func runAnticipatedMoviesDirect(ctx context.Context, cfg *config.Config, db *database.Database, anticipatedMovies []integrations.AnticipatedMovie, dryRun bool) {
+	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+		BaseURL: cfg.Radarr.URL,
+		APIKey:  cfg.Radarr.APIKey,
+	})
 
 	// Get existing movies from Radarr for deduplication
 	existingMovies, err := radarrClient.GetMovies(ctx)
@@ -143,4 +159,83 @@ func RunAnticipatedMovies(cfg *config.Config, db *database.Database, dryRun bool
 	}
 
 	log.Infof("Anticipated movies job completed - Added: %d, Skipped: %d, Failed: %d", added, skipped, failed)
+}
+
+// runAnticipatedMoviesJellyseerr requests movies via Jellyseerr
+func runAnticipatedMoviesJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, anticipatedMovies []integrations.AnticipatedMovie, dryRun bool) {
+	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
+		URL:    cfg.Jellyseerr.URL,
+		APIKey: cfg.Jellyseerr.APIKey,
+		UserID: cfg.Jellyseerr.UserID,
+	})
+
+	// Request movies via Jellyseerr
+	added := 0
+	skipped := 0
+	failed := 0
+
+	for _, anticipated := range anticipatedMovies {
+		if anticipated.Movie.IDs.TMDB == 0 {
+			log.Warnf("Skipping '%s (%d)' - missing TMDB ID", anticipated.Movie.Title, anticipated.Movie.Year)
+			skipped++
+			continue
+		}
+
+		// Request movie via Jellyseerr (or simulate in dry-run mode)
+		if dryRun {
+			log.Infof("[DRY RUN] Would request anticipated movie '%s (%d)' via Jellyseerr", anticipated.Movie.Title, anticipated.Movie.Year)
+			added++
+		} else {
+			result, err := jellyseerrClient.RequestMovie(anticipated.Movie.IDs.TMDB)
+			if err != nil {
+				log.Errorf("Failed to request movie '%s (%d)' via Jellyseerr: %v", anticipated.Movie.Title, anticipated.Movie.Year, err)
+				failed++
+				// Log failure to database
+				if db != nil {
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "anticipated_movies",
+						MediaType: "movie",
+						Title:     anticipated.Movie.Title,
+						Year:      anticipated.Movie.Year,
+						TMDBID:    anticipated.Movie.IDs.TMDB,
+						IMDBID:    anticipated.Movie.IDs.IMDB,
+						Status:    "failed",
+						Message:   err.Error(),
+					})
+				}
+				continue
+			}
+
+			if result.IsAlreadyRequested() {
+				log.Debugf("Movie '%s (%d)' already requested in Jellyseerr", anticipated.Movie.Title, anticipated.Movie.Year)
+				skipped++
+			} else {
+				log.Infof("Requested anticipated movie '%s (%d)' via Jellyseerr (Request ID: %d)", anticipated.Movie.Title, anticipated.Movie.Year, result.ID)
+				added++
+
+				// Log success to database
+				if db != nil {
+					posterURL := ""
+					if anticipated.Movie.IDs.TMDB > 0 {
+						posterURL = fmt.Sprintf("https://www.themoviedb.org/movie/%d", anticipated.Movie.IDs.TMDB)
+					}
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "anticipated_movies",
+						MediaType: "movie",
+						Title:     anticipated.Movie.Title,
+						Year:      anticipated.Movie.Year,
+						TMDBID:    anticipated.Movie.IDs.TMDB,
+						IMDBID:    anticipated.Movie.IDs.IMDB,
+						PosterURL: posterURL,
+						Status:    "requested",
+						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
+					})
+				}
+			}
+		}
+	}
+
+	log.Infof("Anticipated movies job completed (Jellyseerr mode) - Requested: %d, Skipped: %d, Failed: %d", added, skipped, failed)
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
-// RunBoxOffice fetches box office movies from Trakt and adds them to Radarr
+// RunBoxOffice fetches box office movies from Trakt and adds them to Radarr or requests via Jellyseerr
 func RunBoxOffice(cfg *config.Config, db *database.Database, dryRun bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -23,15 +23,16 @@ func RunBoxOffice(cfg *config.Config, db *database.Database, dryRun bool) {
 		log.Info("Starting box office job")
 	}
 
-	// Create clients
+	// Determine mode
+	mode := cfg.Jobs.Mode
+	if mode == "" {
+		mode = "direct" // Default to direct if not specified
+	}
+
+	// Create Trakt client
 	traktClient := integrations.NewTrakt(integrations.TraktConfig{
 		ClientID:     cfg.Trakt.ClientID,
 		ClientSecret: cfg.Trakt.ClientSecret,
-	})
-
-	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-		BaseURL: cfg.Radarr.URL,
-		APIKey:  cfg.Radarr.APIKey,
 	})
 
 	// Fetch box office movies from Trakt
@@ -42,6 +43,21 @@ func RunBoxOffice(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Found %d box office movies from Trakt", len(boxOfficeMovies))
+
+	// Route to appropriate handler based on mode
+	if mode == "jellyseerr" {
+		runBoxOfficeJellyseerr(ctx, cfg, db, boxOfficeMovies, dryRun)
+	} else {
+		runBoxOfficeDirect(ctx, cfg, db, boxOfficeMovies, dryRun)
+	}
+}
+
+// runBoxOfficeDirect adds movies directly to Radarr
+func runBoxOfficeDirect(ctx context.Context, cfg *config.Config, db *database.Database, boxOfficeMovies []integrations.BoxOfficeMovie, dryRun bool) {
+	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+		BaseURL: cfg.Radarr.URL,
+		APIKey:  cfg.Radarr.APIKey,
+	})
 
 	// Get existing movies from Radarr for deduplication
 	existingMovies, err := radarrClient.GetMovies(ctx)
@@ -98,6 +114,84 @@ func RunBoxOffice(cfg *config.Config, db *database.Database, dryRun bool) {
 					log.Errorf("Failed to add movie '%s (%d)' to Radarr: %v", boxOffice.Movie.Title, boxOffice.Movie.Year, err)
 					failed++
 					// Log failed activity
+					if db != nil {
+						db.LogActivity(database.ActivityLog{
+							Timestamp: time.Now(),
+							JobType:   "box_office",
+							MediaType: "movie",
+							Title:     boxOffice.Movie.Title,
+							Year:      boxOffice.Movie.Year,
+							TMDBID:    boxOffice.Movie.IDs.TMDB,
+							IMDBID:    boxOffice.Movie.IDs.IMDB,
+							Status:    "failed",
+							Message:   err.Error(),
+						})
+					}
+				}
+				continue
+			}
+
+			log.Infof("Added box office movie '%s (%d)' to Radarr (ID: %d, Revenue: $%d)", addedMovie.Title, addedMovie.Year, addedMovie.ID, boxOffice.Revenue)
+			added++
+
+			// Log successful activity
+			if db != nil {
+				posterURL := ""
+				if addedMovie.TmdbID > 0 {
+					posterURL = fmt.Sprintf("https://www.themoviedb.org/movie/%d", addedMovie.TmdbID)
+				}
+				db.LogActivity(database.ActivityLog{
+					Timestamp: time.Now(),
+					JobType:   "box_office",
+					MediaType: "movie",
+					Title:     addedMovie.Title,
+					Year:      addedMovie.Year,
+					TMDBID:    addedMovie.TmdbID,
+					IMDBID:    addedMovie.ImdbID,
+					PosterURL: posterURL,
+					Status:    "added",
+				})
+			}
+		}
+
+		// Mark as existing to avoid duplicates within this job run
+		existingTMDBIDs[boxOffice.Movie.IDs.TMDB] = true
+	}
+
+	log.Infof("Box office job completed - Added: %d, Skipped: %d, Failed: %d", added, skipped, failed)
+}
+
+// runBoxOfficeJellyseerr requests movies via Jellyseerr
+func runBoxOfficeJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, boxOfficeMovies []integrations.BoxOfficeMovie, dryRun bool) {
+	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
+		URL:    cfg.Jellyseerr.URL,
+		APIKey: cfg.Jellyseerr.APIKey,
+		UserID: cfg.Jellyseerr.UserID,
+	})
+
+	// Request movies via Jellyseerr
+	added := 0
+	skipped := 0
+	failed := 0
+
+	for _, boxOffice := range boxOfficeMovies {
+		if boxOffice.Movie.IDs.TMDB == 0 {
+			log.Warnf("Skipping '%s (%d)' - missing TMDB ID", boxOffice.Movie.Title, boxOffice.Movie.Year)
+			skipped++
+			continue
+		}
+
+		// Request movie via Jellyseerr (or simulate in dry-run mode)
+		if dryRun {
+			log.Infof("[DRY RUN] Would request box office movie '%s (%d)' via Jellyseerr (Revenue: $%d)", boxOffice.Movie.Title, boxOffice.Movie.Year, boxOffice.Revenue)
+			added++
+		} else {
+			result, err := jellyseerrClient.RequestMovie(boxOffice.Movie.IDs.TMDB)
+			if err != nil {
+				log.Errorf("Failed to request movie '%s (%d)' via Jellyseerr: %v", boxOffice.Movie.Title, boxOffice.Movie.Year, err)
+				failed++
+				// Log failure to database
+				if db != nil {
 					db.LogActivity(database.ActivityLog{
 						Timestamp: time.Now(),
 						JobType:   "box_office",
@@ -113,29 +207,35 @@ func RunBoxOffice(cfg *config.Config, db *database.Database, dryRun bool) {
 				continue
 			}
 
-			log.Infof("Added box office movie '%s (%d)' to Radarr (ID: %d, Revenue: $%d)", addedMovie.Title, addedMovie.Year, addedMovie.ID, boxOffice.Revenue)
-			added++
-			// Log successful activity
-			posterURL := ""
-			if addedMovie.TmdbID > 0 {
-				posterURL = fmt.Sprintf("https://www.themoviedb.org/movie/%d", addedMovie.TmdbID)
-			}
-			db.LogActivity(database.ActivityLog{
-				Timestamp: time.Now(),
-				JobType:   "box_office",
-				MediaType: "movie",
-				Title:     addedMovie.Title,
-				Year:      addedMovie.Year,
-				TMDBID:    addedMovie.TmdbID,
-				IMDBID:    addedMovie.ImdbID,
-				PosterURL: posterURL,
-				Status:    "added",
-			})
-		}
+			if result.IsAlreadyRequested() {
+				log.Debugf("Movie '%s (%d)' already requested in Jellyseerr", boxOffice.Movie.Title, boxOffice.Movie.Year)
+				skipped++
+			} else {
+				log.Infof("Requested box office movie '%s (%d)' via Jellyseerr (Request ID: %d, Revenue: $%d)", boxOffice.Movie.Title, boxOffice.Movie.Year, result.ID, boxOffice.Revenue)
+				added++
 
-		// Mark as existing to avoid duplicates within this job run
-		existingTMDBIDs[boxOffice.Movie.IDs.TMDB] = true
+				// Log success to database
+				if db != nil {
+					posterURL := ""
+					if boxOffice.Movie.IDs.TMDB > 0 {
+						posterURL = fmt.Sprintf("https://www.themoviedb.org/movie/%d", boxOffice.Movie.IDs.TMDB)
+					}
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "box_office",
+						MediaType: "movie",
+						Title:     boxOffice.Movie.Title,
+						Year:      boxOffice.Movie.Year,
+						TMDBID:    boxOffice.Movie.IDs.TMDB,
+						IMDBID:    boxOffice.Movie.IDs.IMDB,
+						PosterURL: posterURL,
+						Status:    "requested",
+						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
+					})
+				}
+			}
+		}
 	}
 
-	log.Infof("Box office job completed - Added: %d, Skipped: %d, Failed: %d", added, skipped, failed)
+	log.Infof("Box office job completed (Jellyseerr mode) - Requested: %d, Skipped: %d, Failed: %d", added, skipped, failed)
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
-// RunCollectedShows fetches collected TV shows from Trakt and adds them to Sonarr
+// RunCollectedShows fetches collected TV shows from Trakt and adds them to Sonarr or requests via Jellyseerr
 func RunCollectedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -23,15 +23,16 @@ func RunCollectedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		log.Info("Starting collected shows job")
 	}
 
-	// Create clients
+	// Determine mode
+	mode := cfg.Jobs.Mode
+	if mode == "" {
+		mode = "direct" // Default to direct if not specified
+	}
+
+	// Create Trakt client
 	traktClient := integrations.NewTrakt(integrations.TraktConfig{
 		ClientID:     cfg.Trakt.ClientID,
 		ClientSecret: cfg.Trakt.ClientSecret,
-	})
-
-	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-		BaseURL: cfg.Sonarr.URL,
-		APIKey:  cfg.Sonarr.APIKey,
 	})
 
 	// Fetch collected shows from Trakt
@@ -42,6 +43,21 @@ func RunCollectedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Found %d collected shows from Trakt", len(collectedShows))
+
+	// Route to appropriate handler based on mode
+	if mode == "jellyseerr" {
+		runCollectedShowsJellyseerr(ctx, cfg, db, collectedShows, dryRun)
+	} else {
+		runCollectedShowsDirect(ctx, cfg, db, collectedShows, dryRun)
+	}
+}
+
+// runCollectedShowsDirect adds shows directly to Sonarr
+func runCollectedShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, collectedShows []integrations.CollectedShow, dryRun bool) {
+	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+		BaseURL: cfg.Sonarr.URL,
+		APIKey:  cfg.Sonarr.APIKey,
+	})
 
 	// Get existing series from Sonarr for deduplication
 	existingSeries, err := sonarrClient.GetSeries(ctx)
@@ -150,4 +166,94 @@ func RunCollectedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Collected shows job completed - Added: %d, Skipped: %d, Failed: %d", added, skipped, failed)
+}
+
+// runCollectedShowsJellyseerr requests shows via Jellyseerr
+func runCollectedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, collectedShows []integrations.CollectedShow, dryRun bool) {
+	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
+		URL:    cfg.Jellyseerr.URL,
+		APIKey: cfg.Jellyseerr.APIKey,
+		UserID: cfg.Jellyseerr.UserID,
+	})
+
+	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+		BaseURL: cfg.Sonarr.URL,
+		APIKey:  cfg.Sonarr.APIKey,
+	})
+
+	// Request shows via Jellyseerr
+	added := 0
+	skipped := 0
+	failed := 0
+
+	for _, collected := range collectedShows {
+		// Need to lookup the series to get TVDB ID
+		lookupResults, err := sonarrClient.LookupSeries(ctx, fmt.Sprintf("trakt:%d", collected.Show.IDs.Trakt))
+		if err != nil || len(lookupResults) == 0 {
+			log.Errorf("Failed to lookup show '%s (%d)' in Sonarr: %v", collected.Show.Title, collected.Show.Year, err)
+			failed++
+			continue
+		}
+
+		series := lookupResults[0]
+
+		if series.TvdbID == 0 {
+			log.Warnf("Skipping '%s (%d)' - missing TVDB ID", collected.Show.Title, collected.Show.Year)
+			skipped++
+			continue
+		}
+
+		// Request show via Jellyseerr (or simulate in dry-run mode)
+		if dryRun {
+			log.Infof("[DRY RUN] Would request collected show '%s (%d)' via Jellyseerr", collected.Show.Title, collected.Show.Year)
+			added++
+		} else {
+			result, err := jellyseerrClient.RequestShow(series.TvdbID)
+			if err != nil {
+				log.Errorf("Failed to request show '%s (%d)' via Jellyseerr: %v", collected.Show.Title, collected.Show.Year, err)
+				failed++
+				// Log failure to database
+				if db != nil {
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "collected_shows",
+						MediaType: "show",
+						Title:     collected.Show.Title,
+						Year:      collected.Show.Year,
+						TVDBID:    series.TvdbID,
+						IMDBID:    collected.Show.IDs.IMDB,
+						Status:    "failed",
+						Message:   err.Error(),
+					})
+				}
+				continue
+			}
+
+			if result.IsAlreadyRequested() {
+				log.Debugf("Show '%s (%d)' already requested in Jellyseerr", collected.Show.Title, collected.Show.Year)
+				skipped++
+			} else {
+				log.Infof("Requested collected show '%s (%d)' via Jellyseerr (Request ID: %d)", collected.Show.Title, collected.Show.Year, result.ID)
+				added++
+
+				// Log success to database
+				if db != nil {
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "collected_shows",
+						MediaType: "show",
+						Title:     collected.Show.Title,
+						Year:      collected.Show.Year,
+						TVDBID:    series.TvdbID,
+						IMDBID:    collected.Show.IDs.IMDB,
+						PosterURL: fmt.Sprintf("https://www.thetvdb.com/series/%d", series.TvdbID),
+						Status:    "requested",
+						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
+					})
+				}
+			}
+		}
+	}
+
+	log.Infof("Collected shows job completed (Jellyseerr mode) - Requested: %d, Skipped: %d, Failed: %d", added, skipped, failed)
 }

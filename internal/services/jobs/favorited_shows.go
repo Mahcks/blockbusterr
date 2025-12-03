@@ -12,7 +12,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
-// RunFavoritedShows fetches favorited TV shows from Trakt and adds them to Sonarr
+// RunFavoritedShows fetches favorited TV shows from Trakt and adds them to Sonarr or requests via Jellyseerr
 func RunFavoritedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -23,15 +23,16 @@ func RunFavoritedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		log.Info("Starting favorited shows job")
 	}
 
-	// Create clients
+	// Determine mode
+	mode := cfg.Jobs.Mode
+	if mode == "" {
+		mode = "direct" // Default to direct if not specified
+	}
+
+	// Create Trakt client
 	traktClient := integrations.NewTrakt(integrations.TraktConfig{
 		ClientID:     cfg.Trakt.ClientID,
 		ClientSecret: cfg.Trakt.ClientSecret,
-	})
-
-	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-		BaseURL: cfg.Sonarr.URL,
-		APIKey:  cfg.Sonarr.APIKey,
 	})
 
 	// Fetch favorited shows from Trakt
@@ -42,6 +43,21 @@ func RunFavoritedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Found %d favorited shows from Trakt", len(favoritedShows))
+
+	// Route to appropriate handler based on mode
+	if mode == "jellyseerr" {
+		runFavoritedShowsJellyseerr(ctx, cfg, db, favoritedShows, dryRun)
+	} else {
+		runFavoritedShowsDirect(ctx, cfg, db, favoritedShows, dryRun)
+	}
+}
+
+// runFavoritedShowsDirect adds shows directly to Sonarr
+func runFavoritedShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, favoritedShows []integrations.FavoritedShow, dryRun bool) {
+	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+		BaseURL: cfg.Sonarr.URL,
+		APIKey:  cfg.Sonarr.APIKey,
+	})
 
 	// Get existing series from Sonarr for deduplication
 	existingSeries, err := sonarrClient.GetSeries(ctx)
@@ -150,4 +166,94 @@ func RunFavoritedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Favorited shows job completed - Added: %d, Skipped: %d, Failed: %d", added, skipped, failed)
+}
+
+// runFavoritedShowsJellyseerr requests shows via Jellyseerr
+func runFavoritedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, favoritedShows []integrations.FavoritedShow, dryRun bool) {
+	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
+		URL:    cfg.Jellyseerr.URL,
+		APIKey: cfg.Jellyseerr.APIKey,
+		UserID: cfg.Jellyseerr.UserID,
+	})
+
+	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+		BaseURL: cfg.Sonarr.URL,
+		APIKey:  cfg.Sonarr.APIKey,
+	})
+
+	// Request shows via Jellyseerr
+	added := 0
+	skipped := 0
+	failed := 0
+
+	for _, favorited := range favoritedShows {
+		// Need to lookup the series to get TVDB ID
+		lookupResults, err := sonarrClient.LookupSeries(ctx, fmt.Sprintf("trakt:%d", favorited.Show.IDs.Trakt))
+		if err != nil || len(lookupResults) == 0 {
+			log.Errorf("Failed to lookup show '%s (%d)' in Sonarr: %v", favorited.Show.Title, favorited.Show.Year, err)
+			failed++
+			continue
+		}
+
+		series := lookupResults[0]
+
+		if series.TvdbID == 0 {
+			log.Warnf("Skipping '%s (%d)' - missing TVDB ID", favorited.Show.Title, favorited.Show.Year)
+			skipped++
+			continue
+		}
+
+		// Request show via Jellyseerr (or simulate in dry-run mode)
+		if dryRun {
+			log.Infof("[DRY RUN] Would request favorited show '%s (%d)' via Jellyseerr", favorited.Show.Title, favorited.Show.Year)
+			added++
+		} else {
+			result, err := jellyseerrClient.RequestShow(series.TvdbID)
+			if err != nil {
+				log.Errorf("Failed to request show '%s (%d)' via Jellyseerr: %v", favorited.Show.Title, favorited.Show.Year, err)
+				failed++
+				// Log failure to database
+				if db != nil {
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "favorited_shows",
+						MediaType: "show",
+						Title:     favorited.Show.Title,
+						Year:      favorited.Show.Year,
+						TVDBID:    series.TvdbID,
+						IMDBID:    favorited.Show.IDs.IMDB,
+						Status:    "failed",
+						Message:   err.Error(),
+					})
+				}
+				continue
+			}
+
+			if result.IsAlreadyRequested() {
+				log.Debugf("Show '%s (%d)' already requested in Jellyseerr", favorited.Show.Title, favorited.Show.Year)
+				skipped++
+			} else {
+				log.Infof("Requested favorited show '%s (%d)' via Jellyseerr (Request ID: %d)", favorited.Show.Title, favorited.Show.Year, result.ID)
+				added++
+
+				// Log success to database
+				if db != nil {
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "favorited_shows",
+						MediaType: "show",
+						Title:     favorited.Show.Title,
+						Year:      favorited.Show.Year,
+						TVDBID:    series.TvdbID,
+						IMDBID:    favorited.Show.IDs.IMDB,
+						PosterURL: fmt.Sprintf("https://www.thetvdb.com/series/%d", series.TvdbID),
+						Status:    "requested",
+						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
+					})
+				}
+			}
+		}
+	}
+
+	log.Infof("Favorited shows job completed (Jellyseerr mode) - Requested: %d, Skipped: %d, Failed: %d", added, skipped, failed)
 }

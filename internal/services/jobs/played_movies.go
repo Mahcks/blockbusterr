@@ -12,7 +12,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
-// RunPlayedMovies fetches most played movies from Trakt and adds them to Radarr
+// RunPlayedMovies fetches most played movies from Trakt and adds them to Radarr or requests via Jellyseerr
 func RunPlayedMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -23,15 +23,16 @@ func RunPlayedMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 		log.Info("Starting played movies job")
 	}
 
-	// Create clients
+	// Determine mode
+	mode := cfg.Jobs.Mode
+	if mode == "" {
+		mode = "direct" // Default to direct if not specified
+	}
+
+	// Create Trakt client
 	traktClient := integrations.NewTrakt(integrations.TraktConfig{
 		ClientID:     cfg.Trakt.ClientID,
 		ClientSecret: cfg.Trakt.ClientSecret,
-	})
-
-	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-		BaseURL: cfg.Radarr.URL,
-		APIKey:  cfg.Radarr.APIKey,
 	})
 
 	// Fetch played movies from Trakt
@@ -42,6 +43,21 @@ func RunPlayedMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Found %d played movies from Trakt", len(playedMovies))
+
+	// Route to appropriate handler based on mode
+	if mode == "jellyseerr" {
+		runPlayedMoviesJellyseerr(ctx, cfg, db, playedMovies, dryRun)
+	} else {
+		runPlayedMoviesDirect(ctx, cfg, db, playedMovies, dryRun)
+	}
+}
+
+// runPlayedMoviesDirect adds movies directly to Radarr
+func runPlayedMoviesDirect(ctx context.Context, cfg *config.Config, db *database.Database, playedMovies []integrations.PlayedMovie, dryRun bool) {
+	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+		BaseURL: cfg.Radarr.URL,
+		APIKey:  cfg.Radarr.APIKey,
+	})
 
 	// Get existing movies from Radarr for deduplication
 	existingMovies, err := radarrClient.GetMovies(ctx)
@@ -143,4 +159,83 @@ func RunPlayedMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Played movies job completed - Added: %d, Skipped: %d, Failed: %d", added, skipped, failed)
+}
+
+// runPlayedMoviesJellyseerr requests movies via Jellyseerr
+func runPlayedMoviesJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, playedMovies []integrations.PlayedMovie, dryRun bool) {
+	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
+		URL:    cfg.Jellyseerr.URL,
+		APIKey: cfg.Jellyseerr.APIKey,
+		UserID: cfg.Jellyseerr.UserID,
+	})
+
+	// Request movies via Jellyseerr
+	added := 0
+	skipped := 0
+	failed := 0
+
+	for _, played := range playedMovies {
+		if played.Movie.IDs.TMDB == 0 {
+			log.Warnf("Skipping '%s (%d)' - missing TMDB ID", played.Movie.Title, played.Movie.Year)
+			skipped++
+			continue
+		}
+
+		// Request movie via Jellyseerr (or simulate in dry-run mode)
+		if dryRun {
+			log.Infof("[DRY RUN] Would request played movie '%s (%d)' via Jellyseerr", played.Movie.Title, played.Movie.Year)
+			added++
+		} else {
+			result, err := jellyseerrClient.RequestMovie(played.Movie.IDs.TMDB)
+			if err != nil {
+				log.Errorf("Failed to request movie '%s (%d)' via Jellyseerr: %v", played.Movie.Title, played.Movie.Year, err)
+				failed++
+				// Log failure to database
+				if db != nil {
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "played_movies",
+						MediaType: "movie",
+						Title:     played.Movie.Title,
+						Year:      played.Movie.Year,
+						TMDBID:    played.Movie.IDs.TMDB,
+						IMDBID:    played.Movie.IDs.IMDB,
+						Status:    "failed",
+						Message:   err.Error(),
+					})
+				}
+				continue
+			}
+
+			if result.IsAlreadyRequested() {
+				log.Debugf("Movie '%s (%d)' already requested in Jellyseerr", played.Movie.Title, played.Movie.Year)
+				skipped++
+			} else {
+				log.Infof("Requested played movie '%s (%d)' via Jellyseerr (Request ID: %d)", played.Movie.Title, played.Movie.Year, result.ID)
+				added++
+
+				// Log success to database
+				if db != nil {
+					posterURL := ""
+					if played.Movie.IDs.TMDB > 0 {
+						posterURL = fmt.Sprintf("https://www.themoviedb.org/movie/%d", played.Movie.IDs.TMDB)
+					}
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "played_movies",
+						MediaType: "movie",
+						Title:     played.Movie.Title,
+						Year:      played.Movie.Year,
+						TMDBID:    played.Movie.IDs.TMDB,
+						IMDBID:    played.Movie.IDs.IMDB,
+						PosterURL: posterURL,
+						Status:    "requested",
+						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
+					})
+				}
+			}
+		}
+	}
+
+	log.Infof("Played movies job completed (Jellyseerr mode) - Requested: %d, Skipped: %d, Failed: %d", added, skipped, failed)
 }

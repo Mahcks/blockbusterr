@@ -12,7 +12,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
-// RunTrendingMovies fetches trending movies from Trakt and adds them to Radarr
+// RunTrendingMovies fetches trending movies from Trakt and adds them to Radarr or requests via Jellyseerr
 func RunTrendingMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -23,15 +23,16 @@ func RunTrendingMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 		log.Info("Starting trending movies job")
 	}
 
-	// Create clients
+	// Determine mode
+	mode := cfg.Jobs.Mode
+	if mode == "" {
+		mode = "direct" // Default to direct if not specified
+	}
+
+	// Create Trakt client
 	traktClient := integrations.NewTrakt(integrations.TraktConfig{
 		ClientID:     cfg.Trakt.ClientID,
 		ClientSecret: cfg.Trakt.ClientSecret,
-	})
-
-	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-		BaseURL: cfg.Radarr.URL,
-		APIKey:  cfg.Radarr.APIKey,
 	})
 
 	// Fetch trending movies from Trakt
@@ -42,6 +43,21 @@ func RunTrendingMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Found %d trending movies from Trakt", len(trendingMovies))
+
+	// Route to appropriate handler based on mode
+	if mode == "jellyseerr" {
+		runTrendingMoviesJellyseerr(ctx, cfg, db, trendingMovies, dryRun)
+	} else {
+		runTrendingMoviesDirect(ctx, cfg, db, trendingMovies, dryRun)
+	}
+}
+
+// runTrendingMoviesDirect adds movies directly to Radarr
+func runTrendingMoviesDirect(ctx context.Context, cfg *config.Config, db *database.Database, trendingMovies []integrations.TrendingMovie, dryRun bool) {
+	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+		BaseURL: cfg.Radarr.URL,
+		APIKey:  cfg.Radarr.APIKey,
+	})
 
 	// Get existing movies from Radarr for deduplication
 	existingMovies, err := radarrClient.GetMovies(ctx)
@@ -143,4 +159,83 @@ func RunTrendingMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Trending movies job completed - Added: %d, Skipped: %d, Failed: %d", added, skipped, failed)
+}
+
+// runTrendingMoviesJellyseerr requests movies via Jellyseerr
+func runTrendingMoviesJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, trendingMovies []integrations.TrendingMovie, dryRun bool) {
+	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
+		URL:    cfg.Jellyseerr.URL,
+		APIKey: cfg.Jellyseerr.APIKey,
+		UserID: cfg.Jellyseerr.UserID,
+	})
+
+	// Request movies via Jellyseerr
+	added := 0
+	skipped := 0
+	failed := 0
+
+	for _, trending := range trendingMovies {
+		if trending.Movie.IDs.TMDB == 0 {
+			log.Warnf("Skipping '%s (%d)' - missing TMDB ID", trending.Movie.Title, trending.Movie.Year)
+			skipped++
+			continue
+		}
+
+		// Request movie via Jellyseerr (or simulate in dry-run mode)
+		if dryRun {
+			log.Infof("[DRY RUN] Would request trending movie '%s (%d)' via Jellyseerr", trending.Movie.Title, trending.Movie.Year)
+			added++
+		} else {
+			result, err := jellyseerrClient.RequestMovie(trending.Movie.IDs.TMDB)
+			if err != nil {
+				log.Errorf("Failed to request movie '%s (%d)' via Jellyseerr: %v", trending.Movie.Title, trending.Movie.Year, err)
+				failed++
+				// Log failure to database
+				if db != nil {
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "trending_movies",
+						MediaType: "movie",
+						Title:     trending.Movie.Title,
+						Year:      trending.Movie.Year,
+						TMDBID:    trending.Movie.IDs.TMDB,
+						IMDBID:    trending.Movie.IDs.IMDB,
+						Status:    "failed",
+						Message:   err.Error(),
+					})
+				}
+				continue
+			}
+
+			if result.IsAlreadyRequested() {
+				log.Debugf("Movie '%s (%d)' already requested in Jellyseerr", trending.Movie.Title, trending.Movie.Year)
+				skipped++
+			} else {
+				log.Infof("Requested trending movie '%s (%d)' via Jellyseerr (Request ID: %d)", trending.Movie.Title, trending.Movie.Year, result.ID)
+				added++
+
+				// Log success to database
+				if db != nil {
+					posterURL := ""
+					if trending.Movie.IDs.TMDB > 0 {
+						posterURL = fmt.Sprintf("https://www.themoviedb.org/movie/%d", trending.Movie.IDs.TMDB)
+					}
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "trending_movies",
+						MediaType: "movie",
+						Title:     trending.Movie.Title,
+						Year:      trending.Movie.Year,
+						TMDBID:    trending.Movie.IDs.TMDB,
+						IMDBID:    trending.Movie.IDs.IMDB,
+						PosterURL: posterURL,
+						Status:    "requested",
+						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
+					})
+				}
+			}
+		}
+	}
+
+	log.Infof("Trending movies job completed (Jellyseerr mode) - Requested: %d, Skipped: %d, Failed: %d", added, skipped, failed)
 }

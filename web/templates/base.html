@@ -140,6 +140,19 @@
           params.url = sonarrUrl;
           params.api_key = apiKey;
           params.test = 'true';
+        } else if (service === 'jellyseerr') {
+          url = '/v1/jellyseerr/validate';
+          const jellyseerrUrl = formData.get('jellyseerr.url') || '';
+          const apiKey = formData.get('jellyseerr.api_key') || '';
+          
+          if (!jellyseerrUrl.trim() || !apiKey.trim()) {
+            showNotification('Jellyseerr URL and API Key are required', 'error');
+            return;
+          }
+          
+          params.url = jellyseerrUrl;
+          params.api_key = apiKey;
+          params.test = 'true';
         }
         
         // Add query params

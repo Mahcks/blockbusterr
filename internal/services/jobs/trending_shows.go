@@ -12,7 +12,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
-// RunTrendingShows fetches trending TV shows from Trakt and adds them to Sonarr
+// RunTrendingShows fetches trending TV shows from Trakt and adds them to Sonarr or requests via Jellyseerr
 func RunTrendingShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -23,15 +23,16 @@ func RunTrendingShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		log.Info("Starting trending shows job")
 	}
 
-	// Create clients
+	// Determine mode
+	mode := cfg.Jobs.Mode
+	if mode == "" {
+		mode = "direct" // Default to direct if not specified
+	}
+
+	// Create Trakt client
 	traktClient := integrations.NewTrakt(integrations.TraktConfig{
 		ClientID:     cfg.Trakt.ClientID,
 		ClientSecret: cfg.Trakt.ClientSecret,
-	})
-
-	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-		BaseURL: cfg.Sonarr.URL,
-		APIKey:  cfg.Sonarr.APIKey,
 	})
 
 	// Fetch trending shows from Trakt
@@ -42,6 +43,21 @@ func RunTrendingShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Found %d trending shows from Trakt", len(trendingShows))
+
+	// Route to appropriate handler based on mode
+	if mode == "jellyseerr" {
+		runTrendingShowsJellyseerr(ctx, cfg, db, trendingShows, dryRun)
+	} else {
+		runTrendingShowsDirect(ctx, cfg, db, trendingShows, dryRun)
+	}
+}
+
+// runTrendingShowsDirect adds shows directly to Sonarr
+func runTrendingShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, trendingShows []integrations.TrendingShow, dryRun bool) {
+	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+		BaseURL: cfg.Sonarr.URL,
+		APIKey:  cfg.Sonarr.APIKey,
+	})
 
 	// Get existing series from Sonarr for deduplication
 	existingSeries, err := sonarrClient.GetSeries(ctx)
@@ -151,4 +167,94 @@ func RunTrendingShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Trending shows job completed - Added: %d, Skipped: %d, Failed: %d", added, skipped, failed)
+}
+
+// runTrendingShowsJellyseerr requests shows via Jellyseerr
+func runTrendingShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, trendingShows []integrations.TrendingShow, dryRun bool) {
+	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
+		URL:    cfg.Jellyseerr.URL,
+		APIKey: cfg.Jellyseerr.APIKey,
+		UserID: cfg.Jellyseerr.UserID,
+	})
+
+	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+		BaseURL: cfg.Sonarr.URL,
+		APIKey:  cfg.Sonarr.APIKey,
+	})
+
+	// Request shows via Jellyseerr
+	added := 0
+	skipped := 0
+	failed := 0
+
+	for _, trending := range trendingShows {
+		// Need to lookup the series to get TVDB ID
+		lookupResults, err := sonarrClient.LookupSeries(ctx, fmt.Sprintf("trakt:%d", trending.Show.IDs.Trakt))
+		if err != nil || len(lookupResults) == 0 {
+			log.Errorf("Failed to lookup show '%s (%d)' in Sonarr: %v", trending.Show.Title, trending.Show.Year, err)
+			failed++
+			continue
+		}
+
+		series := lookupResults[0]
+
+		if series.TvdbID == 0 {
+			log.Warnf("Skipping '%s (%d)' - missing TVDB ID", trending.Show.Title, trending.Show.Year)
+			skipped++
+			continue
+		}
+
+		// Request show via Jellyseerr (or simulate in dry-run mode)
+		if dryRun {
+			log.Infof("[DRY RUN] Would request trending show '%s (%d)' via Jellyseerr", trending.Show.Title, trending.Show.Year)
+			added++
+		} else {
+			result, err := jellyseerrClient.RequestShow(series.TvdbID)
+			if err != nil {
+				log.Errorf("Failed to request show '%s (%d)' via Jellyseerr: %v", trending.Show.Title, trending.Show.Year, err)
+				failed++
+				// Log failure to database
+				if db != nil {
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "trending_shows",
+						MediaType: "show",
+						Title:     trending.Show.Title,
+						Year:      trending.Show.Year,
+						TVDBID:    series.TvdbID,
+						IMDBID:    trending.Show.IDs.IMDB,
+						Status:    "failed",
+						Message:   err.Error(),
+					})
+				}
+				continue
+			}
+
+			if result.IsAlreadyRequested() {
+				log.Debugf("Show '%s (%d)' already requested in Jellyseerr", trending.Show.Title, trending.Show.Year)
+				skipped++
+			} else {
+				log.Infof("Requested trending show '%s (%d)' via Jellyseerr (Request ID: %d)", trending.Show.Title, trending.Show.Year, result.ID)
+				added++
+
+				// Log success to database
+				if db != nil {
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "trending_shows",
+						MediaType: "show",
+						Title:     trending.Show.Title,
+						Year:      trending.Show.Year,
+						TVDBID:    series.TvdbID,
+						IMDBID:    trending.Show.IDs.IMDB,
+						PosterURL: fmt.Sprintf("https://www.thetvdb.com/series/%d", series.TvdbID),
+						Status:    "requested",
+						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
+					})
+				}
+			}
+		}
+	}
+
+	log.Infof("Trending shows job completed (Jellyseerr mode) - Requested: %d, Skipped: %d, Failed: %d", added, skipped, failed)
 }

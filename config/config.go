@@ -32,8 +32,15 @@ type Config struct {
 		RootFolder     string `mapstructure:"root_folder" json:"root_folder" yaml:"root_folder"`
 	} `mapstructure:"sonarr" json:"sonarr" yaml:"sonarr"`
 
+	Jellyseerr struct {
+		URL    string `mapstructure:"url" json:"url" yaml:"url"`
+		APIKey string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+		UserID string `mapstructure:"user_id" json:"user_id" yaml:"user_id"` // Optional: request as specific user
+	} `mapstructure:"jellyseerr" json:"jellyseerr" yaml:"jellyseerr"`
+
 	Jobs struct {
 		SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval"`
+		Mode         string `mapstructure:"mode" json:"mode" yaml:"mode"` // "direct" or "jellyseerr"
 
 		TrendingMovies struct {
 			Enabled bool `mapstructure:"enabled" json:"enabled" yaml:"enabled"`

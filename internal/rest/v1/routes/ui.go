@@ -59,6 +59,10 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		sonarrAPIKey := c.FormValue("sonarr.api_key")
 		sonarrQualityProfile := c.FormValue("sonarr.quality_profile")
 		sonarrRootFolder := c.FormValue("sonarr.root_folder")
+		jellyseerrURL := c.FormValue("jellyseerr.url")
+		jellyseerrAPIKey := c.FormValue("jellyseerr.api_key")
+		jellyseerrUserID := c.FormValue("jellyseerr.user_id")
+		jobsMode := c.FormValue("jobs.mode")
 
 		// Update config
 		cfg.Trakt.ClientID = traktClientID
@@ -69,6 +73,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Sonarr.URL = sonarrURL
 		cfg.Sonarr.APIKey = sonarrAPIKey
 		cfg.Sonarr.RootFolder = sonarrRootFolder
+		cfg.Jellyseerr.URL = jellyseerrURL
+		cfg.Jellyseerr.APIKey = jellyseerrAPIKey
+		cfg.Jellyseerr.UserID = jellyseerrUserID
+		if jobsMode != "" {
+			cfg.Jobs.Mode = jobsMode
+		}
 
 		// Parse quality profile IDs
 		if radarrQualityProfile != "" {

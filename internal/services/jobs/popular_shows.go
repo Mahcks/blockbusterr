@@ -12,7 +12,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
-// RunPopularShows fetches popular TV shows from Trakt and adds them to Sonarr
+// RunPopularShows fetches popular TV shows from Trakt and adds them to Sonarr or requests via Jellyseerr
 func RunPopularShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -23,15 +23,16 @@ func RunPopularShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		log.Info("Starting popular shows job")
 	}
 
-	// Create clients
+	// Determine mode
+	mode := cfg.Jobs.Mode
+	if mode == "" {
+		mode = "direct" // Default to direct if not specified
+	}
+
+	// Create Trakt client
 	traktClient := integrations.NewTrakt(integrations.TraktConfig{
 		ClientID:     cfg.Trakt.ClientID,
 		ClientSecret: cfg.Trakt.ClientSecret,
-	})
-
-	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-		BaseURL: cfg.Sonarr.URL,
-		APIKey:  cfg.Sonarr.APIKey,
 	})
 
 	// Fetch popular shows from Trakt
@@ -42,6 +43,21 @@ func RunPopularShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Found %d popular shows from Trakt", len(popularShows))
+
+	// Route to appropriate handler based on mode
+	if mode == "jellyseerr" {
+		runPopularShowsJellyseerr(ctx, cfg, db, popularShows, dryRun)
+	} else {
+		runPopularShowsDirect(ctx, cfg, db, popularShows, dryRun)
+	}
+}
+
+// runPopularShowsDirect adds shows directly to Sonarr
+func runPopularShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, popularShows []integrations.Show, dryRun bool) {
+	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+		BaseURL: cfg.Sonarr.URL,
+		APIKey:  cfg.Sonarr.APIKey,
+	})
 
 	// Get existing series from Sonarr for deduplication
 	existingSeries, err := sonarrClient.GetSeries(ctx)
@@ -151,4 +167,94 @@ func RunPopularShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Popular shows job completed - Added: %d, Skipped: %d, Failed: %d", added, skipped, failed)
+}
+
+// runPopularShowsJellyseerr requests shows via Jellyseerr
+func runPopularShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, popularShows []integrations.Show, dryRun bool) {
+	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
+		URL:    cfg.Jellyseerr.URL,
+		APIKey: cfg.Jellyseerr.APIKey,
+		UserID: cfg.Jellyseerr.UserID,
+	})
+
+	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+		BaseURL: cfg.Sonarr.URL,
+		APIKey:  cfg.Sonarr.APIKey,
+	})
+
+	// Request shows via Jellyseerr
+	added := 0
+	skipped := 0
+	failed := 0
+
+	for _, popular := range popularShows {
+		// Need to lookup the series to get TVDB ID
+		lookupResults, err := sonarrClient.LookupSeries(ctx, fmt.Sprintf("trakt:%d", popular.IDs.Trakt))
+		if err != nil || len(lookupResults) == 0 {
+			log.Errorf("Failed to lookup show '%s (%d)' in Sonarr: %v", popular.Title, popular.Year, err)
+			failed++
+			continue
+		}
+
+		series := lookupResults[0]
+
+		if series.TvdbID == 0 {
+			log.Warnf("Skipping '%s (%d)' - missing TVDB ID", popular.Title, popular.Year)
+			skipped++
+			continue
+		}
+
+		// Request show via Jellyseerr (or simulate in dry-run mode)
+		if dryRun {
+			log.Infof("[DRY RUN] Would request popular show '%s (%d)' via Jellyseerr", popular.Title, popular.Year)
+			added++
+		} else {
+			result, err := jellyseerrClient.RequestShow(series.TvdbID)
+			if err != nil {
+				log.Errorf("Failed to request show '%s (%d)' via Jellyseerr: %v", popular.Title, popular.Year, err)
+				failed++
+				// Log failure to database
+				if db != nil {
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "popular_shows",
+						MediaType: "show",
+						Title:     popular.Title,
+						Year:      popular.Year,
+						TVDBID:    series.TvdbID,
+						IMDBID:    popular.IDs.IMDB,
+						Status:    "failed",
+						Message:   err.Error(),
+					})
+				}
+				continue
+			}
+
+			if result.IsAlreadyRequested() {
+				log.Debugf("Show '%s (%d)' already requested in Jellyseerr", popular.Title, popular.Year)
+				skipped++
+			} else {
+				log.Infof("Requested popular show '%s (%d)' via Jellyseerr (Request ID: %d)", popular.Title, popular.Year, result.ID)
+				added++
+
+				// Log success to database
+				if db != nil {
+					db.LogActivity(database.ActivityLog{
+						Timestamp: time.Now(),
+						JobType:   "popular_shows",
+						MediaType: "show",
+						Title:     popular.Title,
+						Year:      popular.Year,
+						TVDBID:    series.TvdbID,
+						IMDBID:    popular.IDs.IMDB,
+						PosterURL: fmt.Sprintf("https://www.thetvdb.com/series/%d", series.TvdbID),
+						Status:    "requested",
+						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
+					})
+				}
+			}
+		}
+	}
+
+	log.Infof("Popular shows job completed (Jellyseerr mode) - Requested: %d, Skipped: %d, Failed: %d", added, skipped, failed)
 }
