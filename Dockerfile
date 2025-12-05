@@ -7,7 +7,8 @@ ARG VERSION=""
 ARG COMMIT=""
 
 # Install required tools (including gcc and musl-dev for CGO/SQLite)
-RUN apk add --no-cache ca-certificates git gcc musl-dev
+# Use --no-scripts to avoid trigger issues with QEMU emulation in multi-arch builds
+RUN apk add --no-cache --no-scripts ca-certificates git gcc musl-dev
 
 WORKDIR /app
 
