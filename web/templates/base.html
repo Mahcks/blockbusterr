@@ -93,6 +93,20 @@
         }, 5000);
       };
 
+      // Toggle advanced settings for jobs
+      window.toggleAdvanced = function(jobName, button) {
+        const advancedDiv = document.getElementById(`${jobName}-advanced`);
+        const icon = button.querySelector('svg');
+        
+        if (advancedDiv.classList.contains('hidden')) {
+          advancedDiv.classList.remove('hidden');
+          icon.style.transform = 'rotate(180deg)';
+        } else {
+          advancedDiv.classList.add('hidden');
+          icon.style.transform = 'rotate(0deg)';
+        }
+      };
+
       // Test connection with current form values
       window.testConnection = function(service, button) {
         const form = document.querySelector('form');

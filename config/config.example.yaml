@@ -29,7 +29,7 @@ jellyseerr:
   user_id: ""  # Optional: Request as specific user ID (leave empty for default user)
 
 jobs:
-  # How often to run all enabled jobs
+  # Default sync interval for all jobs (can be overridden per job)
   # Supports duration format (e.g. "1h", "30m", "2h30m") or cron expressions (e.g. "0 */2 * * *")
   # Examples:
   #   "1h" - Every 1 hour
@@ -40,17 +40,24 @@ jobs:
   #   "0 */6 * * *" - Every 6 hours
   sync_interval: 24h
 
-  # Mode: "direct" (add directly to Radarr/Sonarr) or "jellyseerr" (request via Jellyseerr)
+  # Default mode: "direct" (add directly to Radarr/Sonarr) or "jellyseerr" (request via Jellyseerr)
+  # Can be overridden per job
   mode: direct
 
   # Movie Jobs
+  # Each job can optionally have its own sync_interval and mode
+  # If not specified, uses the default values above
   trending_movies:
     enabled: false
     limit: 20
+    # sync_interval: 1h  # Optional: Override default interval
+    # mode: jellyseerr   # Optional: Override default mode
   
   popular_movies:
     enabled: false
     limit: 20
+    # sync_interval: 6h
+    # mode: direct
   
   box_office:
     enabled: false

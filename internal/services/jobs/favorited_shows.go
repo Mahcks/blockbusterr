@@ -23,8 +23,11 @@ func RunFavoritedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		log.Info("Starting favorited shows job")
 	}
 
-	// Determine mode
-	mode := cfg.Jobs.Mode
+	// Determine mode - check job-specific mode first, then fall back to global
+	mode := cfg.Jobs.FavoritedShows.Mode
+	if mode == "" {
+		mode = cfg.Jobs.Mode
+	}
 	if mode == "" {
 		mode = "direct" // Default to direct if not specified
 	}

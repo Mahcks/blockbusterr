@@ -39,90 +39,120 @@ type Config struct {
 	} `mapstructure:"jellyseerr" json:"jellyseerr" yaml:"jellyseerr"`
 
 	Jobs struct {
-		SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval"`
-		Mode         string `mapstructure:"mode" json:"mode" yaml:"mode"` // "direct" or "jellyseerr"
+		SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval"` // Default/fallback interval
+		Mode         string `mapstructure:"mode" json:"mode" yaml:"mode"`                            // Default/fallback mode: "direct" or "jellyseerr"
 
 		TrendingMovies struct {
-			Enabled bool `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int  `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"trending_movies" json:"trending_movies" yaml:"trending_movies"`
 
 		TrendingShows struct {
-			Enabled bool `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int  `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"trending_shows" json:"trending_shows" yaml:"trending_shows"`
 
 		PopularMovies struct {
-			Enabled bool `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int  `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"popular_movies" json:"popular_movies" yaml:"popular_movies"`
 
 		PopularShows struct {
-			Enabled bool `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int  `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"popular_shows" json:"popular_shows" yaml:"popular_shows"`
 
 		BoxOffice struct {
-			Enabled bool `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int  `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"box_office" json:"box_office" yaml:"box_office"`
 
 		FavoritedMovies struct {
-			Enabled bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period  string `mapstructure:"period" json:"period" yaml:"period"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period       string `mapstructure:"period" json:"period" yaml:"period"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"favorited_movies" json:"favorited_movies" yaml:"favorited_movies"`
 
 		PlayedMovies struct {
-			Enabled bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period  string `mapstructure:"period" json:"period" yaml:"period"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period       string `mapstructure:"period" json:"period" yaml:"period"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"played_movies" json:"played_movies" yaml:"played_movies"`
 
 		WatchedMovies struct {
-			Enabled bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period  string `mapstructure:"period" json:"period" yaml:"period"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period       string `mapstructure:"period" json:"period" yaml:"period"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"watched_movies" json:"watched_movies" yaml:"watched_movies"`
 
 		CollectedMovies struct {
-			Enabled bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period  string `mapstructure:"period" json:"period" yaml:"period"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period       string `mapstructure:"period" json:"period" yaml:"period"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"collected_movies" json:"collected_movies" yaml:"collected_movies"`
 
 		AnticipatedMovies struct {
-			Enabled bool `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int  `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"anticipated_movies" json:"anticipated_movies" yaml:"anticipated_movies"`
 
 		FavoritedShows struct {
-			Enabled bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period  string `mapstructure:"period" json:"period" yaml:"period"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period       string `mapstructure:"period" json:"period" yaml:"period"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"favorited_shows" json:"favorited_shows" yaml:"favorited_shows"`
 
 		PlayedShows struct {
-			Enabled bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period  string `mapstructure:"period" json:"period" yaml:"period"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period       string `mapstructure:"period" json:"period" yaml:"period"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"played_shows" json:"played_shows" yaml:"played_shows"`
 
 		WatchedShows struct {
-			Enabled bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period  string `mapstructure:"period" json:"period" yaml:"period"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period       string `mapstructure:"period" json:"period" yaml:"period"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"watched_shows" json:"watched_shows" yaml:"watched_shows"`
 
 		CollectedShows struct {
-			Enabled bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period  string `mapstructure:"period" json:"period" yaml:"period"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period       string `mapstructure:"period" json:"period" yaml:"period"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"collected_shows" json:"collected_shows" yaml:"collected_shows"`
 
 		AnticipatedShows struct {
-			Enabled bool `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit   int  `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"anticipated_shows" json:"anticipated_shows" yaml:"anticipated_shows"`
 	} `mapstructure:"jobs" json:"jobs" yaml:"jobs"`
 

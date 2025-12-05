@@ -31,7 +31,7 @@
       <div class="grid md:grid-cols-2 gap-4">
         <div>
           <label for="sync_interval" class="block text-sm font-medium text-slate-300 mb-2">
-            Sync Interval <span class="text-red-400">*</span>
+            Default Sync Interval <span class="text-red-400">*</span>
           </label>
           <input
             type="text"
@@ -42,16 +42,31 @@
             class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
-          <p class="text-xs text-slate-400 mt-1">How often jobs run automatically (e.g., 1h, 30m, 2h30m)</p>
+          <p class="text-xs text-slate-400 mt-1">How often jobs run by default (e.g., 1h, 30m, 0 */2 * * *)</p>
         </div>
-        <div class="flex items-end">
-          <button
-            type="submit"
-            class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+        <div>
+          <label for="default_mode" class="block text-sm font-medium text-slate-300 mb-2">
+            Default Mode <span class="text-red-400">*</span>
+          </label>
+          <select
+            id="default_mode"
+            name="jobs.mode"
+            class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           >
-            Save Global Settings
-          </button>
+            <option value="direct" {{if eq .Config.Jobs.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+            <option value="jellyseerr" {{if eq .Config.Jobs.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+          </select>
+          <p class="text-xs text-slate-400 mt-1">Default integration mode for all jobs</p>
         </div>
+      </div>
+      <div class="flex items-end">
+        <button
+          type="submit"
+          class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+        >
+          Save Global Settings
+        </button>
       </div>
       <div id="global-message"></div>
     </form>
@@ -87,6 +102,7 @@
       <div class="p-6">
         <form hx-post="/jobs/config/save" hx-target="#trending-movies-message" hx-swap="innerHTML" class="space-y-4">
           <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.mode" value="{{.Config.Jobs.Mode}}" />
           <input type="hidden" name="jobs.trending_shows.enabled" value="{{if .Config.Jobs.TrendingShows.Enabled}}on{{end}}" />
           <input type="hidden" name="jobs.trending_shows.limit" value="{{.Config.Jobs.TrendingShows.Limit}}" />
           <input type="hidden" name="jobs.popular_movies.enabled" value="{{if .Config.Jobs.PopularMovies.Enabled}}on{{end}}" />
@@ -122,6 +138,53 @@
               class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
+          </div>
+
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button
+              type="button"
+              onclick="toggleAdvanced('trending-movies', this)"
+              class="flex items-center justify-between w-full text-sm font-medium text-slate-300 hover:text-blue-400 transition-colors"
+            >
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="trending-movies-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="trending_movies_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="trending_movies_interval"
+                  name="jobs.trending_movies.sync_interval"
+                  value="{{.Config.Jobs.TrendingMovies.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="trending_movies_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="trending_movies_mode"
+                  name="jobs.trending_movies.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.TrendingMovies.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.TrendingMovies.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
           </div>
 
           <div class="flex gap-2">
@@ -199,6 +262,49 @@
             <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
           </div>
 
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('popular-movies', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="popular-movies-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="popular_movies_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="popular_movies_interval"
+                  name="jobs.popular_movies.sync_interval"
+                  value="{{.Config.Jobs.PopularMovies.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="popular_movies_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="popular_movies_mode"
+                  name="jobs.popular_movies.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.PopularMovies.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.PopularMovies.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
+          </div>
+
           <div class="flex gap-2">
             <button
               type="submit"
@@ -263,6 +369,49 @@
             <p class="text-sm text-slate-300">
               <span class="font-semibold text-blue-400">Note:</span> Box Office fetches the top 10 highest grossing movies from Trakt.
             </p>
+          </div>
+
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('box-office', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="box-office-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="box_office_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="box_office_interval"
+                  name="jobs.box_office.sync_interval"
+                  value="{{.Config.Jobs.BoxOffice.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="box_office_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="box_office_mode"
+                  name="jobs.box_office.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.BoxOffice.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.BoxOffice.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
           </div>
 
           <div class="flex gap-2">
@@ -357,6 +506,49 @@
               class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
+          </div>
+
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('favorited-movies', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="favorited-movies-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="favorited_movies_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="favorited_movies_interval"
+                  name="jobs.favorited_movies.sync_interval"
+                  value="{{.Config.Jobs.FavoritedMovies.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="favorited_movies_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="favorited_movies_mode"
+                  name="jobs.favorited_movies.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.FavoritedMovies.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.FavoritedMovies.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
           </div>
 
           <div class="flex gap-2">
@@ -462,6 +654,49 @@
               class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
+          </div>
+
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('played-movies', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="played-movies-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="played_movies_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="played_movies_interval"
+                  name="jobs.played_movies.sync_interval"
+                  value="{{.Config.Jobs.PlayedMovies.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="played_movies_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="played_movies_mode"
+                  name="jobs.played_movies.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.PlayedMovies.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.PlayedMovies.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
           </div>
 
           <div class="flex gap-2">
@@ -570,6 +805,49 @@
             <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
           </div>
 
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('watched-movies', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="watched-movies-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="watched_movies_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="watched_movies_interval"
+                  name="jobs.watched_movies.sync_interval"
+                  value="{{.Config.Jobs.WatchedMovies.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="watched_movies_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="watched_movies_mode"
+                  name="jobs.watched_movies.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.WatchedMovies.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.WatchedMovies.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
+          </div>
+
           <div class="flex gap-2">
             <button
               type="submit"
@@ -675,6 +953,49 @@
             <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
           </div>
 
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('collected-movies', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="collected-movies-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="collected_movies_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="collected_movies_interval"
+                  name="jobs.collected_movies.sync_interval"
+                  value="{{.Config.Jobs.CollectedMovies.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="collected_movies_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="collected_movies_mode"
+                  name="jobs.collected_movies.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.CollectedMovies.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.CollectedMovies.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
+          </div>
+
           <div class="flex gap-2">
             <button
               type="submit"
@@ -762,6 +1083,49 @@
               class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p class="text-xs text-slate-400 mt-1">Number of movies to fetch (1-100)</p>
+          </div>
+
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('anticipated-movies', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="anticipated-movies-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="anticipated_movies_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="anticipated_movies_interval"
+                  name="jobs.anticipated_movies.sync_interval"
+                  value="{{.Config.Jobs.AnticipatedMovies.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="anticipated_movies_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="anticipated_movies_mode"
+                  name="jobs.anticipated_movies.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.AnticipatedMovies.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.AnticipatedMovies.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
           </div>
 
           <div class="flex gap-2">
@@ -853,6 +1217,49 @@
             <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
           </div>
 
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('trending-shows', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="trending-shows-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="trending_shows_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="trending_shows_interval"
+                  name="jobs.trending_shows.sync_interval"
+                  value="{{.Config.Jobs.TrendingShows.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="trending_shows_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="trending_shows_mode"
+                  name="jobs.trending_shows.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.TrendingShows.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.TrendingShows.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
+          </div>
+
           <div class="flex gap-2">
             <button
               type="submit"
@@ -925,6 +1332,49 @@
               class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
+          </div>
+
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('popular-shows', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="popular-shows-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="popular_shows_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="popular_shows_interval"
+                  name="jobs.popular_shows.sync_interval"
+                  value="{{.Config.Jobs.PopularShows.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="popular_shows_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="popular_shows_mode"
+                  name="jobs.popular_shows.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.PopularShows.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.PopularShows.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
           </div>
 
           <div class="flex gap-2">
@@ -1011,6 +1461,49 @@
             <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
           </div>
 
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('favorited-shows', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="favorited-shows-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="favorited_shows_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="favorited_shows_interval"
+                  name="jobs.favorited_shows.sync_interval"
+                  value="{{.Config.Jobs.FavoritedShows.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="favorited_shows_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="favorited_shows_mode"
+                  name="jobs.favorited_shows.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.FavoritedShows.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.FavoritedShows.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
+          </div>
+
           <div class="flex gap-2">
             <button
               type="submit"
@@ -1093,6 +1586,49 @@
               class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
+          </div>
+
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('played-shows', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="played-shows-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="played_shows_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="played_shows_interval"
+                  name="jobs.played_shows.sync_interval"
+                  value="{{.Config.Jobs.PlayedShows.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="played_shows_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="played_shows_mode"
+                  name="jobs.played_shows.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.PlayedShows.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.PlayedShows.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
           </div>
 
           <div class="flex gap-2">
@@ -1180,6 +1716,49 @@
             <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
           </div>
 
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('watched-shows', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="watched-shows-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="watched_shows_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="watched_shows_interval"
+                  name="jobs.watched_shows.sync_interval"
+                  value="{{.Config.Jobs.WatchedShows.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="watched_shows_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="watched_shows_mode"
+                  name="jobs.watched_shows.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.WatchedShows.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.WatchedShows.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
+          </div>
+
           <div class="flex gap-2">
             <button
               type="submit"
@@ -1264,6 +1843,49 @@
             <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
           </div>
 
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('collected-shows', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="collected-shows-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="collected_shows_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="collected_shows_interval"
+                  name="jobs.collected_shows.sync_interval"
+                  value="{{.Config.Jobs.CollectedShows.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="collected_shows_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="collected_shows_mode"
+                  name="jobs.collected_shows.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.CollectedShows.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.CollectedShows.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
+          </div>
+
           <div class="flex gap-2">
             <button
               type="submit"
@@ -1329,6 +1951,49 @@
               class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p class="text-xs text-slate-400 mt-1">Number of shows to fetch (1-100)</p>
+          </div>
+
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('anticipated-shows', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="anticipated-shows-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="anticipated_shows_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="anticipated_shows_interval"
+                  name="jobs.anticipated_shows.sync_interval"
+                  value="{{.Config.Jobs.AnticipatedShows.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+              
+              <div>
+                <label for="anticipated_shows_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="anticipated_shows_mode"
+                  name="jobs.anticipated_shows.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.AnticipatedShows.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.AnticipatedShows.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
           </div>
 
           <div class="flex gap-2">
