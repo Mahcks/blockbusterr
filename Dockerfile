@@ -28,7 +28,9 @@ RUN CGO_ENABLED=1 GOOS=linux go build \
 FROM alpine:latest
 
 # Install ca-certificates for HTTPS requests
-RUN apk --no-cache add ca-certificates tzdata
+# Use --no-scripts to avoid trigger issues with QEMU emulation in multi-arch builds
+RUN apk --no-cache --no-scripts add ca-certificates tzdata && \
+    update-ca-certificates
 
 WORKDIR /app
 
