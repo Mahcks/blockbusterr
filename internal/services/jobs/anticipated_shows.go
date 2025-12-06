@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
@@ -46,6 +47,27 @@ func RunAnticipatedShows(cfg *config.Config, db *database.Database, dryRun bool)
 	}
 
 	log.Infof("Found %d anticipated shows from Trakt", len(anticipatedShows))
+
+	// Apply filters - extract Show slice, filter, and convert back
+	shows := make([]integrations.Show, len(anticipatedShows))
+	for i, as := range anticipatedShows {
+		shows[i] = as.Show
+	}
+	filteredShows := filters.FilterShows(shows, cfg.Filters.Shows)
+	if len(filteredShows) < len(shows) {
+		log.Infof("Filtered out %d shows, %d remaining", len(shows)-len(filteredShows), len(filteredShows))
+	}
+	// Convert back to AnticipatedShow slice
+	filteredAnticipated := make([]integrations.AnticipatedShow, 0, len(filteredShows))
+	for _, show := range filteredShows {
+		for _, as := range anticipatedShows {
+			if as.Show.IDs.TVDB == show.IDs.TVDB {
+				filteredAnticipated = append(filteredAnticipated, as)
+				break
+			}
+		}
+	}
+	anticipatedShows = filteredAnticipated
 
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {

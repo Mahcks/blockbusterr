@@ -155,16 +155,25 @@ type AnticipatedShow struct {
 
 // Movie represents a Trakt movie
 type Movie struct {
-	Title string `json:"title"`
-	Year  int    `json:"year"`
-	IDs   IDs    `json:"ids"`
+	Title    string   `json:"title"`
+	Year     int      `json:"year"`
+	IDs      IDs      `json:"ids"`
+	Genres   []string `json:"genres"`
+	Language string   `json:"language"`
+	Country  string   `json:"country"`
+	Runtime  int      `json:"runtime"` // in minutes
 }
 
 // Show represents a Trakt TV show
 type Show struct {
-	Title string `json:"title"`
-	Year  int    `json:"year"`
-	IDs   IDs    `json:"ids"`
+	Title    string   `json:"title"`
+	Year     int      `json:"year"`
+	IDs      IDs      `json:"ids"`
+	Genres   []string `json:"genres"`
+	Language string   `json:"language"`
+	Country  string   `json:"country"`
+	Runtime  int      `json:"runtime"` // in minutes
+	Network  string   `json:"network"`
 }
 
 // IDs contains various IDs for a media item
@@ -173,6 +182,7 @@ type IDs struct {
 	Slug  string `json:"slug"`
 	IMDB  string `json:"imdb"`
 	TMDB  int    `json:"tmdb"`
+	TVDB  int    `json:"tvdb"`
 }
 
 // GetTrendingMovies returns trending movies
@@ -560,4 +570,120 @@ func (t *Trakt) Validate(ctx context.Context) error {
 	// Try to fetch trending movies as a validation check
 	_, err := t.GetTrendingMovies(ctx, 1)
 	return err
+}
+
+// Language represents a language from Trakt
+type Language struct {
+	Name string `json:"name"`
+	Code string `json:"code"`
+}
+
+// Genre represents a genre from Trakt
+type Genre struct {
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
+// Country represents a country from Trakt
+type Country struct {
+	Name string `json:"name"`
+	Code string `json:"code"`
+}
+
+// Network represents a TV network from Trakt
+type Network struct {
+	Name    string `json:"name"`
+	Country string `json:"country"`
+}
+
+// GetLanguages returns available languages for movies or shows
+func (t *Trakt) GetLanguages(ctx context.Context, mediaType string) ([]Language, error) {
+	endpoint := fmt.Sprintf("/languages/%s", mediaType)
+
+	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	}
+
+	var languages []Language
+	if err := json.NewDecoder(resp.Body).Decode(&languages); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return languages, nil
+}
+
+// GetGenres returns available genres for movies or shows
+func (t *Trakt) GetGenres(ctx context.Context, mediaType string) ([]Genre, error) {
+	endpoint := fmt.Sprintf("/genres/%s", mediaType)
+
+	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	}
+
+	var genres []Genre
+	if err := json.NewDecoder(resp.Body).Decode(&genres); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return genres, nil
+}
+
+// GetCountries returns available countries for movies or shows
+func (t *Trakt) GetCountries(ctx context.Context, mediaType string) ([]Country, error) {
+	endpoint := fmt.Sprintf("/countries/%s", mediaType)
+
+	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	}
+
+	var countries []Country
+	if err := json.NewDecoder(resp.Body).Decode(&countries); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return countries, nil
+}
+
+// GetNetworks returns available TV networks
+func (t *Trakt) GetNetworks(ctx context.Context) ([]Network, error) {
+	endpoint := "/networks"
+
+	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	}
+
+	var networks []Network
+	if err := json.NewDecoder(resp.Body).Decode(&networks); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return networks, nil
 }

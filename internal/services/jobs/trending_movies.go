@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
@@ -47,11 +48,33 @@ func RunTrendingMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 
 	log.Infof("Found %d trending movies from Trakt", len(trendingMovies))
 
+	// Apply filters to movies
+	movies := make([]integrations.Movie, len(trendingMovies))
+	for i, tm := range trendingMovies {
+		movies[i] = tm.Movie
+	}
+	filteredMovies := filters.FilterMovies(movies, cfg.Filters.Movies)
+
+	if len(filteredMovies) < len(movies) {
+		log.Infof("Filtered out %d movies, %d remaining", len(movies)-len(filteredMovies), len(filteredMovies))
+	}
+
+	// Convert back to TrendingMovie format
+	filteredTrending := make([]integrations.TrendingMovie, 0, len(filteredMovies))
+	for _, movie := range filteredMovies {
+		for _, tm := range trendingMovies {
+			if tm.Movie.IDs.TMDB == movie.IDs.TMDB {
+				filteredTrending = append(filteredTrending, tm)
+				break
+			}
+		}
+	}
+
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {
-		runTrendingMoviesJellyseerr(ctx, cfg, db, trendingMovies, dryRun)
+		runTrendingMoviesJellyseerr(ctx, cfg, db, filteredTrending, dryRun)
 	} else {
-		runTrendingMoviesDirect(ctx, cfg, db, trendingMovies, dryRun)
+		runTrendingMoviesDirect(ctx, cfg, db, filteredTrending, dryRun)
 	}
 }
 

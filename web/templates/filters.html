@@ -1,0 +1,305 @@
+{{define "filters"}}
+<div class="space-y-6">
+  <div id="message-container"></div>
+
+  <!-- Info Section -->
+  <div class="bg-slate-800 rounded-lg border border-slate-700 p-6">
+    <h2 class="text-2xl font-bold text-blue-400 mb-4">Content Filters</h2>
+    <p class="text-slate-300">Configure filters to control which movies and shows are added to your library. These filters apply to all jobs.</p>
+  </div>
+
+  <!-- Tab Buttons -->
+  <div class="flex border-b border-slate-700">
+    <button onclick="showTab('movies')" id="movies-tab" class="px-6 py-3 text-blue-400 border-b-2 border-blue-400 font-semibold">
+      Movies
+    </button>
+    <button onclick="showTab('shows')" id="shows-tab" class="px-6 py-3 text-slate-400 hover:text-slate-300">
+      Shows
+    </button>
+  </div>
+
+  <form hx-post="/config/filters" hx-target="#message-container" hx-swap="innerHTML">
+    <!-- Movies Tab -->
+    <div id="movies-content" class="space-y-6">
+      <div class="bg-slate-800 rounded-lg border border-slate-700 p-6">
+        <h3 class="text-xl font-semibold text-slate-100 mb-4">Movie Filters</h3>
+        
+        <div class="space-y-6">
+          <!-- Allowed Countries -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Allowed Countries</label>
+            <div class="flex gap-2 mb-2">
+              <input type="text" id="movie-country-input" placeholder="US, GB, CA..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <button type="button" onclick="addMovieCountry()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+            </div>
+            <div id="movie-countries-list" class="space-y-2"></div>
+          </div>
+
+          <!-- Allowed Languages -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Allowed Languages</label>
+            <div class="flex gap-2 mb-2">
+              <input type="text" id="movie-language-input" placeholder="en, es, fr..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <button type="button" onclick="addMovieLanguage()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+            </div>
+            <div id="movie-languages-list" class="space-y-2"></div>
+          </div>
+
+          <!-- Blacklisted Genres -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Genres</label>
+            <div class="flex gap-2 mb-2">
+              <input type="text" id="movie-genre-input" placeholder="horror, documentary..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <button type="button" onclick="addMovieGenre()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+            </div>
+            <div id="movie-genres-list" class="space-y-2"></div>
+          </div>
+
+          <!-- Blacklisted Keywords -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Keywords</label>
+            <div class="flex gap-2 mb-2">
+              <input type="text" id="movie-keyword-input" placeholder="christmas, musical..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <button type="button" onclick="addMovieKeyword()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+            </div>
+            <div id="movie-keywords-list" class="space-y-2"></div>
+          </div>
+
+          <!-- Blacklisted IDs -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Trakt IDs</label>
+            <div class="flex gap-2 mb-2">
+              <input type="number" id="movie-id-input" placeholder="123456..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <button type="button" onclick="addMovieID()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+            </div>
+            <div id="movie-ids-list" class="space-y-2"></div>
+          </div>
+
+          <!-- Runtime Range -->
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Min Runtime (minutes)</label>
+              <input type="number" name="movie_min_runtime" value="{{.Config.Filters.Movies.BlacklistedMinRuntime}}" placeholder="60" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Max Runtime (minutes)</label>
+              <input type="number" name="movie_max_runtime" value="{{.Config.Filters.Movies.BlacklistedMaxRuntime}}" placeholder="180" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+            </div>
+          </div>
+
+          <!-- Year Range -->
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Min Year</label>
+              <input type="number" name="movie_min_year" value="{{.Config.Filters.Movies.BlacklistedMinYear}}" placeholder="2000" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Max Year</label>
+              <input type="number" name="movie_max_year" value="{{.Config.Filters.Movies.BlacklistedMaxYear}}" placeholder="2025" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shows Tab -->
+    <div id="shows-content" class="space-y-6" style="display:none;">
+      <div class="bg-slate-800 rounded-lg border border-slate-700 p-6">
+        <h3 class="text-xl font-semibold text-slate-100 mb-4">Show Filters</h3>
+        
+        <div class="space-y-6">
+          <!-- Allowed Countries -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Allowed Countries</label>
+            <div class="flex gap-2 mb-2">
+              <input type="text" id="show-country-input" placeholder="US, GB, CA..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <button type="button" onclick="addShowCountry()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+            </div>
+            <div id="show-countries-list" class="space-y-2"></div>
+          </div>
+
+          <!-- Allowed Languages -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Allowed Languages</label>
+            <div class="flex gap-2 mb-2">
+              <input type="text" id="show-language-input" placeholder="en, es, fr..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <button type="button" onclick="addShowLanguage()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+            </div>
+            <div id="show-languages-list" class="space-y-2"></div>
+          </div>
+
+          <!-- Blacklisted Genres -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Genres</label>
+            <div class="flex gap-2 mb-2">
+              <input type="text" id="show-genre-input" placeholder="horror, documentary..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <button type="button" onclick="addShowGenre()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+            </div>
+            <div id="show-genres-list" class="space-y-2"></div>
+          </div>
+
+          <!-- Blacklisted Keywords -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Keywords</label>
+            <div class="flex gap-2 mb-2">
+              <input type="text" id="show-keyword-input" placeholder="reality, cooking..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <button type="button" onclick="addShowKeyword()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+            </div>
+            <div id="show-keywords-list" class="space-y-2"></div>
+          </div>
+
+          <!-- Blacklisted Networks -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Networks</label>
+            <div class="flex gap-2 mb-2">
+              <input type="text" id="show-network-input" placeholder="MTV, Lifetime..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <button type="button" onclick="addShowNetwork()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+            </div>
+            <div id="show-networks-list" class="space-y-2"></div>
+          </div>
+
+          <!-- Blacklisted IDs -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Trakt IDs</label>
+            <div class="flex gap-2 mb-2">
+              <input type="number" id="show-id-input" placeholder="123456..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <button type="button" onclick="addShowID()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+            </div>
+            <div id="show-ids-list" class="space-y-2"></div>
+          </div>
+
+          <!-- Runtime Range -->
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Min Runtime (minutes)</label>
+              <input type="number" name="show_min_runtime" value="{{.Config.Filters.Shows.BlacklistedMinRuntime}}" placeholder="20" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Max Runtime (minutes)</label>
+              <input type="number" name="show_max_runtime" value="{{.Config.Filters.Shows.BlacklistedMaxRuntime}}" placeholder="60" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+            </div>
+          </div>
+
+          <!-- Year Range -->
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Min Year</label>
+              <input type="number" name="show_min_year" value="{{.Config.Filters.Shows.BlacklistedMinYear}}" placeholder="2000" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Max Year</label>
+              <input type="number" name="show_max_year" value="{{.Config.Filters.Shows.BlacklistedMaxYear}}" placeholder="2025" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg transition">
+      Save Filters
+    </button>
+  </form>
+</div>
+
+<script>
+const movieCountries = [];
+const movieLanguages = [];
+const movieGenres = [];
+const movieKeywords = [];
+const movieIDs = [];
+const showCountries = [];
+const showLanguages = [];
+const showGenres = [];
+const showKeywords = [];
+const showNetworks = [];
+const showIDs = [];
+
+function showTab(tab) {
+  document.getElementById('movies-tab').className = tab === 'movies' ? 'px-6 py-3 text-blue-400 border-b-2 border-blue-400 font-semibold' : 'px-6 py-3 text-slate-400 hover:text-slate-300';
+  document.getElementById('shows-tab').className = tab === 'shows' ? 'px-6 py-3 text-blue-400 border-b-2 border-blue-400 font-semibold' : 'px-6 py-3 text-slate-400 hover:text-slate-300';
+  document.getElementById('movies-content').style.display = tab === 'movies' ? 'block' : 'none';
+  document.getElementById('shows-content').style.display = tab === 'shows' ? 'block' : 'none';
+}
+
+function addMovieCountry() { addItem(movieCountries, 'movie-country-input', 'movie-countries-list', 'movie_allowed_countries'); }
+function addMovieLanguage() { addItem(movieLanguages, 'movie-language-input', 'movie-languages-list', 'movie_allowed_languages'); }
+function addMovieGenre() { addItem(movieGenres, 'movie-genre-input', 'movie-genres-list', 'movie_blacklisted_genres'); }
+function addMovieKeyword() { addItem(movieKeywords, 'movie-keyword-input', 'movie-keywords-list', 'movie_blacklisted_keywords'); }
+function addMovieID() { addItem(movieIDs, 'movie-id-input', 'movie-ids-list', 'movie_blacklisted_ids'); }
+function addShowCountry() { addItem(showCountries, 'show-country-input', 'show-countries-list', 'show_allowed_countries'); }
+function addShowLanguage() { addItem(showLanguages, 'show-language-input', 'show-languages-list', 'show_allowed_languages'); }
+function addShowGenre() { addItem(showGenres, 'show-genre-input', 'show-genres-list', 'show_blacklisted_genres'); }
+function addShowKeyword() { addItem(showKeywords, 'show-keyword-input', 'show-keywords-list', 'show_blacklisted_keywords'); }
+function addShowNetwork() { addItem(showNetworks, 'show-network-input', 'show-networks-list', 'show_blacklisted_networks'); }
+function addShowID() { addItem(showIDs, 'show-id-input', 'show-ids-list', 'show_blacklisted_ids'); }
+
+function addItem(arr, inputId, listId, fieldName) {
+  const input = document.getElementById(inputId);
+  const val = input.value.trim();
+  if (val && !arr.includes(val)) {
+    arr.push(val);
+    renderList(arr, listId, fieldName);
+    input.value = '';
+  }
+}
+
+function removeItem(arr, listId, fieldName, val) {
+  const idx = arr.indexOf(val);
+  if (idx > -1) arr.splice(idx, 1);
+  renderList(arr, listId, fieldName);
+}
+
+function renderList(arr, listId, fieldName) {
+  const list = document.getElementById(listId);
+  list.innerHTML = arr.map(v => `
+    <div class="flex items-center justify-between bg-slate-900 px-4 py-2 rounded-lg border border-slate-700">
+      <span class="text-slate-200">${v}</span>
+      <button type="button" onclick="removeItem(${getArrayName(fieldName)}, '${listId}', '${fieldName}', '${v}')" class="text-red-400 hover:text-red-300">Remove</button>
+      <input type="hidden" name="${fieldName}" value="${v}">
+    </div>
+  `).join('');
+}
+
+function getArrayName(fieldName) {
+  const map = {
+    'movie_allowed_countries': 'movieCountries',
+    'movie_allowed_languages': 'movieLanguages',
+    'movie_blacklisted_genres': 'movieGenres',
+    'movie_blacklisted_keywords': 'movieKeywords',
+    'movie_blacklisted_ids': 'movieIDs',
+    'show_allowed_countries': 'showCountries',
+    'show_allowed_languages': 'showLanguages',
+    'show_blacklisted_genres': 'showGenres',
+    'show_blacklisted_keywords': 'showKeywords',
+    'show_blacklisted_networks': 'showNetworks',
+    'show_blacklisted_ids': 'showIDs'
+  };
+  return map[fieldName];
+}
+
+// Load existing config
+{{range .Config.Filters.Movies.AllowedCountries}}movieCountries.push('{{.}}');{{end}}
+{{range .Config.Filters.Movies.AllowedLanguages}}movieLanguages.push('{{.}}');{{end}}
+{{range .Config.Filters.Movies.BlacklistedGenres}}movieGenres.push('{{.}}');{{end}}
+{{range .Config.Filters.Movies.BlacklistedKeywords}}movieKeywords.push('{{.}}');{{end}}
+{{range .Config.Filters.Movies.BlacklistedTMDBIds}}movieIDs.push('{{.}}');{{end}}
+{{range .Config.Filters.Shows.AllowedCountries}}showCountries.push('{{.}}');{{end}}
+{{range .Config.Filters.Shows.AllowedLanguages}}showLanguages.push('{{.}}');{{end}}
+{{range .Config.Filters.Shows.BlacklistedGenres}}showGenres.push('{{.}}');{{end}}
+{{range .Config.Filters.Shows.BlacklistedKeywords}}showKeywords.push('{{.}}');{{end}}
+{{range .Config.Filters.Shows.BlacklistedNetworks}}showNetworks.push('{{.}}');{{end}}
+{{range .Config.Filters.Shows.BlacklistedTVDBIds}}showIDs.push('{{.}}');{{end}}
+
+renderList(movieCountries, 'movie-countries-list', 'movie_allowed_countries');
+renderList(movieLanguages, 'movie-languages-list', 'movie_allowed_languages');
+renderList(movieGenres, 'movie-genres-list', 'movie_blacklisted_genres');
+renderList(movieKeywords, 'movie-keywords-list', 'movie_blacklisted_keywords');
+renderList(movieIDs, 'movie-ids-list', 'movie_blacklisted_ids');
+renderList(showCountries, 'show-countries-list', 'show_allowed_countries');
+renderList(showLanguages, 'show-languages-list', 'show_allowed_languages');
+renderList(showGenres, 'show-genres-list', 'show_blacklisted_genres');
+renderList(showKeywords, 'show-keywords-list', 'show_blacklisted_keywords');
+renderList(showNetworks, 'show-networks-list', 'show_blacklisted_networks');
+renderList(showIDs, 'show-ids-list', 'show_blacklisted_ids');
+</script>
+{{end}}

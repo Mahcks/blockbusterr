@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
@@ -46,6 +47,27 @@ func RunFavoritedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Found %d favorited shows from Trakt", len(favoritedShows))
+
+	// Apply filters - extract Show slice, filter, and convert back
+	shows := make([]integrations.Show, len(favoritedShows))
+	for i, fs := range favoritedShows {
+		shows[i] = fs.Show
+	}
+	filteredShows := filters.FilterShows(shows, cfg.Filters.Shows)
+	if len(filteredShows) < len(shows) {
+		log.Infof("Filtered out %d shows, %d remaining", len(shows)-len(filteredShows), len(filteredShows))
+	}
+	// Convert back to FavoritedShow slice
+	filteredFavorited := make([]integrations.FavoritedShow, 0, len(filteredShows))
+	for _, show := range filteredShows {
+		for _, fs := range favoritedShows {
+			if fs.Show.IDs.TVDB == show.IDs.TVDB {
+				filteredFavorited = append(filteredFavorited, fs)
+				break
+			}
+		}
+	}
+	favoritedShows = filteredFavorited
 
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {

@@ -119,3 +119,71 @@ jobs:
   anticipated_shows:
     enabled: false
     limit: 10
+
+# Content Filters
+# Filter out unwanted content based on various criteria
+filters:
+  movies:
+    # Only add movies from these countries (2-letter country codes: us, gb, ca, etc.)
+    # Leave empty [] to allow all countries, or use ["ignore"] to allow movies with no country specified
+    allowed_countries: []
+    
+    # Only add movies with these languages (2-letter language codes: en, ja, es, etc.)
+    # Leave empty [] to allow all languages, or use ["ignore"] to allow movies with no language specified
+    allowed_languages: []
+    
+    # Blacklist specific genres (documentary, animation, music, etc.)
+    # Leave empty [] to allow all genres, or use ["ignore"] to allow movies with no genres specified
+    blacklisted_genres: []
+    
+    # Blacklist movies with these keywords in the title
+    blacklisted_keywords: []
+    
+    # Blacklist specific TMDB IDs
+    blacklisted_tmdb_ids: []
+    
+    # Minimum runtime in minutes (0 to disable)
+    blacklisted_min_runtime: 0
+    
+    # Maximum runtime in minutes (0 to disable)
+    blacklisted_max_runtime: 0
+    
+    # Only add movies released after this year (0 to disable)
+    blacklisted_min_year: 0
+    
+    # Only add movies released before this year (0 to disable)
+    blacklisted_max_year: 0
+  
+  shows:
+    # Only add shows from these countries (2-letter country codes: us, gb, ca, etc.)
+    # Leave empty [] to allow all countries, or use ["ignore"] to allow shows with no country specified
+    allowed_countries: []
+    
+    # Only add shows with these languages (2-letter language codes: en, ja, es, etc.)
+    # Leave empty [] to allow all languages, or use ["ignore"] to allow shows with no language specified
+    allowed_languages: []
+    
+    # Blacklist specific genres (reality, anime, talk-show, documentary, etc.)
+    # Leave empty [] to allow all genres, or use ["ignore"] to allow shows with no genres specified
+    blacklisted_genres: []
+    
+    # Blacklist shows with these keywords in the title
+    blacklisted_keywords: []
+    
+    # Blacklist specific networks (nickelodeon, hallmark, disney, etc.)
+    blacklisted_networks: []
+    
+    # Blacklist specific TVDB IDs
+    blacklisted_tvdb_ids: []
+    
+    # Minimum runtime in minutes (0 to disable)
+    blacklisted_min_runtime: 0
+    
+    # Maximum runtime in minutes (0 to disable)
+    blacklisted_max_runtime: 0
+    
+    # Only add shows that premiered after this year (0 to disable)
+    blacklisted_min_year: 0
+    
+    # Only add shows that premiered before this year (0 to disable)
+    blacklisted_max_year: 0

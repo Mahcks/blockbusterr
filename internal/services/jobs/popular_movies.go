@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
@@ -46,6 +47,13 @@ func RunPopularMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Found %d popular movies from Trakt", len(popularMovies))
+
+	// Apply filters
+	filteredMovies := filters.FilterMovies(popularMovies, cfg.Filters.Movies)
+	if len(filteredMovies) < len(popularMovies) {
+		log.Infof("Filtered out %d movies, %d remaining", len(popularMovies)-len(filteredMovies), len(filteredMovies))
+	}
+	popularMovies = filteredMovies
 
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {

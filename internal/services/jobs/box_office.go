@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
@@ -46,6 +47,27 @@ func RunBoxOffice(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	log.Infof("Found %d box office movies from Trakt", len(boxOfficeMovies))
+
+	// Apply filters - extract Movie slice, filter, and convert back
+	movies := make([]integrations.Movie, len(boxOfficeMovies))
+	for i, bom := range boxOfficeMovies {
+		movies[i] = bom.Movie
+	}
+	filteredMovies := filters.FilterMovies(movies, cfg.Filters.Movies)
+	if len(filteredMovies) < len(movies) {
+		log.Infof("Filtered out %d movies, %d remaining", len(movies)-len(filteredMovies), len(filteredMovies))
+	}
+	// Convert back to BoxOfficeMovie slice
+	filteredBoxOffice := make([]integrations.BoxOfficeMovie, 0, len(filteredMovies))
+	for _, movie := range filteredMovies {
+		for _, bom := range boxOfficeMovies {
+			if bom.Movie.IDs.TMDB == movie.IDs.TMDB {
+				filteredBoxOffice = append(filteredBoxOffice, bom)
+				break
+			}
+		}
+	}
+	boxOfficeMovies = filteredBoxOffice
 
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {

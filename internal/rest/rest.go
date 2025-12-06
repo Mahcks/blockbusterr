@@ -1,7 +1,9 @@
 package rest
 
 import (
+	"encoding/json"
 	"errors"
+	"html/template"
 	"os"
 	"strings"
 	"time"
@@ -10,7 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-	"github.com/gofiber/template/html/v2"
+	htmlEngine "github.com/gofiber/template/html/v2"
 	"github.com/mahcks/blockbusterr/internal/global"
 	v1 "github.com/mahcks/blockbusterr/internal/rest/v1"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes"
@@ -35,8 +37,12 @@ func New(gctx global.Context) error {
 		uiEnabled = !(disableUI == "true" || disableUI == "1" || disableUI == "yes")
 	}
 
-	// Initialize template engine
-	engine := html.New("./web/templates", ".html")
+	// Initialize template engine with custom functions
+	engine := htmlEngine.New("./web/templates", ".html")
+	engine.AddFunc("json", func(v interface{}) template.JS {
+		b, _ := json.Marshal(v)
+		return template.JS(b)
+	})
 
 	app := fiber.New(fiber.Config{
 		Views:                 engine,

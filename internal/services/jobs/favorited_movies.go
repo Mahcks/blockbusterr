@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
@@ -46,6 +47,27 @@ func RunFavoritedMovies(cfg *config.Config, db *database.Database, dryRun bool) 
 	}
 
 	log.Infof("Found %d favorited movies from Trakt", len(favoritedMovies))
+
+	// Apply filters - extract Movie slice, filter, and convert back
+	movies := make([]integrations.Movie, len(favoritedMovies))
+	for i, fm := range favoritedMovies {
+		movies[i] = fm.Movie
+	}
+	filteredMovies := filters.FilterMovies(movies, cfg.Filters.Movies)
+	if len(filteredMovies) < len(movies) {
+		log.Infof("Filtered out %d movies, %d remaining", len(movies)-len(filteredMovies), len(filteredMovies))
+	}
+	// Convert back to FavoritedMovie slice
+	filteredFavorited := make([]integrations.FavoritedMovie, 0, len(filteredMovies))
+	for _, movie := range filteredMovies {
+		for _, fm := range favoritedMovies {
+			if fm.Movie.IDs.TMDB == movie.IDs.TMDB {
+				filteredFavorited = append(filteredFavorited, fm)
+				break
+			}
+		}
+	}
+	favoritedMovies = filteredFavorited
 
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {

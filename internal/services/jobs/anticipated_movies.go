@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
@@ -46,6 +47,27 @@ func RunAnticipatedMovies(cfg *config.Config, db *database.Database, dryRun bool
 	}
 
 	log.Infof("Found %d anticipated movies from Trakt", len(anticipatedMovies))
+
+	// Apply filters - extract Movie slice, filter, and convert back
+	movies := make([]integrations.Movie, len(anticipatedMovies))
+	for i, am := range anticipatedMovies {
+		movies[i] = am.Movie
+	}
+	filteredMovies := filters.FilterMovies(movies, cfg.Filters.Movies)
+	if len(filteredMovies) < len(movies) {
+		log.Infof("Filtered out %d movies, %d remaining", len(movies)-len(filteredMovies), len(filteredMovies))
+	}
+	// Convert back to AnticipatedMovie slice
+	filteredAnticipated := make([]integrations.AnticipatedMovie, 0, len(filteredMovies))
+	for _, movie := range filteredMovies {
+		for _, am := range anticipatedMovies {
+			if am.Movie.IDs.TMDB == movie.IDs.TMDB {
+				filteredAnticipated = append(filteredAnticipated, am)
+				break
+			}
+		}
+	}
+	anticipatedMovies = filteredAnticipated
 
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {

@@ -453,4 +453,132 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			</div>
 		`)
 	})
+
+	// Filters page route
+	app.Get("/filters", func(c *fiber.Ctx) error {
+		return c.Render("filters", fiber.Map{
+			"Title":   "Blockbusterr - Filters",
+			"Config":  rg.gctx.Config(),
+			"Version": rg.gctx.Metadata().Version,
+		}, "base")
+	})
+
+	// Filters save route
+	app.Post("/config/filters", func(c *fiber.Ctx) error {
+		cfg := rg.gctx.Config()
+
+		// Parse movie filters - get all values for multi-select fields
+		cfg.Filters.Movies.AllowedCountries = bytesArrayToStrings(c.Request().PostArgs().PeekMulti("movie_allowed_countries"))
+		cfg.Filters.Movies.AllowedLanguages = bytesArrayToStrings(c.Request().PostArgs().PeekMulti("movie_allowed_languages"))
+		cfg.Filters.Movies.BlacklistedGenres = bytesArrayToStrings(c.Request().PostArgs().PeekMulti("movie_blacklisted_genres"))
+		cfg.Filters.Movies.BlacklistedKeywords = bytesArrayToStrings(c.Request().PostArgs().PeekMulti("movie_blacklisted_keywords"))
+
+		// Parse TMDB IDs
+		idStrs := bytesArrayToStrings(c.Request().PostArgs().PeekMulti("movie_blacklisted_ids"))
+		cfg.Filters.Movies.BlacklistedTMDBIds = make([]int, 0, len(idStrs))
+		for _, idStr := range idStrs {
+			if id, err := strconv.Atoi(idStr); err == nil {
+				cfg.Filters.Movies.BlacklistedTMDBIds = append(cfg.Filters.Movies.BlacklistedTMDBIds, id)
+			}
+		}
+
+		// Parse runtime and year ranges
+		if val := c.FormValue("movie_min_runtime"); val != "" {
+			if v, err := strconv.Atoi(val); err == nil {
+				cfg.Filters.Movies.BlacklistedMinRuntime = v
+			}
+		} else {
+			cfg.Filters.Movies.BlacklistedMinRuntime = 0
+		}
+
+		if val := c.FormValue("movie_max_runtime"); val != "" {
+			if v, err := strconv.Atoi(val); err == nil {
+				cfg.Filters.Movies.BlacklistedMaxRuntime = v
+			}
+		} else {
+			cfg.Filters.Movies.BlacklistedMaxRuntime = 0
+		}
+
+		if val := c.FormValue("movie_min_year"); val != "" {
+			if v, err := strconv.Atoi(val); err == nil {
+				cfg.Filters.Movies.BlacklistedMinYear = v
+			}
+		} else {
+			cfg.Filters.Movies.BlacklistedMinYear = 0
+		}
+
+		if val := c.FormValue("movie_max_year"); val != "" {
+			if v, err := strconv.Atoi(val); err == nil {
+				cfg.Filters.Movies.BlacklistedMaxYear = v
+			}
+		} else {
+			cfg.Filters.Movies.BlacklistedMaxYear = 0
+		} // Parse show filters
+		cfg.Filters.Shows.AllowedCountries = bytesArrayToStrings(c.Request().PostArgs().PeekMulti("show_allowed_countries"))
+		cfg.Filters.Shows.AllowedLanguages = bytesArrayToStrings(c.Request().PostArgs().PeekMulti("show_allowed_languages"))
+		cfg.Filters.Shows.BlacklistedGenres = bytesArrayToStrings(c.Request().PostArgs().PeekMulti("show_blacklisted_genres"))
+		cfg.Filters.Shows.BlacklistedKeywords = bytesArrayToStrings(c.Request().PostArgs().PeekMulti("show_blacklisted_keywords"))
+		cfg.Filters.Shows.BlacklistedNetworks = bytesArrayToStrings(c.Request().PostArgs().PeekMulti("show_blacklisted_networks"))
+
+		// Parse TVDB IDs
+		showIdStrs := bytesArrayToStrings(c.Request().PostArgs().PeekMulti("show_blacklisted_ids"))
+		cfg.Filters.Shows.BlacklistedTVDBIds = make([]int, 0, len(showIdStrs))
+		for _, idStr := range showIdStrs {
+			if id, err := strconv.Atoi(idStr); err == nil {
+				cfg.Filters.Shows.BlacklistedTVDBIds = append(cfg.Filters.Shows.BlacklistedTVDBIds, id)
+			}
+		}
+
+		// Parse runtime and year ranges
+		if val := c.FormValue("show_min_runtime"); val != "" {
+			if v, err := strconv.Atoi(val); err == nil {
+				cfg.Filters.Shows.BlacklistedMinRuntime = v
+			}
+		} else {
+			cfg.Filters.Shows.BlacklistedMinRuntime = 0
+		}
+
+		if val := c.FormValue("show_max_runtime"); val != "" {
+			if v, err := strconv.Atoi(val); err == nil {
+				cfg.Filters.Shows.BlacklistedMaxRuntime = v
+			}
+		} else {
+			cfg.Filters.Shows.BlacklistedMaxRuntime = 0
+		}
+
+		if val := c.FormValue("show_min_year"); val != "" {
+			if v, err := strconv.Atoi(val); err == nil {
+				cfg.Filters.Shows.BlacklistedMinYear = v
+			}
+		} else {
+			cfg.Filters.Shows.BlacklistedMinYear = 0
+		}
+
+		if val := c.FormValue("show_max_year"); val != "" {
+			if v, err := strconv.Atoi(val); err == nil {
+				cfg.Filters.Shows.BlacklistedMaxYear = v
+			}
+		} else {
+			cfg.Filters.Shows.BlacklistedMaxYear = 0
+		} // Save config
+		if err := cfg.Save(); err != nil {
+			return c.SendString(`<div class="bg-red-500 text-white px-6 py-3 rounded-lg">Error saving filters: ` + err.Error() + `</div>`)
+		}
+
+		// Reload config
+		if err := rg.gctx.ReloadConfig(); err != nil {
+			return c.SendString(`<div class="bg-red-500 text-white px-6 py-3 rounded-lg">Error reloading config: ` + err.Error() + `</div>`)
+		}
+
+		return c.SendString(`<div class="bg-green-500 text-white px-6 py-3 rounded-lg">✓ Filters saved successfully</div>`)
+	})
+}
+
+// Helper functions
+func bytesArrayToStrings(bytesArray [][]byte) []string {
+	result := make([]string, len(bytesArray))
+	for i, b := range bytesArray {
+		result[i] = string(b)
+	}
+	return result
 }

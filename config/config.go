@@ -9,6 +9,33 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// MovieFilters represents filtering options for movies
+type MovieFilters struct {
+	AllowedCountries      []string `mapstructure:"allowed_countries" json:"allowed_countries" yaml:"allowed_countries"`
+	AllowedLanguages      []string `mapstructure:"allowed_languages" json:"allowed_languages" yaml:"allowed_languages"`
+	BlacklistedGenres     []string `mapstructure:"blacklisted_genres" json:"blacklisted_genres" yaml:"blacklisted_genres"`
+	BlacklistedKeywords   []string `mapstructure:"blacklisted_keywords" json:"blacklisted_keywords" yaml:"blacklisted_keywords"`
+	BlacklistedTMDBIds    []int    `mapstructure:"blacklisted_tmdb_ids" json:"blacklisted_tmdb_ids" yaml:"blacklisted_tmdb_ids"`
+	BlacklistedMinRuntime int      `mapstructure:"blacklisted_min_runtime" json:"blacklisted_min_runtime" yaml:"blacklisted_min_runtime"`
+	BlacklistedMaxRuntime int      `mapstructure:"blacklisted_max_runtime" json:"blacklisted_max_runtime" yaml:"blacklisted_max_runtime"`
+	BlacklistedMinYear    int      `mapstructure:"blacklisted_min_year" json:"blacklisted_min_year" yaml:"blacklisted_min_year"`
+	BlacklistedMaxYear    int      `mapstructure:"blacklisted_max_year" json:"blacklisted_max_year" yaml:"blacklisted_max_year"`
+}
+
+// ShowFilters represents filtering options for TV shows
+type ShowFilters struct {
+	AllowedCountries      []string `mapstructure:"allowed_countries" json:"allowed_countries" yaml:"allowed_countries"`
+	AllowedLanguages      []string `mapstructure:"allowed_languages" json:"allowed_languages" yaml:"allowed_languages"`
+	BlacklistedGenres     []string `mapstructure:"blacklisted_genres" json:"blacklisted_genres" yaml:"blacklisted_genres"`
+	BlacklistedKeywords   []string `mapstructure:"blacklisted_keywords" json:"blacklisted_keywords" yaml:"blacklisted_keywords"`
+	BlacklistedNetworks   []string `mapstructure:"blacklisted_networks" json:"blacklisted_networks" yaml:"blacklisted_networks"`
+	BlacklistedTVDBIds    []int    `mapstructure:"blacklisted_tvdb_ids" json:"blacklisted_tvdb_ids" yaml:"blacklisted_tvdb_ids"`
+	BlacklistedMinRuntime int      `mapstructure:"blacklisted_min_runtime" json:"blacklisted_min_runtime" yaml:"blacklisted_min_runtime"`
+	BlacklistedMaxRuntime int      `mapstructure:"blacklisted_max_runtime" json:"blacklisted_max_runtime" yaml:"blacklisted_max_runtime"`
+	BlacklistedMinYear    int      `mapstructure:"blacklisted_min_year" json:"blacklisted_min_year" yaml:"blacklisted_min_year"`
+	BlacklistedMaxYear    int      `mapstructure:"blacklisted_max_year" json:"blacklisted_max_year" yaml:"blacklisted_max_year"`
+}
+
 // Config represents the application configuration
 type Config struct {
 	Version string `mapstructure:"version" yaml:"version,omitempty"`
@@ -155,6 +182,11 @@ type Config struct {
 			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"anticipated_shows" json:"anticipated_shows" yaml:"anticipated_shows"`
 	} `mapstructure:"jobs" json:"jobs" yaml:"jobs"`
+
+	Filters struct {
+		Movies MovieFilters `mapstructure:"movies" json:"movies" yaml:"movies"`
+		Shows  ShowFilters  `mapstructure:"shows" json:"shows" yaml:"shows"`
+	} `mapstructure:"filters" json:"filters" yaml:"filters"`
 
 	// Internal field to track config file path
 	ConfigFilePath string `mapstructure:"-" json:"-" yaml:"-"`
