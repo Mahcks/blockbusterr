@@ -8,10 +8,15 @@ Automatically add trending, popular, and highly-rated movies and TV shows from T
   - Trending, Popular, Box Office
   - Favorited, Played, Watched, Collected (by time period)
   - Anticipated content
+- **Content Filtering**: Fine-grained control over what gets added to your library
+  - Filter by country, language, genre, keywords
+  - Block specific networks (Hallmark, Nickelodeon, etc.)
+  - Set runtime and year ranges
+  - Blacklist specific TMDB/TVDB IDs
 - **Dual Integration Modes**:
   - **Direct Mode**: Add content directly to Radarr/Sonarr
   - **Jellyseerr Mode**: Request content via Jellyseerr/Overseerr with approval workflows
-- **Web UI**: Manage jobs, view activity logs, and configure settings
+- **Web UI**: Manage jobs, filters, view activity logs, and configure settings
 - **Flexible Scheduling**: Use simple durations (`1h`, `30m`) or cron expressions (`0 */2 * * *`)
 - **Smart Duplicate Detection**: Prevents adding content that's already requested/added
 - **Activity Logging**: Track all job executions and API actions
@@ -49,7 +54,12 @@ docker-compose up -d
    - Load quality profiles and root folders
    - Save your configuration
 
-4. **Enable Jobs:** Go to the **Jobs** tab and enable the automation you want
+4. **Set Up Filters (Optional):** Go to the **Filters** tab to control what content gets added
+   - Filter movies and shows by country, language, genre
+   - Block specific networks, keywords, or IDs
+   - Set runtime and year limits
+
+5. **Enable Jobs:** Go to the **Jobs** tab and enable the automation you want
 
 That's it! No manual config file editing required.
 
@@ -133,6 +143,31 @@ jobs:
     enabled: true
     limit: 20
     period: weekly  # weekly, monthly, yearly, all
+
+# Content Filters (optional)
+filters:
+  movies:
+    allowed_countries: []  # e.g., ["us", "gb", "ca"]
+    allowed_languages: []  # e.g., ["en", "ja"]
+    blacklisted_genres: ["documentary"]
+    blacklisted_keywords: []
+    blacklisted_tmdb_ids: []
+    blacklisted_min_runtime: 0  # minutes (0 = disabled)
+    blacklisted_max_runtime: 0  # minutes (0 = disabled)
+    blacklisted_min_year: 0  # e.g., 2020 (0 = disabled)
+    blacklisted_max_year: 0  # e.g., 2024 (0 = disabled)
+  
+  shows:
+    allowed_countries: []
+    allowed_languages: []
+    blacklisted_genres: ["reality"]
+    blacklisted_keywords: []
+    blacklisted_networks: ["hallmark", "nickelodeon"]
+    blacklisted_tvdb_ids: []
+    blacklisted_min_runtime: 0
+    blacklisted_max_runtime: 0
+    blacklisted_min_year: 0
+    blacklisted_max_year: 0
 ```
 
 ### Schedule Formats
@@ -185,6 +220,67 @@ Content goes through Jellyseerr's approval workflow (if configured) before being
 2. Select "Jellyseerr Mode" in the Integration Mode section
 3. Save configuration
 
+## Content Filters
+
+Control exactly what content gets added to your library through the Filters page at `http://localhost:9090/filters`.
+
+### Filter Options
+
+**For Both Movies and Shows:**
+- **Allowed Countries**: Only add content from specific countries (2-letter codes: `us`, `gb`, `ca`, etc.)
+  - Leave empty to allow all countries
+  - Use `["ignore"]` to allow content with no country specified
+- **Allowed Languages**: Only add content in specific languages (2-letter codes: `en`, `ja`, `es`, etc.)
+  - Leave empty to allow all languages
+  - Use `["ignore"]` to allow content with no language specified
+- **Blacklisted Genres**: Block specific genres entirely
+  - Movies: `documentary`, `animation`, `music`, etc.
+  - Shows: `reality`, `talk-show`, `game-show`, `documentary`, etc.
+  - Use `["ignore"]` to allow content with no genres specified
+- **Blacklisted Keywords**: Block content with specific words in the title
+- **Blacklisted IDs**: Block specific TMDB IDs (movies) or TVDB IDs (shows)
+- **Runtime Range**: Set minimum and maximum runtime in minutes
+  - Example: Skip movies under 60 minutes or over 180 minutes
+  - Set to `0` to disable
+- **Year Range**: Only add content released within a specific year range
+  - Example: Only movies from 2020 onwards
+  - Set to `0` to disable
+
+**TV Shows Only:**
+- **Blacklisted Networks**: Block entire TV networks
+  - Examples: `hallmark`, `nickelodeon`, `disney channel`, `lifetime`
+  - Perfect for avoiding holiday movie spam or kids' content
+
+### Filter Examples
+
+**Only English movies from 2020+ without documentaries:**
+```yaml
+filters:
+  movies:
+    allowed_languages: ["en"]
+    blacklisted_genres: ["documentary"]
+    blacklisted_min_year: 2020
+```
+
+**Block all Hallmark and reality TV shows:**
+```yaml
+filters:
+  shows:
+    blacklisted_networks: ["hallmark", "lifetime"]
+    blacklisted_genres: ["reality", "game-show"]
+```
+
+**Only feature-length English movies (90-180 mins):**
+```yaml
+filters:
+  movies:
+    allowed_languages: ["en"]
+    blacklisted_min_runtime: 90
+    blacklisted_max_runtime: 180
+```
+
+**Note:** Filters are applied to ALL jobs. If a movie or show is filtered out, it won't be added regardless of which job found it.
+
 ## Available Jobs
 
 ### Movie Jobs
@@ -212,6 +308,7 @@ Access the web interface at `http://localhost:9090` (change port via Docker port
 
 **Features:**
 - **Configuration Page**: Set up Trakt, Radarr, and Sonarr credentials with connection testing
+- **Filters Page**: Configure content filters to control what gets added to your library
 - **Jobs Page**: Enable/disable jobs, configure limits and time periods, run jobs manually
 - **Activity Log**: View detailed execution history with success/failure tracking
 - **Real-time Updates**: Live job status and instant notifications
@@ -306,12 +403,22 @@ go test ./...
 
 ## API Endpoints
 
+### Web UI Pages
 - `GET /` - Home page
+- `GET /config` - Configuration page
+- `GET /filters` - Content filters page
 - `GET /jobs` - Jobs configuration page
 - `GET /activity` - Activity logs page
+
+### API Endpoints
 - `GET /api/v1/jobs/status` - Get all job statuses (JSON)
 - `POST /api/v1/jobs/{job-name}/trigger` - Manually trigger a job
 - `POST /jobs/config/save` - Save job configuration
+- `POST /config/filters` - Save filter configuration
+- `GET /v1/trakt/networks` - Get available TV networks from Trakt
+- `GET /v1/trakt/genres/{type}` - Get genres for movies or shows
+- `GET /v1/trakt/countries` - Get available countries
+- `GET /v1/trakt/languages` - Get available languages
 
 ## Troubleshooting
 
