@@ -2,6 +2,18 @@
 
 Automatically add trending, popular, and highly-rated movies and TV shows from Trakt.tv to your Radarr and Sonarr instances.
 
+## Screenshots
+<details>
+<summary>Click to expand screenshots</summary>
+
+### Configuration
+![Configuration](docs/images/configuration.png)
+
+### Jobs
+![Jobs](docs/images/jobs.png)
+
+</details>
+
 ## Features
 
 - **15 Automated Jobs**: Sync movies and TV shows from various Trakt lists
