@@ -40,7 +40,7 @@ type MovieRequest struct {
 // ShowRequest represents a TV show request payload
 type ShowRequest struct {
 	MediaType string `json:"mediaType"`
-	MediaID   int    `json:"mediaId"` // TVDB ID
+	MediaID   int    `json:"mediaId"` // TMDB ID (Jellyseerr uses TMDB for TV shows, not TVDB)
 	Seasons   string `json:"seasons"` // "all" or specific seasons
 	UserID    *int   `json:"userId,omitempty"`
 }
@@ -145,11 +145,11 @@ func (j *Jellyseerr) RequestMovie(tmdbID int) (*RequestResponse, error) {
 	return &result, nil
 }
 
-// RequestShow requests a TV show by TVDB ID
-func (j *Jellyseerr) RequestShow(tvdbID int) (*RequestResponse, error) {
+// RequestShow requests a TV show by TMDB ID
+func (j *Jellyseerr) RequestShow(tmdbID int) (*RequestResponse, error) {
 	payload := ShowRequest{
 		MediaType: "tv",
-		MediaID:   tvdbID,
+		MediaID:   tmdbID,
 		Seasons:   "all",
 	}
 

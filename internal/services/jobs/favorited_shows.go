@@ -233,7 +233,7 @@ func runFavoritedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *da
 			log.Infof("[DRY RUN] Would request favorited show '%s (%d)' via Jellyseerr", favorited.Show.Title, favorited.Show.Year)
 			added++
 		} else {
-			result, err := jellyseerrClient.RequestShow(series.TvdbID)
+			result, err := jellyseerrClient.RequestShow(series.TmdbID)
 			if err != nil {
 				log.Errorf("Failed to request show '%s (%d)' via Jellyseerr: %v", favorited.Show.Title, favorited.Show.Year, err)
 				failed++
