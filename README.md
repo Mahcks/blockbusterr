@@ -5,7 +5,7 @@ Automate your media library. Stop manually managing Trakt lists.
 Blockbusterr pulls trending, popular, and highly-rated content from Trakt and adds it to Radarr/Sonarr automatically. Smart filters ensure you only get the content you actually want.
 
 [![GitHub release](https://img.shields.io/github/v/release/Mahcks/blockbusterr)](https://github.com/Mahcks/blockbusterr/releases)
-[![Docker Pulls](https://img.shields.io/docker/pulls/mahcks/blockbusterr)](https://hub.docker.com/r/mahcks/blockbusterr)
+[![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-ghcr.io-blue)](https://github.com/mahcks/blockbusterr/pkgs/container/blockbusterr)
 [![License](https://img.shields.io/github/license/Mahcks/blockbusterr)](LICENSE)
 
 ---
@@ -26,13 +26,13 @@ docker run -d \
 
 Open `http://localhost:9090` and add your Radarr/Sonarr credentials in the Configuration tab.
 
-![Configuration](docs/images/configuration.png)
+![Configuration](docs/images/banner.png)
 
 **3. Enable Jobs**
 
 Pick a job like "Trending Movies" or "Popular Shows" and click Enable.
 
-![Jobs](docs/images/jobs.png)
+![Jobs](docs/images/jobs_preview.png)
 
 That's it. Blockbusterr will now keep your library fresh automatically.
 
