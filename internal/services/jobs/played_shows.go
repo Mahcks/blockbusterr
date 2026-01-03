@@ -233,7 +233,7 @@ func runPlayedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *datab
 			log.Infof("[DRY RUN] Would request played show '%s (%d)' via Jellyseerr", played.Show.Title, played.Show.Year)
 			added++
 		} else {
-			result, err := jellyseerrClient.RequestShow(series.TvdbID)
+			result, err := jellyseerrClient.RequestShow(series.TmdbID)
 			if err != nil {
 				log.Errorf("Failed to request show '%s (%d)' via Jellyseerr: %v", played.Show.Title, played.Show.Year, err)
 				failed++

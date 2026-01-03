@@ -233,7 +233,7 @@ func runAnticipatedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *
 			log.Infof("[DRY RUN] Would request anticipated show '%s (%d)' via Jellyseerr", anticipated.Show.Title, anticipated.Show.Year)
 			added++
 		} else {
-			result, err := jellyseerrClient.RequestShow(series.TvdbID)
+			result, err := jellyseerrClient.RequestShow(series.TmdbID)
 			if err != nil {
 				log.Errorf("Failed to request show '%s (%d)' via Jellyseerr: %v", anticipated.Show.Title, anticipated.Show.Year, err)
 				failed++
