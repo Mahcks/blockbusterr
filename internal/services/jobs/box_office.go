@@ -192,6 +192,8 @@ func runBoxOfficeJellyseerr(ctx context.Context, cfg *config.Config, db *databas
 		URL:    cfg.Jellyseerr.URL,
 		APIKey: cfg.Jellyseerr.APIKey,
 		UserID: cfg.Jellyseerr.UserID,
+		RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+		RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
 	})
 
 	// Request movies via Jellyseerr
@@ -202,6 +204,16 @@ func runBoxOfficeJellyseerr(ctx context.Context, cfg *config.Config, db *databas
 	for _, boxOffice := range boxOfficeMovies {
 		if boxOffice.Movie.IDs.TMDB == 0 {
 			log.Warnf("Skipping '%s (%d)' - missing TMDB ID", boxOffice.Movie.Title, boxOffice.Movie.Year)
+			skipped++
+			continue
+		}
+
+		// Check if movie already exists in Jellyseerr
+		mediaInfo, err := jellyseerrClient.GetMovieInfo(boxOffice.Movie.IDs.TMDB)
+		if err != nil {
+			log.Debugf("Failed to check Jellyseerr status for '%s (%d)': %v", boxOffice.Movie.Title, boxOffice.Movie.Year, err)
+		} else if mediaInfo.HasMediaInfo() {
+			log.Debugf("Skipping '%s (%d)' - already requested/available in Jellyseerr", boxOffice.Movie.Title, boxOffice.Movie.Year)
 			skipped++
 			continue
 		}

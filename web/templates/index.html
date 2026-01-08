@@ -397,13 +397,75 @@
       <button
         type="button"
         onclick="testConnection('jellyseerr', this)"
-        class="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+        class="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2 mb-6"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
         Test Connection
       </button>
+
+      <!-- Request Credentials (Advanced) -->
+      <div class="pt-4 border-t border-slate-700">
+        <div class="bg-purple-900/20 border border-purple-700/50 rounded-lg p-4 mb-4">
+          <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div class="text-sm text-slate-300">
+              <p class="font-semibold text-purple-300 mb-1">Advanced: Request Credentials (Optional)</p>
+              <p class="text-xs">API keys auto-approve requests (admin). Username/password respects user permissions (no auto-approve). Leave empty to use API key only.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label for="jellyseerr-request-email" class="block text-sm font-medium text-slate-300 mb-2">
+              Request Email <span class="text-slate-500">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              id="jellyseerr-request-email"
+              name="jellyseerr.request_credentials.email"
+              value="{{.Config.Jellyseerr.RequestCredentials.Email}}"
+              placeholder="blockbusterr-bot@example.com"
+              autocomplete="off"
+              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+            />
+          </div>
+
+          <div>
+            <label for="jellyseerr-request-password" class="block text-sm font-medium text-slate-300 mb-2">
+              Request Password <span class="text-slate-500">(Optional)</span>
+            </label>
+            <div class="relative">
+              <input
+                type="password"
+                id="jellyseerr-request-password"
+                name="jellyseerr.request_credentials.password"
+                value="{{.Config.Jellyseerr.RequestCredentials.Password}}"
+                placeholder="Enter password"
+                autocomplete="off"
+                class="w-full px-4 py-2.5 pr-12 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+              />
+              <button
+                type="button"
+                onclick="togglePassword('jellyseerr-request-password', this)"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
+              >
+                <svg class="eye-open w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Mode Selection -->

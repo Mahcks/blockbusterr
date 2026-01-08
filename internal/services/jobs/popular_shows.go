@@ -183,9 +183,11 @@ func runPopularShowsDirect(ctx context.Context, cfg *config.Config, db *database
 // runPopularShowsJellyseerr requests shows via Jellyseerr
 func runPopularShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, popularShows []integrations.Show, dryRun bool) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-		URL:    cfg.Jellyseerr.URL,
-		APIKey: cfg.Jellyseerr.APIKey,
-		UserID: cfg.Jellyseerr.UserID,
+		URL:             cfg.Jellyseerr.URL,
+		APIKey:          cfg.Jellyseerr.APIKey,
+		UserID:          cfg.Jellyseerr.UserID,
+		RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+		RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
 	})
 
 	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
@@ -209,8 +211,18 @@ func runPopularShowsJellyseerr(ctx context.Context, cfg *config.Config, db *data
 
 		series := lookupResults[0]
 
-		if series.TvdbID == 0 {
-			log.Warnf("Skipping '%s (%d)' - missing TVDB ID", popular.Title, popular.Year)
+		if popular.IDs.TMDB == 0 {
+			log.Warnf("Skipping '%s (%d)' - missing TMDB ID", popular.Title, popular.Year)
+			skipped++
+			continue
+		}
+
+		// Check if show already exists in Jellyseerr
+		mediaInfo, err := jellyseerrClient.GetShowInfo(popular.IDs.TMDB)
+		if err != nil {
+			log.Debugf("Failed to check Jellyseerr status for '%s (%d)': %v", popular.Title, popular.Year, err)
+		} else if mediaInfo.HasMediaInfo() {
+			log.Debugf("Skipping '%s (%d)' - already requested/available in Jellyseerr", popular.Title, popular.Year)
 			skipped++
 			continue
 		}
@@ -220,7 +232,7 @@ func runPopularShowsJellyseerr(ctx context.Context, cfg *config.Config, db *data
 			log.Infof("[DRY RUN] Would request popular show '%s (%d)' via Jellyseerr", popular.Title, popular.Year)
 			added++
 		} else {
-			result, err := jellyseerrClient.RequestShow(series.TmdbID)
+			result, err := jellyseerrClient.RequestShow(popular.IDs.TMDB)
 			if err != nil {
 				log.Errorf("Failed to request show '%s (%d)' via Jellyseerr: %v", popular.Title, popular.Year, err)
 				failed++

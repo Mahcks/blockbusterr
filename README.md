@@ -330,6 +330,10 @@ jellyseerr:  # Optional
   url: "http://localhost:5055"
   api_key: "your_jellyseerr_api_key"
   user_id: ""
+  # Optional: Use username/password for requests (respects user permissions, no auto-approve)
+  request_credentials:
+    email: "blockbusterr-bot@example.com"
+    password: "your_password"
 
 jobs:
   sync_interval: "0 2 * * *"  # Daily at 2 AM
@@ -425,6 +429,32 @@ Routes requests through Jellyseerr/Overseerr.
 1. Configure Jellyseerr in Configuration tab
 2. Select "Jellyseerr Mode"
 3. Save
+
+#### Authentication Options
+
+**Option 1: API Key (Default)**
+- Uses admin API key for all requests
+- Requests are **auto-approved** (admin privileges)
+- Best for: Automation without manual approval
+
+**Option 2: Username/Password (Respects User Permissions)**
+- Create a non-admin user in Jellyseerr (e.g., "blockbusterr-bot")
+- Add `request_credentials` to config:
+  ```yaml
+  jellyseerr:
+    url: "http://localhost:5055"
+    api_key: "admin_api_key"  # Still used for read operations
+    request_credentials:
+      email: "blockbusterr-bot@example.com"
+      password: "secure_password"
+  ```
+- Requests will **require approval** (respects non-admin user permissions)
+- Best for: Multi-user setups with approval workflow
+
+**Why the difference?**
+- Admin API keys bypass Jellyseerr's approval workflow
+- Username/password auth inherits the logged-in user's permissions
+- This allows you to automate requests while maintaining manual approval
 
 ---
 

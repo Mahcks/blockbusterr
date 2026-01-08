@@ -187,11 +187,13 @@ func runPlayedMoviesDirect(ctx context.Context, cfg *config.Config, db *database
 }
 
 // runPlayedMoviesJellyseerr requests movies via Jellyseerr
-func runPlayedMoviesJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, playedMovies []integrations.PlayedMovie, dryRun bool) {
+func runPlayedMoviesJellyseerr(_ context.Context, cfg *config.Config, db *database.Database, playedMovies []integrations.PlayedMovie, dryRun bool) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-		URL:    cfg.Jellyseerr.URL,
-		APIKey: cfg.Jellyseerr.APIKey,
-		UserID: cfg.Jellyseerr.UserID,
+		URL:             cfg.Jellyseerr.URL,
+		APIKey:          cfg.Jellyseerr.APIKey,
+		UserID:          cfg.Jellyseerr.UserID,
+		RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+		RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
 	})
 
 	// Request movies via Jellyseerr

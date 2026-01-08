@@ -72,3 +72,6 @@ temp/
 
 # Dependencies
 vendor/
+
+# Claude AI files
+CLAUDE.md
