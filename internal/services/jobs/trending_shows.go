@@ -197,9 +197,11 @@ func runTrendingShowsDirect(ctx context.Context, cfg *config.Config, db *databas
 // runTrendingShowsJellyseerr requests shows via Jellyseerr
 func runTrendingShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, trendingShows []integrations.TrendingShow, dryRun bool) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-		URL:    cfg.Jellyseerr.URL,
-		APIKey: cfg.Jellyseerr.APIKey,
-		UserID: cfg.Jellyseerr.UserID,
+		URL:             cfg.Jellyseerr.URL,
+		APIKey:          cfg.Jellyseerr.APIKey,
+		UserID:          cfg.Jellyseerr.UserID,
+		RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+		RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
 	})
 
 	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
@@ -223,8 +225,18 @@ func runTrendingShowsJellyseerr(ctx context.Context, cfg *config.Config, db *dat
 
 		series := lookupResults[0]
 
-		if series.TvdbID == 0 {
-			log.Warnf("Skipping '%s (%d)' - missing TVDB ID", trending.Show.Title, trending.Show.Year)
+		if trending.Show.IDs.TMDB == 0 {
+			log.Warnf("Skipping '%s (%d)' - missing TMDB ID", trending.Show.Title, trending.Show.Year)
+			skipped++
+			continue
+		}
+
+		// Check if show already exists in Jellyseerr
+		mediaInfo, err := jellyseerrClient.GetShowInfo(trending.Show.IDs.TMDB)
+		if err != nil {
+			log.Debugf("Failed to check Jellyseerr status for '%s (%d)': %v", trending.Show.Title, trending.Show.Year, err)
+		} else if mediaInfo.HasMediaInfo() {
+			log.Debugf("Skipping '%s (%d)' - already requested/available in Jellyseerr", trending.Show.Title, trending.Show.Year)
 			skipped++
 			continue
 		}
@@ -234,7 +246,7 @@ func runTrendingShowsJellyseerr(ctx context.Context, cfg *config.Config, db *dat
 			log.Infof("[DRY RUN] Would request trending show '%s (%d)' via Jellyseerr", trending.Show.Title, trending.Show.Year)
 			added++
 		} else {
-			result, err := jellyseerrClient.RequestShow(series.TmdbID)
+			result, err := jellyseerrClient.RequestShow(trending.Show.IDs.TMDB)
 			if err != nil {
 				log.Errorf("Failed to request show '%s (%d)' via Jellyseerr: %v", trending.Show.Title, trending.Show.Year, err)
 				failed++

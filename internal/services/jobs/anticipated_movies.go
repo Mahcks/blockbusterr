@@ -189,9 +189,11 @@ func runAnticipatedMoviesDirect(ctx context.Context, cfg *config.Config, db *dat
 // runAnticipatedMoviesJellyseerr requests movies via Jellyseerr
 func runAnticipatedMoviesJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, anticipatedMovies []integrations.AnticipatedMovie, dryRun bool) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-		URL:    cfg.Jellyseerr.URL,
-		APIKey: cfg.Jellyseerr.APIKey,
-		UserID: cfg.Jellyseerr.UserID,
+		URL:             cfg.Jellyseerr.URL,
+		APIKey:          cfg.Jellyseerr.APIKey,
+		UserID:          cfg.Jellyseerr.UserID,
+		RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+		RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
 	})
 
 	// Request movies via Jellyseerr
@@ -202,6 +204,15 @@ func runAnticipatedMoviesJellyseerr(ctx context.Context, cfg *config.Config, db 
 	for _, anticipated := range anticipatedMovies {
 		if anticipated.Movie.IDs.TMDB == 0 {
 			log.Warnf("Skipping '%s (%d)' - missing TMDB ID", anticipated.Movie.Title, anticipated.Movie.Year)
+			skipped++
+			continue
+		}
+
+		mediaInfo, err := jellyseerrClient.GetMovieInfo(anticipated.Movie.IDs.TMDB)
+		if err != nil {
+			log.Debugf("Failed to check Jellyseerr status for '%s (%d)': %v", anticipated.Movie.Title, anticipated.Movie.Year, err)
+		} else if mediaInfo.HasMediaInfo() {
+			log.Debugf("Skipping '%s (%d)' - already requested/available in Jellyseerr", anticipated.Movie.Title, anticipated.Movie.Year)
 			skipped++
 			continue
 		}

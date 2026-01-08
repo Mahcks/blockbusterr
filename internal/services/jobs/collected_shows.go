@@ -196,9 +196,11 @@ func runCollectedShowsDirect(ctx context.Context, cfg *config.Config, db *databa
 // runCollectedShowsJellyseerr requests shows via Jellyseerr
 func runCollectedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, collectedShows []integrations.CollectedShow, dryRun bool) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-		URL:    cfg.Jellyseerr.URL,
-		APIKey: cfg.Jellyseerr.APIKey,
-		UserID: cfg.Jellyseerr.UserID,
+		URL:             cfg.Jellyseerr.URL,
+		APIKey:          cfg.Jellyseerr.APIKey,
+		UserID:          cfg.Jellyseerr.UserID,
+		RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+		RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
 	})
 
 	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
@@ -222,8 +224,18 @@ func runCollectedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *da
 
 		series := lookupResults[0]
 
-		if series.TvdbID == 0 {
-			log.Warnf("Skipping '%s (%d)' - missing TVDB ID", collected.Show.Title, collected.Show.Year)
+		if collected.Show.IDs.TMDB == 0 {
+			log.Warnf("Skipping '%s (%d)' - missing TMDB ID", collected.Show.Title, collected.Show.Year)
+			skipped++
+			continue
+		}
+
+		// Check if show already exists in Jellyseerr
+		mediaInfo, err := jellyseerrClient.GetShowInfo(collected.Show.IDs.TMDB)
+		if err != nil {
+			log.Debugf("Failed to check Jellyseerr status for '%s (%d)': %v", collected.Show.Title, collected.Show.Year, err)
+		} else if mediaInfo.HasMediaInfo() {
+			log.Debugf("Skipping '%s (%d)' - already requested/available in Jellyseerr", collected.Show.Title, collected.Show.Year)
 			skipped++
 			continue
 		}
@@ -233,7 +245,7 @@ func runCollectedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *da
 			log.Infof("[DRY RUN] Would request collected show '%s (%d)' via Jellyseerr", collected.Show.Title, collected.Show.Year)
 			added++
 		} else {
-			result, err := jellyseerrClient.RequestShow(series.TmdbID)
+			result, err := jellyseerrClient.RequestShow(collected.Show.IDs.TMDB)
 			if err != nil {
 				log.Errorf("Failed to request show '%s (%d)' via Jellyseerr: %v", collected.Show.Title, collected.Show.Year, err)
 				failed++

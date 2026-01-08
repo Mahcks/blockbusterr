@@ -60,9 +60,13 @@ type Config struct {
 	} `mapstructure:"sonarr" json:"sonarr" yaml:"sonarr"`
 
 	Jellyseerr struct {
-		URL    string `mapstructure:"url" json:"url" yaml:"url"`
-		APIKey string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
-		UserID string `mapstructure:"user_id" json:"user_id" yaml:"user_id"` // Optional: request as specific user
+		URL               string `mapstructure:"url" json:"url" yaml:"url"`
+		APIKey            string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+		UserID            string `mapstructure:"user_id" json:"user_id" yaml:"user_id"` // Optional: request as specific user
+		RequestCredentials struct {
+			Email    string `mapstructure:"email" json:"email" yaml:"email"`
+			Password string `mapstructure:"password" json:"password" yaml:"password"`
+		} `mapstructure:"request_credentials" json:"request_credentials" yaml:"request_credentials,omitempty"`
 	} `mapstructure:"jellyseerr" json:"jellyseerr" yaml:"jellyseerr"`
 
 	Jobs struct {
