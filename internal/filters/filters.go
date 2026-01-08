@@ -19,20 +19,16 @@ func MoviePassesFilters(movie integrations.Movie, filters config.MovieFilters) (
 
 	// Check country filter
 	if len(filters.AllowedCountries) > 0 && !contains(filters.AllowedCountries, "ignore") {
-		if movie.Country == "" {
-			return false, "no country specified"
-		}
-		if !containsIgnoreCase(filters.AllowedCountries, movie.Country) {
+		// Only filter if country is specified - allow through if missing (Trakt doesn't always provide this)
+		if movie.Country != "" && !containsIgnoreCase(filters.AllowedCountries, movie.Country) {
 			return false, "country not allowed: " + movie.Country
 		}
 	}
 
 	// Check language filter
 	if len(filters.AllowedLanguages) > 0 && !contains(filters.AllowedLanguages, "ignore") {
-		if movie.Language == "" {
-			return false, "no language specified"
-		}
-		if !containsIgnoreCase(filters.AllowedLanguages, movie.Language) {
+		// Only filter if language is specified - allow through if missing (Trakt doesn't always provide this)
+		if movie.Language != "" && !containsIgnoreCase(filters.AllowedLanguages, movie.Language) {
 			return false, "language not allowed: " + movie.Language
 		}
 	}
@@ -90,20 +86,16 @@ func ShowPassesFilters(show integrations.Show, filters config.ShowFilters) (bool
 
 	// Check country filter
 	if len(filters.AllowedCountries) > 0 && !contains(filters.AllowedCountries, "ignore") {
-		if show.Country == "" {
-			return false, "no country specified"
-		}
-		if !containsIgnoreCase(filters.AllowedCountries, show.Country) {
+		// Only filter if country is specified - allow through if missing (Trakt doesn't always provide this)
+		if show.Country != "" && !containsIgnoreCase(filters.AllowedCountries, show.Country) {
 			return false, "country not allowed: " + show.Country
 		}
 	}
 
 	// Check language filter
 	if len(filters.AllowedLanguages) > 0 && !contains(filters.AllowedLanguages, "ignore") {
-		if show.Language == "" {
-			return false, "no language specified"
-		}
-		if !containsIgnoreCase(filters.AllowedLanguages, show.Language) {
+		// Only filter if language is specified - allow through if missing (Trakt doesn't always provide this)
+		if show.Language != "" && !containsIgnoreCase(filters.AllowedLanguages, show.Language) {
 			return false, "language not allowed: " + show.Language
 		}
 	}
