@@ -25,7 +25,9 @@ type ActivityLog struct {
 	TVDBID    int       `json:"tvdb_id,omitempty"`
 	IMDBID    string    `json:"imdb_id,omitempty"`
 	PosterURL string    `json:"poster_url,omitempty"`
-	Status    string    `json:"status"` // "added", "failed", "skipped"
+	Score     float64   `json:"score,omitempty"` // Content score (0-1)
+	Rank      int       `json:"rank,omitempty"`  // Rank among all items
+	Status    string    `json:"status"`          // "added", "failed", "skipped"
 	Message   string    `json:"message,omitempty"`
 }
 
@@ -76,6 +78,19 @@ func (d *Database) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_logs(timestamp DESC);
 	CREATE INDEX IF NOT EXISTS idx_activity_job_type ON activity_logs(job_type);
 	CREATE INDEX IF NOT EXISTS idx_activity_status ON activity_logs(status);
+
+	CREATE TABLE IF NOT EXISTS global_limits (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		period TEXT NOT NULL,
+		media_type TEXT NOT NULL,
+		count INTEGER NOT NULL DEFAULT 0,
+		reset_at DATETIME NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_global_limits_period ON global_limits(period, media_type);
+	CREATE INDEX IF NOT EXISTS idx_global_limits_reset ON global_limits(reset_at);
 	`
 
 	_, err := d.db.Exec(schema)
@@ -103,6 +118,24 @@ func (d *Database) initSchema() error {
 		}
 	}
 
+	// Check if score column exists
+	err = d.db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('activity_logs') WHERE name='score'").Scan(&columnCount)
+	if err != nil {
+		return err
+	}
+
+	if columnCount == 0 {
+		// Add score and rank columns
+		_, err = d.db.Exec("ALTER TABLE activity_logs ADD COLUMN score REAL")
+		if err != nil {
+			return err
+		}
+		_, err = d.db.Exec("ALTER TABLE activity_logs ADD COLUMN rank INTEGER")
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -113,8 +146,8 @@ func (d *Database) Close() error {
 // LogActivity adds a new activity log entry
 func (d *Database) LogActivity(log ActivityLog) error {
 	query := `
-		INSERT INTO activity_logs (timestamp, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, status, message)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO activity_logs (timestamp, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := d.db.Exec(query,
@@ -127,6 +160,8 @@ func (d *Database) LogActivity(log ActivityLog) error {
 		log.TVDBID,
 		log.IMDBID,
 		log.PosterURL,
+		log.Score,
+		log.Rank,
 		log.Status,
 		log.Message,
 	)
@@ -137,7 +172,7 @@ func (d *Database) LogActivity(log ActivityLog) error {
 // GetRecentActivity retrieves recent activity logs
 func (d *Database) GetRecentActivity(limit int) ([]ActivityLog, error) {
 	query := `
-		SELECT id, timestamp, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, status, message
+		SELECT id, timestamp, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message
 		FROM activity_logs
 		ORDER BY timestamp DESC
 		LIMIT ?
@@ -152,8 +187,9 @@ func (d *Database) GetRecentActivity(limit int) ([]ActivityLog, error) {
 	var logs []ActivityLog
 	for rows.Next() {
 		var log ActivityLog
-		var tmdbID, tvdbID sql.NullInt64
+		var tmdbID, tvdbID, rank sql.NullInt64
 		var message, imdbID, posterURL sql.NullString
+		var score sql.NullFloat64
 
 		err := rows.Scan(
 			&log.ID,
@@ -166,6 +202,8 @@ func (d *Database) GetRecentActivity(limit int) ([]ActivityLog, error) {
 			&tvdbID,
 			&imdbID,
 			&posterURL,
+			&score,
+			&rank,
 			&log.Status,
 			&message,
 		)
@@ -184,6 +222,12 @@ func (d *Database) GetRecentActivity(limit int) ([]ActivityLog, error) {
 		}
 		if posterURL.Valid {
 			log.PosterURL = posterURL.String
+		}
+		if score.Valid {
+			log.Score = score.Float64
+		}
+		if rank.Valid {
+			log.Rank = int(rank.Int64)
 		}
 		if message.Valid {
 			log.Message = message.String
@@ -232,6 +276,95 @@ func (d *Database) GetActivityStats() (map[string]interface{}, error) {
 	stats["added_last_24h"] = recentAdded
 
 	return stats, nil
+}
+
+// GlobalLimit represents a limit tracking record
+type GlobalLimit struct {
+	ID        int64     `json:"id"`
+	Period    string    `json:"period"`     // sync, daily, weekly, monthly
+	MediaType string    `json:"media_type"` // movie, show
+	Count     int       `json:"count"`
+	ResetAt   time.Time `json:"reset_at"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// GetGlobalLimit retrieves the current limit record for a period and media type
+func (d *Database) GetGlobalLimit(period string, mediaType string) (*GlobalLimit, error) {
+	var limit GlobalLimit
+
+	err := d.db.QueryRow(`
+		SELECT id, period, media_type, count, reset_at, created_at, updated_at
+		FROM global_limits
+		WHERE period = ? AND media_type = ?
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, period, mediaType).Scan(
+		&limit.ID,
+		&limit.Period,
+		&limit.MediaType,
+		&limit.Count,
+		&limit.ResetAt,
+		&limit.CreatedAt,
+		&limit.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil // No record found
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &limit, nil
+}
+
+// IncrementGlobalLimit increments the count for a period and media type
+// Creates a new record if one doesn't exist or if the current one has expired
+func (d *Database) IncrementGlobalLimit(period string, mediaType string, resetAt time.Time) error {
+	limit, err := d.GetGlobalLimit(period, mediaType)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+
+	// If no limit exists or the current one has expired, create a new one
+	if limit == nil || now.After(limit.ResetAt) {
+		_, err = d.db.Exec(`
+			INSERT INTO global_limits (period, media_type, count, reset_at, created_at, updated_at)
+			VALUES (?, ?, 1, ?, ?, ?)
+		`, period, mediaType, resetAt, now, now)
+		return err
+	}
+
+	// Otherwise increment the existing count
+	_, err = d.db.Exec(`
+		UPDATE global_limits
+		SET count = count + 1, updated_at = ?
+		WHERE id = ?
+	`, now, limit.ID)
+	return err
+}
+
+// GetCurrentGlobalCount returns the current count for a period and media type
+// Returns 0 if no record exists or if the record has expired
+func (d *Database) GetCurrentGlobalCount(period string, mediaType string) (int, error) {
+	limit, err := d.GetGlobalLimit(period, mediaType)
+	if err != nil {
+		return 0, err
+	}
+
+	if limit == nil {
+		return 0, nil
+	}
+
+	// Check if limit has expired
+	if time.Now().After(limit.ResetAt) {
+		return 0, nil
+	}
+
+	return limit.Count, nil
 }
 
 // ClearOldLogs removes logs older than the specified number of days

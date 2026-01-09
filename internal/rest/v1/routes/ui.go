@@ -64,6 +64,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		jellyseerrAPIKey := c.FormValue("jellyseerr.api_key")
 		jellyseerrUserID := c.FormValue("jellyseerr.user_id")
 		jobsMode := c.FormValue("jobs.mode")
+		globalLimitMovies := c.FormValue("jobs.global_limit_movies")
+		globalLimitShows := c.FormValue("jobs.global_limit_shows")
+		globalPeriod := c.FormValue("jobs.global_period")
 
 		// Update config
 		cfg.Trakt.ClientID = traktClientID
@@ -81,6 +84,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		if jobsMode != "" {
 			cfg.Jobs.Mode = jobsMode
 		}
+		if globalPeriod != "" {
+			cfg.Jobs.GlobalPeriod = globalPeriod
+		}
 
 		// Parse quality profile IDs
 		if radarrQualityProfile != "" {
@@ -91,6 +97,18 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		if sonarrQualityProfile != "" {
 			if qp, err := strconv.Atoi(sonarrQualityProfile); err == nil {
 				cfg.Sonarr.QualityProfile = qp
+			}
+		}
+
+		// Parse global limits
+		if globalLimitMovies != "" {
+			if limit, err := strconv.Atoi(globalLimitMovies); err == nil {
+				cfg.Jobs.GlobalLimitMovies = limit
+			}
+		}
+		if globalLimitShows != "" {
+			if limit, err := strconv.Atoi(globalLimitShows); err == nil {
+				cfg.Jobs.GlobalLimitShows = limit
 			}
 		}
 
