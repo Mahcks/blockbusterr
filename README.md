@@ -68,7 +68,7 @@ Managing Trakt lists manually in Radarr/Sonarr is tedious. You have to:
 - Smart filtering (country, language, genre, runtime, year, keywords)
 - Limit control ("top 5 trending" instead of "all 100 trending movies")
 - Activity log showing what was added and when
-- Preview before adding (coming soon)
+- Preview jobs before enabling to see what would be added
 - Optional Jellyseerr integration for approval workflows
 
 | Feature | Manual Trakt Lists | Blockbusterr |
@@ -78,7 +78,7 @@ Managing Trakt lists manually in Radarr/Sonarr is tedious. You have to:
 | Filters | None | Country, language, genre, runtime, year, keywords |
 | Management | Multiple apps | Single dashboard |
 | Activity Log | Check each app | Unified log with posters |
-| Preview | Blind faith | See before adding (coming soon) |
+| Preview | Blind faith | See what would be added with filters applied |
 | Multi-user | Direct add only | Optional Jellyseerr approval |
 
 ---
@@ -98,6 +98,25 @@ Pull content from Trakt automatically:
 - **Anticipated** - Most anticipated upcoming releases
 
 All jobs work for both movies and TV shows (15 total).
+
+### Job Preview
+
+See exactly what content will be added before enabling a job:
+- **Visual Preview** - Poster grid view with TMDB integration (optional) or clean list view
+- **Filter Results** - See which items pass/fail your filters and why
+- **Already in Library** - Identify content you already have
+- **Stats Breakdown** - Total found, filtered out, already exists, will add
+- **Tab Navigation** - Filter preview by status (All/Will Add/Exists/Filtered)
+
+**TMDB Integration (Optional)**:
+Add your TMDB API key in the config to see beautiful poster images in previews. Without it, you'll get a clean, informative list view instead. Get a free API key at [themoviedb.org](https://www.themoviedb.org/settings/api).
+
+**How to Use**:
+1. Configure any job with your desired filters and limits
+2. Click the "Preview" button next to the job
+3. Review what would be added
+4. Adjust filters or limits if needed
+5. Enable the job when satisfied
 
 ### Smart Filtering
 
@@ -513,6 +532,8 @@ RADARR_URL=http://host.docker.internal:7878
 
 ## API Reference
 
+Full API documentation available at [docs/API.md](docs/API.md).
+
 ### Web UI
 
 - `GET /` - Home (redirects to jobs)
@@ -526,6 +547,7 @@ RADARR_URL=http://host.docker.internal:7878
 **Jobs:**
 - `GET /api/v1/jobs/status` - All job statuses
 - `POST /api/v1/jobs/trigger/:job-name` - Trigger job manually
+- `POST /api/v1/jobs/preview/:job-name` - Preview what a job would add
 
 **Activity:**
 - `GET /api/v1/activity/logs?limit=50` - Recent logs
@@ -552,7 +574,6 @@ RADARR_URL=http://host.docker.internal:7878
 
 Based on [GitHub issues](https://github.com/Mahcks/blockbusterr/issues) and community feedback:
 
-- **Job Preview** - See what will be added before you run a job
 - **Rating Filters** - Filter by IMDB/Trakt ratings and vote counts
 - **Content Scoring** - Configurable weights for ranking content
 - **Decision Logs** - See why content was accepted or filtered out

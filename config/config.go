@@ -45,6 +45,10 @@ type Config struct {
 		ClientSecret string `mapstructure:"client_secret" json:"client_secret" yaml:"client_secret"`
 	} `mapstructure:"trakt" json:"trakt" yaml:"trakt"`
 
+	TMDB struct {
+		APIKey string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+	} `mapstructure:"tmdb" json:"tmdb" yaml:"tmdb"`
+
 	Radarr struct {
 		URL            string `mapstructure:"url" json:"url" yaml:"url"`
 		APIKey         string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
@@ -60,9 +64,9 @@ type Config struct {
 	} `mapstructure:"sonarr" json:"sonarr" yaml:"sonarr"`
 
 	Jellyseerr struct {
-		URL               string `mapstructure:"url" json:"url" yaml:"url"`
-		APIKey            string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
-		UserID            string `mapstructure:"user_id" json:"user_id" yaml:"user_id"` // Optional: request as specific user
+		URL                string `mapstructure:"url" json:"url" yaml:"url"`
+		APIKey             string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+		UserID             string `mapstructure:"user_id" json:"user_id" yaml:"user_id"` // Optional: request as specific user
 		RequestCredentials struct {
 			Email    string `mapstructure:"email" json:"email" yaml:"email"`
 			Password string `mapstructure:"password" json:"password" yaml:"password"`
