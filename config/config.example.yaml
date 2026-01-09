@@ -28,6 +28,22 @@ jellyseerr:
   api_key: ""
   user_id: ""  # Optional: Request as specific user ID (leave empty for default user)
 
+scoring:
+  # Content scoring system - ranks content by rating, popularity, and recency
+  # Used by global limits to select top N items across all jobs
+  enabled: true
+  rating_weight: 0.6       # 60% weight on rating (must sum to 1.0 with other weights)
+  popularity_weight: 0.3   # 30% weight on popularity (vote count)
+  recency_weight: 0.1      # 10% weight on how recent it is
+  rating_scale: 10         # Rating scale (10 for Trakt's 0-10 scale)
+  popularity_metric: "votes" # Options: votes, views, watchers
+  recency_days: 365        # Content from last 365 days gets full recency score
+
+  # Preset configurations:
+  # Quality-focused:  rating: 0.8, popularity: 0.1, recency: 0.1
+  # Trending-focused: rating: 0.3, popularity: 0.6, recency: 0.1
+  # New releases:     rating: 0.4, popularity: 0.2, recency: 0.4
+
 jobs:
   # Default sync interval for all jobs (can be overridden per job)
   # Supports duration format (e.g. "1h", "30m", "2h30m") or cron expressions (e.g. "0 */2 * * *")
@@ -43,6 +59,13 @@ jobs:
   # Default mode: "direct" (add directly to Radarr/Sonarr) or "jellyseerr" (request via Jellyseerr)
   # Can be overridden per job
   mode: direct
+
+  # Global Limits (optional)
+  # Aggregate results from all enabled jobs and only add the top N highest-scored items
+  # Leave at 0 to disable global limits (jobs will add items independently)
+  global_limit_movies: 0  # Maximum movies to add per period (0 = no limit)
+  global_limit_shows: 0   # Maximum shows to add per period (0 = no limit)
+  global_period: "weekly" # Options: "sync" (per-sync, no tracking), "daily", "weekly", "monthly"
 
   # Movie Jobs
   # Each job can optionally have its own sync_interval and mode

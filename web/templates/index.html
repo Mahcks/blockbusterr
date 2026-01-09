@@ -516,6 +516,92 @@
       </div>
     </div>
 
+    <!-- Global Limits -->
+    <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
+      <h3 class="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+        </svg>
+        Global Limits
+        <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50">Optional</span>
+      </h3>
+      
+      <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 mb-4">
+        <p class="text-sm text-slate-300">
+          <span class="font-semibold text-blue-400">Global limits</span> aggregate results from all enabled jobs, rank them by score, and only add the top N items per period.
+          Leave at 0 to disable (jobs will add items independently).
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4">
+        <div>
+          <label for="global-limit-movies" class="block text-sm font-medium text-slate-300 mb-2">
+            Max Movies per Period
+          </label>
+          <input
+            type="number"
+            id="global-limit-movies"
+            name="jobs.global_limit_movies"
+            value="{{.Config.Jobs.GlobalLimitMovies}}"
+            placeholder="0 = unlimited"
+            min="0"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          />
+          <p class="mt-1 text-xs text-slate-400">0 = no limit</p>
+        </div>
+
+        <div>
+          <label for="global-limit-shows" class="block text-sm font-medium text-slate-300 mb-2">
+            Max Shows per Period
+          </label>
+          <input
+            type="number"
+            id="global-limit-shows"
+            name="jobs.global_limit_shows"
+            value="{{.Config.Jobs.GlobalLimitShows}}"
+            placeholder="0 = unlimited"
+            min="0"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          />
+          <p class="mt-1 text-xs text-slate-400">0 = no limit</p>
+        </div>
+
+        <div>
+          <label for="global-period" class="block text-sm font-medium text-slate-300 mb-2">
+            Limit Period
+          </label>
+          <select
+            id="global-period"
+            name="jobs.global_period"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          >
+            <option value="sync" {{if eq .Config.Jobs.GlobalPeriod "sync"}}selected{{end}}>Per Sync</option>
+            <option value="daily" {{if eq .Config.Jobs.GlobalPeriod "daily"}}selected{{end}}>Daily</option>
+            <option value="weekly" {{if eq .Config.Jobs.GlobalPeriod "weekly"}}selected{{end}}>Weekly</option>
+            <option value="monthly" {{if eq .Config.Jobs.GlobalPeriod "monthly"}}selected{{end}}>Monthly</option>
+          </select>
+          <p class="mt-1 text-xs text-slate-400">When limits reset</p>
+        </div>
+      </div>
+
+      <div class="mt-4 bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+        <div class="flex items-start">
+          <svg class="w-5 h-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+          </svg>
+          <div class="text-xs text-slate-300">
+            <p class="font-semibold mb-1">How it works:</p>
+            <ul class="list-disc list-inside space-y-1 ml-2">
+              <li>All enabled jobs run and collect candidate content</li>
+              <li>Items are scored based on rating, popularity, and recency</li>
+              <li>Only the top N highest-scored items are added</li>
+              <li>Example: "Top 10 movies per week" across ALL movie jobs combined</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Mode Selection -->
     <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
       <h3 class="text-xl font-semibold text-blue-400 mb-6">Integration Mode</h3>
