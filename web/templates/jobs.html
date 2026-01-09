@@ -196,6 +196,14 @@
             </button>
             <button
               type="button"
+              onclick="previewJob('trending-movies', this)"
+              {{if not .Config.Jobs.TrendingMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
               onclick="triggerJob('trending-movies', this)"
               {{if not .Config.Jobs.TrendingMovies.Enabled}}disabled{{end}}
               class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
@@ -314,6 +322,14 @@
             </button>
             <button
               type="button"
+              onclick="previewJob('popular-movies', this)"
+              {{if not .Config.Jobs.PopularMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
               onclick="triggerJob('popular-movies', this)"
               {{if not .Config.Jobs.PopularMovies.Enabled}}disabled{{end}}
               class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
@@ -420,6 +436,14 @@
               class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
             >
               Save
+            </button>
+            <button
+              type="button"
+              onclick="previewJob('box-office', this)"
+              {{if not .Config.Jobs.BoxOffice.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
             </button>
             <button
               type="button"
@@ -557,6 +581,14 @@
               class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
             >
               Save
+            </button>
+            <button
+              type="button"
+              onclick="previewJob('favorited-movies', this)"
+              {{if not .Config.Jobs.FavoritedMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
             </button>
             <button
               type="button"
@@ -705,6 +737,14 @@
               class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
             >
               Save
+            </button>
+            <button
+              type="button"
+              onclick="previewJob('played-movies', this)"
+              {{if not .Config.Jobs.PlayedMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
             </button>
             <button
               type="button"
@@ -857,6 +897,14 @@
             </button>
             <button
               type="button"
+              onclick="previewJob('watched-movies', this)"
+              {{if not .Config.Jobs.WatchedMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
               onclick="triggerJob('watched-movies', this)"
               {{if not .Config.Jobs.WatchedMovies.Enabled}}disabled{{end}}
               class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
@@ -1005,6 +1053,14 @@
             </button>
             <button
               type="button"
+              onclick="previewJob('collected-movies', this)"
+              {{if not .Config.Jobs.CollectedMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
               onclick="triggerJob('collected-movies', this)"
               {{if not .Config.Jobs.CollectedMovies.Enabled}}disabled{{end}}
               class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
@@ -1134,6 +1190,14 @@
               class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
             >
               Save
+            </button>
+            <button
+              type="button"
+              onclick="previewJob('anticipated-movies', this)"
+              {{if not .Config.Jobs.AnticipatedMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
             </button>
             <button
               type="button"
@@ -1269,6 +1333,14 @@
             </button>
             <button
               type="button"
+              onclick="previewJob('trending-shows', this)"
+              {{if not .Config.Jobs.TrendingShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
               onclick="triggerJob('trending-shows', this)"
               {{if not .Config.Jobs.TrendingShows.Enabled}}disabled{{end}}
               class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
@@ -1383,6 +1455,14 @@
               class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
             >
               Save
+            </button>
+            <button
+              type="button"
+              onclick="previewJob('popular-shows', this)"
+              {{if not .Config.Jobs.PopularShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
             </button>
             <button
               type="button"
@@ -1513,6 +1593,14 @@
             </button>
             <button
               type="button"
+              onclick="previewJob('favorited-shows', this)"
+              {{if not .Config.Jobs.FavoritedShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
               onclick="triggerJob('favorited-shows', this)"
               {{if not .Config.Jobs.FavoritedShows.Enabled}}disabled{{end}}
               class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
@@ -1637,6 +1725,14 @@
               class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
             >
               Save
+            </button>
+            <button
+              type="button"
+              onclick="previewJob('played-shows', this)"
+              {{if not .Config.Jobs.PlayedShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
             </button>
             <button
               type="button"
@@ -1768,6 +1864,14 @@
             </button>
             <button
               type="button"
+              onclick="previewJob('watched-shows', this)"
+              {{if not .Config.Jobs.WatchedShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
               onclick="triggerJob('watched-shows', this)"
               {{if not .Config.Jobs.WatchedShows.Enabled}}disabled{{end}}
               class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
@@ -1895,6 +1999,14 @@
             </button>
             <button
               type="button"
+              onclick="previewJob('collected-shows', this)"
+              {{if not .Config.Jobs.CollectedShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
               onclick="triggerJob('collected-shows', this)"
               {{if not .Config.Jobs.CollectedShows.Enabled}}disabled{{end}}
               class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
@@ -2005,6 +2117,14 @@
             </button>
             <button
               type="button"
+              onclick="previewJob('anticipated-shows', this)"
+              {{if not .Config.Jobs.AnticipatedShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
               onclick="triggerJob('anticipated-shows', this)"
               {{if not .Config.Jobs.AnticipatedShows.Enabled}}disabled{{end}}
               class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
@@ -2020,7 +2140,553 @@
   </div>
 </div>
 
+<!-- Preview Modal -->
+<div id="preview-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+    <!-- Background overlay -->
+    <div class="fixed inset-0 transition-opacity bg-slate-900 bg-opacity-75" onclick="closePreviewModal()"></div>
+
+    <!-- Modal panel -->
+    <div class="inline-block w-full max-w-4xl my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-800 shadow-xl rounded-lg">
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+        <h3 class="text-xl font-semibold text-slate-100" id="preview-modal-title">Job Preview</h3>
+        <button onclick="closePreviewModal()" class="text-slate-400 hover:text-slate-100 transition-colors">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Content -->
+      <div class="px-6 py-4 max-h-[70vh] overflow-y-auto">
+        <!-- Loading State -->
+        <div id="preview-loading" class="hidden text-center py-12">
+          <svg class="animate-spin h-12 w-12 mx-auto text-blue-500" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p class="mt-4 text-slate-300">Loading preview...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="preview-error" class="hidden">
+          <div class="bg-red-900/20 border border-red-700/50 rounded-lg p-4">
+            <div class="flex items-start">
+              <svg class="w-5 h-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+              </svg>
+              <div>
+                <h4 class="font-semibold text-red-300 mb-1">Preview Failed</h4>
+                <p class="text-sm text-slate-300" id="preview-error-message"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview Results -->
+        <div id="preview-results" class="hidden space-y-6">
+          <!-- Summary Stats -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-slate-700/50 rounded-lg p-4">
+              <div class="text-sm text-slate-400">Total Found</div>
+              <div class="text-2xl font-bold text-slate-100" id="preview-total">0</div>
+            </div>
+            <div class="bg-green-900/30 border border-green-700/50 rounded-lg p-4">
+              <div class="text-sm text-green-300">Will Add</div>
+              <div class="text-2xl font-bold text-green-400" id="preview-will-add">0</div>
+            </div>
+            <div class="bg-blue-900/30 border border-blue-700/50 rounded-lg p-4">
+              <div class="text-sm text-blue-300">Already Exists</div>
+              <div class="text-2xl font-bold text-blue-400" id="preview-exists">0</div>
+            </div>
+            <div class="bg-yellow-900/30 border border-yellow-700/50 rounded-lg p-4">
+              <div class="text-sm text-yellow-300">Filtered Out</div>
+              <div class="text-2xl font-bold text-yellow-400" id="preview-filtered">0</div>
+            </div>
+          </div>
+
+          <!-- Mode Badge -->
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-400">Mode:</span>
+            <span id="preview-mode-badge" class="px-2 py-1 text-xs font-semibold rounded-full bg-slate-700 text-slate-300"></span>
+          </div>
+
+          <!-- Filter Tabs -->
+          <div class="border-b border-slate-700">
+            <nav class="flex space-x-1">
+              <button onclick="showPreviewTab('all')" id="tab-all" class="px-4 py-2 text-sm font-medium text-blue-400 border-b-2 border-blue-400">
+                All Items
+              </button>
+              <button onclick="showPreviewTab('will-add')" id="tab-will-add" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-300">
+                Will Add
+              </button>
+              <button onclick="showPreviewTab('exists')" id="tab-exists" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-300">
+                Already Exists
+              </button>
+              <button onclick="showPreviewTab('filtered')" id="tab-filtered" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-300">
+                Filtered Out
+              </button>
+            </nav>
+          </div>
+
+          <!-- Items List -->
+          <div id="preview-items" class="space-y-3">
+            <!-- Items will be populated here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="px-6 py-4 border-t border-slate-700 flex justify-between items-center gap-3">
+        <button onclick="closePreviewModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition-colors">
+          Close
+        </button>
+        <button id="enable-job-btn" onclick="enableJobFromPreview()" class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition-colors flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          Enable Job
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+  let currentPreviewData = null;
+  let currentPreviewTab = 'all';
+
+  // Create a placeholder image using data URI
+  function createPlaceholderImage(title) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 500;
+    canvas.height = 750;
+    const ctx = canvas.getContext('2d');
+    
+    // Background
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, 500, 750);
+    
+    // Text
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Wrap text
+    const maxWidth = 450;
+    const lineHeight = 32;
+    const x = 250;
+    let y = 375;
+    
+    const words = (title || 'No Title').split(' ');
+    let line = '';
+    const lines = [];
+    
+    for (let word of words) {
+      const testLine = line + word + ' ';
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && line !== '') {
+        lines.push(line);
+        line = word + ' ';
+      } else {
+        line = testLine;
+      }
+    }
+    lines.push(line);
+    
+    y -= (lines.length - 1) * lineHeight / 2;
+    for (let line of lines) {
+      ctx.fillText(line.trim(), x, y);
+      y += lineHeight;
+    }
+    
+    return canvas.toDataURL();
+  }
+
+  function previewJob(jobName, button) {
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = 'Loading...';
+
+    // Open modal
+    const modal = document.getElementById('preview-modal');
+    modal.classList.remove('hidden');
+
+    // Show loading state
+    document.getElementById('preview-loading').classList.remove('hidden');
+    document.getElementById('preview-error').classList.add('hidden');
+    document.getElementById('preview-results').classList.add('hidden');
+
+    // Update modal title
+    const jobTitle = jobName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    document.getElementById('preview-modal-title').textContent = `Preview: ${jobTitle}`;
+
+    fetch(`/v1/jobs/preview/${jobName}`, {
+      method: 'POST'
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          showPreviewError(data.error);
+        } else {
+          currentPreviewData = data;
+          displayPreviewResults(data);
+        }
+      })
+      .catch(error => {
+        showPreviewError('Failed to fetch preview: ' + error.message);
+      })
+      .finally(() => {
+        button.disabled = false;
+        button.textContent = originalText;
+      });
+  }
+
+  function closePreviewModal() {
+    document.getElementById('preview-modal').classList.add('hidden');
+    currentPreviewData = null;
+    currentPreviewTab = 'all';
+  }
+
+  function enableJobFromPreview() {
+    if (!currentPreviewData) return;
+
+    const jobName = currentPreviewData.job_name;
+    const button = document.getElementById('enable-job-btn');
+    button.disabled = true;
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<svg class="animate-spin h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+    // Create form data to enable the job
+    const formData = new FormData();
+    formData.set('jobs.sync_interval', document.querySelector('[name="jobs.sync_interval"]')?.value || '1h');
+    formData.set('jobs.mode', document.querySelector('[name="jobs.mode"]')?.value || 'jellyseerr');
+    formData.set(`jobs.${jobName}.enabled`, 'on');
+
+    // Get the limit value for this job
+    const limitInput = document.querySelector(`[name="jobs.${jobName}.limit"]`);
+    if (limitInput) {
+      formData.set(`jobs.${jobName}.limit`, limitInput.value);
+    }
+
+    fetch('/jobs/config/save', {
+      method: 'POST',
+      body: formData
+    })
+      .then(response => response.text())
+      .then(() => {
+        showNotification(`${jobName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} job enabled successfully!`, 'success');
+        closePreviewModal();
+        // Reload the page to reflect changes
+        setTimeout(() => window.location.reload(), 1000);
+      })
+      .catch(error => {
+        showNotification('Failed to enable job: ' + error.message, 'error');
+      })
+      .finally(() => {
+        button.disabled = false;
+        button.innerHTML = originalHTML;
+      });
+  }
+
+  function showPreviewError(message) {
+    document.getElementById('preview-loading').classList.add('hidden');
+    document.getElementById('preview-error').classList.remove('hidden');
+    document.getElementById('preview-error-message').textContent = message;
+  }
+
+  function displayPreviewResults(data) {
+    document.getElementById('preview-loading').classList.add('hidden');
+    document.getElementById('preview-error').classList.add('hidden');
+    document.getElementById('preview-results').classList.remove('hidden');
+
+    // Update summary stats
+    document.getElementById('preview-total').textContent = data.total_found || 0;
+    document.getElementById('preview-will-add').textContent = data.will_add || 0;
+    document.getElementById('preview-exists').textContent = data.already_exists || 0;
+    document.getElementById('preview-filtered').textContent = data.filtered_out || 0;
+
+    // Update mode badge
+    const modeBadge = document.getElementById('preview-mode-badge');
+    modeBadge.textContent = data.mode || 'direct';
+    if (data.mode === 'jellyseerr') {
+      modeBadge.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-purple-900/50 text-purple-300 border border-purple-700/50';
+    } else {
+      modeBadge.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50';
+    }
+
+    // Reset to all tab
+    currentPreviewTab = 'all';
+    showPreviewTab('all');
+  }
+
+  function showPreviewTab(tab) {
+    if (!currentPreviewData) return;
+
+    currentPreviewTab = tab;
+
+    // Update tab styling
+    ['all', 'will-add', 'exists', 'filtered'].forEach(t => {
+      const tabBtn = document.getElementById(`tab-${t}`);
+      if (t === tab) {
+        tabBtn.className = 'px-4 py-2 text-sm font-medium text-blue-400 border-b-2 border-blue-400';
+      } else {
+        tabBtn.className = 'px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-300';
+      }
+    });
+
+    // Filter items based on tab
+    let filteredItems = currentPreviewData.items || [];
+    if (tab === 'will-add') {
+      filteredItems = filteredItems.filter(item => !item.already_exists && !item.filtered_out);
+    } else if (tab === 'exists') {
+      filteredItems = filteredItems.filter(item => item.already_exists);
+    } else if (tab === 'filtered') {
+      filteredItems = filteredItems.filter(item => item.filtered_out);
+    }
+
+    // Render items
+    const itemsContainer = document.getElementById('preview-items');
+    if (filteredItems.length === 0) {
+      itemsContainer.innerHTML = '<div class="text-center py-8 text-slate-400">No items to display</div>';
+      return;
+    }
+
+    // Check if we have posters (TMDB configured)
+    const hasPosters = currentPreviewData.has_posters;
+
+    if (!hasPosters) {
+      // Show simple list view when TMDB is not configured
+      itemsContainer.innerHTML = `
+        <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4 mb-4">
+          <div class="flex items-start">
+            <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+            </svg>
+            <div class="text-sm text-slate-300">
+              TMDB API key not configured. Add it in the <a href="/" class="text-blue-400 hover:underline">Configuration</a> page to see poster images.
+            </div>
+          </div>
+        </div>
+        <div class="space-y-2">
+          ${filteredItems.map(item => {
+            let statusBadge = '';
+            let statusColor = '';
+            
+            if (item.filtered_out) {
+              statusBadge = 'FILTERED';
+              statusColor = 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
+            } else if (item.already_exists) {
+              statusBadge = 'EXISTS';
+              statusColor = 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+            } else {
+              statusBadge = 'NEW';
+              statusColor = 'bg-green-500/20 text-green-300 border-green-500/30';
+            }
+
+            const rating = item.rating ? item.rating.toFixed(1) : 'N/A';
+            const ratingColor = item.rating >= 8 ? 'text-green-400' : item.rating >= 6.5 ? 'text-blue-400' : 'text-yellow-400';
+
+            return `
+              <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:border-blue-500/50 transition-colors cursor-pointer"
+                   onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3 mb-2">
+                      <h4 class="font-semibold text-slate-100 truncate">${item.title}</h4>
+                      <span class="flex-shrink-0 px-2 py-0.5 text-xs font-semibold rounded border ${statusColor}">
+                        ${statusBadge}
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-4 text-sm text-slate-400">
+                      <span>${item.year || 'TBA'}</span>
+                      ${item.rating ? `
+                        <div class="flex items-center gap-1">
+                          <svg class="w-4 h-4 ${ratingColor}" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                          </svg>
+                          <span class="font-semibold ${ratingColor}">${rating}</span>
+                        </div>
+                      ` : ''}
+                      ${item.popularity ? `
+                        <div class="flex items-center gap-1">
+                          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path>
+                          </svg>
+                          <span>${item.popularity.toLocaleString()}</span>
+                        </div>
+                      ` : ''}
+                      ${item.genres && item.genres.length > 0 ? `
+                        <span class="truncate">${item.genres.slice(0, 2).join(', ')}</span>
+                      ` : ''}
+                    </div>
+                    ${item.filter_reason ? `
+                      <div class="mt-2 text-xs text-yellow-400">
+                        ${item.filter_reason}
+                      </div>
+                    ` : ''}
+                  </div>
+                  <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+      return;
+    }
+
+    // Create poster grid (when TMDB is configured)
+    itemsContainer.innerHTML = `
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        ${filteredItems.map(item => {
+          let statusBadge = '';
+          let overlayClass = '';
+
+          if (item.filtered_out) {
+            statusBadge = '<div class="absolute top-2 right-2 px-2.5 py-1 text-xs font-bold rounded-md bg-yellow-500/90 text-slate-900 shadow-lg backdrop-blur-sm">FILTERED</div>';
+            overlayClass = 'opacity-60';
+          } else if (item.already_exists) {
+            statusBadge = '<div class="absolute top-2 right-2 px-2.5 py-1 text-xs font-bold rounded-md bg-blue-500/90 text-white shadow-lg backdrop-blur-sm">EXISTS</div>';
+            overlayClass = 'opacity-75';
+          } else {
+            statusBadge = '<div class="absolute top-2 right-2 px-2.5 py-1 text-xs font-bold rounded-md bg-green-500/90 text-white shadow-lg backdrop-blur-sm">NEW</div>';
+          }
+
+          const posterUrl = item.poster_url || createPlaceholderImage(item.title);
+          const rating = item.rating ? item.rating.toFixed(1) : 'N/A';
+          const ratingColor = item.rating >= 8 ? 'text-green-400' : item.rating >= 6.5 ? 'text-blue-400' : 'text-yellow-400';
+
+          return `
+            <div class="group relative bg-slate-700/50 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-400 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-200 cursor-pointer ${overlayClass}"
+                 onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+              ${statusBadge}
+              <div class="aspect-[2/3] relative bg-slate-800">
+                <img src="${posterUrl}" alt="${item.title}" 
+                     class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                     onerror="this.onerror=null; this.src=createPlaceholderImage(this.alt);"
+                     loading="lazy">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+              </div>
+              <div class="p-3 space-y-2">
+                <h4 class="font-semibold text-sm text-slate-100 truncate leading-tight" title="${item.title}">
+                  ${item.title}
+                </h4>
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-slate-400">${item.year || 'TBA'}</span>
+                  ${item.rating ? `
+                    <div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800/80">
+                      <svg class="w-3 h-3 ${ratingColor}" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                      </svg>
+                      <span class="font-semibold ${ratingColor}">${rating}</span>
+                    </div>
+                  ` : ''}
+                </div>
+                ${item.popularity ? `
+                  <div class="flex items-center gap-1 text-xs text-slate-400">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path>
+                    </svg>
+                    <span>${item.popularity.toLocaleString()}</span>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ${filteredItems.some(item => item.filtered_out) ? `
+        <div class="mt-6 bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
+          <h5 class="font-semibold text-yellow-300 mb-2">Filter Reasons:</h5>
+          <ul class="text-sm text-slate-300 space-y-1">
+            ${[...new Set(filteredItems.filter(item => item.filtered_out).map(item => item.filter_reason))].map(reason => 
+              `<li>• ${reason}</li>`
+            ).join('')}
+          </ul>
+        </div>
+      ` : ''}
+    `;
+  }
+
+  function showItemDetails(item) {
+    const genres = item.genres && item.genres.length > 0 ? item.genres.join(', ') : 'Unknown';
+    const runtime = item.runtime ? `${item.runtime} min` : 'Unknown';
+    const ids = [];
+    if (item.tmdb_id) ids.push(`TMDB: ${item.tmdb_id}`);
+    if (item.tvdb_id) ids.push(`TVDB: ${item.tvdb_id}`);
+    if (item.imdb_id) ids.push(`IMDB: ${item.imdb_id}`);
+    const idsText = ids.length > 0 ? ids.join(' • ') : 'No IDs';
+
+    const detailsHtml = `
+      <div class="fixed inset-0 z-[60] flex items-center justify-center p-4" onclick="this.remove()">
+        <div class="absolute inset-0 bg-slate-900/90"></div>
+        <div class="relative bg-slate-800 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
+          <div class="flex items-start p-6">
+            <div class="flex-shrink-0 w-32">
+              <img src="${item.poster_url || createPlaceholderImage(item.title)}" 
+                   alt="${item.title}" 
+                   class="w-full rounded-lg"
+                   onerror="this.onerror=null; this.src=createPlaceholderImage(this.alt);">
+            </div>
+            <div class="ml-6 flex-1">
+              <h3 class="text-2xl font-bold text-slate-100">${item.title} ${item.year ? `(${item.year})` : ''}</h3>
+              <div class="flex items-center gap-4 mt-2 text-sm">
+                ${item.rating ? `
+                  <div class="flex items-center gap-1">
+                    <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                    </svg>
+                    <span class="text-slate-100 font-semibold">${item.rating.toFixed(1)}</span>
+                    ${item.votes ? `<span class="text-slate-400">(${item.votes.toLocaleString()} votes)</span>` : ''}
+                  </div>
+                ` : ''}
+                <span class="text-slate-400">${runtime}</span>
+              </div>
+              <div class="mt-3">
+                <span class="text-sm text-slate-400">Genres:</span>
+                <p class="text-sm text-slate-100">${genres}</p>
+              </div>
+              ${item.overview ? `
+                <div class="mt-3">
+                  <span class="text-sm text-slate-400">Overview:</span>
+                  <p class="text-sm text-slate-300 mt-1">${item.overview}</p>
+                </div>
+              ` : ''}
+              <div class="mt-3">
+                <span class="text-sm text-slate-400">IDs:</span>
+                <p class="text-xs text-slate-100 mt-1">${idsText}</p>
+              </div>
+              ${item.filtered_out ? `
+                <div class="mt-3 p-3 bg-yellow-900/30 border border-yellow-700/50 rounded">
+                  <span class="text-sm font-semibold text-yellow-300">Filtered Out:</span>
+                  <p class="text-sm text-slate-300 mt-1">${item.filter_reason}</p>
+                </div>
+              ` : ''}
+              ${item.already_exists ? `
+                <div class="mt-3 p-3 bg-blue-900/30 border border-blue-700/50 rounded">
+                  <span class="text-sm font-semibold text-blue-300">Already in Library</span>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+          <div class="px-6 pb-6">
+            <button onclick="this.closest('.fixed').remove()" 
+                    class="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition-colors">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', detailsHtml);
+  }
+
   function triggerJob(jobName, button) {
     button.disabled = true;
     const originalText = button.textContent;

@@ -162,6 +162,9 @@ type Movie struct {
 	Language string   `json:"language"`
 	Country  string   `json:"country"`
 	Runtime  int      `json:"runtime"` // in minutes
+	Overview string   `json:"overview"`
+	Rating   float64  `json:"rating"`
+	Votes    int      `json:"votes"`
 }
 
 // Show represents a Trakt TV show
@@ -174,6 +177,9 @@ type Show struct {
 	Country  string   `json:"country"`
 	Runtime  int      `json:"runtime"` // in minutes
 	Network  string   `json:"network"`
+	Overview string   `json:"overview"`
+	Rating   float64  `json:"rating"`
+	Votes    int      `json:"votes"`
 }
 
 // IDs contains various IDs for a media item
@@ -187,7 +193,7 @@ type IDs struct {
 
 // GetTrendingMovies returns trending movies
 func (t *Trakt) GetTrendingMovies(ctx context.Context, limit int) ([]TrendingMovie, error) {
-	endpoint := fmt.Sprintf("/movies/trending?limit=%d", limit)
+	endpoint := fmt.Sprintf("/movies/trending?limit=%d&extended=full", limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -210,7 +216,7 @@ func (t *Trakt) GetTrendingMovies(ctx context.Context, limit int) ([]TrendingMov
 
 // GetTrendingShows returns trending TV shows
 func (t *Trakt) GetTrendingShows(ctx context.Context, limit int) ([]TrendingShow, error) {
-	endpoint := fmt.Sprintf("/shows/trending?limit=%d", limit)
+	endpoint := fmt.Sprintf("/shows/trending?limit=%d&extended=full", limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -233,7 +239,7 @@ func (t *Trakt) GetTrendingShows(ctx context.Context, limit int) ([]TrendingShow
 
 // GetPopularMovies returns popular movies
 func (t *Trakt) GetPopularMovies(ctx context.Context, limit int) ([]Movie, error) {
-	endpoint := fmt.Sprintf("/movies/popular?limit=%d", limit)
+	endpoint := fmt.Sprintf("/movies/popular?limit=%d&extended=full", limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -256,7 +262,7 @@ func (t *Trakt) GetPopularMovies(ctx context.Context, limit int) ([]Movie, error
 
 // GetPopularShows returns popular TV shows
 func (t *Trakt) GetPopularShows(ctx context.Context, limit int) ([]Show, error) {
-	endpoint := fmt.Sprintf("/shows/popular?limit=%d", limit)
+	endpoint := fmt.Sprintf("/shows/popular?limit=%d&extended=full", limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -333,7 +339,7 @@ func (t *Trakt) GetBoxOfficeMovies(ctx context.Context, limit int) ([]BoxOfficeM
 
 // GetFavoritedMovies returns the most favorited movies
 func (t *Trakt) GetFavoritedMovies(ctx context.Context, period string, limit int) ([]FavoritedMovie, error) {
-	endpoint := fmt.Sprintf("/movies/favorited/%s?limit=%d", period, limit)
+	endpoint := fmt.Sprintf("/movies/favorited/%s?limit=%d&extended=full", period, limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -356,7 +362,7 @@ func (t *Trakt) GetFavoritedMovies(ctx context.Context, period string, limit int
 
 // GetPlayedMovies returns the most played movies
 func (t *Trakt) GetPlayedMovies(ctx context.Context, period string, limit int) ([]PlayedMovie, error) {
-	endpoint := fmt.Sprintf("/movies/played/%s?limit=%d", period, limit)
+	endpoint := fmt.Sprintf("/movies/played/%s?limit=%d&extended=full", period, limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -379,7 +385,7 @@ func (t *Trakt) GetPlayedMovies(ctx context.Context, period string, limit int) (
 
 // GetWatchedMovies returns the most watched movies
 func (t *Trakt) GetWatchedMovies(ctx context.Context, period string, limit int) ([]WatchedMovie, error) {
-	endpoint := fmt.Sprintf("/movies/watched/%s?limit=%d", period, limit)
+	endpoint := fmt.Sprintf("/movies/watched/%s?limit=%d&extended=full", period, limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -402,7 +408,7 @@ func (t *Trakt) GetWatchedMovies(ctx context.Context, period string, limit int) 
 
 // GetCollectedMovies returns the most collected movies
 func (t *Trakt) GetCollectedMovies(ctx context.Context, period string, limit int) ([]CollectedMovie, error) {
-	endpoint := fmt.Sprintf("/movies/collected/%s?limit=%d", period, limit)
+	endpoint := fmt.Sprintf("/movies/collected/%s?limit=%d&extended=full", period, limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -425,7 +431,7 @@ func (t *Trakt) GetCollectedMovies(ctx context.Context, period string, limit int
 
 // GetAnticipatedMovies returns the most anticipated movies
 func (t *Trakt) GetAnticipatedMovies(ctx context.Context, limit int) ([]AnticipatedMovie, error) {
-	endpoint := fmt.Sprintf("/movies/anticipated?limit=%d", limit)
+	endpoint := fmt.Sprintf("/movies/anticipated?limit=%d&extended=full", limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -448,7 +454,7 @@ func (t *Trakt) GetAnticipatedMovies(ctx context.Context, limit int) ([]Anticipa
 
 // GetFavoritedShows returns the most favorited TV shows
 func (t *Trakt) GetFavoritedShows(ctx context.Context, period string, limit int) ([]FavoritedShow, error) {
-	endpoint := fmt.Sprintf("/shows/favorited/%s?limit=%d", period, limit)
+	endpoint := fmt.Sprintf("/shows/favorited/%s?limit=%d&extended=full", period, limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -471,7 +477,7 @@ func (t *Trakt) GetFavoritedShows(ctx context.Context, period string, limit int)
 
 // GetPlayedShows returns the most played TV shows
 func (t *Trakt) GetPlayedShows(ctx context.Context, period string, limit int) ([]PlayedShow, error) {
-	endpoint := fmt.Sprintf("/shows/played/%s?limit=%d", period, limit)
+	endpoint := fmt.Sprintf("/shows/played/%s?limit=%d&extended=full", period, limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -494,7 +500,7 @@ func (t *Trakt) GetPlayedShows(ctx context.Context, period string, limit int) ([
 
 // GetWatchedShows returns the most watched TV shows
 func (t *Trakt) GetWatchedShows(ctx context.Context, period string, limit int) ([]WatchedShow, error) {
-	endpoint := fmt.Sprintf("/shows/watched/%s?limit=%d", period, limit)
+	endpoint := fmt.Sprintf("/shows/watched/%s?limit=%d&extended=full", period, limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -517,7 +523,7 @@ func (t *Trakt) GetWatchedShows(ctx context.Context, period string, limit int) (
 
 // GetCollectedShows returns the most collected TV shows
 func (t *Trakt) GetCollectedShows(ctx context.Context, period string, limit int) ([]CollectedShow, error) {
-	endpoint := fmt.Sprintf("/shows/collected/%s?limit=%d", period, limit)
+	endpoint := fmt.Sprintf("/shows/collected/%s?limit=%d&extended=full", period, limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -540,7 +546,7 @@ func (t *Trakt) GetCollectedShows(ctx context.Context, period string, limit int)
 
 // GetAnticipatedShows returns the most anticipated TV shows
 func (t *Trakt) GetAnticipatedShows(ctx context.Context, limit int) ([]AnticipatedShow, error) {
-	endpoint := fmt.Sprintf("/shows/anticipated?limit=%d", limit)
+	endpoint := fmt.Sprintf("/shows/anticipated?limit=%d&extended=full", limit)
 
 	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {

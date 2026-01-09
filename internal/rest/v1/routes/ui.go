@@ -51,6 +51,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		// Parse form data
 		traktClientID := c.FormValue("trakt.client_id")
 		traktClientSecret := c.FormValue("trakt.client_secret")
+		tmdbAPIKey := c.FormValue("tmdb.api_key")
 		radarrURL := c.FormValue("radarr.url")
 		radarrAPIKey := c.FormValue("radarr.api_key")
 		radarrQualityProfile := c.FormValue("radarr.quality_profile")
@@ -67,6 +68,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		// Update config
 		cfg.Trakt.ClientID = traktClientID
 		cfg.Trakt.ClientSecret = traktClientSecret
+		cfg.TMDB.APIKey = tmdbAPIKey
 		cfg.Radarr.URL = radarrURL
 		cfg.Radarr.APIKey = radarrAPIKey
 		cfg.Radarr.RootFolder = radarrRootFolder
