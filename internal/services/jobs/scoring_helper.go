@@ -10,14 +10,8 @@ import (
 
 // ScoreAndRankMovies scores and ranks a list of movies if scoring is enabled in config
 // Returns a map of TMDB ID -> (score, rank) for easy lookup during processing
-func ScoreAndRankMovies(movies []integrations.Movie, cfg *config.Config) map[int]struct {
-	Score float64
-	Rank  int
-} {
-	result := make(map[int]struct {
-		Score float64
-		Rank  int
-	})
+func ScoreAndRankMovies(movies []integrations.Movie, cfg *config.Config) map[int]ScoreInfo {
+	result := make(map[int]ScoreInfo)
 
 	// If scoring is disabled, return empty map
 	if !cfg.Scoring.Enabled {
@@ -44,10 +38,7 @@ func ScoreAndRankMovies(movies []integrations.Movie, cfg *config.Config) map[int
 	// Assign ranks and store in result map
 	for i, item := range scoredItems {
 		if item.MovieData != nil && item.MovieData.IDs.TMDB > 0 {
-			result[item.MovieData.IDs.TMDB] = struct {
-				Score float64
-				Rank  int
-			}{
+			result[item.MovieData.IDs.TMDB] = ScoreInfo{
 				Score: item.Score,
 				Rank:  i + 1,
 			}
@@ -59,14 +50,8 @@ func ScoreAndRankMovies(movies []integrations.Movie, cfg *config.Config) map[int
 
 // ScoreAndRankShows scores and ranks a list of TV shows if scoring is enabled in config
 // Returns a map of TVDB ID -> (score, rank) for easy lookup during processing
-func ScoreAndRankShows(shows []integrations.Show, cfg *config.Config) map[int]struct {
-	Score float64
-	Rank  int
-} {
-	result := make(map[int]struct {
-		Score float64
-		Rank  int
-	})
+func ScoreAndRankShows(shows []integrations.Show, cfg *config.Config) map[int]ScoreInfo {
+	result := make(map[int]ScoreInfo)
 
 	// If scoring is disabled, return empty map
 	if !cfg.Scoring.Enabled {
@@ -93,10 +78,7 @@ func ScoreAndRankShows(shows []integrations.Show, cfg *config.Config) map[int]st
 	// Assign ranks and store in result map
 	for i, item := range scoredItems {
 		if item.ShowData != nil && item.ShowData.IDs.TVDB > 0 {
-			result[item.ShowData.IDs.TVDB] = struct {
-				Score float64
-				Rank  int
-			}{
+			result[item.ShowData.IDs.TVDB] = ScoreInfo{
 				Score: item.Score,
 				Rank:  i + 1,
 			}

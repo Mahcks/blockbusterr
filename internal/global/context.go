@@ -7,7 +7,6 @@ import (
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
-	"github.com/mahcks/blockbusterr/internal/services"
 )
 
 type Metadata struct {
@@ -19,7 +18,6 @@ type Context interface {
 	context.Context
 	Metadata() Metadata
 	Config() *config.Config
-	Crate() *services.Crate
 	Database() *database.Database
 	ReloadConfig() error
 }
@@ -29,7 +27,6 @@ type gCtx struct {
 	metadata Metadata
 	cfg      *config.Config
 	cfgMu    sync.RWMutex
-	crate    *services.Crate
 	db       *database.Database
 }
 
@@ -41,10 +38,6 @@ func (g *gCtx) Config() *config.Config {
 	g.cfgMu.RLock()
 	defer g.cfgMu.RUnlock()
 	return g.cfg
-}
-
-func (g *gCtx) Crate() *services.Crate {
-	return g.crate
 }
 
 func (g *gCtx) Database() *database.Database {
@@ -79,15 +72,13 @@ func New(
 			Version:   Version,
 			Timestamp: Timestamp,
 		},
-		crate: &services.Crate{},
-		db:    db,
+		db: db,
 	}
 }
 
 func WithCancel(ctx Context) (Context, context.CancelFunc) {
 	metadata := ctx.Metadata()
 	cfg := ctx.Config()
-	crate := ctx.Crate()
 	db := ctx.Database()
 
 	c, cancel := context.WithCancel(ctx)
@@ -96,7 +87,6 @@ func WithCancel(ctx Context) (Context, context.CancelFunc) {
 		Context:  c,
 		cfg:      cfg,
 		metadata: metadata,
-		crate:    crate,
 		db:       db,
 	}, cancel
 }
@@ -104,7 +94,6 @@ func WithCancel(ctx Context) (Context, context.CancelFunc) {
 func WithDeadline(ctx Context, deadline time.Time) (Context, context.CancelFunc) {
 	metadata := ctx.Metadata()
 	cfg := ctx.Config()
-	crate := ctx.Crate()
 	db := ctx.Database()
 
 	c, cancel := context.WithDeadline(ctx, deadline)
@@ -113,7 +102,6 @@ func WithDeadline(ctx Context, deadline time.Time) (Context, context.CancelFunc)
 		Context:  c,
 		metadata: metadata,
 		cfg:      cfg,
-		crate:    crate,
 		db:       db,
 	}, cancel
 }
@@ -121,14 +109,12 @@ func WithDeadline(ctx Context, deadline time.Time) (Context, context.CancelFunc)
 func WithValue(ctx Context, key interface{}, value interface{}) Context {
 	metadata := ctx.Metadata()
 	cfg := ctx.Config()
-	crate := ctx.Crate()
 	db := ctx.Database()
 
 	return &gCtx{
 		Context:  context.WithValue(ctx, key, value),
 		metadata: metadata,
 		cfg:      cfg,
-		crate:    crate,
 		db:       db,
 	}
 }
@@ -136,7 +122,6 @@ func WithValue(ctx Context, key interface{}, value interface{}) Context {
 func WithTimeout(ctx Context, timeout time.Duration) (Context, context.CancelFunc) {
 	metadata := ctx.Metadata()
 	cfg := ctx.Config()
-	crate := ctx.Crate()
 	db := ctx.Database()
 
 	c, cancel := context.WithTimeout(ctx, timeout)
@@ -145,7 +130,6 @@ func WithTimeout(ctx Context, timeout time.Duration) (Context, context.CancelFun
 		Context:  c,
 		metadata: metadata,
 		cfg:      cfg,
-		crate:    crate,
 		db:       db,
 	}, cancel
 }
