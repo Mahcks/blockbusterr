@@ -101,10 +101,6 @@ func main() {
 
 		wg.Wait()
 
-		if gctx.Crate() != nil {
-			slog.Error("closing crate")
-		}
-
 		// Close database
 		if err := db.Close(); err != nil {
 			slog.Error("failed to close database", "error", err)
