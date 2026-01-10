@@ -20,6 +20,8 @@ type MovieFilters struct {
 	BlacklistedMaxRuntime int      `mapstructure:"blacklisted_max_runtime" json:"blacklisted_max_runtime" yaml:"blacklisted_max_runtime"`
 	BlacklistedMinYear    int      `mapstructure:"blacklisted_min_year" json:"blacklisted_min_year" yaml:"blacklisted_min_year"`
 	BlacklistedMaxYear    int      `mapstructure:"blacklisted_max_year" json:"blacklisted_max_year" yaml:"blacklisted_max_year"`
+	MinRating             float64  `mapstructure:"min_rating" json:"min_rating" yaml:"min_rating"`
+	MinVotes              int      `mapstructure:"min_votes" json:"min_votes" yaml:"min_votes"`
 }
 
 // ShowFilters represents filtering options for TV shows
@@ -34,6 +36,8 @@ type ShowFilters struct {
 	BlacklistedMaxRuntime int      `mapstructure:"blacklisted_max_runtime" json:"blacklisted_max_runtime" yaml:"blacklisted_max_runtime"`
 	BlacklistedMinYear    int      `mapstructure:"blacklisted_min_year" json:"blacklisted_min_year" yaml:"blacklisted_min_year"`
 	BlacklistedMaxYear    int      `mapstructure:"blacklisted_max_year" json:"blacklisted_max_year" yaml:"blacklisted_max_year"`
+	MinRating             float64  `mapstructure:"min_rating" json:"min_rating" yaml:"min_rating"`
+	MinVotes              int      `mapstructure:"min_votes" json:"min_votes" yaml:"min_votes"`
 }
 
 // Config represents the application configuration

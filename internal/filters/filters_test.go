@@ -372,3 +372,186 @@ func TestMoviePassesFilters_MultipleFilters(t *testing.T) {
 		t.Error("Filter reason should be provided")
 	}
 }
+
+func TestMovieRatingFilter(t *testing.T) {
+	tests := []struct {
+		name     string
+		movie    integrations.Movie
+		filter   config.MovieFilters
+		expected bool
+		reason   string
+	}{
+		{
+			name: "Movie above rating threshold",
+			movie: integrations.Movie{
+				Title:  "Great Movie",
+				Year:   2024,
+				Rating: 8.5,
+				Votes:  5000,
+			},
+			filter: config.MovieFilters{
+				MinRating: 7.0,
+				MinVotes:  1000,
+			},
+			expected: true,
+			reason:   "",
+		},
+		{
+			name: "Movie below rating threshold",
+			movie: integrations.Movie{
+				Title:  "Bad Movie",
+				Year:   2024,
+				Rating: 5.2,
+				Votes:  5000,
+			},
+			filter: config.MovieFilters{
+				MinRating: 6.5,
+				MinVotes:  1000,
+			},
+			expected: false,
+			reason:   "rating 5.2 below minimum 6.5",
+		},
+		{
+			name: "Movie with insufficient votes",
+			movie: integrations.Movie{
+				Title:  "Obscure Movie",
+				Year:   2024,
+				Rating: 8.0,
+				Votes:  500,
+			},
+			filter: config.MovieFilters{
+				MinRating: 6.5,
+				MinVotes:  1000,
+			},
+			expected: false,
+			reason:   "votes 500 below minimum 1000",
+		},
+		{
+			name: "Rating filter disabled (0)",
+			movie: integrations.Movie{
+				Title:  "Any Movie",
+				Year:   2024,
+				Rating: 3.0,
+				Votes:  100,
+			},
+			filter: config.MovieFilters{
+				MinRating: 0,
+				MinVotes:  0,
+			},
+			expected: true,
+			reason:   "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			passes, reason := MoviePassesFilters(tt.movie, tt.filter)
+			if passes != tt.expected {
+				t.Errorf("MoviePassesFilters() passes = %v, expected %v", passes, tt.expected)
+			}
+			if passes == false && reason != tt.reason {
+				t.Errorf("MoviePassesFilters() reason = %v, expected %v", reason, tt.reason)
+			}
+		})
+	}
+}
+
+func TestShowRatingFilter(t *testing.T) {
+	tests := []struct {
+		name     string
+		show     integrations.Show
+		filter   config.ShowFilters
+		expected bool
+		reason   string
+	}{
+		{
+			name: "Show above rating threshold",
+			show: integrations.Show{
+				Title:  "Great Show",
+				Year:   2024,
+				Rating: 8.5,
+				Votes:  3000,
+			},
+			filter: config.ShowFilters{
+				MinRating: 7.0,
+				MinVotes:  500,
+			},
+			expected: true,
+			reason:   "",
+		},
+		{
+			name: "Show below rating threshold",
+			show: integrations.Show{
+				Title:  "Bad Show",
+				Year:   2024,
+				Rating: 6.0,
+				Votes:  3000,
+			},
+			filter: config.ShowFilters{
+				MinRating: 7.0,
+				MinVotes:  500,
+			},
+			expected: false,
+			reason:   "rating 6.0 below minimum 7.0",
+		},
+		{
+			name: "Show with insufficient votes",
+			show: integrations.Show{
+				Title:  "Niche Show",
+				Year:   2024,
+				Rating: 8.5,
+				Votes:  200,
+			},
+			filter: config.ShowFilters{
+				MinRating: 7.0,
+				MinVotes:  500,
+			},
+			expected: false,
+			reason:   "votes 200 below minimum 500",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			passes, reason := ShowPassesFilters(tt.show, tt.filter)
+			if passes != tt.expected {
+				t.Errorf("ShowPassesFilters() passes = %v, expected %v", passes, tt.expected)
+			}
+			if passes == false && reason != tt.reason {
+				t.Errorf("ShowPassesFilters() reason = %v, expected %v", reason, tt.reason)
+			}
+		})
+	}
+}
+
+func TestFilterMoviesWithRatings(t *testing.T) {
+	movies := []integrations.Movie{
+		{Title: "Great Movie", Year: 2024, Rating: 8.5, Votes: 5000},
+		{Title: "Good Movie", Year: 2024, Rating: 7.2, Votes: 3000},
+		{Title: "Bad Movie", Year: 2024, Rating: 5.0, Votes: 2000},
+		{Title: "Obscure Movie", Year: 2024, Rating: 8.0, Votes: 100},
+	}
+
+	filters := config.MovieFilters{
+		MinRating: 7.0,
+		MinVotes:  1000,
+	}
+
+	filtered := FilterMovies(movies, filters)
+
+	if len(filtered) != 2 {
+		t.Errorf("Expected 2 movies to pass filters, got %d", len(filtered))
+	}
+
+	// Check that only the correct movies passed
+	expectedTitles := map[string]bool{
+		"Great Movie": true,
+		"Good Movie":  true,
+	}
+
+	for _, movie := range filtered {
+		if !expectedTitles[movie.Title] {
+			t.Errorf("Unexpected movie in filtered list: %s", movie.Title)
+		}
+	}
+}

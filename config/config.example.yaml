@@ -176,6 +176,14 @@ filters:
     
     # Only add movies released before this year (0 to disable)
     blacklisted_max_year: 0
+    
+    # Rating threshold filters
+    # Minimum rating (0-10 scale, 0 to disable)
+    min_rating: 0  # Example: 6.5 to only add movies rated 6.5 or higher
+    
+    # Minimum number of votes/ratings required (0 to disable)
+    # Helps filter out niche content with unreliable ratings
+    min_votes: 0  # Example: 1000 to require at least 1000 votes
   
   shows:
     # Only add shows from these countries (2-letter country codes: us, gb, ca, etc.)
@@ -210,3 +218,11 @@ filters:
     
     # Only add shows that premiered before this year (0 to disable)
     blacklisted_max_year: 0
+
+    # Rating threshold filters
+    # Minimum rating (0-10 scale, 0 to disable)
+    min_rating: 0  # Example: 7.0 to only add shows rated 7.0 or higher
+    
+    # Minimum number of votes/ratings required (0 to disable)
+    # Helps filter out niche content with unreliable ratings
+    min_votes: 0  # Example: 500 to require at least 500 votes
