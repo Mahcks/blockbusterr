@@ -55,16 +55,23 @@ func RunPopularShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 	popularShows = filteredShows
 
+	// Calculate scores and ranks if scoring is enabled
+	scoreMap := ScoreAndRankShows(filteredShows, cfg)
+
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {
-		runPopularShowsJellyseerr(ctx, cfg, db, popularShows, dryRun)
+		runPopularShowsJellyseerr(ctx, cfg, db, popularShows, scoreMap, dryRun)
 	} else {
-		runPopularShowsDirect(ctx, cfg, db, popularShows, dryRun)
+		runPopularShowsDirect(ctx, cfg, db, popularShows, scoreMap, dryRun)
 	}
 }
 
 // runPopularShowsDirect adds shows directly to Sonarr
-func runPopularShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, popularShows []integrations.Show, dryRun bool) {
+func runPopularShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, popularShows []integrations.Show, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
 		BaseURL: cfg.Sonarr.URL,
 		APIKey:  cfg.Sonarr.APIKey,
@@ -142,6 +149,7 @@ func runPopularShowsDirect(ctx context.Context, cfg *config.Config, db *database
 					log.Errorf("Failed to add show '%s (%d)' to Sonarr: %v", popular.Title, popular.Year, err)
 					failed++
 					// Log failed activity
+					scoreInfo := scoreMap[series.TvdbID]
 					db.LogActivity(database.ActivityLog{
 						Timestamp: time.Now(),
 						JobType:   "popular_shows",
@@ -150,6 +158,8 @@ func runPopularShowsDirect(ctx context.Context, cfg *config.Config, db *database
 						Year:      popular.Year,
 						TVDBID:    series.TvdbID,
 						IMDBID:    popular.IDs.IMDB,
+						Score:     scoreInfo.Score,
+						Rank:      scoreInfo.Rank,
 						Status:    "failed",
 						Message:   err.Error(),
 					})
@@ -160,6 +170,7 @@ func runPopularShowsDirect(ctx context.Context, cfg *config.Config, db *database
 			log.Infof("Added popular show '%s (%d)' to Sonarr (ID: %d)", addedSeries.Title, addedSeries.Year, addedSeries.ID)
 			added++
 			// Log successful activity
+			scoreInfo := scoreMap[addedSeries.TvdbID]
 			db.LogActivity(database.ActivityLog{
 				Timestamp: time.Now(),
 				JobType:   "popular_shows",
@@ -169,6 +180,8 @@ func runPopularShowsDirect(ctx context.Context, cfg *config.Config, db *database
 				TVDBID:    addedSeries.TvdbID,
 				IMDBID:    addedSeries.ImdbID,
 				PosterURL: fmt.Sprintf("https://www.thetvdb.com/series/%d", addedSeries.TvdbID),
+				Score:     scoreInfo.Score,
+				Rank:      scoreInfo.Rank,
 				Status:    "added",
 			})
 		}
@@ -181,7 +194,11 @@ func runPopularShowsDirect(ctx context.Context, cfg *config.Config, db *database
 }
 
 // runPopularShowsJellyseerr requests shows via Jellyseerr
-func runPopularShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, popularShows []integrations.Show, dryRun bool) {
+func runPopularShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, popularShows []integrations.Show, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
 		URL:             cfg.Jellyseerr.URL,
 		APIKey:          cfg.Jellyseerr.APIKey,
@@ -238,6 +255,7 @@ func runPopularShowsJellyseerr(ctx context.Context, cfg *config.Config, db *data
 				failed++
 				// Log failure to database
 				if db != nil {
+					scoreInfo := scoreMap[series.TvdbID]
 					db.LogActivity(database.ActivityLog{
 						Timestamp: time.Now(),
 						JobType:   "popular_shows",
@@ -246,6 +264,8 @@ func runPopularShowsJellyseerr(ctx context.Context, cfg *config.Config, db *data
 						Year:      popular.Year,
 						TVDBID:    series.TvdbID,
 						IMDBID:    popular.IDs.IMDB,
+						Score:     scoreInfo.Score,
+						Rank:      scoreInfo.Rank,
 						Status:    "failed",
 						Message:   err.Error(),
 					})
@@ -262,6 +282,7 @@ func runPopularShowsJellyseerr(ctx context.Context, cfg *config.Config, db *data
 
 				// Log success to database
 				if db != nil {
+					scoreInfo := scoreMap[series.TvdbID]
 					db.LogActivity(database.ActivityLog{
 						Timestamp: time.Now(),
 						JobType:   "popular_shows",
@@ -271,6 +292,8 @@ func runPopularShowsJellyseerr(ctx context.Context, cfg *config.Config, db *data
 						TVDBID:    series.TvdbID,
 						IMDBID:    popular.IDs.IMDB,
 						PosterURL: fmt.Sprintf("https://www.thetvdb.com/series/%d", series.TvdbID),
+						Score:     scoreInfo.Score,
+						Rank:      scoreInfo.Rank,
 						Status:    "requested",
 						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
 					})

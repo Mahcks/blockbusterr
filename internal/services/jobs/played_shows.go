@@ -69,16 +69,23 @@ func RunPlayedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 	playedShows = filteredPlayed
 
+	// Calculate scores and ranks if scoring is enabled
+	scoreMap := ScoreAndRankShows(filteredShows, cfg)
+
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {
-		runPlayedShowsJellyseerr(ctx, cfg, db, playedShows, dryRun)
+		runPlayedShowsJellyseerr(ctx, cfg, db, playedShows, scoreMap, dryRun)
 	} else {
-		runPlayedShowsDirect(ctx, cfg, db, playedShows, dryRun)
+		runPlayedShowsDirect(ctx, cfg, db, playedShows, scoreMap, dryRun)
 	}
 }
 
 // runPlayedShowsDirect adds shows directly to Sonarr
-func runPlayedShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, playedShows []integrations.PlayedShow, dryRun bool) {
+func runPlayedShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, playedShows []integrations.PlayedShow, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
 		BaseURL: cfg.Sonarr.URL,
 		APIKey:  cfg.Sonarr.APIKey,
@@ -194,7 +201,10 @@ func runPlayedShowsDirect(ctx context.Context, cfg *config.Config, db *database.
 }
 
 // runPlayedShowsJellyseerr requests shows via Jellyseerr
-func runPlayedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, playedShows []integrations.PlayedShow, dryRun bool) {
+func runPlayedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, playedShows []integrations.PlayedShow, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
 		URL:             cfg.Jellyseerr.URL,
 		APIKey:          cfg.Jellyseerr.APIKey,

@@ -69,16 +69,23 @@ func RunTrendingShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 	trendingShows = filteredTrending
 
+	// Calculate scores and ranks if scoring is enabled
+	scoreMap := ScoreAndRankShows(filteredShows, cfg)
+
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {
-		runTrendingShowsJellyseerr(ctx, cfg, db, trendingShows, dryRun)
+		runTrendingShowsJellyseerr(ctx, cfg, db, trendingShows, scoreMap, dryRun)
 	} else {
-		runTrendingShowsDirect(ctx, cfg, db, trendingShows, dryRun)
+		runTrendingShowsDirect(ctx, cfg, db, trendingShows, scoreMap, dryRun)
 	}
 }
 
 // runTrendingShowsDirect adds shows directly to Sonarr
-func runTrendingShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, trendingShows []integrations.TrendingShow, dryRun bool) {
+func runTrendingShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, trendingShows []integrations.TrendingShow, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
 		BaseURL: cfg.Sonarr.URL,
 		APIKey:  cfg.Sonarr.APIKey,
@@ -156,6 +163,7 @@ func runTrendingShowsDirect(ctx context.Context, cfg *config.Config, db *databas
 					log.Errorf("Failed to add show '%s (%d)' to Sonarr: %v", trending.Show.Title, trending.Show.Year, err)
 					failed++
 					// Log failed activity
+					scoreInfo := scoreMap[series.TvdbID]
 					db.LogActivity(database.ActivityLog{
 						Timestamp: time.Now(),
 						JobType:   "trending_shows",
@@ -164,6 +172,8 @@ func runTrendingShowsDirect(ctx context.Context, cfg *config.Config, db *databas
 						Year:      trending.Show.Year,
 						TVDBID:    series.TvdbID,
 						IMDBID:    trending.Show.IDs.IMDB,
+						Score:     scoreInfo.Score,
+						Rank:      scoreInfo.Rank,
 						Status:    "failed",
 						Message:   err.Error(),
 					})
@@ -174,6 +184,7 @@ func runTrendingShowsDirect(ctx context.Context, cfg *config.Config, db *databas
 			log.Infof("Added trending show '%s (%d)' to Sonarr (ID: %d)", addedSeries.Title, addedSeries.Year, addedSeries.ID)
 			added++
 			// Log successful activity
+			scoreInfo := scoreMap[addedSeries.TvdbID]
 			db.LogActivity(database.ActivityLog{
 				Timestamp: time.Now(),
 				JobType:   "trending_shows",
@@ -183,6 +194,8 @@ func runTrendingShowsDirect(ctx context.Context, cfg *config.Config, db *databas
 				TVDBID:    addedSeries.TvdbID,
 				IMDBID:    addedSeries.ImdbID,
 				PosterURL: fmt.Sprintf("https://www.thetvdb.com/series/%d", addedSeries.TvdbID),
+				Score:     scoreInfo.Score,
+				Rank:      scoreInfo.Rank,
 				Status:    "added",
 			})
 		}
@@ -195,7 +208,11 @@ func runTrendingShowsDirect(ctx context.Context, cfg *config.Config, db *databas
 }
 
 // runTrendingShowsJellyseerr requests shows via Jellyseerr
-func runTrendingShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, trendingShows []integrations.TrendingShow, dryRun bool) {
+func runTrendingShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, trendingShows []integrations.TrendingShow, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
 		URL:             cfg.Jellyseerr.URL,
 		APIKey:          cfg.Jellyseerr.APIKey,
@@ -252,6 +269,7 @@ func runTrendingShowsJellyseerr(ctx context.Context, cfg *config.Config, db *dat
 				failed++
 				// Log failure to database
 				if db != nil {
+					scoreInfo := scoreMap[series.TvdbID]
 					db.LogActivity(database.ActivityLog{
 						Timestamp: time.Now(),
 						JobType:   "trending_shows",
@@ -260,6 +278,8 @@ func runTrendingShowsJellyseerr(ctx context.Context, cfg *config.Config, db *dat
 						Year:      trending.Show.Year,
 						TVDBID:    series.TvdbID,
 						IMDBID:    trending.Show.IDs.IMDB,
+						Score:     scoreInfo.Score,
+						Rank:      scoreInfo.Rank,
 						Status:    "failed",
 						Message:   err.Error(),
 					})
@@ -276,6 +296,7 @@ func runTrendingShowsJellyseerr(ctx context.Context, cfg *config.Config, db *dat
 
 				// Log success to database
 				if db != nil {
+					scoreInfo := scoreMap[series.TvdbID]
 					db.LogActivity(database.ActivityLog{
 						Timestamp: time.Now(),
 						JobType:   "trending_shows",
@@ -285,6 +306,8 @@ func runTrendingShowsJellyseerr(ctx context.Context, cfg *config.Config, db *dat
 						TVDBID:    series.TvdbID,
 						IMDBID:    trending.Show.IDs.IMDB,
 						PosterURL: fmt.Sprintf("https://www.thetvdb.com/series/%d", series.TvdbID),
+						Score:     scoreInfo.Score,
+						Rank:      scoreInfo.Rank,
 						Status:    "requested",
 						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
 					})

@@ -74,7 +74,7 @@
         }
         
         let html = '<table class="w-full text-sm"><thead class="border-b border-slate-700"><tr class="text-left text-slate-400">';
-        html += '<th class="pb-2">Timestamp</th><th class="pb-2">Job</th><th class="pb-2">Type</th><th class="pb-2">Title</th><th class="pb-2">Year</th><th class="pb-2">Links</th><th class="pb-2">Status</th><th class="pb-2">Message</th></tr></thead><tbody>';
+        html += '<th class="pb-2">Timestamp</th><th class="pb-2">Job</th><th class="pb-2">Type</th><th class="pb-2">Title</th><th class="pb-2">Year</th><th class="pb-2">Score</th><th class="pb-2">Rank</th><th class="pb-2">Links</th><th class="pb-2">Status</th><th class="pb-2">Message</th></tr></thead><tbody>';
         
         logs.forEach(log => {
           const timestamp = new Date(log.timestamp).toLocaleString();
@@ -91,6 +91,19 @@
             : '<span class="px-2 py-1 bg-red-600 rounded text-xs">Failed</span>';
           
           const mediaIcon = log.media_type === 'movie' ? '🎬' : '📺';
+          
+          // Format score and rank
+          let scoreDisplay = '<span class="text-slate-500">-</span>';
+          if (log.score !== undefined && log.score !== null && log.score > 0) {
+            const scorePercent = (log.score * 100).toFixed(0);
+            const scoreColor = log.score >= 0.8 ? 'text-green-400' : log.score >= 0.6 ? 'text-blue-400' : log.score >= 0.4 ? 'text-yellow-400' : 'text-slate-400';
+            scoreDisplay = '<span class="' + scoreColor + ' font-medium">' + scorePercent + '%</span>';
+          }
+          
+          let rankDisplay = '<span class="text-slate-500">-</span>';
+          if (log.rank !== undefined && log.rank !== null && log.rank > 0) {
+            rankDisplay = '<span class="text-slate-300 font-medium">#' + log.rank + '</span>';
+          }
           
           // Build links
           let links = '<div class="flex gap-1">';
@@ -112,6 +125,8 @@
             '<td class="py-3">' + mediaIcon + ' ' + log.media_type + '</td>' +
             '<td class="py-3 font-medium">' + log.title + '</td>' +
             '<td class="py-3 text-slate-400">' + log.year + '</td>' +
+            '<td class="py-3">' + scoreDisplay + '</td>' +
+            '<td class="py-3">' + rankDisplay + '</td>' +
             '<td class="py-3">' + links + '</td>' +
             '<td class="py-3">' + statusBadge + '</td>' +
             '<td class="py-3 text-slate-400 text-xs">' + (log.message || '-') + '</td>' +

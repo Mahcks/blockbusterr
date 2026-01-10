@@ -516,6 +516,183 @@
       </div>
     </div>
 
+    <!-- Content Scoring -->
+    <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
+      <h3 class="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+        </svg>
+        Content Scoring
+        <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50">Recommended</span>
+      </h3>
+      
+      <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 mb-4">
+        <p class="text-sm text-slate-300">
+          <span class="font-semibold text-blue-400">Content scoring</span> ranks content based on rating, popularity, and recency.
+          Used by global limits to select the highest-quality content.
+        </p>
+      </div>
+
+      <div class="mb-6">
+        <label class="flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            name="scoring.enabled"
+            value="true"
+            {{if .Config.Scoring.Enabled}}checked{{end}}
+            class="w-5 h-5 text-blue-600 bg-slate-900 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
+          />
+          <span class="ml-3 text-sm font-medium text-slate-300">Enable Content Scoring</span>
+        </label>
+      </div>
+
+      <div class="space-y-6">
+        <!-- Scoring Weights -->
+        <div>
+          <h4 class="text-sm font-semibold text-slate-300 mb-3">Scoring Weights (must sum to 1.0)</h4>
+          <div class="grid md:grid-cols-3 gap-4">
+            <div>
+              <label for="rating-weight" class="block text-sm font-medium text-slate-300 mb-2">
+                Rating Weight
+              </label>
+              <input
+                type="number"
+                id="rating-weight"
+                name="scoring.rating_weight"
+                value="{{.Config.Scoring.RatingWeight}}"
+                step="0.1"
+                min="0"
+                max="1"
+                placeholder="0.6"
+                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              />
+              <p class="mt-1 text-xs text-slate-400">Default: 0.6 (60%)</p>
+            </div>
+
+            <div>
+              <label for="popularity-weight" class="block text-sm font-medium text-slate-300 mb-2">
+                Popularity Weight
+              </label>
+              <input
+                type="number"
+                id="popularity-weight"
+                name="scoring.popularity_weight"
+                value="{{.Config.Scoring.PopularityWeight}}"
+                step="0.1"
+                min="0"
+                max="1"
+                placeholder="0.3"
+                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              />
+              <p class="mt-1 text-xs text-slate-400">Default: 0.3 (30%)</p>
+            </div>
+
+            <div>
+              <label for="recency-weight" class="block text-sm font-medium text-slate-300 mb-2">
+                Recency Weight
+              </label>
+              <input
+                type="number"
+                id="recency-weight"
+                name="scoring.recency_weight"
+                value="{{.Config.Scoring.RecencyWeight}}"
+                step="0.1"
+                min="0"
+                max="1"
+                placeholder="0.1"
+                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              />
+              <p class="mt-1 text-xs text-slate-400">Default: 0.1 (10%)</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Normalization Settings -->
+        <div>
+          <h4 class="text-sm font-semibold text-slate-300 mb-3">Normalization Settings</h4>
+          <div class="grid md:grid-cols-3 gap-4">
+            <div>
+              <label for="rating-scale" class="block text-sm font-medium text-slate-300 mb-2">
+                Rating Scale
+              </label>
+              <input
+                type="number"
+                id="rating-scale"
+                name="scoring.rating_scale"
+                value="{{.Config.Scoring.RatingScale}}"
+                min="1"
+                placeholder="10"
+                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              />
+              <p class="mt-1 text-xs text-slate-400">Max rating value (default: 10)</p>
+            </div>
+
+            <div>
+              <label for="popularity-metric" class="block text-sm font-medium text-slate-300 mb-2">
+                Popularity Metric
+              </label>
+              <select
+                id="popularity-metric"
+                name="scoring.popularity_metric"
+                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              >
+                <option value="votes" {{if eq .Config.Scoring.PopularityMetric "votes"}}selected{{end}}>Votes</option>
+                <option value="views" {{if eq .Config.Scoring.PopularityMetric "views"}}selected{{end}}>Views</option>
+                <option value="watchers" {{if eq .Config.Scoring.PopularityMetric "watchers"}}selected{{end}}>Watchers</option>
+              </select>
+              <p class="mt-1 text-xs text-slate-400">Data source for popularity</p>
+            </div>
+
+            <div>
+              <label for="recency-days" class="block text-sm font-medium text-slate-300 mb-2">
+                Recency Window (days)
+              </label>
+              <input
+                type="number"
+                id="recency-days"
+                name="scoring.recency_days"
+                value="{{.Config.Scoring.RecencyDays}}"
+                min="1"
+                placeholder="365"
+                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              />
+              <p class="mt-1 text-xs text-slate-400">Full score within this period</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Presets -->
+        <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+          <div class="flex items-start">
+            <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+            </svg>
+            <div class="text-xs text-slate-300">
+              <p class="font-semibold mb-2">Preset Configurations:</p>
+              <div class="space-y-2">
+                <div>
+                  <span class="font-medium text-green-400">Quality-Focused:</span> rating: 0.8, popularity: 0.1, recency: 0.1
+                  <p class="text-slate-400 ml-2">Prioritizes highly-rated content</p>
+                </div>
+                <div>
+                  <span class="font-medium text-yellow-400">Trending-Focused:</span> rating: 0.3, popularity: 0.6, recency: 0.1
+                  <p class="text-slate-400 ml-2">Prioritizes popular/viral content</p>
+                </div>
+                <div>
+                  <span class="font-medium text-blue-400">Balanced (default):</span> rating: 0.6, popularity: 0.3, recency: 0.1
+                  <p class="text-slate-400 ml-2">Balance between quality and popularity</p>
+                </div>
+                <div>
+                  <span class="font-medium text-purple-400">New Releases:</span> rating: 0.4, popularity: 0.2, recency: 0.4
+                  <p class="text-slate-400 ml-2">Prioritizes recent content</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Global Limits -->
     <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
       <h3 class="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">

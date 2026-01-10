@@ -69,16 +69,23 @@ func RunCollectedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 	collectedShows = filteredCollected
 
+	// Calculate scores and ranks if scoring is enabled
+	scoreMap := ScoreAndRankShows(filteredShows, cfg)
+
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {
-		runCollectedShowsJellyseerr(ctx, cfg, db, collectedShows, dryRun)
+		runCollectedShowsJellyseerr(ctx, cfg, db, collectedShows, scoreMap, dryRun)
 	} else {
-		runCollectedShowsDirect(ctx, cfg, db, collectedShows, dryRun)
+		runCollectedShowsDirect(ctx, cfg, db, collectedShows, scoreMap, dryRun)
 	}
 }
 
 // runCollectedShowsDirect adds shows directly to Sonarr
-func runCollectedShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, collectedShows []integrations.CollectedShow, dryRun bool) {
+func runCollectedShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, collectedShows []integrations.CollectedShow, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
 		BaseURL: cfg.Sonarr.URL,
 		APIKey:  cfg.Sonarr.APIKey,
@@ -194,7 +201,11 @@ func runCollectedShowsDirect(ctx context.Context, cfg *config.Config, db *databa
 }
 
 // runCollectedShowsJellyseerr requests shows via Jellyseerr
-func runCollectedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, collectedShows []integrations.CollectedShow, dryRun bool) {
+func runCollectedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, collectedShows []integrations.CollectedShow, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
 		URL:             cfg.Jellyseerr.URL,
 		APIKey:          cfg.Jellyseerr.APIKey,
