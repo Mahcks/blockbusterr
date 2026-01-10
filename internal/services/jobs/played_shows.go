@@ -204,7 +204,8 @@ func runPlayedShowsDirect(ctx context.Context, cfg *config.Config, db *database.
 func runPlayedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, playedShows []integrations.PlayedShow, scoreMap map[int]struct {
 	Score float64
 	Rank  int
-}, dryRun bool) {
+}, dryRun bool,
+) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
 		URL:             cfg.Jellyseerr.URL,
 		APIKey:          cfg.Jellyseerr.APIKey,

@@ -210,7 +210,8 @@ func runAnticipatedShowsDirect(ctx context.Context, cfg *config.Config, db *data
 func runAnticipatedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, anticipatedShows []integrations.AnticipatedShow, scoreMap map[int]struct {
 	Score float64
 	Rank  int
-}, dryRun bool) {
+}, dryRun bool,
+) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
 		URL:             cfg.Jellyseerr.URL,
 		APIKey:          cfg.Jellyseerr.APIKey,

@@ -204,7 +204,8 @@ func runFavoritedShowsDirect(ctx context.Context, cfg *config.Config, db *databa
 func runFavoritedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, favoritedShows []integrations.FavoritedShow, scoreMap map[int]struct {
 	Score float64
 	Rank  int
-}, dryRun bool) {
+}, dryRun bool,
+) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
 		URL:             cfg.Jellyseerr.URL,
 		APIKey:          cfg.Jellyseerr.APIKey,
