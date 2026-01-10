@@ -128,6 +128,15 @@ Control what gets added:
 - **Year Ranges** - Only content from 2020 onwards
 - **Keyword Blacklists** - Block titles containing specific words
 - **ID Blacklists** - Block specific TMDB/TVDB IDs
+- **Rating Thresholds** - Only add content above a minimum rating (e.g., 6.5/10)
+- **Vote Thresholds** - Require minimum votes to filter out unreliable ratings
+
+**Rating Quality Control:**
+Set minimum rating and vote thresholds to ensure only high-quality content is added:
+- `min_rating: 6.5` - Only add movies/shows rated 6.5/10 or higher
+- `min_votes: 1000` - Require at least 1000 votes (prevents niche/unreliable ratings)
+
+Filtered content is logged with the reason (e.g., "rating 5.2 below minimum 6.5").
 
 ### Content Scoring
 

@@ -1,6 +1,7 @@
 package filters
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -69,6 +70,20 @@ func MoviePassesFilters(movie integrations.Movie, filters config.MovieFilters) (
 		}
 		if filters.BlacklistedMaxYear > 0 && movie.Year > filters.BlacklistedMaxYear {
 			return false, "year too new"
+		}
+	}
+
+	// Check rating filter
+	if filters.MinRating > 0 {
+		if movie.Rating < filters.MinRating {
+			return false, fmt.Sprintf("rating %.1f below minimum %.1f", movie.Rating, filters.MinRating)
+		}
+	}
+
+	// Check minimum votes filter
+	if filters.MinVotes > 0 {
+		if movie.Votes < filters.MinVotes {
+			return false, fmt.Sprintf("votes %d below minimum %d", movie.Votes, filters.MinVotes)
 		}
 	}
 
@@ -146,6 +161,20 @@ func ShowPassesFilters(show integrations.Show, filters config.ShowFilters) (bool
 		}
 	}
 
+	// Check rating filter
+	if filters.MinRating > 0 {
+		if show.Rating < filters.MinRating {
+			return false, fmt.Sprintf("rating %.1f below minimum %.1f", show.Rating, filters.MinRating)
+		}
+	}
+
+	// Check minimum votes filter
+	if filters.MinVotes > 0 {
+		if show.Votes < filters.MinVotes {
+			return false, fmt.Sprintf("votes %d below minimum %d", show.Votes, filters.MinVotes)
+		}
+	}
+
 	return true, ""
 }
 
@@ -215,7 +244,9 @@ func hasAnyFilters(filters config.MovieFilters) bool {
 		filters.BlacklistedMinRuntime > 0 ||
 		filters.BlacklistedMaxRuntime > 0 ||
 		filters.BlacklistedMinYear > 0 ||
-		filters.BlacklistedMaxYear > 0
+		filters.BlacklistedMaxYear > 0 ||
+		filters.MinRating > 0 ||
+		filters.MinVotes > 0
 }
 
 func hasAnyShowFilters(filters config.ShowFilters) bool {
@@ -228,5 +259,7 @@ func hasAnyShowFilters(filters config.ShowFilters) bool {
 		filters.BlacklistedMinRuntime > 0 ||
 		filters.BlacklistedMaxRuntime > 0 ||
 		filters.BlacklistedMinYear > 0 ||
-		filters.BlacklistedMaxYear > 0
+		filters.BlacklistedMaxYear > 0 ||
+		filters.MinRating > 0 ||
+		filters.MinVotes > 0
 }

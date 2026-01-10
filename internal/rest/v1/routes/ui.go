@@ -533,7 +533,26 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			}
 		} else {
 			cfg.Filters.Movies.BlacklistedMaxYear = 0
-		} // Parse show filters
+		}
+
+		// Parse rating and votes filters
+		if val := c.FormValue("movie_min_rating"); val != "" {
+			if v, err := strconv.ParseFloat(val, 64); err == nil {
+				cfg.Filters.Movies.MinRating = v
+			}
+		} else {
+			cfg.Filters.Movies.MinRating = 0
+		}
+
+		if val := c.FormValue("movie_min_votes"); val != "" {
+			if v, err := strconv.Atoi(val); err == nil {
+				cfg.Filters.Movies.MinVotes = v
+			}
+		} else {
+			cfg.Filters.Movies.MinVotes = 0
+		}
+
+		// Parse show filters
 		cfg.Filters.Shows.AllowedCountries = bytesArrayToStrings(c.Request().PostArgs().PeekMulti("show_allowed_countries"))
 		cfg.Filters.Shows.AllowedLanguages = bytesArrayToStrings(c.Request().PostArgs().PeekMulti("show_allowed_languages"))
 		cfg.Filters.Shows.BlacklistedGenres = bytesArrayToStrings(c.Request().PostArgs().PeekMulti("show_blacklisted_genres"))
@@ -580,7 +599,26 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			}
 		} else {
 			cfg.Filters.Shows.BlacklistedMaxYear = 0
-		} // Save config
+		}
+
+		// Parse rating and votes filters
+		if val := c.FormValue("show_min_rating"); val != "" {
+			if v, err := strconv.ParseFloat(val, 64); err == nil {
+				cfg.Filters.Shows.MinRating = v
+			}
+		} else {
+			cfg.Filters.Shows.MinRating = 0
+		}
+
+		if val := c.FormValue("show_min_votes"); val != "" {
+			if v, err := strconv.Atoi(val); err == nil {
+				cfg.Filters.Shows.MinVotes = v
+			}
+		} else {
+			cfg.Filters.Shows.MinVotes = 0
+		}
+
+		// Save config
 		if err := cfg.Save(); err != nil {
 			return c.SendString(`<div class="bg-red-500 text-white px-6 py-3 rounded-lg">Error saving filters: ` + err.Error() + `</div>`)
 		}
