@@ -69,16 +69,23 @@ func RunPlayedMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 	playedMovies = filteredPlayed
 
+	// Calculate scores and ranks if scoring is enabled
+	scoreMap := ScoreAndRankMovies(filteredMovies, cfg)
+
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {
-		runPlayedMoviesJellyseerr(ctx, cfg, db, playedMovies, dryRun)
+		runPlayedMoviesJellyseerr(ctx, cfg, db, playedMovies, scoreMap, dryRun)
 	} else {
-		runPlayedMoviesDirect(ctx, cfg, db, playedMovies, dryRun)
+		runPlayedMoviesDirect(ctx, cfg, db, playedMovies, scoreMap, dryRun)
 	}
 }
 
 // runPlayedMoviesDirect adds movies directly to Radarr
-func runPlayedMoviesDirect(ctx context.Context, cfg *config.Config, db *database.Database, playedMovies []integrations.PlayedMovie, dryRun bool) {
+func runPlayedMoviesDirect(ctx context.Context, cfg *config.Config, db *database.Database, playedMovies []integrations.PlayedMovie, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
 		BaseURL: cfg.Radarr.URL,
 		APIKey:  cfg.Radarr.APIKey,
@@ -140,6 +147,7 @@ func runPlayedMoviesDirect(ctx context.Context, cfg *config.Config, db *database
 					failed++
 					// Log failure to database
 					if db != nil {
+						scoreInfo := scoreMap[played.Movie.IDs.TMDB]
 						db.LogActivity(database.ActivityLog{
 							Timestamp: time.Now(),
 							JobType:   "played_movies",
@@ -148,6 +156,8 @@ func runPlayedMoviesDirect(ctx context.Context, cfg *config.Config, db *database
 							Year:      played.Movie.Year,
 							TMDBID:    played.Movie.IDs.TMDB,
 							IMDBID:    played.Movie.IDs.IMDB,
+							Score:     scoreInfo.Score,
+							Rank:      scoreInfo.Rank,
 							Status:    "failed",
 							Message:   err.Error(),
 						})
@@ -165,6 +175,7 @@ func runPlayedMoviesDirect(ctx context.Context, cfg *config.Config, db *database
 				if addedMovie.TmdbID > 0 {
 					posterURL = fmt.Sprintf("https://www.themoviedb.org/movie/%d", addedMovie.TmdbID)
 				}
+				scoreInfo := scoreMap[addedMovie.TmdbID]
 				db.LogActivity(database.ActivityLog{
 					Timestamp: time.Now(),
 					JobType:   "played_movies",
@@ -174,6 +185,8 @@ func runPlayedMoviesDirect(ctx context.Context, cfg *config.Config, db *database
 					TMDBID:    addedMovie.TmdbID,
 					IMDBID:    addedMovie.ImdbID,
 					PosterURL: posterURL,
+					Score:     scoreInfo.Score,
+					Rank:      scoreInfo.Rank,
 					Status:    "added",
 				})
 			}
@@ -187,7 +200,11 @@ func runPlayedMoviesDirect(ctx context.Context, cfg *config.Config, db *database
 }
 
 // runPlayedMoviesJellyseerr requests movies via Jellyseerr
-func runPlayedMoviesJellyseerr(_ context.Context, cfg *config.Config, db *database.Database, playedMovies []integrations.PlayedMovie, dryRun bool) {
+func runPlayedMoviesJellyseerr(_ context.Context, cfg *config.Config, db *database.Database, playedMovies []integrations.PlayedMovie, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
 		URL:             cfg.Jellyseerr.URL,
 		APIKey:          cfg.Jellyseerr.APIKey,
@@ -219,6 +236,7 @@ func runPlayedMoviesJellyseerr(_ context.Context, cfg *config.Config, db *databa
 				failed++
 				// Log failure to database
 				if db != nil {
+					scoreInfo := scoreMap[played.Movie.IDs.TMDB]
 					db.LogActivity(database.ActivityLog{
 						Timestamp: time.Now(),
 						JobType:   "played_movies",
@@ -227,6 +245,8 @@ func runPlayedMoviesJellyseerr(_ context.Context, cfg *config.Config, db *databa
 						Year:      played.Movie.Year,
 						TMDBID:    played.Movie.IDs.TMDB,
 						IMDBID:    played.Movie.IDs.IMDB,
+						Score:     scoreInfo.Score,
+						Rank:      scoreInfo.Rank,
 						Status:    "failed",
 						Message:   err.Error(),
 					})
@@ -247,6 +267,7 @@ func runPlayedMoviesJellyseerr(_ context.Context, cfg *config.Config, db *databa
 					if played.Movie.IDs.TMDB > 0 {
 						posterURL = fmt.Sprintf("https://www.themoviedb.org/movie/%d", played.Movie.IDs.TMDB)
 					}
+					scoreInfo := scoreMap[played.Movie.IDs.TMDB]
 					db.LogActivity(database.ActivityLog{
 						Timestamp: time.Now(),
 						JobType:   "played_movies",
@@ -256,6 +277,8 @@ func runPlayedMoviesJellyseerr(_ context.Context, cfg *config.Config, db *databa
 						TMDBID:    played.Movie.IDs.TMDB,
 						IMDBID:    played.Movie.IDs.IMDB,
 						PosterURL: posterURL,
+						Score:     scoreInfo.Score,
+						Rank:      scoreInfo.Rank,
 						Status:    "requested",
 						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
 					})

@@ -129,6 +129,56 @@ Control what gets added:
 - **Keyword Blacklists** - Block titles containing specific words
 - **ID Blacklists** - Block specific TMDB/TVDB IDs
 
+### Content Scoring
+
+Rank content intelligently based on multiple factors with configurable weights:
+
+**How It Works:**
+```
+Final Score = (Rating × 0.6) + (Popularity × 0.3) + (Recency × 0.1)
+```
+
+Each component is normalized to 0-1, then weighted based on your preferences.
+
+**Example:**
+- **"The Batman (2022)"** - Rating: 7.9/10, Votes: 50,000, Recent release
+  - Score: `(0.79 × 0.6) + (0.90 × 0.3) + (1.0 × 0.1) = 0.844` → **84%**
+
+**Configuration Presets:**
+
+| Preset | Rating | Popularity | Recency | Best For |
+|--------|--------|------------|---------|----------|
+| **Quality-Focused** | 0.8 | 0.1 | 0.1 | Highly-rated classics |
+| **Trending-Focused** | 0.3 | 0.6 | 0.1 | Viral/popular content |
+| **Balanced (default)** | 0.6 | 0.3 | 0.1 | Mix of quality and popularity |
+| **New Releases** | 0.4 | 0.2 | 0.4 | Recently released content |
+
+**Settings:**
+```yaml
+scoring:
+  enabled: true
+  rating_weight: 0.6        # 60% weight on rating
+  popularity_weight: 0.3    # 30% weight on popularity (vote count)
+  recency_weight: 0.1       # 10% weight on how recent it is
+  rating_scale: 10          # Rating scale (10 for Trakt's 0-10 scale)
+  popularity_metric: votes  # Options: votes, views, watchers
+  recency_days: 365         # Content within 365 days gets full recency score
+```
+
+**Visual Indication:**
+- Activity logs show score percentages with color-coding:
+  - 🟢 **80%+** - Excellent (green)
+  - 🔵 **60-79%** - Good (blue)
+  - 🟡 **40-59%** - Fair (yellow)
+  - ⚪ **<40%** - Poor (gray)
+- Rank numbers show position among all scored items
+
+**Use Cases:**
+- Prioritize critically-acclaimed films over blockbusters
+- Focus on trending viral content
+- Emphasize brand-new releases
+- Balance quality with popularity
+
 ### Two Integration Modes
 
 **Direct Mode (Default)**

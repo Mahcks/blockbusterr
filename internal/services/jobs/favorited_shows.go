@@ -69,16 +69,23 @@ func RunFavoritedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 	favoritedShows = filteredFavorited
 
+	// Calculate scores and ranks if scoring is enabled
+	scoreMap := ScoreAndRankShows(filteredShows, cfg)
+
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {
-		runFavoritedShowsJellyseerr(ctx, cfg, db, favoritedShows, dryRun)
+		runFavoritedShowsJellyseerr(ctx, cfg, db, favoritedShows, scoreMap, dryRun)
 	} else {
-		runFavoritedShowsDirect(ctx, cfg, db, favoritedShows, dryRun)
+		runFavoritedShowsDirect(ctx, cfg, db, favoritedShows, scoreMap, dryRun)
 	}
 }
 
 // runFavoritedShowsDirect adds shows directly to Sonarr
-func runFavoritedShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, favoritedShows []integrations.FavoritedShow, dryRun bool) {
+func runFavoritedShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, favoritedShows []integrations.FavoritedShow, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
 		BaseURL: cfg.Sonarr.URL,
 		APIKey:  cfg.Sonarr.APIKey,
@@ -194,7 +201,10 @@ func runFavoritedShowsDirect(ctx context.Context, cfg *config.Config, db *databa
 }
 
 // runFavoritedShowsJellyseerr requests shows via Jellyseerr
-func runFavoritedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, favoritedShows []integrations.FavoritedShow, dryRun bool) {
+func runFavoritedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, favoritedShows []integrations.FavoritedShow, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
 		URL:             cfg.Jellyseerr.URL,
 		APIKey:          cfg.Jellyseerr.APIKey,

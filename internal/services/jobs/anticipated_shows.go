@@ -69,16 +69,23 @@ func RunAnticipatedShows(cfg *config.Config, db *database.Database, dryRun bool)
 	}
 	anticipatedShows = filteredAnticipated
 
+	// Calculate scores and ranks if scoring is enabled
+	scoreMap := ScoreAndRankShows(filteredShows, cfg)
+
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {
-		runAnticipatedShowsJellyseerr(ctx, cfg, db, anticipatedShows, dryRun)
+		runAnticipatedShowsJellyseerr(ctx, cfg, db, anticipatedShows, scoreMap, dryRun)
 	} else {
-		runAnticipatedShowsDirect(ctx, cfg, db, anticipatedShows, dryRun)
+		runAnticipatedShowsDirect(ctx, cfg, db, anticipatedShows, scoreMap, dryRun)
 	}
 }
 
 // runAnticipatedShowsDirect adds shows directly to Sonarr
-func runAnticipatedShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, anticipatedShows []integrations.AnticipatedShow, dryRun bool) {
+func runAnticipatedShowsDirect(ctx context.Context, cfg *config.Config, db *database.Database, anticipatedShows []integrations.AnticipatedShow, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
 		BaseURL: cfg.Sonarr.URL,
 		APIKey:  cfg.Sonarr.APIKey,
@@ -155,6 +162,7 @@ func runAnticipatedShowsDirect(ctx context.Context, cfg *config.Config, db *data
 					log.Errorf("Failed to add show '%s (%d)' to Sonarr: %v", anticipated.Show.Title, anticipated.Show.Year, err)
 					failed++
 					// Log failed activity
+					scoreInfo := scoreMap[series.TvdbID]
 					db.LogActivity(database.ActivityLog{
 						Timestamp: time.Now(),
 						JobType:   "anticipated_shows",
@@ -163,6 +171,8 @@ func runAnticipatedShowsDirect(ctx context.Context, cfg *config.Config, db *data
 						Year:      anticipated.Show.Year,
 						TVDBID:    series.TvdbID,
 						IMDBID:    anticipated.Show.IDs.IMDB,
+						Score:     scoreInfo.Score,
+						Rank:      scoreInfo.Rank,
 						Status:    "failed",
 						Message:   err.Error(),
 					})
@@ -173,6 +183,7 @@ func runAnticipatedShowsDirect(ctx context.Context, cfg *config.Config, db *data
 			log.Infof("Added anticipated show '%s (%d)' to Sonarr (ID: %d)", addedSeries.Title, addedSeries.Year, addedSeries.ID)
 			added++
 			// Log successful activity
+			scoreInfo := scoreMap[addedSeries.TvdbID]
 			db.LogActivity(database.ActivityLog{
 				Timestamp: time.Now(),
 				JobType:   "anticipated_shows",
@@ -182,6 +193,8 @@ func runAnticipatedShowsDirect(ctx context.Context, cfg *config.Config, db *data
 				TVDBID:    addedSeries.TvdbID,
 				IMDBID:    addedSeries.ImdbID,
 				PosterURL: fmt.Sprintf("https://www.thetvdb.com/series/%d", addedSeries.TvdbID),
+				Score:     scoreInfo.Score,
+				Rank:      scoreInfo.Rank,
 				Status:    "added",
 			})
 		}
@@ -194,7 +207,10 @@ func runAnticipatedShowsDirect(ctx context.Context, cfg *config.Config, db *data
 }
 
 // runAnticipatedShowsJellyseerr requests shows via Jellyseerr
-func runAnticipatedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, anticipatedShows []integrations.AnticipatedShow, dryRun bool) {
+func runAnticipatedShowsJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, anticipatedShows []integrations.AnticipatedShow, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
 		URL:             cfg.Jellyseerr.URL,
 		APIKey:          cfg.Jellyseerr.APIKey,

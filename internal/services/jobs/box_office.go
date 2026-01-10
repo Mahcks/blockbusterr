@@ -69,16 +69,23 @@ func RunBoxOffice(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 	boxOfficeMovies = filteredBoxOffice
 
+	// Calculate scores and ranks if scoring is enabled
+	scoreMap := ScoreAndRankMovies(filteredMovies, cfg)
+
 	// Route to appropriate handler based on mode
 	if mode == "jellyseerr" {
-		runBoxOfficeJellyseerr(ctx, cfg, db, boxOfficeMovies, dryRun)
+		runBoxOfficeJellyseerr(ctx, cfg, db, boxOfficeMovies, scoreMap, dryRun)
 	} else {
-		runBoxOfficeDirect(ctx, cfg, db, boxOfficeMovies, dryRun)
+		runBoxOfficeDirect(ctx, cfg, db, boxOfficeMovies, scoreMap, dryRun)
 	}
 }
 
 // runBoxOfficeDirect adds movies directly to Radarr
-func runBoxOfficeDirect(ctx context.Context, cfg *config.Config, db *database.Database, boxOfficeMovies []integrations.BoxOfficeMovie, dryRun bool) {
+func runBoxOfficeDirect(ctx context.Context, cfg *config.Config, db *database.Database, boxOfficeMovies []integrations.BoxOfficeMovie, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
 		BaseURL: cfg.Radarr.URL,
 		APIKey:  cfg.Radarr.APIKey,
@@ -140,6 +147,7 @@ func runBoxOfficeDirect(ctx context.Context, cfg *config.Config, db *database.Da
 					failed++
 					// Log failed activity
 					if db != nil {
+						scoreInfo := scoreMap[boxOffice.Movie.IDs.TMDB]
 						db.LogActivity(database.ActivityLog{
 							Timestamp: time.Now(),
 							JobType:   "box_office",
@@ -148,6 +156,8 @@ func runBoxOfficeDirect(ctx context.Context, cfg *config.Config, db *database.Da
 							Year:      boxOffice.Movie.Year,
 							TMDBID:    boxOffice.Movie.IDs.TMDB,
 							IMDBID:    boxOffice.Movie.IDs.IMDB,
+							Score:     scoreInfo.Score,
+							Rank:      scoreInfo.Rank,
 							Status:    "failed",
 							Message:   err.Error(),
 						})
@@ -165,6 +175,7 @@ func runBoxOfficeDirect(ctx context.Context, cfg *config.Config, db *database.Da
 				if addedMovie.TmdbID > 0 {
 					posterURL = fmt.Sprintf("https://www.themoviedb.org/movie/%d", addedMovie.TmdbID)
 				}
+				scoreInfo := scoreMap[addedMovie.TmdbID]
 				db.LogActivity(database.ActivityLog{
 					Timestamp: time.Now(),
 					JobType:   "box_office",
@@ -174,6 +185,8 @@ func runBoxOfficeDirect(ctx context.Context, cfg *config.Config, db *database.Da
 					TMDBID:    addedMovie.TmdbID,
 					IMDBID:    addedMovie.ImdbID,
 					PosterURL: posterURL,
+					Score:     scoreInfo.Score,
+					Rank:      scoreInfo.Rank,
 					Status:    "added",
 				})
 			}
@@ -187,11 +200,15 @@ func runBoxOfficeDirect(ctx context.Context, cfg *config.Config, db *database.Da
 }
 
 // runBoxOfficeJellyseerr requests movies via Jellyseerr
-func runBoxOfficeJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, boxOfficeMovies []integrations.BoxOfficeMovie, dryRun bool) {
+func runBoxOfficeJellyseerr(ctx context.Context, cfg *config.Config, db *database.Database, boxOfficeMovies []integrations.BoxOfficeMovie, scoreMap map[int]struct {
+	Score float64
+	Rank  int
+}, dryRun bool,
+) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-		URL:    cfg.Jellyseerr.URL,
-		APIKey: cfg.Jellyseerr.APIKey,
-		UserID: cfg.Jellyseerr.UserID,
+		URL:             cfg.Jellyseerr.URL,
+		APIKey:          cfg.Jellyseerr.APIKey,
+		UserID:          cfg.Jellyseerr.UserID,
 		RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
 		RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
 	})
@@ -229,6 +246,7 @@ func runBoxOfficeJellyseerr(ctx context.Context, cfg *config.Config, db *databas
 				failed++
 				// Log failure to database
 				if db != nil {
+					scoreInfo := scoreMap[boxOffice.Movie.IDs.TMDB]
 					db.LogActivity(database.ActivityLog{
 						Timestamp: time.Now(),
 						JobType:   "box_office",
@@ -237,6 +255,8 @@ func runBoxOfficeJellyseerr(ctx context.Context, cfg *config.Config, db *databas
 						Year:      boxOffice.Movie.Year,
 						TMDBID:    boxOffice.Movie.IDs.TMDB,
 						IMDBID:    boxOffice.Movie.IDs.IMDB,
+						Score:     scoreInfo.Score,
+						Rank:      scoreInfo.Rank,
 						Status:    "failed",
 						Message:   err.Error(),
 					})
@@ -257,6 +277,7 @@ func runBoxOfficeJellyseerr(ctx context.Context, cfg *config.Config, db *databas
 					if boxOffice.Movie.IDs.TMDB > 0 {
 						posterURL = fmt.Sprintf("https://www.themoviedb.org/movie/%d", boxOffice.Movie.IDs.TMDB)
 					}
+					scoreInfo := scoreMap[boxOffice.Movie.IDs.TMDB]
 					db.LogActivity(database.ActivityLog{
 						Timestamp: time.Now(),
 						JobType:   "box_office",
@@ -266,6 +287,8 @@ func runBoxOfficeJellyseerr(ctx context.Context, cfg *config.Config, db *databas
 						TMDBID:    boxOffice.Movie.IDs.TMDB,
 						IMDBID:    boxOffice.Movie.IDs.IMDB,
 						PosterURL: posterURL,
+						Score:     scoreInfo.Score,
+						Rank:      scoreInfo.Rank,
 						Status:    "requested",
 						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
 					})
