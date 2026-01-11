@@ -1,0 +1,192 @@
+{{define "activity_table"}}
+{{if .}}
+<div class="space-y-3">
+  {{range $index, $log := .}}
+  <div class="bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50 hover:border-slate-600/50 transition-all duration-200 overflow-hidden shadow-lg hover:shadow-xl">
+    <div class="flex gap-4 p-4">
+      <!-- Poster Section -->
+      <div class="flex-shrink-0">
+        {{if $log.PosterURL}}
+        <img src="{{$log.PosterURL}}" alt="{{$log.Title}}" class="w-24 h-36 object-cover rounded-lg shadow-xl ring-1 ring-white/10" loading="lazy" onerror="this.onerror=null; this.src=''; this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+        <div class="hidden w-24 h-36 bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center shadow-xl ring-1 ring-white/10">
+          <svg class="w-12 h-12 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        {{else}}
+        <div class="w-24 h-36 bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center shadow-xl ring-1 ring-white/10">
+          <svg class="w-12 h-12 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        {{end}}
+      </div>
+
+      <!-- Content Section -->
+      <div class="flex-1 min-w-0">
+        <!-- Header Row -->
+        <div class="flex items-start justify-between gap-4 mb-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="text-lg font-semibold text-white truncate">{{.Title}}</h3>
+              {{if .Year}}<span class="text-slate-400 text-sm font-medium">({{.Year}})</span>{{end}}
+              {{if eq .MediaType "movie"}}
+              <svg class="w-5 h-5 text-blue-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
+              </svg>
+              {{else}}
+              <svg class="w-5 h-5 text-purple-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm2 0v8h12V6H4z"></path>
+              </svg>
+              {{end}}
+            </div>
+            
+            <!-- External Links -->
+            <div class="flex items-center gap-3 mb-2">
+              {{if .IMDBID}}
+              <a href="https://www.imdb.com/title/{{.IMDBID}}" target="_blank" class="inline-flex items-center gap-1 text-xs font-medium text-yellow-400 hover:text-yellow-300 transition-colors">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
+                IMDb
+              </a>
+              {{end}}
+              {{if .TMDBID}}
+              <a href="https://www.themoviedb.org/{{if eq .MediaType "movie"}}movie{{else}}tv{{end}}/{{.TMDBID}}" target="_blank" class="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
+                TMDB
+              </a>
+              {{end}}
+              {{if .TVDBID}}
+              <a href="https://www.thetvdb.com/dereferrer/series/{{.TVDBID}}" target="_blank" class="inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
+                TVDB
+              </a>
+              {{end}}
+            </div>
+
+            <!-- Job Type Badge -->
+            <div>
+              {{if eq .JobType "trending_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs font-medium ring-1 ring-blue-500/30">🔥 Trending Movies</span>
+              {{else if eq .JobType "trending_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-xs font-medium ring-1 ring-purple-500/30">🔥 Trending Shows</span>
+              {{else if eq .JobType "popular_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-medium ring-1 ring-green-500/30">⭐ Popular Movies</span>
+              {{else if eq .JobType "popular_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-500/20 text-teal-300 rounded-full text-xs font-medium ring-1 ring-teal-500/30">⭐ Popular Shows</span>
+              {{else if eq .JobType "anticipated_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-500/20 text-orange-300 rounded-full text-xs font-medium ring-1 ring-orange-500/30">🎬 Anticipated Movies</span>
+              {{else if eq .JobType "anticipated_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/20 text-red-300 rounded-full text-xs font-medium ring-1 ring-red-500/30">📺 Anticipated Shows</span>
+              {{else if eq .JobType "box_office"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-500/20 text-yellow-300 rounded-full text-xs font-medium ring-1 ring-yellow-500/30">💰 Box Office</span>
+              {{else if eq .JobType "watched_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-medium ring-1 ring-indigo-500/30">👁️ Watched Movies</span>
+              {{else if eq .JobType "watched_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-pink-500/20 text-pink-300 rounded-full text-xs font-medium ring-1 ring-pink-500/30">👁️ Watched Shows</span>
+              {{else if eq .JobType "played_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-xs font-medium ring-1 ring-cyan-500/30">▶️ Played Movies</span>
+              {{else if eq .JobType "played_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-500/20 text-rose-300 rounded-full text-xs font-medium ring-1 ring-rose-500/30">▶️ Played Shows</span>
+              {{else if eq .JobType "collected_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-lime-500/20 text-lime-300 rounded-full text-xs font-medium ring-1 ring-lime-500/30">📚 Collected Movies</span>
+              {{else if eq .JobType "collected_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-xs font-medium ring-1 ring-emerald-500/30">📚 Collected Shows</span>
+              {{else if eq .JobType "favorited_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-xs font-medium ring-1 ring-amber-500/30">💖 Favorited Movies</span>
+              {{else if eq .JobType "favorited_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-fuchsia-500/20 text-fuchsia-300 rounded-full text-xs font-medium ring-1 ring-fuchsia-500/30">💖 Favorited Shows</span>
+              {{else}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-500/20 text-slate-300 rounded-full text-xs font-medium ring-1 ring-slate-500/30">{{.JobType}}</span>{{end}}
+            </div>
+          </div>
+
+          <!-- Score/Status Column -->
+          <div class="flex flex-col items-end gap-2 flex-shrink-0">
+            <!-- Status Badge -->
+            {{if eq .Status "added"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-300 rounded-lg text-sm font-semibold ring-1 ring-green-500/30">✓ Added</div>
+            {{else if eq .Status "requested"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-blue-300 rounded-lg text-sm font-semibold ring-1 ring-blue-500/30">📋 Requested</div>
+            {{else if eq .Status "rejected"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-300 rounded-lg text-sm font-semibold ring-1 ring-red-500/30">✗ Rejected</div>
+            {{else if eq .Status "skipped"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/20 text-yellow-300 rounded-lg text-sm font-semibold ring-1 ring-yellow-500/30">⊘ Skipped</div>
+            {{else if eq .Status "failed"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 text-red-300 rounded-lg text-sm font-semibold ring-1 ring-red-600/30">⚠ Failed</div>
+            {{else}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-500/20 text-slate-300 rounded-lg text-sm font-semibold ring-1 ring-slate-500/30">{{.Status}}</div>{{end}}
+            
+            <!-- Score Badge -->
+            {{if .Score}}
+            <div class="text-center">
+              {{$scorePercent := printf "%.0f" (mul .Score 100)}}
+              {{if ge .Score 0.8}}<div class="inline-flex flex-col items-center px-3 py-2 bg-green-500/20 rounded-lg ring-1 ring-green-500/30"><div class="text-green-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-green-400/70">Score</div>{{if .Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{.Rank}}</div>{{end}}</div>
+              {{else if ge .Score 0.6}}<div class="inline-flex flex-col items-center px-3 py-2 bg-blue-500/20 rounded-lg ring-1 ring-blue-500/30"><div class="text-blue-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-blue-400/70">Score</div>{{if .Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{.Rank}}</div>{{end}}</div>
+              {{else if ge .Score 0.4}}<div class="inline-flex flex-col items-center px-3 py-2 bg-yellow-500/20 rounded-lg ring-1 ring-yellow-500/30"><div class="text-yellow-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-yellow-400/70">Score</div>{{if .Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{.Rank}}</div>{{end}}</div>
+              {{else}}<div class="inline-flex flex-col items-center px-3 py-2 bg-slate-500/20 rounded-lg ring-1 ring-slate-500/30"><div class="text-slate-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-slate-400/70">Score</div>{{if .Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{.Rank}}</div>{{end}}</div>{{end}}
+            </div>
+            {{end}}
+          </div>
+        </div>
+
+        <!-- Footer Row -->
+        <div class="flex items-center justify-between gap-4 pt-3 border-t border-slate-700/50">
+          <div class="flex items-center gap-3 text-xs text-slate-400">
+            <span class="inline-flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
+              {{.Timestamp.Format "Jan 2, 3:04 PM"}}
+            </span>
+            {{if .Message}}
+            <span class="text-slate-500">•</span>
+            <span class="text-slate-400 italic">{{.Message}}</span>
+            {{end}}
+          </div>
+          
+          {{if .FilterDetails}}
+          <button onclick="toggleDetails({{$index}})" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-xs font-medium text-slate-300 transition-all duration-200 ring-1 ring-slate-600/50 hover:ring-slate-500/50">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+              <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+            </svg>
+            View Filter Details
+          </button>
+          {{end}}
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Details Panel (Hidden by Default) -->
+    {{if .FilterDetails}}
+    <div id="details-{{$index}}" class="hidden border-t border-slate-700/50 bg-slate-900/50 p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <svg class="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"></path>
+        </svg>
+        <h4 class="font-semibold text-slate-200">Filter Evaluation Details</h4>
+      </div>
+      <div class="filter-details-content grid gap-2" data-filter-details="{{.FilterDetails}}"></div>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+
+<script>
+// Parse and display filter details after cards are loaded
+document.querySelectorAll('.filter-details-content').forEach(function(el) {
+  const filterDetails = el.getAttribute('data-filter-details');
+  if (filterDetails) {
+    try {
+      const checks = JSON.parse(filterDetails);
+      let html = '';
+      checks.forEach(check => {
+        const icon = check.passed ? '✓' : '✗';
+        const iconBg = check.passed ? 'bg-green-500/20 text-green-400 ring-green-500/30' : 'bg-red-500/20 text-red-400 ring-red-500/30';
+        const borderColor = check.passed ? 'border-green-500/30' : 'border-red-500/30';
+        html += `
+          <div class="flex items-start gap-3 p-3 bg-slate-800/50 rounded-lg border ${borderColor}">
+            <div class="flex-shrink-0 w-6 h-6 rounded-full ${iconBg} ring-1 flex items-center justify-center font-bold text-sm">
+              ${icon}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold text-slate-200 mb-0.5">${check.name}</div>
+              <div class="text-sm text-slate-400">${check.message}</div>
+            </div>
+          </div>
+        `;
+      });
+      el.innerHTML = html;
+    } catch (e) {
+      console.error('Error parsing filter details:', e);
+    }
+  }
+});
+</script>
+{{else}}
+<div class="flex flex-col items-center justify-center py-16 text-center">
+  <svg class="w-16 h-16 text-slate-600 mb-4" fill="currentColor" viewBox="0 0 20 20">
+    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+  </svg>
+  <div class="text-lg font-medium text-slate-400 mb-2">No Activity Yet</div>
+  <div class="text-sm text-slate-500">Jobs will appear here once they run</div>
+</div>
+{{end}}
+{{end}}

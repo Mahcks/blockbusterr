@@ -39,9 +39,13 @@ func New(gctx global.Context) error {
 
 	// Initialize template engine with custom functions
 	engine := htmlEngine.New("./web/templates", ".html")
+	engine.Reload(true) // Enable template reloading in development
 	engine.AddFunc("json", func(v interface{}) template.JS {
 		b, _ := json.Marshal(v)
 		return template.JS(b)
+	})
+	engine.AddFunc("mul", func(a, b float64) float64 {
+		return a * b
 	})
 
 	app := fiber.New(fiber.Config{
