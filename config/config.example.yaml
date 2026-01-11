@@ -110,6 +110,20 @@ jobs:
     enabled: false
     limit: 20
 
+  # Smart Popular Jobs
+  # These jobs use adaptive rating thresholds based on popularity percentiles
+  # More popular content (higher votes) gets lower rating requirements
+  # Less popular content (lower votes) gets higher rating requirements
+  # Formula: threshold = base_min_rating - ((percentile - 0.5) * adjustment_factor)
+  # Example: base=7.0, factor=2.0 → popular (90th percentile) needs 6.2, unpopular (10th percentile) needs 7.8
+  smart_popular_movies:
+    enabled: false
+    limit: 20
+    base_min_rating: 7.0      # Base rating requirement (adjusted by popularity)
+    adjustment_factor: 2.0     # How much to adjust (0.5 = mild, 2.0 = aggressive)
+    # sync_interval: 6h
+    # mode: direct
+
   # TV Show Jobs
   trending_shows:
     enabled: false
@@ -142,6 +156,14 @@ jobs:
   anticipated_shows:
     enabled: false
     limit: 10
+
+  smart_popular_shows:
+    enabled: false
+    limit: 10
+    base_min_rating: 7.0      # Base rating requirement (adjusted by popularity)
+    adjustment_factor: 2.0     # How much to adjust (0.5 = mild, 2.0 = aggressive)
+    # sync_interval: 6h
+    # mode: direct
 
 # Content Filters
 # Filter out unwanted content based on various criteria

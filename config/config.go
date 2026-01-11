@@ -223,6 +223,24 @@ type Config struct {
 			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 		} `mapstructure:"anticipated_shows" json:"anticipated_shows" yaml:"anticipated_shows"`
+
+		SmartPopularMovies struct {
+			Enabled          bool    `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit            int     `mapstructure:"limit" json:"limit" yaml:"limit"`
+			BaseMinRating    float64 `mapstructure:"base_min_rating" json:"base_min_rating" yaml:"base_min_rating"`
+			AdjustmentFactor float64 `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor"`
+			SyncInterval     string  `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode             string  `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+		} `mapstructure:"smart_popular_movies" json:"smart_popular_movies" yaml:"smart_popular_movies"`
+
+		SmartPopularShows struct {
+			Enabled          bool    `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit            int     `mapstructure:"limit" json:"limit" yaml:"limit"`
+			BaseMinRating    float64 `mapstructure:"base_min_rating" json:"base_min_rating" yaml:"base_min_rating"`
+			AdjustmentFactor float64 `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor"`
+			SyncInterval     string  `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode             string  `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+		} `mapstructure:"smart_popular_shows" json:"smart_popular_shows" yaml:"smart_popular_shows"`
 	} `mapstructure:"jobs" json:"jobs" yaml:"jobs"`
 
 	Filters struct {

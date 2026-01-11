@@ -207,6 +207,20 @@ func (s *Scheduler) scheduleJobs() {
 			mode:         getJobMode(cfg.Jobs.AnticipatedShows.Mode, defaultMode),
 			runFunc:      func() { jobs.RunAnticipatedShows(cfg, s.db, dryRun) },
 		},
+		{
+			name:         "smart_popular_movies",
+			enabled:      cfg.Jobs.SmartPopularMovies.Enabled,
+			syncInterval: getJobInterval(cfg.Jobs.SmartPopularMovies.SyncInterval, defaultInterval),
+			mode:         getJobMode(cfg.Jobs.SmartPopularMovies.Mode, defaultMode),
+			runFunc:      func() { jobs.RunSmartPopularMovies(cfg, s.db, dryRun) },
+		},
+		{
+			name:         "smart_popular_shows",
+			enabled:      cfg.Jobs.SmartPopularShows.Enabled,
+			syncInterval: getJobInterval(cfg.Jobs.SmartPopularShows.SyncInterval, defaultInterval),
+			mode:         getJobMode(cfg.Jobs.SmartPopularShows.Mode, defaultMode),
+			runFunc:      func() { jobs.RunSmartPopularShows(cfg, s.db, dryRun) },
+		},
 	}
 
 	s.jobMutex.Lock()
