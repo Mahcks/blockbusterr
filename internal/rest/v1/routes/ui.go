@@ -1,10 +1,28 @@
 package routes
 
 import (
+	"os"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
+
+// determineConfigPath finds the best location to save config file
+// Prioritizes Docker data directory, falls back to local directory
+func determineConfigPath() string {
+	// Try /app/data first (Docker volume mount)
+	if _, err := os.Stat("/app/data"); err == nil {
+		return "/app/data/config.yaml"
+	}
+
+	// Try data directory (local)
+	if _, err := os.Stat("./data"); err == nil {
+		return "./data/config.yaml"
+	}
+
+	// Fall back to current directory
+	return "./config.yaml"
+}
 
 // RegisterUIRoutes handles web UI routes
 func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
@@ -114,9 +132,10 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 
 		// Save config to file (create if doesn't exist)
 		if err := cfg.Save(); err != nil {
-			// If config file doesn't exist, try creating it
+			// If config file doesn't exist, try creating it in the right location
 			if cfg.ConfigFilePath == "" {
-				cfg.ConfigFilePath = "./config.yaml"
+				// Try Docker data directory first, then fall back to current directory
+				cfg.ConfigFilePath = determineConfigPath()
 				if err := cfg.Save(); err != nil {
 					return c.Status(500).SendString(`
 				<script>showNotification('Failed to create configuration file: ` + err.Error() + `', 'error');</script>
@@ -436,9 +455,19 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 
 		// Save config to file
 		if err := cfg.Save(); err != nil {
-			return c.Status(500).SendString(`
-				<script>showNotification('Failed to save job configuration: ` + err.Error() + `', 'error');</script>
-			`)
+			// If config file doesn't exist, try creating it in the right location
+			if cfg.ConfigFilePath == "" {
+				cfg.ConfigFilePath = determineConfigPath()
+				if err := cfg.Save(); err != nil {
+					return c.Status(500).SendString(`
+						<script>showNotification('Failed to save job configuration: ` + err.Error() + `', 'error');</script>
+					`)
+				}
+			} else {
+				return c.Status(500).SendString(`
+					<script>showNotification('Failed to save job configuration: ` + err.Error() + `', 'error');</script>
+				`)
+			}
 		}
 
 		// Automatically reload the configuration
@@ -620,7 +649,15 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 
 		// Save config
 		if err := cfg.Save(); err != nil {
-			return c.SendString(`<div class="bg-red-500 text-white px-6 py-3 rounded-lg">Error saving filters: ` + err.Error() + `</div>`)
+			// If config file doesn't exist, try creating it in the right location
+			if cfg.ConfigFilePath == "" {
+				cfg.ConfigFilePath = determineConfigPath()
+				if err := cfg.Save(); err != nil {
+					return c.SendString(`<div class="bg-red-500 text-white px-6 py-3 rounded-lg">Error saving filters: ` + err.Error() + `</div>`)
+				}
+			} else {
+				return c.SendString(`<div class="bg-red-500 text-white px-6 py-3 rounded-lg">Error saving filters: ` + err.Error() + `</div>`)
+			}
 		}
 
 		// Reload config
