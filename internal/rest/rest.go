@@ -118,6 +118,9 @@ func New(gctx global.Context) error {
 	v1Group := app.Group("/v1")
 	v1.New(gctx, v1Group)
 
+	// Register config routes at root level (not under /v1)
+	routes.RegisterConfigRoutes(app, gctx)
+
 	errCh := make(chan error, 1) // Buffered to prevent goroutine leak
 	// Listen for connections in a separate goroutine.
 	go func() {

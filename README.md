@@ -383,6 +383,88 @@ filters:
 
 ## Advanced Configuration
 
+### Configuration Management
+
+Blockbusterr offers two ways to manage your configuration files:
+
+#### 1. Share Configuration (Filters, Jobs, Scoring)
+
+Export or import just your filters, jobs, and scoring settings - **no credentials included**. Perfect for sharing configurations with the community or testing different setups.
+
+**Export Shareable Config:**
+1. Go to the Configuration page
+2. Scroll to "Share Configuration" section
+3. Click "Download Shareable" button
+4. Save the `blockbusterr-shareable-YYYY-MM-DD.yaml` file
+5. Safe to share publicly - contains no API keys or credentials
+
+**Import Shareable Config:**
+1. Go to the Configuration page
+2. Scroll to "Share Configuration" section
+3. Click "Choose File" and select a shareable config file
+4. Click "Upload & Apply"
+5. Your filters, jobs, and scoring will be updated
+6. Your credentials and integration URLs will remain unchanged
+
+**What's Included:**
+- Job configurations (enabled state, limits, schedules, modes)
+- Filter settings (movies and TV shows)
+- Scoring configuration
+
+**What's NOT Included:**
+- API keys (Trakt, TMDB, Radarr, Sonarr, Jellyseerr)
+- Integration URLs
+- Client secrets or passwords
+- User credentials
+
+#### 2. Backup & Restore (Full Configuration)
+
+Complete configuration backup including **all credentials and API keys**. Keep these files secure!
+
+**Create Full Backup:**
+1. Go to the Configuration page
+2. Scroll to "Backup & Restore" section
+3. Click "Download Backup" button
+4. Save the `blockbusterr-backup-YYYY-MM-DD.yaml` file
+5. **Store securely** - contains all credentials
+
+**Restore from Backup:**
+1. Go to the Configuration page
+2. Scroll to "Backup & Restore" section
+3. Click "Choose File" and select your backup file
+4. Click "Restore Backup" and confirm the warning
+5. A backup of your current config is automatically created first
+6. Page will reload with the restored configuration
+
+**What's Included:**
+- Everything from shareable config PLUS
+- All API keys and secrets
+- Integration URLs and credentials
+- Complete configuration state
+
+**Use Cases:**
+- **Shareable Config**: Share your filter/job setup with others, try community configurations
+- **Full Backup**: Personal backups, disaster recovery, server migration
+- **Testing**: Try different configurations without losing your current setup
+
+**API Usage:**
+```bash
+# Export shareable config (no credentials)
+curl -o shareable.yaml http://localhost:9090/config/export
+
+# Import shareable config
+curl -X POST -F "config=@shareable.yaml" http://localhost:9090/config/import
+
+# Create full backup (with credentials)
+curl -o backup.yaml http://localhost:9090/config/backup
+
+# Restore full backup
+curl -X POST -F "config=@backup.yaml" http://localhost:9090/config/restore
+```
+
+**Docker Note:**
+When running in Docker, configurations are automatically saved to `/app/data/config.yaml` (your mounted volume) to ensure persistence across container restarts.
+
 ### Manual Config File
 
 If you prefer YAML over the web UI, create `config.yaml`:
