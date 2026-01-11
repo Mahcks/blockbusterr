@@ -15,9 +15,10 @@ import (
 
 // ShowJobExecutor handles execution of show jobs with unified logic
 type ShowJobExecutor struct {
-	Config   *config.Config
-	Database *database.Database
-	DryRun   bool
+	Config        *config.Config
+	Database      *database.Database
+	DryRun        bool
+	lastDecisions *JobRunDecisions // Store last run decisions for API access
 }
 
 // Execute runs a show job with the given configuration and fetcher function
@@ -47,14 +48,19 @@ func (e *ShowJobExecutor) Execute(
 
 	log.Infof("Found %d shows from Trakt for %s", len(shows), jobConfig.JobName)
 
-	// Apply filters
-	filteredShows := filters.FilterShows(shows, e.Config.Filters.Shows)
-	if len(filteredShows) < len(shows) {
-		log.Infof("Filtered out %d shows, %d remaining", len(shows)-len(filteredShows), len(filteredShows))
+	// Initialize decision tracking for this run
+	runDecisions := &JobRunDecisions{
+		JobName:    jobConfig.JobName,
+		RunTime:    time.Now(),
+		TotalFound: len(shows),
+		Decisions:  make([]ContentDecision, 0),
 	}
+	e.lastDecisions = runDecisions
 
-	// Calculate scores and ranks if scoring is enabled
-	scoreMap := ScoreAndRankShows(filteredShows, e.Config)
+	// Apply filters with detailed decision tracking
+	filteredShows, scoreMap, showDecisions := e.evaluateShowsWithDecisions(shows, jobConfig)
+	runDecisions.Decisions = showDecisions
+	runDecisions.PassedFilters = len(filteredShows)
 
 	// Route to appropriate handler based on mode
 	if jobConfig.Mode == "jellyseerr" {
@@ -62,6 +68,9 @@ func (e *ShowJobExecutor) Execute(
 	} else {
 		e.executeShowsDirect(ctx, jobConfig, filteredShows, scoreMap)
 	}
+
+	// Mark run as completed and update final stats
+	runDecisions.Completed = true
 }
 
 // executeShowsDirect adds shows directly to Sonarr
@@ -172,6 +181,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 
 			// Log successful activity
 			if e.Database != nil {
+				posterURL := GetShowPosterURL(e.Config, addedSeries.TmdbID, addedSeries.TvdbID)
 				scoreInfo := scoreMap[addedSeries.TvdbID]
 				e.Database.LogActivity(database.ActivityLog{
 					Timestamp: time.Now(),
@@ -181,7 +191,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 					Year:      addedSeries.Year,
 					TVDBID:    addedSeries.TvdbID,
 					IMDBID:    addedSeries.ImdbID,
-					PosterURL: fmt.Sprintf("https://www.thetvdb.com/series/%d", addedSeries.TvdbID),
+					PosterURL: posterURL,
 					Score:     scoreInfo.Score,
 					Rank:      scoreInfo.Rank,
 					Status:    "added",
@@ -198,7 +208,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 
 // executeShowsJellyseerr requests shows via Jellyseerr
 func (e *ShowJobExecutor) executeShowsJellyseerr(
-	ctx context.Context,
+	_ context.Context,
 	jobConfig JobConfig,
 	shows []integrations.Show,
 	scoreMap map[int]ScoreInfo,
@@ -224,6 +234,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 			log.Debugf("Failed to check Jellyseerr status for '%s (%d)': %v", show.Title, show.Year, err)
 		} else if mediaInfo.HasMediaInfo() {
 			log.Debugf("Skipping '%s (%d)' - already requested/available in Jellyseerr", show.Title, show.Year)
+			e.updateDecisionOutcome(show.IDs.TVDB, "skipped", "Already in Jellyseerr")
 			skipped++
 			continue
 		}
@@ -231,6 +242,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 		// Request show via Jellyseerr (or simulate in dry-run mode)
 		if e.DryRun {
 			log.Infof("[DRY RUN] Would request %s show '%s (%d)' via Jellyseerr", jobConfig.JobName, show.Title, show.Year)
+			e.updateDecisionOutcome(show.IDs.TVDB, "requested", "[DRY RUN] Would be requested")
 			requested++
 		} else {
 			result, err := jellyseerrClient.RequestShow(show.IDs.TMDB)
@@ -238,25 +250,29 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 				// Check if it's a duplicate error
 				if strings.Contains(err.Error(), "already") || strings.Contains(err.Error(), "exists") || strings.Contains(err.Error(), "requested") {
 					log.Debugf("Show '%s (%d)' already requested in Jellyseerr", show.Title, show.Year)
+					e.updateDecisionOutcome(show.IDs.TVDB, "skipped", "Already requested")
 					skipped++
 				} else {
 					log.Errorf("Failed to request show '%s (%d)' via Jellyseerr: %v", show.Title, show.Year, err)
+					e.updateDecisionOutcome(show.IDs.TVDB, "failed", err.Error())
 					failed++
 					// Log failure to database
 					if e.Database != nil {
 						scoreInfo := scoreMap[show.IDs.TVDB]
+						filterDetails := e.getFilterDetailsForShow(show.IDs.TVDB)
 						e.Database.LogActivity(database.ActivityLog{
-							Timestamp: time.Now(),
-							JobType:   jobConfig.JobName,
-							MediaType: "show",
-							Title:     show.Title,
-							Year:      show.Year,
-							TVDBID:    show.IDs.TVDB,
-							IMDBID:    show.IDs.IMDB,
-							Score:     scoreInfo.Score,
-							Rank:      scoreInfo.Rank,
-							Status:    "failed",
-							Message:   err.Error(),
+							Timestamp:     time.Now(),
+							JobType:       jobConfig.JobName,
+							MediaType:     "show",
+							Title:         show.Title,
+							Year:          show.Year,
+							TVDBID:        show.IDs.TVDB,
+							IMDBID:        show.IDs.IMDB,
+							Score:         scoreInfo.Score,
+							Rank:          scoreInfo.Rank,
+							Status:        "failed",
+							Message:       err.Error(),
+							FilterDetails: filterDetails,
 						})
 					}
 				}
@@ -265,31 +281,32 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 
 			if result.IsAlreadyRequested() {
 				log.Debugf("Show '%s (%d)' already requested in Jellyseerr", show.Title, show.Year)
+				e.updateDecisionOutcome(show.IDs.TVDB, "skipped", "Already requested")
 				skipped++
 			} else {
 				log.Infof("Requested %s show '%s (%d)' via Jellyseerr (Request ID: %d)", jobConfig.JobName, show.Title, show.Year, result.ID)
+				e.updateDecisionOutcome(show.IDs.TVDB, "requested", fmt.Sprintf("Jellyseerr request ID: %d", result.ID))
 				requested++
 
 				// Log success to database
 				if e.Database != nil {
-					posterURL := ""
-					if show.IDs.TVDB > 0 {
-						posterURL = fmt.Sprintf("https://www.thetvdb.com/series/%d", show.IDs.TVDB)
-					}
+					posterURL := GetShowPosterURL(e.Config, show.IDs.TMDB, show.IDs.TVDB)
 					scoreInfo := scoreMap[show.IDs.TVDB]
+					filterDetails := e.getFilterDetailsForShow(show.IDs.TVDB)
 					e.Database.LogActivity(database.ActivityLog{
-						Timestamp: time.Now(),
-						JobType:   jobConfig.JobName,
-						MediaType: "show",
-						Title:     show.Title,
-						Year:      show.Year,
-						TVDBID:    show.IDs.TVDB,
-						IMDBID:    show.IDs.IMDB,
-						PosterURL: posterURL,
-						Score:     scoreInfo.Score,
-						Rank:      scoreInfo.Rank,
-						Status:    "requested",
-						Message:   fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
+						Timestamp:     time.Now(),
+						JobType:       jobConfig.JobName,
+						MediaType:     "show",
+						Title:         show.Title,
+						Year:          show.Year,
+						TVDBID:        show.IDs.TVDB,
+						IMDBID:        show.IDs.IMDB,
+						PosterURL:     posterURL,
+						Score:         scoreInfo.Score,
+						Rank:          scoreInfo.Rank,
+						Status:        "requested",
+						Message:       fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
+						FilterDetails: filterDetails,
 					})
 				}
 			}
@@ -297,4 +314,150 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 	}
 
 	log.Infof("%s job completed - Requested: %d, Skipped: %d, Failed: %d", jobConfig.JobName, requested, skipped, failed)
+}
+
+// evaluateShowsWithDecisions evaluates all shows through filters and scoring, tracking detailed decisions
+func (e *ShowJobExecutor) evaluateShowsWithDecisions(
+	shows []integrations.Show,
+	jobConfig JobConfig,
+) ([]integrations.Show, map[int]ScoreInfo, []ContentDecision) {
+	decisions := make([]ContentDecision, 0, len(shows))
+	passedShows := make([]integrations.Show, 0)
+
+	// Evaluate each show through filters
+	for _, show := range shows {
+		decision := ContentDecision{
+			Title:       show.Title,
+			Year:        show.Year,
+			MediaType:   "show",
+			TVDBID:      show.IDs.TVDB,
+			TMDBID:      show.IDs.TMDB,
+			IMDBID:      show.IDs.IMDB,
+			Rating:      show.Rating,
+			Votes:       show.Votes,
+			EvaluatedAt: time.Now(),
+		}
+
+		// Get poster URL (tries TVDB first, then TMDB)
+		decision.PosterURL = GetShowPosterURL(e.Config, show.IDs.TMDB, show.IDs.TVDB)
+
+		// Run through filters and get detailed results
+		filterResult := filters.ShowPassesFiltersDetailed(show, e.Config.Filters.Shows)
+		decision.PassedFilters = filterResult.Passed
+
+		// Convert filter checks
+		decision.FilterChecks = make([]FilterCheck, len(filterResult.Checks))
+		for i, check := range filterResult.Checks {
+			decision.FilterChecks[i] = FilterCheck{
+				Name:    check.Name,
+				Passed:  check.Passed,
+				Message: check.Message,
+			}
+		}
+
+		if filterResult.Passed {
+			passedShows = append(passedShows, show)
+			decision.Action = "passed_filters"
+			decision.ActionReason = "Passed all filter checks"
+
+			log.Debugf("'%s (%d)' - PASS all filters (rating: %.1f)", show.Title, show.Year, show.Rating)
+		} else {
+			decision.Action = "rejected"
+			decision.ActionReason = filterResult.Reason
+
+			log.Debugf("'%s (%d)' - FAIL: %s", show.Title, show.Year, filterResult.Reason)
+		}
+
+		decisions = append(decisions, decision)
+	}
+
+	// Calculate scores and ranks for shows that passed filters
+	scoreMap := ScoreAndRankShows(passedShows, e.Config)
+
+	// Update decisions with score and rank information
+	for i := range decisions {
+		if decisions[i].PassedFilters {
+			if scoreInfo, ok := scoreMap[decisions[i].TVDBID]; ok {
+				decisions[i].Score = scoreInfo.Score
+				decisions[i].Rank = scoreInfo.Rank
+			}
+		}
+	}
+
+	// Log rejected items to database so they appear in activity log
+	if e.Database != nil {
+		for _, decision := range decisions {
+			if !decision.PassedFilters {
+				posterURL := GetShowPosterURL(e.Config, decision.TMDBID, decision.TVDBID)
+				e.Database.LogActivity(database.ActivityLog{
+					Timestamp:     time.Now(),
+					JobType:       jobConfig.JobName,
+					MediaType:     "show",
+					Title:         decision.Title,
+					Year:          decision.Year,
+					TMDBID:        decision.TMDBID,
+					TVDBID:        decision.TVDBID,
+					IMDBID:        decision.IMDBID,
+					PosterURL:     posterURL,
+					Score:         decision.Score,
+					Rank:          0, // Not ranked since it didn't pass filters
+					Status:        "rejected",
+					Message:       decision.ActionReason,
+					FilterDetails: FilterChecksToJSON(decision.FilterChecks),
+				})
+			}
+		}
+	}
+
+	log.Infof("Filter evaluation: %d found, %d passed filters, %d rejected",
+		len(shows), len(passedShows), len(shows)-len(passedShows))
+
+	return passedShows, scoreMap, decisions
+}
+
+// GetLastDecisions returns the decisions from the last job run
+func (e *ShowJobExecutor) GetLastDecisions() *JobRunDecisions {
+	return e.lastDecisions
+}
+
+// updateDecisionOutcome updates a decision with the final action taken
+func (e *ShowJobExecutor) updateDecisionOutcome(tvdbID int, action, reason string) {
+	if e.lastDecisions == nil {
+		return
+	}
+
+	for i := range e.lastDecisions.Decisions {
+		if e.lastDecisions.Decisions[i].TVDBID == tvdbID {
+			e.lastDecisions.Decisions[i].Action = action
+			e.lastDecisions.Decisions[i].ActionReason = reason
+
+			// Update summary stats
+			switch action {
+			case "added":
+				e.lastDecisions.Added++
+			case "requested":
+				e.lastDecisions.Requested++
+			case "skipped":
+				e.lastDecisions.Skipped++
+			case "failed":
+				e.lastDecisions.Failed++
+			}
+			break
+		}
+	}
+}
+
+// getFilterDetailsForShow retrieves the filter checks for a show from decisions
+func (e *ShowJobExecutor) getFilterDetailsForShow(tvdbID int) string {
+	if e.lastDecisions == nil {
+		return ""
+	}
+
+	for _, decision := range e.lastDecisions.Decisions {
+		if decision.TVDBID == tvdbID {
+			return FilterChecksToJSON(decision.FilterChecks)
+		}
+	}
+
+	return ""
 }

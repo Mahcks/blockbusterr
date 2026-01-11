@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"sort"
 
 	"github.com/mahcks/blockbusterr/config"
@@ -86,4 +87,41 @@ func ScoreAndRankShows(shows []integrations.Show, cfg *config.Config) map[int]Sc
 	}
 
 	return result
+}
+
+// GetTMDBPosterURL fetches the actual poster URL from TMDB API for activity logs
+func GetTMDBPosterURL(cfg *config.Config, tmdbID int, mediaType string) string {
+	if cfg.TMDB.APIKey == "" || tmdbID == 0 {
+		return ""
+	}
+
+	tmdbClient := integrations.NewTMDB(integrations.TMDBConfig{
+		APIKey: cfg.TMDB.APIKey,
+	})
+
+	ctx := context.Background()
+	var posterURL string
+	var err error
+
+	if mediaType == "movie" {
+		posterURL, err = tmdbClient.GetMoviePosterURL(ctx, tmdbID)
+	} else {
+		posterURL, err = tmdbClient.GetShowPosterURL(ctx, tmdbID)
+	}
+
+	if err != nil {
+		return ""
+	}
+
+	return posterURL
+}
+
+// GetShowPosterURL gets poster for show - only uses TMDB since TVDB images require authentication
+func GetShowPosterURL(cfg *config.Config, tmdbID int, tvdbID int) string {
+	// Only use TMDB (TVDB artworks require authentication)
+	if tmdbID > 0 && cfg.TMDB.APIKey != "" {
+		return GetTMDBPosterURL(cfg, tmdbID, "show")
+	}
+
+	return ""
 }

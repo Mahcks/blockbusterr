@@ -15,20 +15,21 @@ type Database struct {
 }
 
 type ActivityLog struct {
-	ID        int64     `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
-	JobType   string    `json:"job_type"`
-	MediaType string    `json:"media_type"` // "movie" or "show"
-	Title     string    `json:"title"`
-	Year      int       `json:"year"`
-	TMDBID    int       `json:"tmdb_id,omitempty"`
-	TVDBID    int       `json:"tvdb_id,omitempty"`
-	IMDBID    string    `json:"imdb_id,omitempty"`
-	PosterURL string    `json:"poster_url,omitempty"`
-	Score     float64   `json:"score,omitempty"` // Content score (0-1)
-	Rank      int       `json:"rank,omitempty"`  // Rank among all items
-	Status    string    `json:"status"`          // "added", "failed", "skipped"
-	Message   string    `json:"message,omitempty"`
+	ID            int64     `json:"id"`
+	Timestamp     time.Time `json:"timestamp"`
+	JobType       string    `json:"job_type"`
+	MediaType     string    `json:"media_type"` // "movie" or "show"
+	Title         string    `json:"title"`
+	Year          int       `json:"year"`
+	TMDBID        int       `json:"tmdb_id,omitempty"`
+	TVDBID        int       `json:"tvdb_id,omitempty"`
+	IMDBID        string    `json:"imdb_id,omitempty"`
+	PosterURL     string    `json:"poster_url,omitempty"`
+	Score         float64   `json:"score,omitempty"` // Content score (0-1)
+	Rank          int       `json:"rank,omitempty"`  // Rank among all items
+	Status        string    `json:"status"`          // "added", "failed", "skipped"
+	Message       string    `json:"message,omitempty"`
+	FilterDetails string    `json:"filter_details,omitempty"` // JSON array of filter checks
 }
 
 func New(dataDir string) (*Database, error) {
@@ -136,6 +137,20 @@ func (d *Database) initSchema() error {
 		}
 	}
 
+	// Check if filter_details column exists
+	err = d.db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('activity_logs') WHERE name='filter_details'").Scan(&columnCount)
+	if err != nil {
+		return err
+	}
+
+	if columnCount == 0 {
+		// Add filter_details column
+		_, err = d.db.Exec("ALTER TABLE activity_logs ADD COLUMN filter_details TEXT")
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -146,33 +161,19 @@ func (d *Database) Close() error {
 // LogActivity adds a new activity log entry
 func (d *Database) LogActivity(log ActivityLog) error {
 	query := `
-		INSERT INTO activity_logs (timestamp, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO activity_logs (timestamp, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message, filter_details)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	_, err := d.db.Exec(query,
-		log.Timestamp,
-		log.JobType,
-		log.MediaType,
-		log.Title,
-		log.Year,
-		log.TMDBID,
-		log.TVDBID,
-		log.IMDBID,
-		log.PosterURL,
-		log.Score,
-		log.Rank,
-		log.Status,
-		log.Message,
-	)
-
+	_, err := d.db.Exec(query, log.Timestamp, log.JobType, log.MediaType, log.Title, log.Year,
+		log.TMDBID, log.TVDBID, log.IMDBID, log.PosterURL, log.Score, log.Rank, log.Status, log.Message, log.FilterDetails)
 	return err
 }
 
 // GetRecentActivity retrieves recent activity logs
 func (d *Database) GetRecentActivity(limit int) ([]ActivityLog, error) {
 	query := `
-		SELECT id, timestamp, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message
+		SELECT id, timestamp, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message, filter_details
 		FROM activity_logs
 		ORDER BY timestamp DESC
 		LIMIT ?
@@ -188,7 +189,7 @@ func (d *Database) GetRecentActivity(limit int) ([]ActivityLog, error) {
 	for rows.Next() {
 		var log ActivityLog
 		var tmdbID, tvdbID, rank sql.NullInt64
-		var message, imdbID, posterURL sql.NullString
+		var message, imdbID, posterURL, filterDetails sql.NullString
 		var score sql.NullFloat64
 
 		err := rows.Scan(
@@ -206,6 +207,7 @@ func (d *Database) GetRecentActivity(limit int) ([]ActivityLog, error) {
 			&rank,
 			&log.Status,
 			&message,
+			&filterDetails,
 		)
 		if err != nil {
 			return nil, err
@@ -232,6 +234,99 @@ func (d *Database) GetRecentActivity(limit int) ([]ActivityLog, error) {
 		if message.Valid {
 			log.Message = message.String
 		}
+		if filterDetails.Valid {
+			log.FilterDetails = filterDetails.String
+		}
+
+		logs = append(logs, log)
+	}
+
+	return logs, rows.Err()
+}
+
+// GetRecentActivityFiltered retrieves recent activity logs with optional filters
+func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobType string) ([]ActivityLog, error) {
+	query := `
+		SELECT id, timestamp, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message, filter_details
+		FROM activity_logs
+		WHERE 1=1
+	`
+	args := []interface{}{}
+
+	if status != "" {
+		query += " AND status = ?"
+		args = append(args, status)
+	}
+	if mediaType != "" {
+		query += " AND media_type = ?"
+		args = append(args, mediaType)
+	}
+	if jobType != "" {
+		query += " AND job_type = ?"
+		args = append(args, jobType)
+	}
+
+	query += " ORDER BY timestamp DESC LIMIT ?"
+	args = append(args, limit)
+
+	rows, err := d.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var logs []ActivityLog
+	for rows.Next() {
+		var log ActivityLog
+		var tmdbID, tvdbID, rank sql.NullInt64
+		var message, imdbID, posterURL, filterDetails sql.NullString
+		var score sql.NullFloat64
+
+		err := rows.Scan(
+			&log.ID,
+			&log.Timestamp,
+			&log.JobType,
+			&log.MediaType,
+			&log.Title,
+			&log.Year,
+			&tmdbID,
+			&tvdbID,
+			&imdbID,
+			&posterURL,
+			&score,
+			&rank,
+			&log.Status,
+			&message,
+			&filterDetails,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if tmdbID.Valid {
+			log.TMDBID = int(tmdbID.Int64)
+		}
+		if tvdbID.Valid {
+			log.TVDBID = int(tvdbID.Int64)
+		}
+		if imdbID.Valid {
+			log.IMDBID = imdbID.String
+		}
+		if posterURL.Valid {
+			log.PosterURL = posterURL.String
+		}
+		if score.Valid {
+			log.Score = score.Float64
+		}
+		if rank.Valid {
+			log.Rank = int(rank.Int64)
+		}
+		if message.Valid {
+			log.Message = message.String
+		}
+		if filterDetails.Valid {
+			log.FilterDetails = filterDetails.String
+		}
 
 		logs = append(logs, log)
 	}
@@ -245,31 +340,47 @@ func (d *Database) GetActivityStats() (map[string]interface{}, error) {
 
 	// Total added
 	var totalAdded int
-	err := d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE status = 'added'").Scan(&totalAdded)
+	err := d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE status IN ('added', 'requested')").Scan(&totalAdded)
 	if err != nil {
 		return nil, err
 	}
 	stats["total_added"] = totalAdded
 
-	// Movies added
-	var moviesAdded int
-	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE status = 'added' AND media_type = 'movie'").Scan(&moviesAdded)
+	// Total failed
+	var totalFailed int
+	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE status = 'failed'").Scan(&totalFailed)
 	if err != nil {
 		return nil, err
 	}
-	stats["movies_added"] = moviesAdded
+	stats["total_failed"] = totalFailed
 
-	// Shows added
-	var showsAdded int
-	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE status = 'added' AND media_type = 'show'").Scan(&showsAdded)
+	// Total rejected by filters
+	var totalRejected int
+	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE status = 'rejected'").Scan(&totalRejected)
 	if err != nil {
 		return nil, err
 	}
-	stats["shows_added"] = showsAdded
+	stats["total_rejected"] = totalRejected
+
+	// Total movies
+	var totalMovies int
+	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE media_type = 'movie'").Scan(&totalMovies)
+	if err != nil {
+		return nil, err
+	}
+	stats["total_movies"] = totalMovies
+
+	// Total shows
+	var totalShows int
+	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE media_type = 'show'").Scan(&totalShows)
+	if err != nil {
+		return nil, err
+	}
+	stats["total_shows"] = totalShows
 
 	// Recent activity (last 24 hours)
 	var recentAdded int
-	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE status = 'added' AND timestamp > datetime('now', '-24 hours')").Scan(&recentAdded)
+	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE status IN ('added', 'requested') AND timestamp > datetime('now', '-24 hours')").Scan(&recentAdded)
 	if err != nil {
 		return nil, err
 	}

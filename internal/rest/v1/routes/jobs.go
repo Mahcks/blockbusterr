@@ -266,6 +266,82 @@ func AddJobsRoutes(router fiber.Router, gctx global.Context) {
 		}
 	})
 
+	// Get decision details for a specific job's last run
+	router.Get("/jobs/:job/decisions", func(c *fiber.Ctx) error {
+		jobName := c.Params("job")
+		db := gctx.Database()
+
+		// Convert hyphenated job name to underscore format for database
+		dbJobName := jobs.HyphenToUnderscore(jobName)
+
+		// Get recent logs for this job to build decision summary
+		logs, err := db.GetRecentActivityFiltered(100, "", "", dbJobName)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to retrieve job decisions",
+			})
+		}
+
+		if len(logs) == 0 {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"error": "No decisions found for this job",
+			})
+		}
+
+		// Group by run (use timestamp clustering - items within 5 minutes are same run)
+		// For simplicity, just return the most recent run (last 20 items)
+		recentLogs := logs
+		if len(logs) > 20 {
+			recentLogs = logs[:20]
+		}
+
+		// Build decision summary
+		summary := map[string]int{
+			"total":     len(recentLogs),
+			"added":     0,
+			"requested": 0,
+			"skipped":   0,
+			"rejected":  0,
+			"failed":    0,
+		}
+
+		decisions := make([]map[string]interface{}, 0, len(recentLogs))
+		for _, log := range recentLogs {
+			// Update summary stats
+			summary[log.Status]++
+
+			decision := map[string]interface{}{
+				"title":      log.Title,
+				"year":       log.Year,
+				"media_type": log.MediaType,
+				"tmdb_id":    log.TMDBID,
+				"tvdb_id":    log.TVDBID,
+				"imdb_id":    log.IMDBID,
+				"poster_url": log.PosterURL,
+				"score":      log.Score,
+				"rank":       log.Rank,
+				"status":     log.Status,
+				"message":    log.Message,
+				"timestamp":  log.Timestamp,
+			}
+
+			// Parse filter details if available
+			if log.FilterDetails != "" {
+				filterChecks := jobs.FilterChecksFromJSON(log.FilterDetails)
+				decision["filter_checks"] = filterChecks
+			}
+
+			decisions = append(decisions, decision)
+		}
+
+		return c.JSON(fiber.Map{
+			"job":       jobName,
+			"run_time":  recentLogs[0].Timestamp,
+			"summary":   summary,
+			"decisions": decisions,
+		})
+	})
+
 	router.Post("/jobs/preview/:job", func(c *fiber.Ctx) error {
 		jobName := c.Params("job")
 		cfg := gctx.Config()
