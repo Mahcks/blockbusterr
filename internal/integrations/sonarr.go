@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -25,8 +28,28 @@ type SonarrConfig struct {
 
 // NewSonarr creates a new Sonarr API client
 func NewSonarr(config SonarrConfig) *Sonarr {
+	baseURL := config.BaseURL
+
+	// Validate and normalize URL
+	if baseURL != "" {
+		// Check if URL has a scheme
+		if !strings.HasPrefix(baseURL, "http://") && !strings.HasPrefix(baseURL, "https://") {
+			// Default to http:// if no scheme provided
+			baseURL = "http://" + baseURL
+		}
+
+		// Validate URL structure
+		if _, err := url.Parse(baseURL); err != nil {
+			// Invalid URL, keep as-is but will fail on first request
+			baseURL = config.BaseURL
+		}
+
+		// Remove trailing slash
+		baseURL = strings.TrimRight(baseURL, "/")
+	}
+
 	return &Sonarr{
-		baseURL: config.BaseURL,
+		baseURL: baseURL,
 		apiKey:  config.APIKey,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -36,6 +59,10 @@ func NewSonarr(config SonarrConfig) *Sonarr {
 
 // doRequest performs an HTTP request to the Sonarr API
 func (s *Sonarr) doRequest(ctx context.Context, method, endpoint string, body interface{}) (*http.Response, error) {
+	if s.baseURL == "" {
+		return nil, errors.New("Sonarr base URL is not configured")
+	}
+
 	url := fmt.Sprintf("%s/api/v3%s", s.baseURL, endpoint)
 
 	var reqBody io.Reader

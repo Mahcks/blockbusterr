@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -25,8 +28,28 @@ type RadarrConfig struct {
 
 // NewRadarr creates a new Radarr API client
 func NewRadarr(config RadarrConfig) *Radarr {
+	baseURL := config.BaseURL
+
+	// Validate and normalize URL
+	if baseURL != "" {
+		// Check if URL has a scheme
+		if !strings.HasPrefix(baseURL, "http://") && !strings.HasPrefix(baseURL, "https://") {
+			// Default to http:// if no scheme provided
+			baseURL = "http://" + baseURL
+		}
+
+		// Validate URL structure
+		if _, err := url.Parse(baseURL); err != nil {
+			// Invalid URL, keep as-is but will fail on first request
+			baseURL = config.BaseURL
+		}
+
+		// Remove trailing slash
+		baseURL = strings.TrimRight(baseURL, "/")
+	}
+
 	return &Radarr{
-		baseURL: config.BaseURL,
+		baseURL: baseURL,
 		apiKey:  config.APIKey,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -36,6 +59,10 @@ func NewRadarr(config RadarrConfig) *Radarr {
 
 // doRequest performs an HTTP request to the Radarr API
 func (r *Radarr) doRequest(ctx context.Context, method, endpoint string, body interface{}) (*http.Response, error) {
+	if r.baseURL == "" {
+		return nil, errors.New("Radarr base URL is not configured")
+	}
+
 	url := fmt.Sprintf("%s/api/v3%s", r.baseURL, endpoint)
 
 	var reqBody io.Reader

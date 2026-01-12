@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Content Scoring System Demo (LIVE DATA) ===\n")
+	fmt.Println("=== Content Scoring System Demo (LIVE DATA) ===")
 
 	// Set to dev mode to load config.dev.yaml
 	os.Setenv("VERSION", "dev")
@@ -31,7 +31,7 @@ func main() {
 	fmt.Printf("  Recency Window:    %d days\n\n", cfg.Scoring.RecencyDays)
 
 	// Initialize Trakt client
-	fmt.Println("🔍 Fetching live data from Trakt...\n")
+	fmt.Println("🔍 Fetching live data from Trakt...")
 	traktClient := integrations.NewTrakt(integrations.TraktConfig{
 		ClientID:     cfg.Trakt.ClientID,
 		ClientSecret: cfg.Trakt.ClientSecret,
@@ -81,7 +81,7 @@ func main() {
 	}
 
 	// Display results
-	fmt.Println("=== Scored Results (Live Trending Movies) ===\n")
+	fmt.Println("=== Scored Results (Live Trending Movies) ===")
 	fmt.Printf("%-4s %-45s %-6s %-10s %-12s %-8s\n", "Rank", "Title", "Year", "Rating", "Votes", "Score")
 	fmt.Println("──────────────────────────────────────────────────────────────────────────────────────────")
 
@@ -113,7 +113,7 @@ func main() {
 	}
 
 	// Test different presets
-	fmt.Println("\n\n=== Testing Different Presets ===\n")
+	fmt.Println("\n\n=== Testing Different Presets ===")
 
 	presets := []struct {
 		name    string
@@ -176,10 +176,10 @@ func main() {
 	cfg.Scoring.PopularityWeight = origPopular
 	cfg.Scoring.RecencyWeight = origRecency
 
-	fmt.Println("\n=== Summary ===\n")
+	fmt.Println("\n=== Summary ===")
 	fmt.Printf("✅ Successfully scored %d live movies from Trakt\n", len(movies))
 	fmt.Println("💡 Different presets show how weight changes affect rankings")
-	fmt.Println("📈 This is the same algorithm used by scheduled jobs\n")
+	fmt.Println("📈 This is the same algorithm used by scheduled jobs")
 }
 
 func truncate(s string, length int) string {
