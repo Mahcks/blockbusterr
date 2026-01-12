@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -148,6 +149,27 @@ func PreviewTrendingMovies(cfg *config.Config, db *database.Database) PreviewRes
 
 	response.TotalFound = len(trendingMovies)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingMovies []integrations.RadarrMovie
+
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing movies once
+		radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+			BaseURL: cfg.Radarr.URL,
+			APIKey:  cfg.Radarr.APIKey,
+		})
+		existingMovies, _ = radarrClient.GetMovies(ctx)
+	}
+
 	// Check each movie against filters and existing content
 	for _, tm := range trendingMovies {
 		movie := tm.Movie
@@ -165,43 +187,23 @@ func PreviewTrendingMovies(cfg *config.Config, db *database.Database) PreviewRes
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			mediaInfo, err := jellyseerrClient.GetMovieInfo(movie.IDs.TMDB)
 			if err == nil && mediaInfo.HasMediaInfo() {
 				item.AlreadyExists = true
 				response.AlreadyExists++
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Radarr
-			radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-				BaseURL: cfg.Radarr.URL,
-				APIKey:  cfg.Radarr.APIKey,
-			})
-			existingMovies, err := radarrClient.GetMovies(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingMovies {
-					if existing.TmdbID == movie.IDs.TMDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingMovies {
+				if existing.TmdbID == movie.IDs.TMDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
-				}
-			} else {
-				response.WillAdd++
+			}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			}
 		}
 
@@ -247,6 +249,27 @@ func PreviewTrendingShows(cfg *config.Config, db *database.Database) PreviewResp
 
 	response.TotalFound = len(trendingShows)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingSeries []integrations.SonarrSeries
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing series once
+		sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+			BaseURL: cfg.Sonarr.URL,
+			APIKey:  cfg.Sonarr.APIKey,
+		})
+		existingSeries, _ = sonarrClient.GetSeries(ctx)
+	}
+
 	// Check each show against filters and existing content
 	for _, ts := range trendingShows {
 		show := ts.Show
@@ -264,13 +287,6 @@ func PreviewTrendingShows(cfg *config.Config, db *database.Database) PreviewResp
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			if show.IDs.TMDB > 0 {
 				mediaInfo, err := jellyseerrClient.GetShowInfo(show.IDs.TMDB)
 				if err == nil && mediaInfo.HasMediaInfo() {
@@ -279,30 +295,19 @@ func PreviewTrendingShows(cfg *config.Config, db *database.Database) PreviewResp
 				} else {
 					response.WillAdd++
 				}
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Sonarr
-			sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-				BaseURL: cfg.Sonarr.URL,
-				APIKey:  cfg.Sonarr.APIKey,
-			})
-			existingSeries, err := sonarrClient.GetSeries(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingSeries {
-					if existing.TvdbID == show.IDs.TVDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingSeries {
+				if existing.TvdbID == show.IDs.TVDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
-				}
+			}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}
@@ -350,6 +355,27 @@ func PreviewPopularMovies(cfg *config.Config, db *database.Database) PreviewResp
 
 	response.TotalFound = len(popularMovies)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingMovies []integrations.RadarrMovie
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing movies once
+		radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+			BaseURL: cfg.Radarr.URL,
+			APIKey:  cfg.Radarr.APIKey,
+		})
+		existingMovies, _ = radarrClient.GetMovies(ctx)
+	}
+
 	// Check each movie against filters and existing content
 	for i, movie := range popularMovies {
 		item := createMoviePreviewItem(cfg, movie, len(popularMovies)-i) // Use reverse index as popularity
@@ -366,41 +392,23 @@ func PreviewPopularMovies(cfg *config.Config, db *database.Database) PreviewResp
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			mediaInfo, err := jellyseerrClient.GetMovieInfo(movie.IDs.TMDB)
 			if err == nil && mediaInfo.HasMediaInfo() {
 				item.AlreadyExists = true
 				response.AlreadyExists++
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Radarr
-			radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-				BaseURL: cfg.Radarr.URL,
-				APIKey:  cfg.Radarr.APIKey,
-			})
-			existingMovies, err := radarrClient.GetMovies(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingMovies {
-					if existing.TmdbID == movie.IDs.TMDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingMovies {
+				if existing.TmdbID == movie.IDs.TMDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
-				}
+			}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}
@@ -448,6 +456,27 @@ func PreviewPopularShows(cfg *config.Config, db *database.Database) PreviewRespo
 
 	response.TotalFound = len(popularShows)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingSeries []integrations.SonarrSeries
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing series once
+		sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+			BaseURL: cfg.Sonarr.URL,
+			APIKey:  cfg.Sonarr.APIKey,
+		})
+		existingSeries, _ = sonarrClient.GetSeries(ctx)
+	}
+
 	// Check each show against filters and existing content
 	for i, show := range popularShows {
 		item := createShowPreviewItem(cfg, show, len(popularShows)-i)
@@ -464,13 +493,6 @@ func PreviewPopularShows(cfg *config.Config, db *database.Database) PreviewRespo
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			if show.IDs.TMDB > 0 {
 				mediaInfo, err := jellyseerrClient.GetShowInfo(show.IDs.TMDB)
 				if err == nil && mediaInfo.HasMediaInfo() {
@@ -479,32 +501,19 @@ func PreviewPopularShows(cfg *config.Config, db *database.Database) PreviewRespo
 				} else {
 					response.WillAdd++
 				}
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Sonarr
-			sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-				BaseURL: cfg.Sonarr.URL,
-				APIKey:  cfg.Sonarr.APIKey,
-			})
-			existingSeries, err := sonarrClient.GetSeries(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingSeries {
-					if existing.TvdbID == show.IDs.TVDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingSeries {
+				if existing.TvdbID == show.IDs.TVDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
-				}
-			} else {
-				response.WillAdd++
+			}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			}
 		}
 
@@ -550,6 +559,27 @@ func PreviewBoxOffice(cfg *config.Config, db *database.Database) PreviewResponse
 
 	response.TotalFound = len(boxOfficeMovies)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingMovies []integrations.RadarrMovie
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing movies once
+		radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+			BaseURL: cfg.Radarr.URL,
+			APIKey:  cfg.Radarr.APIKey,
+		})
+		existingMovies, _ = radarrClient.GetMovies(ctx)
+	}
+
 	// Check each movie against filters and existing content
 	for _, bom := range boxOfficeMovies {
 		movie := bom.Movie
@@ -567,43 +597,23 @@ func PreviewBoxOffice(cfg *config.Config, db *database.Database) PreviewResponse
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			mediaInfo, err := jellyseerrClient.GetMovieInfo(movie.IDs.TMDB)
 			if err == nil && mediaInfo.HasMediaInfo() {
 				item.AlreadyExists = true
 				response.AlreadyExists++
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Radarr
-			radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-				BaseURL: cfg.Radarr.URL,
-				APIKey:  cfg.Radarr.APIKey,
-			})
-			existingMovies, err := radarrClient.GetMovies(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingMovies {
-					if existing.TmdbID == movie.IDs.TMDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingMovies {
+				if existing.TmdbID == movie.IDs.TMDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
-				}
-			} else {
-				response.WillAdd++
+			}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			}
 		}
 
@@ -649,6 +659,27 @@ func PreviewFavoritedMovies(cfg *config.Config, db *database.Database) PreviewRe
 
 	response.TotalFound = len(favoritedMovies)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingMovies []integrations.RadarrMovie
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing movies once
+		radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+			BaseURL: cfg.Radarr.URL,
+			APIKey:  cfg.Radarr.APIKey,
+		})
+		existingMovies, _ = radarrClient.GetMovies(ctx)
+	}
+
 	// Check each movie against filters and existing content
 	for _, fm := range favoritedMovies {
 		movie := fm.Movie
@@ -666,41 +697,23 @@ func PreviewFavoritedMovies(cfg *config.Config, db *database.Database) PreviewRe
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			mediaInfo, err := jellyseerrClient.GetMovieInfo(movie.IDs.TMDB)
 			if err == nil && mediaInfo.HasMediaInfo() {
 				item.AlreadyExists = true
 				response.AlreadyExists++
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Radarr
-			radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-				BaseURL: cfg.Radarr.URL,
-				APIKey:  cfg.Radarr.APIKey,
-			})
-			existingMovies, err := radarrClient.GetMovies(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingMovies {
-					if existing.TmdbID == movie.IDs.TMDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingMovies {
+				if existing.TmdbID == movie.IDs.TMDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
-				}
+			}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}
@@ -748,6 +761,27 @@ func PreviewPlayedMovies(cfg *config.Config, db *database.Database) PreviewRespo
 
 	response.TotalFound = len(playedMovies)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingMovies []integrations.RadarrMovie
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing movies once
+		radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+			BaseURL: cfg.Radarr.URL,
+			APIKey:  cfg.Radarr.APIKey,
+		})
+		existingMovies, _ = radarrClient.GetMovies(ctx)
+	}
+
 	// Check each movie against filters and existing content
 	for _, pm := range playedMovies {
 		movie := pm.Movie
@@ -765,43 +799,23 @@ func PreviewPlayedMovies(cfg *config.Config, db *database.Database) PreviewRespo
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			mediaInfo, err := jellyseerrClient.GetMovieInfo(movie.IDs.TMDB)
 			if err == nil && mediaInfo.HasMediaInfo() {
 				item.AlreadyExists = true
 				response.AlreadyExists++
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Radarr
-			radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-				BaseURL: cfg.Radarr.URL,
-				APIKey:  cfg.Radarr.APIKey,
-			})
-			existingMovies, err := radarrClient.GetMovies(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingMovies {
-					if existing.TmdbID == movie.IDs.TMDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingMovies {
+				if existing.TmdbID == movie.IDs.TMDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
-				}
-			} else {
-				response.WillAdd++
+			}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			}
 		}
 
@@ -847,6 +861,27 @@ func PreviewWatchedMovies(cfg *config.Config, db *database.Database) PreviewResp
 
 	response.TotalFound = len(watchedMovies)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingMovies []integrations.RadarrMovie
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing movies once
+		radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+			BaseURL: cfg.Radarr.URL,
+			APIKey:  cfg.Radarr.APIKey,
+		})
+		existingMovies, _ = radarrClient.GetMovies(ctx)
+	}
+
 	// Check each movie against filters and existing content
 	for _, wm := range watchedMovies {
 		movie := wm.Movie
@@ -864,41 +899,23 @@ func PreviewWatchedMovies(cfg *config.Config, db *database.Database) PreviewResp
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			mediaInfo, err := jellyseerrClient.GetMovieInfo(movie.IDs.TMDB)
 			if err == nil && mediaInfo.HasMediaInfo() {
 				item.AlreadyExists = true
 				response.AlreadyExists++
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Radarr
-			radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-				BaseURL: cfg.Radarr.URL,
-				APIKey:  cfg.Radarr.APIKey,
-			})
-			existingMovies, err := radarrClient.GetMovies(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingMovies {
-					if existing.TmdbID == movie.IDs.TMDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingMovies {
+				if existing.TmdbID == movie.IDs.TMDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
 				}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}
@@ -946,6 +963,27 @@ func PreviewCollectedMovies(cfg *config.Config, db *database.Database) PreviewRe
 
 	response.TotalFound = len(collectedMovies)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingMovies []integrations.RadarrMovie
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing movies once
+		radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+			BaseURL: cfg.Radarr.URL,
+			APIKey:  cfg.Radarr.APIKey,
+		})
+		existingMovies, _ = radarrClient.GetMovies(ctx)
+	}
+
 	// Check each movie against filters and existing content
 	for _, cm := range collectedMovies {
 		movie := cm.Movie
@@ -963,41 +1001,23 @@ func PreviewCollectedMovies(cfg *config.Config, db *database.Database) PreviewRe
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			mediaInfo, err := jellyseerrClient.GetMovieInfo(movie.IDs.TMDB)
 			if err == nil && mediaInfo.HasMediaInfo() {
 				item.AlreadyExists = true
 				response.AlreadyExists++
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Radarr
-			radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-				BaseURL: cfg.Radarr.URL,
-				APIKey:  cfg.Radarr.APIKey,
-			})
-			existingMovies, err := radarrClient.GetMovies(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingMovies {
-					if existing.TmdbID == movie.IDs.TMDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingMovies {
+				if existing.TmdbID == movie.IDs.TMDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
 				}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}
@@ -1045,6 +1065,27 @@ func PreviewAnticipatedMovies(cfg *config.Config, db *database.Database) Preview
 
 	response.TotalFound = len(anticipatedMovies)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingMovies []integrations.RadarrMovie
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing movies once
+		radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+			BaseURL: cfg.Radarr.URL,
+			APIKey:  cfg.Radarr.APIKey,
+		})
+		existingMovies, _ = radarrClient.GetMovies(ctx)
+	}
+
 	// Check each movie against filters and existing content
 	for _, am := range anticipatedMovies {
 		movie := am.Movie
@@ -1062,41 +1103,23 @@ func PreviewAnticipatedMovies(cfg *config.Config, db *database.Database) Preview
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			mediaInfo, err := jellyseerrClient.GetMovieInfo(movie.IDs.TMDB)
 			if err == nil && mediaInfo.HasMediaInfo() {
 				item.AlreadyExists = true
 				response.AlreadyExists++
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Radarr
-			radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-				BaseURL: cfg.Radarr.URL,
-				APIKey:  cfg.Radarr.APIKey,
-			})
-			existingMovies, err := radarrClient.GetMovies(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingMovies {
-					if existing.TmdbID == movie.IDs.TMDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingMovies {
+				if existing.TmdbID == movie.IDs.TMDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
 				}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}
@@ -1144,6 +1167,27 @@ func PreviewFavoritedShows(cfg *config.Config, db *database.Database) PreviewRes
 
 	response.TotalFound = len(favoritedShows)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingSeries []integrations.SonarrSeries
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing series once
+		sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+			BaseURL: cfg.Sonarr.URL,
+			APIKey:  cfg.Sonarr.APIKey,
+		})
+		existingSeries, _ = sonarrClient.GetSeries(ctx)
+	}
+
 	// Check each show against filters and existing content
 	for _, fs := range favoritedShows {
 		show := fs.Show
@@ -1161,13 +1205,6 @@ func PreviewFavoritedShows(cfg *config.Config, db *database.Database) PreviewRes
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			if show.IDs.TMDB > 0 {
 				mediaInfo, err := jellyseerrClient.GetShowInfo(show.IDs.TMDB)
 				if err == nil && mediaInfo.HasMediaInfo() {
@@ -1176,30 +1213,19 @@ func PreviewFavoritedShows(cfg *config.Config, db *database.Database) PreviewRes
 				} else {
 					response.WillAdd++
 				}
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Sonarr
-			sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-				BaseURL: cfg.Sonarr.URL,
-				APIKey:  cfg.Sonarr.APIKey,
-			})
-			existingSeries, err := sonarrClient.GetSeries(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingSeries {
-					if existing.TvdbID == show.IDs.TVDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingSeries {
+				if existing.TvdbID == show.IDs.TVDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
 				}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}
@@ -1247,6 +1273,27 @@ func PreviewPlayedShows(cfg *config.Config, db *database.Database) PreviewRespon
 
 	response.TotalFound = len(playedShows)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingSeries []integrations.SonarrSeries
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing series once
+		sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+			BaseURL: cfg.Sonarr.URL,
+			APIKey:  cfg.Sonarr.APIKey,
+		})
+		existingSeries, _ = sonarrClient.GetSeries(ctx)
+	}
+
 	// Check each show against filters and existing content
 	for _, ps := range playedShows {
 		show := ps.Show
@@ -1264,13 +1311,6 @@ func PreviewPlayedShows(cfg *config.Config, db *database.Database) PreviewRespon
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			if show.IDs.TMDB > 0 {
 				mediaInfo, err := jellyseerrClient.GetShowInfo(show.IDs.TMDB)
 				if err == nil && mediaInfo.HasMediaInfo() {
@@ -1279,30 +1319,19 @@ func PreviewPlayedShows(cfg *config.Config, db *database.Database) PreviewRespon
 				} else {
 					response.WillAdd++
 				}
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Sonarr
-			sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-				BaseURL: cfg.Sonarr.URL,
-				APIKey:  cfg.Sonarr.APIKey,
-			})
-			existingSeries, err := sonarrClient.GetSeries(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingSeries {
-					if existing.TvdbID == show.IDs.TVDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingSeries {
+				if existing.TvdbID == show.IDs.TVDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
 				}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}
@@ -1350,6 +1379,27 @@ func PreviewWatchedShows(cfg *config.Config, db *database.Database) PreviewRespo
 
 	response.TotalFound = len(watchedShows)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingSeries []integrations.SonarrSeries
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing series once
+		sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+			BaseURL: cfg.Sonarr.URL,
+			APIKey:  cfg.Sonarr.APIKey,
+		})
+		existingSeries, _ = sonarrClient.GetSeries(ctx)
+	}
+
 	// Check each show against filters and existing content
 	for _, ws := range watchedShows {
 		show := ws.Show
@@ -1367,13 +1417,6 @@ func PreviewWatchedShows(cfg *config.Config, db *database.Database) PreviewRespo
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			if show.IDs.TMDB > 0 {
 				mediaInfo, err := jellyseerrClient.GetShowInfo(show.IDs.TMDB)
 				if err == nil && mediaInfo.HasMediaInfo() {
@@ -1382,32 +1425,19 @@ func PreviewWatchedShows(cfg *config.Config, db *database.Database) PreviewRespo
 				} else {
 					response.WillAdd++
 				}
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Sonarr
-			sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-				BaseURL: cfg.Sonarr.URL,
-				APIKey:  cfg.Sonarr.APIKey,
-			})
-			existingSeries, err := sonarrClient.GetSeries(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingSeries {
-					if existing.TvdbID == show.IDs.TVDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingSeries {
+				if existing.TvdbID == show.IDs.TVDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
-				}
-			} else {
-				response.WillAdd++
+			}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			}
 		}
 
@@ -1453,6 +1483,27 @@ func PreviewCollectedShows(cfg *config.Config, db *database.Database) PreviewRes
 
 	response.TotalFound = len(collectedShows)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingSeries []integrations.SonarrSeries
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing series once
+		sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+			BaseURL: cfg.Sonarr.URL,
+			APIKey:  cfg.Sonarr.APIKey,
+		})
+		existingSeries, _ = sonarrClient.GetSeries(ctx)
+	}
+
 	// Check each show against filters and existing content
 	for _, cs := range collectedShows {
 		show := cs.Show
@@ -1470,13 +1521,6 @@ func PreviewCollectedShows(cfg *config.Config, db *database.Database) PreviewRes
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			if show.IDs.TMDB > 0 {
 				mediaInfo, err := jellyseerrClient.GetShowInfo(show.IDs.TMDB)
 				if err == nil && mediaInfo.HasMediaInfo() {
@@ -1485,30 +1529,19 @@ func PreviewCollectedShows(cfg *config.Config, db *database.Database) PreviewRes
 				} else {
 					response.WillAdd++
 				}
-			} else {
-				response.WillAdd++
 			}
 		} else {
-			// Direct mode - check Sonarr
-			sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-				BaseURL: cfg.Sonarr.URL,
-				APIKey:  cfg.Sonarr.APIKey,
-			})
-			existingSeries, err := sonarrClient.GetSeries(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingSeries {
-					if existing.TvdbID == show.IDs.TVDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingSeries {
+				if existing.TvdbID == show.IDs.TVDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
 				}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}
@@ -1556,6 +1589,27 @@ func PreviewAnticipatedShows(cfg *config.Config, db *database.Database) PreviewR
 
 	response.TotalFound = len(anticipatedShows)
 
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingSeries []integrations.SonarrSeries
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing series once
+		sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+			BaseURL: cfg.Sonarr.URL,
+			APIKey:  cfg.Sonarr.APIKey,
+		})
+		existingSeries, _ = sonarrClient.GetSeries(ctx)
+	}
+
 	// Check each show against filters and existing content
 	for _, as := range anticipatedShows {
 		show := as.Show
@@ -1573,13 +1627,6 @@ func PreviewAnticipatedShows(cfg *config.Config, db *database.Database) PreviewR
 
 		// Check if already exists (mode-specific)
 		if mode == "jellyseerr" {
-			jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
-				URL:             cfg.Jellyseerr.URL,
-				APIKey:          cfg.Jellyseerr.APIKey,
-				UserID:          cfg.Jellyseerr.UserID,
-				RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
-				RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
-			})
 			if show.IDs.TMDB > 0 {
 				mediaInfo, err := jellyseerrClient.GetShowInfo(show.IDs.TMDB)
 				if err == nil && mediaInfo.HasMediaInfo() {
@@ -1588,30 +1635,211 @@ func PreviewAnticipatedShows(cfg *config.Config, db *database.Database) PreviewR
 				} else {
 					response.WillAdd++
 				}
+			}
+		} else {
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingSeries {
+				if existing.TvdbID == show.IDs.TVDB {
+					exists = true
+					break
+				}
+				}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}
+		}
+
+		response.Items = append(response.Items, item)
+	}
+
+	return response
+}
+
+// PreviewSmartPopularMovies previews what the smart popular movies job would add
+func PreviewSmartPopularMovies(cfg *config.Config, db *database.Database) PreviewResponse {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	response := PreviewResponse{
+		HasPosters: hasTMDBConfigured(cfg),
+		JobName:    "smart_popular_movies",
+		Items:      []PreviewItem{},
+	}
+
+	mode := DetermineMode(cfg.Jobs.SmartPopularMovies.Mode, cfg.Jobs.Mode)
+	response.Mode = mode
+
+	traktClient := integrations.NewTrakt(integrations.TraktConfig{
+		ClientID:     cfg.Trakt.ClientID,
+		ClientSecret: cfg.Trakt.ClientSecret,
+	})
+
+	popularMovies, err := traktClient.GetPopularMovies(ctx, cfg.Jobs.SmartPopularMovies.Limit)
+	if err != nil {
+		log.Errorf("Failed to fetch popular movies: %v", err)
+		return response
+	}
+
+	response.TotalFound = len(popularMovies)
+	percentiles := filters.CalculateMoviePopularityPercentiles(popularMovies)
+
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingMovies []integrations.RadarrMovie
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing movies once
+		radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+			BaseURL: cfg.Radarr.URL,
+			APIKey:  cfg.Radarr.APIKey,
+		})
+		existingMovies, _ = radarrClient.GetMovies(ctx)
+	}
+
+	for i, movie := range popularMovies {
+		item := createMoviePreviewItem(cfg, movie, len(popularMovies)-i)
+
+		percentile := percentiles[movie.IDs.TMDB]
+		adaptiveMinRating := filters.CalculateAdaptiveRating(
+			cfg.Jobs.SmartPopularMovies.BaseMinRating,
+			percentile,
+			cfg.Jobs.SmartPopularMovies.AdjustmentFactor,
+		)
+
+		filterResult := filters.MoviePassesAdaptiveFilters(movie, cfg.Filters.Movies, adaptiveMinRating)
+		if !filterResult.Passed {
+			item.FilteredOut = true
+			item.FilterReason = fmt.Sprintf("%s (%.0f%%, %.1f)", filterResult.Reason, percentile*100, adaptiveMinRating)
+			response.FilteredOut++
+			response.Items = append(response.Items, item)
+			continue
+		}
+
+		if mode == "jellyseerr" {
+			mediaInfo, err := jellyseerrClient.GetMovieInfo(movie.IDs.TMDB)
+			if err == nil && mediaInfo.HasMediaInfo() {
+				item.AlreadyExists = true
+				response.AlreadyExists++
+			}
 		} else {
-			// Direct mode - check Sonarr
-			sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-				BaseURL: cfg.Sonarr.URL,
-				APIKey:  cfg.Sonarr.APIKey,
-			})
-			existingSeries, err := sonarrClient.GetSeries(ctx)
-			if err == nil {
-				exists := false
-				for _, existing := range existingSeries {
-					if existing.TvdbID == show.IDs.TVDB {
-						exists = true
-						break
-					}
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingMovies {
+				if existing.TmdbID == movie.IDs.TMDB {
+					exists = true
+					break
 				}
-				item.AlreadyExists = exists
-				if exists {
-					response.AlreadyExists++
-				} else {
-					response.WillAdd++
+			}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
+			}
+		}
+
+		response.Items = append(response.Items, item)
+	}
+
+	return response
+}
+
+// PreviewSmartPopularShows previews what the smart popular shows job would add
+func PreviewSmartPopularShows(cfg *config.Config, db *database.Database) PreviewResponse {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	response := PreviewResponse{
+		HasPosters: hasTMDBConfigured(cfg),
+		JobName:    "smart_popular_shows",
+		Items:      []PreviewItem{},
+	}
+
+	mode := DetermineMode(cfg.Jobs.SmartPopularShows.Mode, cfg.Jobs.Mode)
+	response.Mode = mode
+
+	traktClient := integrations.NewTrakt(integrations.TraktConfig{
+		ClientID:     cfg.Trakt.ClientID,
+		ClientSecret: cfg.Trakt.ClientSecret,
+	})
+
+	popularShows, err := traktClient.GetPopularShows(ctx, cfg.Jobs.SmartPopularShows.Limit)
+	if err != nil {
+		log.Errorf("Failed to fetch popular shows: %v", err)
+		return response
+	}
+
+	response.TotalFound = len(popularShows)
+	percentiles := filters.CalculateShowPopularityPercentiles(popularShows)
+
+	// Create clients once before the loop
+	var jellyseerrClient *integrations.Jellyseerr
+	var existingSeries []integrations.SonarrSeries
+	
+	if mode == "jellyseerr" {
+		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+	} else {
+		// Direct mode - fetch all existing series once
+		sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+			BaseURL: cfg.Sonarr.URL,
+			APIKey:  cfg.Sonarr.APIKey,
+		})
+		existingSeries, _ = sonarrClient.GetSeries(ctx)
+	}
+
+	for i, show := range popularShows {
+		item := createShowPreviewItem(cfg, show, len(popularShows)-i)
+
+		percentile := percentiles[show.IDs.TMDB]
+		adaptiveMinRating := filters.CalculateAdaptiveRating(
+			cfg.Jobs.SmartPopularShows.BaseMinRating,
+			percentile,
+			cfg.Jobs.SmartPopularShows.AdjustmentFactor,
+		)
+
+		filterResult := filters.ShowPassesAdaptiveFilters(show, cfg.Filters.Shows, adaptiveMinRating)
+		if !filterResult.Passed {
+			item.FilteredOut = true
+			item.FilterReason = fmt.Sprintf("%s (%.0f%%, %.1f)", filterResult.Reason, percentile*100, adaptiveMinRating)
+			response.FilteredOut++
+			response.Items = append(response.Items, item)
+			continue
+		}
+
+		if mode == "jellyseerr" {
+			mediaInfo, err := jellyseerrClient.GetShowInfo(show.IDs.TMDB)
+			if err == nil && mediaInfo.HasMediaInfo() {
+				item.AlreadyExists = true
+				response.AlreadyExists++
+			}
+		} else {
+			// Direct mode - check against cached list
+			exists := false
+			for _, existing := range existingSeries {
+				if existing.TvdbID == show.IDs.TVDB {
+					exists = true
+					break
 				}
+			}
+			item.AlreadyExists = exists
+			if exists {
+				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}

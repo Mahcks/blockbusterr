@@ -259,6 +259,28 @@ func AddJobsRoutes(router fiber.Router, gctx global.Context) {
 				"message": "Anticipated shows job triggered",
 			})
 
+		case "smart-popular-movies":
+			if !cfg.Jobs.SmartPopularMovies.Enabled {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error": "Smart popular movies job is disabled",
+				})
+			}
+			go jobs.RunSmartPopularMovies(cfg, gctx.Database(), dryRun)
+			return c.JSON(fiber.Map{
+				"message": "Smart popular movies job triggered",
+			})
+
+		case "smart-popular-shows":
+			if !cfg.Jobs.SmartPopularShows.Enabled {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error": "Smart popular shows job is disabled",
+				})
+			}
+			go jobs.RunSmartPopularShows(cfg, gctx.Database(), dryRun)
+			return c.JSON(fiber.Map{
+				"message": "Smart popular shows job triggered",
+			})
+
 		default:
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"error": "Job not found",
@@ -480,6 +502,24 @@ func AddJobsRoutes(router fiber.Router, gctx global.Context) {
 				})
 			}
 			preview := jobs.PreviewAnticipatedShows(cfg, gctx.Database())
+			return c.JSON(preview)
+
+		case "smart-popular-movies":
+			if !cfg.Jobs.SmartPopularMovies.Enabled {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error": "Smart popular movies job is disabled",
+				})
+			}
+			preview := jobs.PreviewSmartPopularMovies(cfg, gctx.Database())
+			return c.JSON(preview)
+
+		case "smart-popular-shows":
+			if !cfg.Jobs.SmartPopularShows.Enabled {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error": "Smart popular shows job is disabled",
+				})
+			}
+			preview := jobs.PreviewSmartPopularShows(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		default:

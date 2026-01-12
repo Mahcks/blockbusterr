@@ -85,11 +85,12 @@ Managing Trakt lists manually in Radarr/Sonarr is tedious. You have to:
 
 ## Features
 
-### 15 Automated Jobs
+### 17 Automated Jobs
 
 Pull content from Trakt automatically:
 - **Trending** - What's hot right now
 - **Popular** - Most watched this week
+- **Smart Popular** - Popular content with adaptive rating thresholds ✨ NEW
 - **Box Office** - Top movies at the box office
 - **Favorited** - Most favorited (weekly/monthly/yearly/all-time)
 - **Played** - Most played by time period
@@ -97,7 +98,37 @@ Pull content from Trakt automatically:
 - **Collected** - Most collected by time period
 - **Anticipated** - Most anticipated upcoming releases
 
-All jobs work for both movies and TV shows (15 total).
+All jobs work for both movies and TV shows (17 total).
+
+### Smart Popular Jobs (Adaptive Rating Thresholds) ✨
+
+Smart Popular jobs use **adaptive rating thresholds** based on popularity percentiles. Instead of a fixed rating requirement, the threshold adjusts automatically:
+
+- **High popularity content** (lots of votes) → Lower rating requirement
+- **Low popularity content** (few votes) → Higher rating requirement
+
+**Why?** Popular blockbusters with thousands of votes tend toward average ratings (6-7) even when great. Hidden gems with fewer votes need higher ratings to prove quality.
+
+**Formula**: `threshold = base_min_rating - ((percentile - 0.5) * adjustment_factor)`
+
+**Example Configuration**:
+```yaml
+smart_popular_movies:
+  enabled: true
+  limit: 20
+  base_min_rating: 7.0      # Baseline rating requirement
+  adjustment_factor: 2.0     # How much to adjust (0.5 = mild, 2.0 = aggressive)
+```
+
+**Result with above config**:
+- Movie at 90th percentile (very popular): needs **6.2** rating
+- Movie at 50th percentile (average): needs **7.0** rating
+- Movie at 10th percentile (niche): needs **7.8** rating
+
+**Use Cases**:
+- Get popular blockbusters without missing them due to average ratings
+- Maintain quality standards for lesser-known content
+- Balance mainstream appeal with quality control
 
 ### Job Preview
 

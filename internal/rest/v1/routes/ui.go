@@ -453,6 +453,60 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			}
 		}
 
+		// Movies - Smart Popular
+		if hasField("jobs.smart_popular_movies.enabled") || hasField("jobs.smart_popular_movies.limit") || hasField("jobs.smart_popular_movies.base_min_rating") || hasField("jobs.smart_popular_movies.adjustment_factor") {
+			cfg.Jobs.SmartPopularMovies.Enabled = c.FormValue("jobs.smart_popular_movies.enabled") == "on"
+			if limit := c.FormValue("jobs.smart_popular_movies.limit"); limit != "" {
+				if val, err := strconv.Atoi(limit); err == nil {
+					cfg.Jobs.SmartPopularMovies.Limit = val
+				}
+			}
+			if baseRating := c.FormValue("jobs.smart_popular_movies.base_min_rating"); baseRating != "" {
+				if val, err := strconv.ParseFloat(baseRating, 64); err == nil {
+					cfg.Jobs.SmartPopularMovies.BaseMinRating = val
+				}
+			}
+			if adjustmentFactor := c.FormValue("jobs.smart_popular_movies.adjustment_factor"); adjustmentFactor != "" {
+				if val, err := strconv.ParseFloat(adjustmentFactor, 64); err == nil {
+					cfg.Jobs.SmartPopularMovies.AdjustmentFactor = val
+				}
+			}
+			// Per-job sync interval and mode
+			if hasField("jobs.smart_popular_movies.sync_interval") {
+				cfg.Jobs.SmartPopularMovies.SyncInterval = c.FormValue("jobs.smart_popular_movies.sync_interval")
+			}
+			if hasField("jobs.smart_popular_movies.mode") {
+				cfg.Jobs.SmartPopularMovies.Mode = c.FormValue("jobs.smart_popular_movies.mode")
+			}
+		}
+
+		// Shows - Smart Popular
+		if hasField("jobs.smart_popular_shows.enabled") || hasField("jobs.smart_popular_shows.limit") || hasField("jobs.smart_popular_shows.base_min_rating") || hasField("jobs.smart_popular_shows.adjustment_factor") {
+			cfg.Jobs.SmartPopularShows.Enabled = c.FormValue("jobs.smart_popular_shows.enabled") == "on"
+			if limit := c.FormValue("jobs.smart_popular_shows.limit"); limit != "" {
+				if val, err := strconv.Atoi(limit); err == nil {
+					cfg.Jobs.SmartPopularShows.Limit = val
+				}
+			}
+			if baseRating := c.FormValue("jobs.smart_popular_shows.base_min_rating"); baseRating != "" {
+				if val, err := strconv.ParseFloat(baseRating, 64); err == nil {
+					cfg.Jobs.SmartPopularShows.BaseMinRating = val
+				}
+			}
+			if adjustmentFactor := c.FormValue("jobs.smart_popular_shows.adjustment_factor"); adjustmentFactor != "" {
+				if val, err := strconv.ParseFloat(adjustmentFactor, 64); err == nil {
+					cfg.Jobs.SmartPopularShows.AdjustmentFactor = val
+				}
+			}
+			// Per-job sync interval and mode
+			if hasField("jobs.smart_popular_shows.sync_interval") {
+				cfg.Jobs.SmartPopularShows.SyncInterval = c.FormValue("jobs.smart_popular_shows.sync_interval")
+			}
+			if hasField("jobs.smart_popular_shows.mode") {
+				cfg.Jobs.SmartPopularShows.Mode = c.FormValue("jobs.smart_popular_shows.mode")
+			}
+		}
+
 		// Save config to file
 		if err := cfg.Save(); err != nil {
 			// If config file doesn't exist, try creating it in the right location
