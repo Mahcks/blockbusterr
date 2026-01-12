@@ -252,7 +252,7 @@ func PreviewTrendingShows(cfg *config.Config, db *database.Database) PreviewResp
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingSeries []integrations.SonarrSeries
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -358,7 +358,7 @@ func PreviewPopularMovies(cfg *config.Config, db *database.Database) PreviewResp
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingMovies []integrations.RadarrMovie
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -459,7 +459,7 @@ func PreviewPopularShows(cfg *config.Config, db *database.Database) PreviewRespo
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingSeries []integrations.SonarrSeries
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -562,7 +562,7 @@ func PreviewBoxOffice(cfg *config.Config, db *database.Database) PreviewResponse
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingMovies []integrations.RadarrMovie
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -662,7 +662,7 @@ func PreviewFavoritedMovies(cfg *config.Config, db *database.Database) PreviewRe
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingMovies []integrations.RadarrMovie
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -764,7 +764,7 @@ func PreviewPlayedMovies(cfg *config.Config, db *database.Database) PreviewRespo
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingMovies []integrations.RadarrMovie
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -864,7 +864,7 @@ func PreviewWatchedMovies(cfg *config.Config, db *database.Database) PreviewResp
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingMovies []integrations.RadarrMovie
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -912,7 +912,7 @@ func PreviewWatchedMovies(cfg *config.Config, db *database.Database) PreviewResp
 					exists = true
 					break
 				}
-				}
+			}
 			item.AlreadyExists = exists
 			if exists {
 				response.AlreadyExists++
@@ -966,7 +966,7 @@ func PreviewCollectedMovies(cfg *config.Config, db *database.Database) PreviewRe
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingMovies []integrations.RadarrMovie
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -1014,7 +1014,7 @@ func PreviewCollectedMovies(cfg *config.Config, db *database.Database) PreviewRe
 					exists = true
 					break
 				}
-				}
+			}
 			item.AlreadyExists = exists
 			if exists {
 				response.AlreadyExists++
@@ -1068,7 +1068,7 @@ func PreviewAnticipatedMovies(cfg *config.Config, db *database.Database) Preview
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingMovies []integrations.RadarrMovie
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -1116,7 +1116,7 @@ func PreviewAnticipatedMovies(cfg *config.Config, db *database.Database) Preview
 					exists = true
 					break
 				}
-				}
+			}
 			item.AlreadyExists = exists
 			if exists {
 				response.AlreadyExists++
@@ -1170,7 +1170,7 @@ func PreviewFavoritedShows(cfg *config.Config, db *database.Database) PreviewRes
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingSeries []integrations.SonarrSeries
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -1222,7 +1222,7 @@ func PreviewFavoritedShows(cfg *config.Config, db *database.Database) PreviewRes
 					exists = true
 					break
 				}
-				}
+			}
 			item.AlreadyExists = exists
 			if exists {
 				response.AlreadyExists++
@@ -1276,7 +1276,7 @@ func PreviewPlayedShows(cfg *config.Config, db *database.Database) PreviewRespon
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingSeries []integrations.SonarrSeries
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -1328,7 +1328,7 @@ func PreviewPlayedShows(cfg *config.Config, db *database.Database) PreviewRespon
 					exists = true
 					break
 				}
-				}
+			}
 			item.AlreadyExists = exists
 			if exists {
 				response.AlreadyExists++
@@ -1382,7 +1382,7 @@ func PreviewWatchedShows(cfg *config.Config, db *database.Database) PreviewRespo
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingSeries []integrations.SonarrSeries
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -1486,7 +1486,7 @@ func PreviewCollectedShows(cfg *config.Config, db *database.Database) PreviewRes
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingSeries []integrations.SonarrSeries
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -1538,7 +1538,7 @@ func PreviewCollectedShows(cfg *config.Config, db *database.Database) PreviewRes
 					exists = true
 					break
 				}
-				}
+			}
 			item.AlreadyExists = exists
 			if exists {
 				response.AlreadyExists++
@@ -1592,7 +1592,7 @@ func PreviewAnticipatedShows(cfg *config.Config, db *database.Database) PreviewR
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingSeries []integrations.SonarrSeries
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -1644,7 +1644,7 @@ func PreviewAnticipatedShows(cfg *config.Config, db *database.Database) PreviewR
 					exists = true
 					break
 				}
-				}
+			}
 			item.AlreadyExists = exists
 			if exists {
 				response.AlreadyExists++
@@ -1690,7 +1690,7 @@ func PreviewSmartPopularMovies(cfg *config.Config, db *database.Database) Previe
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingMovies []integrations.RadarrMovie
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
@@ -1785,7 +1785,7 @@ func PreviewSmartPopularShows(cfg *config.Config, db *database.Database) Preview
 	// Create clients once before the loop
 	var jellyseerrClient *integrations.Jellyseerr
 	var existingSeries []integrations.SonarrSeries
-	
+
 	if mode == "jellyseerr" {
 		jellyseerrClient = integrations.NewJellyseerr(integrations.JellyseerrConfig{
 			URL:             cfg.Jellyseerr.URL,
