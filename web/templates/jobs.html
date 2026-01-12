@@ -1212,6 +1212,207 @@
         </form>
       </div>
     </div>
+
+    <!-- Smart Popular Movies Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-indigo-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"></path>
+          </svg>
+          Smart Popular Movies
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.SmartPopularMovies.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.SmartPopularMovies.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Popular movies with adaptive rating thresholds based on popularity</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#smart-popular-movies-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.trending_movies.enabled" value="{{if .Config.Jobs.TrendingMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_movies.limit" value="{{.Config.Jobs.TrendingMovies.Limit}}" />
+          <input type="hidden" name="jobs.trending_shows.enabled" value="{{if .Config.Jobs.TrendingShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_shows.limit" value="{{.Config.Jobs.TrendingShows.Limit}}" />
+          <input type="hidden" name="jobs.popular_movies.enabled" value="{{if .Config.Jobs.PopularMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_movies.limit" value="{{.Config.Jobs.PopularMovies.Limit}}" />
+          <input type="hidden" name="jobs.popular_shows.enabled" value="{{if .Config.Jobs.PopularShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_shows.limit" value="{{.Config.Jobs.PopularShows.Limit}}" />
+          <input type="hidden" name="jobs.box_office.enabled" value="{{if .Config.Jobs.BoxOffice.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.box_office.limit" value="{{.Config.Jobs.BoxOffice.Limit}}" />
+          <input type="hidden" name="jobs.favorited_movies.enabled" value="{{if .Config.Jobs.FavoritedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.favorited_movies.limit" value="{{.Config.Jobs.FavoritedMovies.Limit}}" />
+          <input type="hidden" name="jobs.favorited_movies.period" value="{{.Config.Jobs.FavoritedMovies.Period}}" />
+          <input type="hidden" name="jobs.played_movies.enabled" value="{{if .Config.Jobs.PlayedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.played_movies.limit" value="{{.Config.Jobs.PlayedMovies.Limit}}" />
+          <input type="hidden" name="jobs.played_movies.period" value="{{.Config.Jobs.PlayedMovies.Period}}" />
+          <input type="hidden" name="jobs.watched_movies.enabled" value="{{if .Config.Jobs.WatchedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.watched_movies.limit" value="{{.Config.Jobs.WatchedMovies.Limit}}" />
+          <input type="hidden" name="jobs.watched_movies.period" value="{{.Config.Jobs.WatchedMovies.Period}}" />
+          <input type="hidden" name="jobs.collected_movies.enabled" value="{{if .Config.Jobs.CollectedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.collected_movies.limit" value="{{.Config.Jobs.CollectedMovies.Limit}}" />
+          <input type="hidden" name="jobs.collected_movies.period" value="{{.Config.Jobs.CollectedMovies.Period}}" />
+          <input type="hidden" name="jobs.anticipated_movies.enabled" value="{{if .Config.Jobs.AnticipatedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.anticipated_movies.limit" value="{{.Config.Jobs.AnticipatedMovies.Limit}}" />
+          <input type="hidden" name="jobs.favorited_shows.enabled" value="{{if .Config.Jobs.FavoritedShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.favorited_shows.limit" value="{{.Config.Jobs.FavoritedShows.Limit}}" />
+          <input type="hidden" name="jobs.favorited_shows.period" value="{{.Config.Jobs.FavoritedShows.Period}}" />
+          <input type="hidden" name="jobs.played_shows.enabled" value="{{if .Config.Jobs.PlayedShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.played_shows.limit" value="{{.Config.Jobs.PlayedShows.Limit}}" />
+          <input type="hidden" name="jobs.played_shows.period" value="{{.Config.Jobs.PlayedShows.Period}}" />
+          <input type="hidden" name="jobs.watched_shows.enabled" value="{{if .Config.Jobs.WatchedShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.watched_shows.limit" value="{{.Config.Jobs.WatchedShows.Limit}}" />
+          <input type="hidden" name="jobs.watched_shows.period" value="{{.Config.Jobs.WatchedShows.Period}}" />
+          <input type="hidden" name="jobs.collected_shows.enabled" value="{{if .Config.Jobs.CollectedShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.collected_shows.limit" value="{{.Config.Jobs.CollectedShows.Limit}}" />
+          <input type="hidden" name="jobs.collected_shows.period" value="{{.Config.Jobs.CollectedShows.Period}}" />
+          <input type="hidden" name="jobs.anticipated_shows.enabled" value="{{if .Config.Jobs.AnticipatedShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.anticipated_shows.limit" value="{{.Config.Jobs.AnticipatedShows.Limit}}" />
+          <input type="hidden" name="jobs.smart_popular_shows.enabled" value="{{if .Config.Jobs.SmartPopularShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.smart_popular_shows.limit" value="{{.Config.Jobs.SmartPopularShows.Limit}}" />
+          <input type="hidden" name="jobs.smart_popular_shows.base_min_rating" value="{{.Config.Jobs.SmartPopularShows.BaseMinRating}}" />
+          <input type="hidden" name="jobs.smart_popular_shows.adjustment_factor" value="{{.Config.Jobs.SmartPopularShows.AdjustmentFactor}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.smart_popular_movies.enabled"
+                {{if .Config.Jobs.SmartPopularMovies.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="smart_popular_movies_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="smart_popular_movies_limit"
+              name="jobs.smart_popular_movies.limit"
+              value="{{.Config.Jobs.SmartPopularMovies.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of popular movies to evaluate (1-100)</p>
+          </div>
+
+          <div>
+            <label for="smart_popular_movies_base_rating" class="block text-sm font-medium text-slate-300 mb-2">
+              Base Minimum Rating
+            </label>
+            <input
+              type="number"
+              id="smart_popular_movies_base_rating"
+              name="jobs.smart_popular_movies.base_min_rating"
+              value="{{.Config.Jobs.SmartPopularMovies.BaseMinRating}}"
+              min="0"
+              max="10"
+              step="0.1"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Baseline rating threshold (adjusted by popularity)</p>
+          </div>
+
+          <div>
+            <label for="smart_popular_movies_adjustment" class="block text-sm font-medium text-slate-300 mb-2">
+              Adjustment Factor
+            </label>
+            <input
+              type="number"
+              id="smart_popular_movies_adjustment"
+              name="jobs.smart_popular_movies.adjustment_factor"
+              value="{{.Config.Jobs.SmartPopularMovies.AdjustmentFactor}}"
+              min="0"
+              max="5"
+              step="0.1"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">How much to adjust (0.5=mild, 2.0=aggressive)</p>
+          </div>
+
+          <div class="bg-indigo-900/20 border border-indigo-700/50 rounded-lg p-3">
+            <p class="text-xs text-indigo-300">
+              <strong>How it works:</strong> Popular movies (high votes) get lower rating requirements, niche movies get higher requirements. 
+              Example: base=7.0, factor=2.0 → popular (90th percentile) needs 6.2, niche (10th) needs 7.8
+            </p>
+          </div>
+
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('smart-popular-movies', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="smart-popular-movies-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="smart_popular_movies_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="smart_popular_movies_interval"
+                  name="jobs.smart_popular_movies.sync_interval"
+                  value="{{.Config.Jobs.SmartPopularMovies.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 6h, 12h)</p>
+              </div>
+              
+              <div>
+                <label for="smart_popular_movies_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="smart_popular_movies_mode"
+                  name="jobs.smart_popular_movies.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.SmartPopularMovies.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.SmartPopularMovies.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="previewJob('smart-popular-movies', this)"
+              {{if not .Config.Jobs.SmartPopularMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('smart-popular-movies', this)"
+              {{if not .Config.Jobs.SmartPopularMovies.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="smart-popular-movies-message"></div>
+        </form>
+      </div>
+    </div>
   </div>
 
 
@@ -2137,6 +2338,207 @@
       </div>
     </div>
 
+    <!-- Smart Popular Shows Card -->
+    <div class="bg-slate-800/50 backdrop-blur rounded-lg border border-slate-700 overflow-hidden">
+      <div class="bg-gradient-to-r from-indigo-900/50 to-slate-800/50 p-4 border-b border-slate-700">
+        <h3 class="text-xl font-semibold text-slate-100 flex items-center">
+          <svg class="w-6 h-6 mr-2 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"></path>
+          </svg>
+          Smart Popular Shows
+          <span class="ml-auto px-2 py-1 text-xs font-semibold rounded-full {{if .Config.Jobs.SmartPopularShows.Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}}">
+            {{if .Config.Jobs.SmartPopularShows.Enabled}}ENABLED{{else}}DISABLED{{end}}
+          </span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-2">Popular shows with adaptive rating thresholds based on popularity</p>
+      </div>
+      <div class="p-6">
+        <form hx-post="/jobs/config/save" hx-target="#smart-popular-shows-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" />
+          <input type="hidden" name="jobs.trending_movies.enabled" value="{{if .Config.Jobs.TrendingMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_movies.limit" value="{{.Config.Jobs.TrendingMovies.Limit}}" />
+          <input type="hidden" name="jobs.trending_shows.enabled" value="{{if .Config.Jobs.TrendingShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.trending_shows.limit" value="{{.Config.Jobs.TrendingShows.Limit}}" />
+          <input type="hidden" name="jobs.popular_movies.enabled" value="{{if .Config.Jobs.PopularMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_movies.limit" value="{{.Config.Jobs.PopularMovies.Limit}}" />
+          <input type="hidden" name="jobs.popular_shows.enabled" value="{{if .Config.Jobs.PopularShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.popular_shows.limit" value="{{.Config.Jobs.PopularShows.Limit}}" />
+          <input type="hidden" name="jobs.box_office.enabled" value="{{if .Config.Jobs.BoxOffice.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.box_office.limit" value="{{.Config.Jobs.BoxOffice.Limit}}" />
+          <input type="hidden" name="jobs.favorited_movies.enabled" value="{{if .Config.Jobs.FavoritedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.favorited_movies.limit" value="{{.Config.Jobs.FavoritedMovies.Limit}}" />
+          <input type="hidden" name="jobs.favorited_movies.period" value="{{.Config.Jobs.FavoritedMovies.Period}}" />
+          <input type="hidden" name="jobs.played_movies.enabled" value="{{if .Config.Jobs.PlayedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.played_movies.limit" value="{{.Config.Jobs.PlayedMovies.Limit}}" />
+          <input type="hidden" name="jobs.played_movies.period" value="{{.Config.Jobs.PlayedMovies.Period}}" />
+          <input type="hidden" name="jobs.watched_movies.enabled" value="{{if .Config.Jobs.WatchedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.watched_movies.limit" value="{{.Config.Jobs.WatchedMovies.Limit}}" />
+          <input type="hidden" name="jobs.watched_movies.period" value="{{.Config.Jobs.WatchedMovies.Period}}" />
+          <input type="hidden" name="jobs.collected_movies.enabled" value="{{if .Config.Jobs.CollectedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.collected_movies.limit" value="{{.Config.Jobs.CollectedMovies.Limit}}" />
+          <input type="hidden" name="jobs.collected_movies.period" value="{{.Config.Jobs.CollectedMovies.Period}}" />
+          <input type="hidden" name="jobs.anticipated_movies.enabled" value="{{if .Config.Jobs.AnticipatedMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.anticipated_movies.limit" value="{{.Config.Jobs.AnticipatedMovies.Limit}}" />
+          <input type="hidden" name="jobs.smart_popular_movies.enabled" value="{{if .Config.Jobs.SmartPopularMovies.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.smart_popular_movies.limit" value="{{.Config.Jobs.SmartPopularMovies.Limit}}" />
+          <input type="hidden" name="jobs.smart_popular_movies.base_min_rating" value="{{.Config.Jobs.SmartPopularMovies.BaseMinRating}}" />
+          <input type="hidden" name="jobs.smart_popular_movies.adjustment_factor" value="{{.Config.Jobs.SmartPopularMovies.AdjustmentFactor}}" />
+          <input type="hidden" name="jobs.favorited_shows.enabled" value="{{if .Config.Jobs.FavoritedShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.favorited_shows.limit" value="{{.Config.Jobs.FavoritedShows.Limit}}" />
+          <input type="hidden" name="jobs.favorited_shows.period" value="{{.Config.Jobs.FavoritedShows.Period}}" />
+          <input type="hidden" name="jobs.played_shows.enabled" value="{{if .Config.Jobs.PlayedShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.played_shows.limit" value="{{.Config.Jobs.PlayedShows.Limit}}" />
+          <input type="hidden" name="jobs.played_shows.period" value="{{.Config.Jobs.PlayedShows.Period}}" />
+          <input type="hidden" name="jobs.watched_shows.enabled" value="{{if .Config.Jobs.WatchedShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.watched_shows.limit" value="{{.Config.Jobs.WatchedShows.Limit}}" />
+          <input type="hidden" name="jobs.watched_shows.period" value="{{.Config.Jobs.WatchedShows.Period}}" />
+          <input type="hidden" name="jobs.collected_shows.enabled" value="{{if .Config.Jobs.CollectedShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.collected_shows.limit" value="{{.Config.Jobs.CollectedShows.Limit}}" />
+          <input type="hidden" name="jobs.collected_shows.period" value="{{.Config.Jobs.CollectedShows.Period}}" />
+          <input type="hidden" name="jobs.anticipated_shows.enabled" value="{{if .Config.Jobs.AnticipatedShows.Enabled}}on{{end}}" />
+          <input type="hidden" name="jobs.anticipated_shows.limit" value="{{.Config.Jobs.AnticipatedShows.Limit}}" />
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="jobs.smart_popular_shows.enabled"
+                {{if .Config.Jobs.SmartPopularShows.Enabled}}checked{{end}}
+                class="w-5 h-5 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span class="ml-3 text-base font-medium text-slate-300">Enable Job</span>
+            </label>
+          </div>
+
+          <div>
+            <label for="smart_popular_shows_limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="smart_popular_shows_limit"
+              name="jobs.smart_popular_shows.limit"
+              value="{{.Config.Jobs.SmartPopularShows.Limit}}"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Number of popular shows to evaluate (1-100)</p>
+          </div>
+
+          <div>
+            <label for="smart_popular_shows_base_rating" class="block text-sm font-medium text-slate-300 mb-2">
+              Base Minimum Rating
+            </label>
+            <input
+              type="number"
+              id="smart_popular_shows_base_rating"
+              name="jobs.smart_popular_shows.base_min_rating"
+              value="{{.Config.Jobs.SmartPopularShows.BaseMinRating}}"
+              min="0"
+              max="10"
+              step="0.1"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">Baseline rating threshold (adjusted by popularity)</p>
+          </div>
+
+          <div>
+            <label for="smart_popular_shows_adjustment" class="block text-sm font-medium text-slate-300 mb-2">
+              Adjustment Factor
+            </label>
+            <input
+              type="number"
+              id="smart_popular_shows_adjustment"
+              name="jobs.smart_popular_shows.adjustment_factor"
+              value="{{.Config.Jobs.SmartPopularShows.AdjustmentFactor}}"
+              min="0"
+              max="5"
+              step="0.1"
+              class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-slate-400 mt-1">How much to adjust (0.5=mild, 2.0=aggressive)</p>
+          </div>
+
+          <div class="bg-indigo-900/20 border border-indigo-700/50 rounded-lg p-3">
+            <p class="text-xs text-indigo-300">
+              <strong>How it works:</strong> Popular shows (high votes) get lower rating requirements, niche shows get higher requirements. 
+              Example: base=7.0, factor=2.0 → popular (90th percentile) needs 6.2, niche (10th) needs 7.8
+            </p>
+          </div>
+
+          <!-- Advanced Settings Toggle -->
+          <div class="border-t border-slate-700 pt-4">
+            <button type="button" onclick="toggleAdvanced('smart-popular-shows', this)" class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors">
+              <span>Advanced Settings</span>
+              <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <div id="smart-popular-shows-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div>
+                <label for="smart_popular_shows_interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="smart_popular_shows_interval"
+                  name="jobs.smart_popular_shows.sync_interval"
+                  value="{{.Config.Jobs.SmartPopularShows.SyncInterval}}"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 6h, 12h)</p>
+              </div>
+              
+              <div>
+                <label for="smart_popular_shows_mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="smart_popular_shows_mode"
+                  name="jobs.smart_popular_shows.mode"
+                  class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct" {{if eq .Config.Jobs.SmartPopularShows.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr" {{if eq .Config.Jobs.SmartPopularShows.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onclick="previewJob('smart-popular-shows', this)"
+              {{if not .Config.Jobs.SmartPopularShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              onclick="triggerJob('smart-popular-shows', this)"
+              {{if not .Config.Jobs.SmartPopularShows.Enabled}}disabled{{end}}
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+            >
+              Run Now
+            </button>
+          </div>
+          <div id="smart-popular-shows-message"></div>
+        </form>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2167,6 +2569,7 @@
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           <p class="mt-4 text-slate-300">Loading preview...</p>
+          <p id="preview-timer" class="mt-2 text-slate-400 text-sm hidden">Elapsed time: <span id="preview-timer-value">0</span>s</p>
         </div>
 
         <!-- Error State -->
@@ -2305,6 +2708,9 @@
     return canvas.toDataURL();
   }
 
+  let previewTimerInterval = null;
+  let previewStartTime = null;
+
   function previewJob(jobName, button) {
     button.disabled = true;
     const originalText = button.textContent;
@@ -2318,6 +2724,26 @@
     document.getElementById('preview-loading').classList.remove('hidden');
     document.getElementById('preview-error').classList.add('hidden');
     document.getElementById('preview-results').classList.add('hidden');
+    document.getElementById('preview-timer').classList.add('hidden');
+
+    // Start timer
+    previewStartTime = Date.now();
+    clearInterval(previewTimerInterval);
+    
+    // Show timer after 3 seconds and update it every second
+    setTimeout(() => {
+      if (document.getElementById('preview-loading').classList.contains('hidden')) return;
+      document.getElementById('preview-timer').classList.remove('hidden');
+    }, 3000);
+    
+    previewTimerInterval = setInterval(() => {
+      if (document.getElementById('preview-loading').classList.contains('hidden')) {
+        clearInterval(previewTimerInterval);
+        return;
+      }
+      const elapsed = Math.floor((Date.now() - previewStartTime) / 1000);
+      document.getElementById('preview-timer-value').textContent = elapsed;
+    }, 1000);
 
     // Update modal title
     const jobTitle = jobName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -2348,6 +2774,8 @@
     document.getElementById('preview-modal').classList.add('hidden');
     currentPreviewData = null;
     currentPreviewTab = 'all';
+    clearInterval(previewTimerInterval);
+    document.getElementById('preview-timer').classList.add('hidden');
   }
 
   function enableJobFromPreview() {
@@ -2395,9 +2823,11 @@
     document.getElementById('preview-loading').classList.add('hidden');
     document.getElementById('preview-error').classList.remove('hidden');
     document.getElementById('preview-error-message').textContent = message;
+    clearInterval(previewTimerInterval);
   }
 
   function displayPreviewResults(data) {
+    clearInterval(previewTimerInterval);
     document.getElementById('preview-loading').classList.add('hidden');
     document.getElementById('preview-error').classList.add('hidden');
     document.getElementById('preview-results').classList.remove('hidden');
