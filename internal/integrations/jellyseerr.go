@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,6 +36,11 @@ type Jellyseerr struct {
 func NewJellyseerr(config JellyseerrConfig) *Jellyseerr {
 	// Create cookie jar for session management
 	jar, _ := cookiejar.New(nil)
+
+	// Normalize URL by removing trailing slash to prevent double slashes in API paths
+	if config.URL != "" {
+		config.URL = strings.TrimRight(config.URL, "/")
+	}
 
 	useCredentials := config.RequestEmail != "" && config.RequestPassword != ""
 
