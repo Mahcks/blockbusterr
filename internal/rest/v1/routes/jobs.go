@@ -370,155 +370,70 @@ func AddJobsRoutes(router fiber.Router, gctx global.Context) {
 
 		switch jobName {
 		case "trending-movies":
-			if !cfg.Jobs.TrendingMovies.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Trending movies job is disabled",
-				})
-			}
 			preview := jobs.PreviewTrendingMovies(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "trending-shows":
-			if !cfg.Jobs.TrendingShows.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Trending shows job is disabled",
-				})
-			}
 			preview := jobs.PreviewTrendingShows(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "popular-movies":
-			if !cfg.Jobs.PopularMovies.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Popular movies job is disabled",
-				})
-			}
 			preview := jobs.PreviewPopularMovies(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "popular-shows":
-			if !cfg.Jobs.PopularShows.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Popular shows job is disabled",
-				})
-			}
 			preview := jobs.PreviewPopularShows(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "box-office":
-			if !cfg.Jobs.BoxOffice.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Box office job is disabled",
-				})
-			}
 			preview := jobs.PreviewBoxOffice(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "favorited-movies":
-			if !cfg.Jobs.FavoritedMovies.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Favorited movies job is disabled",
-				})
-			}
 			preview := jobs.PreviewFavoritedMovies(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "played-movies":
-			if !cfg.Jobs.PlayedMovies.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Played movies job is disabled",
-				})
-			}
 			preview := jobs.PreviewPlayedMovies(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "watched-movies":
-			if !cfg.Jobs.WatchedMovies.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Watched movies job is disabled",
-				})
-			}
 			preview := jobs.PreviewWatchedMovies(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "collected-movies":
-			if !cfg.Jobs.CollectedMovies.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Collected movies job is disabled",
-				})
-			}
 			preview := jobs.PreviewCollectedMovies(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "anticipated-movies":
-			if !cfg.Jobs.AnticipatedMovies.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Anticipated movies job is disabled",
-				})
-			}
 			preview := jobs.PreviewAnticipatedMovies(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "favorited-shows":
-			if !cfg.Jobs.FavoritedShows.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Favorited shows job is disabled",
-				})
-			}
 			preview := jobs.PreviewFavoritedShows(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "played-shows":
-			if !cfg.Jobs.PlayedShows.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Played shows job is disabled",
-				})
-			}
 			preview := jobs.PreviewPlayedShows(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "watched-shows":
-			if !cfg.Jobs.WatchedShows.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Watched shows job is disabled",
-				})
-			}
 			preview := jobs.PreviewWatchedShows(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "collected-shows":
-			if !cfg.Jobs.CollectedShows.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Collected shows job is disabled",
-				})
-			}
 			preview := jobs.PreviewCollectedShows(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "anticipated-shows":
-			if !cfg.Jobs.AnticipatedShows.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Anticipated shows job is disabled",
-				})
-			}
 			preview := jobs.PreviewAnticipatedShows(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "smart-popular-movies":
-			if !cfg.Jobs.SmartPopularMovies.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Smart popular movies job is disabled",
-				})
-			}
 			preview := jobs.PreviewSmartPopularMovies(cfg, gctx.Database())
 			return c.JSON(preview)
 
 		case "smart-popular-shows":
-			if !cfg.Jobs.SmartPopularShows.Enabled {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Smart popular shows job is disabled",
-				})
-			}
 			preview := jobs.PreviewSmartPopularShows(cfg, gctx.Database())
 			return c.JSON(preview)
 
