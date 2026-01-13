@@ -81,6 +81,8 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		jellyseerrURL := c.FormValue("jellyseerr.url")
 		jellyseerrAPIKey := c.FormValue("jellyseerr.api_key")
 		jellyseerrUserID := c.FormValue("jellyseerr.user_id")
+		jellyseerrRequestEmail := c.FormValue("jellyseerr.request_credentials.email")
+		jellyseerrRequestPassword := c.FormValue("jellyseerr.request_credentials.password")
 		jobsMode := c.FormValue("jobs.mode")
 		globalLimitMovies := c.FormValue("jobs.global_limit_movies")
 		globalLimitShows := c.FormValue("jobs.global_limit_shows")
@@ -108,6 +110,8 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Jellyseerr.URL = jellyseerrURL
 		cfg.Jellyseerr.APIKey = jellyseerrAPIKey
 		cfg.Jellyseerr.UserID = jellyseerrUserID
+		cfg.Jellyseerr.RequestCredentials.Email = jellyseerrRequestEmail
+		cfg.Jellyseerr.RequestCredentials.Password = jellyseerrRequestPassword
 		if jobsMode != "" {
 			cfg.Jobs.Mode = jobsMode
 		}
