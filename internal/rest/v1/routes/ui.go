@@ -86,6 +86,15 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		globalLimitShows := c.FormValue("jobs.global_limit_shows")
 		globalPeriod := c.FormValue("jobs.global_period")
 
+		// Parse scoring configuration
+		scoringEnabled := c.FormValue("scoring.enabled") == "true"
+		scoringRatingWeight := c.FormValue("scoring.rating_weight")
+		scoringPopularityWeight := c.FormValue("scoring.popularity_weight")
+		scoringRecencyWeight := c.FormValue("scoring.recency_weight")
+		scoringRatingScale := c.FormValue("scoring.rating_scale")
+		scoringPopularityMetric := c.FormValue("scoring.popularity_metric")
+		scoringRecencyDays := c.FormValue("scoring.recency_days")
+
 		// Update config
 		cfg.Trakt.ClientID = traktClientID
 		cfg.Trakt.ClientSecret = traktClientSecret
@@ -128,6 +137,57 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if limit, err := strconv.Atoi(globalLimitShows); err == nil {
 				cfg.Jobs.GlobalLimitShows = limit
 			}
+		}
+
+		// Parse scoring configuration
+		cfg.Scoring.Enabled = scoringEnabled
+
+		// Set scoring weights with defaults
+		if scoringRatingWeight != "" {
+			if weight, err := strconv.ParseFloat(scoringRatingWeight, 64); err == nil {
+				cfg.Scoring.RatingWeight = weight
+			}
+		} else if cfg.Scoring.RatingWeight == 0 {
+			cfg.Scoring.RatingWeight = 0.6 // Default
+		}
+
+		if scoringPopularityWeight != "" {
+			if weight, err := strconv.ParseFloat(scoringPopularityWeight, 64); err == nil {
+				cfg.Scoring.PopularityWeight = weight
+			}
+		} else if cfg.Scoring.PopularityWeight == 0 {
+			cfg.Scoring.PopularityWeight = 0.3 // Default
+		}
+
+		if scoringRecencyWeight != "" {
+			if weight, err := strconv.ParseFloat(scoringRecencyWeight, 64); err == nil {
+				cfg.Scoring.RecencyWeight = weight
+			}
+		} else if cfg.Scoring.RecencyWeight == 0 {
+			cfg.Scoring.RecencyWeight = 0.1 // Default
+		}
+
+		// Set normalization settings with defaults
+		if scoringRatingScale != "" {
+			if scale, err := strconv.ParseFloat(scoringRatingScale, 64); err == nil {
+				cfg.Scoring.RatingScale = scale
+			}
+		} else if cfg.Scoring.RatingScale == 0 {
+			cfg.Scoring.RatingScale = 10 // Default
+		}
+
+		if scoringPopularityMetric != "" {
+			cfg.Scoring.PopularityMetric = scoringPopularityMetric
+		} else if cfg.Scoring.PopularityMetric == "" {
+			cfg.Scoring.PopularityMetric = "votes" // Default
+		}
+
+		if scoringRecencyDays != "" {
+			if days, err := strconv.Atoi(scoringRecencyDays); err == nil {
+				cfg.Scoring.RecencyDays = days
+			}
+		} else if cfg.Scoring.RecencyDays == 0 {
+			cfg.Scoring.RecencyDays = 365 // Default
 		}
 
 		// Save config to file (create if doesn't exist)

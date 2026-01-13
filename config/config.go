@@ -299,6 +299,23 @@ func New(version string) (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	// Set default scoring values if not configured
+	if c.Scoring.RatingScale == 0 {
+		c.Scoring.RatingScale = 10
+	}
+	if c.Scoring.RecencyDays == 0 {
+		c.Scoring.RecencyDays = 365
+	}
+	if c.Scoring.PopularityMetric == "" {
+		c.Scoring.PopularityMetric = "votes"
+	}
+	// Set default weights if all are zero (indicates not configured)
+	if c.Scoring.RatingWeight == 0 && c.Scoring.PopularityWeight == 0 && c.Scoring.RecencyWeight == 0 {
+		c.Scoring.RatingWeight = 0.6
+		c.Scoring.PopularityWeight = 0.3
+		c.Scoring.RecencyWeight = 0.1
+	}
+
 	return c, nil
 }
 
