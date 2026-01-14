@@ -146,6 +146,59 @@ curl -X DELETE "http://localhost:9090/v1/activity/logs?days=30"
 }
 ```
 
+## Add Media Anyway (Manual Override)
+
+Manually add media that was rejected by filters. This allows you to override filter decisions for specific items shown in the activity log.
+
+**Endpoint:** `POST /v1/activity/:id/add-anyway`
+
+**Path Parameters:**
+- `id` (required) - Activity log entry ID
+
+**Behavior:**
+- In `jellyseerr` mode: Creates a request in Jellyseerr
+- In `direct` mode: Adds directly to Radarr (movies) or Sonarr (shows)
+- Updates the activity log status to "added" with message "Manually added by user"
+
+**Example Request:**
+
+```bash
+# Manually add a rejected movie (using activity log ID)
+curl -X POST "http://localhost:9090/v1/activity/123/add-anyway"
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "message": "Stranger Things has been added successfully"
+}
+```
+
+**Error Responses:**
+
+```json
+{
+  "error": "Activity log not found"
+}
+```
+
+```json
+{
+  "error": "Failed to add media: no TMDB ID available for movie"
+}
+```
+
+**Use Case:**
+
+This endpoint is useful when a filter incorrectly rejects content. For example, if "Stranger Things" is rejected because it contains the "horror" genre, but you want to add it anyway:
+
+1. View the rejected item in the Activity Log UI
+2. Click the "Add Anyway" button (available for `rejected` status items)
+3. The content is added to Jellyseerr or *arr based on your mode
+4. The activity log updates in place to show "Added" status
+
 ## Advanced Examples
 
 ### Get Today's Activity
