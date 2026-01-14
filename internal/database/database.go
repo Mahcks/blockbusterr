@@ -488,3 +488,80 @@ func (d *Database) ClearOldLogs(daysToKeep int) (int64, error) {
 
 	return result.RowsAffected()
 }
+
+// GetActivityLogByID retrieves a single activity log entry by ID
+func (d *Database) GetActivityLogByID(id int64) (*ActivityLog, error) {
+	query := `
+		SELECT id, timestamp, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message, filter_details
+		FROM activity_logs
+		WHERE id = ?
+	`
+
+	var log ActivityLog
+	var tmdbID, tvdbID, rank sql.NullInt64
+	var message, imdbID, posterURL, filterDetails sql.NullString
+	var score sql.NullFloat64
+
+	err := d.db.QueryRow(query, id).Scan(
+		&log.ID,
+		&log.Timestamp,
+		&log.JobType,
+		&log.MediaType,
+		&log.Title,
+		&log.Year,
+		&tmdbID,
+		&tvdbID,
+		&imdbID,
+		&posterURL,
+		&score,
+		&rank,
+		&log.Status,
+		&message,
+		&filterDetails,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if tmdbID.Valid {
+		log.TMDBID = int(tmdbID.Int64)
+	}
+	if tvdbID.Valid {
+		log.TVDBID = int(tvdbID.Int64)
+	}
+	if imdbID.Valid {
+		log.IMDBID = imdbID.String
+	}
+	if posterURL.Valid {
+		log.PosterURL = posterURL.String
+	}
+	if score.Valid {
+		log.Score = score.Float64
+	}
+	if rank.Valid {
+		log.Rank = int(rank.Int64)
+	}
+	if message.Valid {
+		log.Message = message.String
+	}
+	if filterDetails.Valid {
+		log.FilterDetails = filterDetails.String
+	}
+
+	return &log, nil
+}
+
+// UpdateActivityLogStatus updates the status and message of an activity log entry
+func (d *Database) UpdateActivityLogStatus(id int64, status, message string) error {
+	query := `
+		UPDATE activity_logs
+		SET status = ?, message = ?
+		WHERE id = ?
+	`
+
+	_, err := d.db.Exec(query, status, message, id)
+	return err
+}

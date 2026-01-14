@@ -1,13 +1,17 @@
 package routes
 
 import (
+	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/global"
+	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
 func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
@@ -238,4 +242,167 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			"count":   count,
 		})
 	})
+
+	// Add media anyway (manual override for rejected items)
+	router.Post("/activity/:id/add-anyway", func(c *fiber.Ctx) error {
+		// Get the activity log ID from the URL
+		idStr := c.Params("id")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Invalid activity log ID",
+			})
+		}
+
+		// Retrieve the activity log entry
+		db := gctx.Database()
+		log, err := db.GetActivityLogByID(id)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to retrieve activity log",
+			})
+		}
+
+		if log == nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"error": "Activity log not found",
+			})
+		}
+
+		// Call the manual add logic
+		err = addMediaManually(c.Context(), gctx, log)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": fmt.Sprintf("Failed to add media: %v", err),
+			})
+		}
+
+		// Update the activity log status
+		err = db.UpdateActivityLogStatus(id, "added", "Manually added by user")
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to update activity log",
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"success": true,
+			"message": fmt.Sprintf("%s has been added successfully", log.Title),
+		})
+	})
+}
+
+// addMediaManually handles adding media manually via Jellyseerr or direct *arr integration
+func addMediaManually(ctx context.Context, gctx global.Context, activityLog *database.ActivityLog) error {
+	cfg := gctx.Config()
+	mode := cfg.Jobs.Mode
+
+	// Determine which integration to use based on mode
+	if mode == "jellyseerr" || mode == "" {
+		// Use Jellyseerr
+		jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
+			URL:             cfg.Jellyseerr.URL,
+			APIKey:          cfg.Jellyseerr.APIKey,
+			UserID:          cfg.Jellyseerr.UserID,
+			RequestEmail:    cfg.Jellyseerr.RequestCredentials.Email,
+			RequestPassword: cfg.Jellyseerr.RequestCredentials.Password,
+		})
+
+		switch activityLog.MediaType {
+		case "movie":
+			if activityLog.TMDBID == 0 {
+				return fmt.Errorf("no TMDB ID available for movie")
+			}
+			_, err := jellyseerrClient.RequestMovie(activityLog.TMDBID)
+			if err != nil {
+				return fmt.Errorf("failed to request movie via Jellyseerr: %w", err)
+			}
+			log.Infof("Manually requested movie '%s' via Jellyseerr (TMDB ID: %d)", activityLog.Title, activityLog.TMDBID)
+		case "show":
+			if activityLog.TMDBID == 0 {
+				return fmt.Errorf("no TMDB ID available for show")
+			}
+			_, err := jellyseerrClient.RequestShow(activityLog.TMDBID)
+			if err != nil {
+				return fmt.Errorf("failed to request show via Jellyseerr: %w", err)
+			}
+			log.Infof("Manually requested show '%s' via Jellyseerr (TMDB ID: %d)", activityLog.Title, activityLog.TMDBID)
+		}
+	} else {
+		// Direct mode - add to *arr
+		switch activityLog.MediaType {
+		case "movie":
+			// Add to Radarr
+			radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
+				BaseURL: cfg.Radarr.URL,
+				APIKey:  cfg.Radarr.APIKey,
+			})
+
+			if activityLog.TMDBID == 0 {
+				return fmt.Errorf("no TMDB ID available for movie")
+			}
+
+			// Look up the movie in Radarr to get full details
+			movies, err := radarrClient.LookupMovie(ctx, fmt.Sprintf("tmdb:%d", activityLog.TMDBID))
+			if err != nil {
+				return fmt.Errorf("failed to lookup movie in Radarr: %w", err)
+			}
+
+			if len(movies) == 0 {
+				return fmt.Errorf("movie not found in Radarr lookup")
+			}
+
+			movie := movies[0]
+			movie.QualityProfileID = cfg.Radarr.QualityProfile
+			movie.RootFolderPath = cfg.Radarr.RootFolder
+			movie.Monitored = true
+			movie.MinimumAvailability = "released"
+			movie.AddOptions = &integrations.RadarrAddOptions{
+				SearchForMovie: true,
+			}
+
+			_, err = radarrClient.AddMovie(ctx, movie)
+			if err != nil {
+				return fmt.Errorf("failed to add movie to Radarr: %w", err)
+			}
+			log.Infof("Manually added movie '%s' to Radarr (TMDB ID: %d)", activityLog.Title, activityLog.TMDBID)
+		case "show":
+			// Add to Sonarr
+			sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
+				BaseURL: cfg.Sonarr.URL,
+				APIKey:  cfg.Sonarr.APIKey,
+			})
+
+			if activityLog.TVDBID == 0 {
+				return fmt.Errorf("no TVDB ID available for show")
+			}
+
+			// Look up the show in Sonarr to get full details
+			series, err := sonarrClient.LookupSeries(ctx, fmt.Sprintf("tvdb:%d", activityLog.TVDBID))
+			if err != nil {
+				return fmt.Errorf("failed to lookup show in Sonarr: %w", err)
+			}
+
+			if len(series) == 0 {
+				return fmt.Errorf("show not found in Sonarr lookup")
+			}
+
+			show := series[0]
+			show.QualityProfileID = cfg.Sonarr.QualityProfile
+			show.RootFolderPath = cfg.Sonarr.RootFolder
+			show.Monitored = true
+			show.SeasonFolder = true
+			show.AddOptions = &integrations.SonarrAddOptions{
+				SearchForMissingEpisodes: true,
+			}
+
+			_, err = sonarrClient.AddSeries(ctx, show)
+			if err != nil {
+				return fmt.Errorf("failed to add show to Sonarr: %w", err)
+			}
+			log.Infof("Manually added show '%s' to Sonarr (TVDB ID: %d)", activityLog.Title, activityLog.TVDBID)
+		}
+	}
+
+	return nil
 }

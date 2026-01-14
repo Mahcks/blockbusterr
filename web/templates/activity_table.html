@@ -120,15 +120,30 @@
             {{end}}
           </div>
           
-          {{if .FilterDetails}}
-          <button onclick="toggleDetails({{$index}})" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-xs font-medium text-slate-300 transition-all duration-200 ring-1 ring-slate-600/50 hover:ring-slate-500/50">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
-              <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
-            </svg>
-            View Filter Details
-          </button>
-          {{end}}
+          <div class="flex items-center gap-2">
+            {{if eq .Status "rejected"}}
+            <button 
+              hx-post="/v1/activity/{{.ID}}/add-anyway"
+              hx-swap="none"
+              hx-confirm="Are you sure you want to add '{{.Title}}' anyway? This will bypass all filters."
+              data-card-id="{{.ID}}"
+              class="add-anyway-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-xs font-semibold text-white transition-all duration-200 ring-1 ring-green-500/50 hover:ring-green-400/50 shadow-lg hover:shadow-green-500/20">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path>
+              </svg>
+              Add Anyway
+            </button>
+            {{end}}
+            {{if .FilterDetails}}
+            <button onclick="toggleDetails({{$index}})" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-xs font-medium text-slate-300 transition-all duration-200 ring-1 ring-slate-600/50 hover:ring-slate-500/50">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+              </svg>
+              View Filter Details
+            </button>
+            {{end}}
+          </div>
         </div>
       </div>
     </div>
@@ -179,6 +194,80 @@ document.querySelectorAll('.filter-details-content').forEach(function(el) {
     }
   }
 });
+
+// Handle successful "Add Anyway" responses
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+  if (evt.detail.pathInfo.requestPath.includes('/add-anyway')) {
+    if (evt.detail.successful) {
+      try {
+        const response = JSON.parse(evt.detail.xhr.responseText);
+        if (response.success) {
+          // Show success notification
+          showNotification(response.message, 'success');
+          
+          // Find and update the card in place without refreshing
+          const button = evt.detail.elt;
+          const card = button.closest('.bg-gradient-to-br');
+          if (card) {
+            // Update the status badge
+            const statusBadge = card.querySelector('[class*="bg-red-500/20"]');
+            if (statusBadge) {
+              statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-300 rounded-lg text-sm font-semibold ring-1 ring-green-500/30';
+              statusBadge.innerHTML = '✓ Added';
+            }
+            
+            // Update the message text
+            const messageSpan = card.querySelector('.text-slate-400.italic');
+            if (messageSpan) {
+              messageSpan.textContent = 'Manually added by user';
+            } else {
+              // Add message if it doesn't exist
+              const timestampDiv = card.querySelector('.flex.items-center.gap-3.text-xs.text-slate-400');
+              if (timestampDiv && !messageSpan) {
+                const separator = document.createElement('span');
+                separator.className = 'text-slate-500';
+                separator.textContent = '•';
+                timestampDiv.appendChild(separator);
+                
+                const newMessage = document.createElement('span');
+                newMessage.className = 'text-slate-400 italic';
+                newMessage.textContent = 'Manually added by user';
+                timestampDiv.appendChild(newMessage);
+              }
+            }
+            
+            // Remove the "Add Anyway" button
+            button.remove();
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing response:', e);
+      }
+    } else {
+      // Show error notification
+      try {
+        const response = JSON.parse(evt.detail.xhr.responseText);
+        showNotification(response.error || 'Failed to add media', 'error');
+      } catch (e) {
+        showNotification('Failed to add media', 'error');
+      }
+    }
+  }
+});
+
+// Simple notification function
+function showNotification(message, type) {
+  const notification = document.createElement('div');
+  const bgColor = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+  notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in`;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.classList.add('animate-fade-out');
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
 </script>
 {{else}}
 <div class="flex flex-col items-center justify-center py-16 text-center">
