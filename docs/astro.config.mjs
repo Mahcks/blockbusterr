@@ -5,7 +5,7 @@ import starlight from '@astrojs/starlight';
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://mahcks.github.io',
-	base: '/blockbusterr',
+	base: '/',
 	integrations: [
 		starlight({
 			title: 'Blockbusterr',
