@@ -290,6 +290,102 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			"message": fmt.Sprintf("%s has been added successfully", log.Title),
 		})
 	})
+
+	// Block media (add to blocklist)
+	router.Post("/activity/:id/block", func(c *fiber.Ctx) error {
+		// Get the activity log ID from the URL
+		idStr := c.Params("id")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Invalid activity log ID",
+			})
+		}
+
+		// Retrieve the activity log entry
+		db := gctx.Database()
+		activityLog, err := db.GetActivityLogByID(id)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to retrieve activity log",
+			})
+		}
+
+		if activityLog == nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"error": "Activity log not found",
+			})
+		}
+
+		// Add to blocklist in config
+		cfg := gctx.Config()
+		if activityLog.MediaType == "movie" {
+			if activityLog.TMDBID == 0 {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error": "No TMDB ID available for this movie",
+				})
+			}
+
+			// Check if already blocked
+			alreadyBlocked := false
+			for _, id := range cfg.Filters.Movies.BlacklistedTMDBIds {
+				if id == activityLog.TMDBID {
+					alreadyBlocked = true
+					break
+				}
+			}
+
+			if !alreadyBlocked {
+				cfg.Filters.Movies.BlacklistedTMDBIds = append(cfg.Filters.Movies.BlacklistedTMDBIds, activityLog.TMDBID)
+				if err := cfg.Save(); err != nil {
+					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+						"error": fmt.Sprintf("Failed to save config: %v", err),
+					})
+				}
+			}
+
+			log.Infof("Blocked movie '%s' (TMDB ID: %d) - added to blocklist", activityLog.Title, activityLog.TMDBID)
+		} else if activityLog.MediaType == "show" {
+			if activityLog.TVDBID == 0 {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error": "No TVDB ID available for this show",
+				})
+			}
+
+			// Check if already blocked
+			alreadyBlocked := false
+			for _, id := range cfg.Filters.Shows.BlacklistedTVDBIds {
+				if id == activityLog.TVDBID {
+					alreadyBlocked = true
+					break
+				}
+			}
+
+			if !alreadyBlocked {
+				cfg.Filters.Shows.BlacklistedTVDBIds = append(cfg.Filters.Shows.BlacklistedTVDBIds, activityLog.TVDBID)
+				if err := cfg.Save(); err != nil {
+					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+						"error": fmt.Sprintf("Failed to save config: %v", err),
+					})
+				}
+			}
+
+			log.Infof("Blocked show '%s' (TVDB ID: %d) - added to blocklist", activityLog.Title, activityLog.TVDBID)
+		}
+
+		// Update the activity log
+		err = db.UpdateActivityLogStatus(id, "blocked", "Blocked by user")
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to update activity log",
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"success": true,
+			"message": fmt.Sprintf("%s has been blocked and will not be added in future runs", activityLog.Title),
+		})
+	})
 }
 
 // addMediaManually handles adding media manually via Jellyseerr or direct *arr integration
