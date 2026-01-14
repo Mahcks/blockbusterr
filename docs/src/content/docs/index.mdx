@@ -1,0 +1,75 @@
+---
+title: Welcome to Blockbusterr
+description: Automate your media library with smart filters and scoring
+template: splash
+hero:
+  tagline: Stop manually managing Trakt lists. Let Blockbusterr automatically add trending, popular, and highly-rated content to your media library.
+  image:
+    file: ../../assets/banner.png
+  actions:
+    - text: Get Started
+      link: /blockbusterr/getting-started/quickstart/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/mahcks/blockbusterr
+      icon: external
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Why Blockbusterr?
+
+<CardGrid stagger>
+	<Card title="Smart Automation" icon="rocket">
+		Automatically pulls trending and popular content from Trakt. Set it and forget it.
+	</Card>
+	<Card title="Intelligent Filtering" icon="setting">
+		Advanced filters ensure you only get quality content. Filter by rating, votes, runtime, genres, and more.
+	</Card>
+	<Card title="Adaptive Learning" icon="star">
+		Smart jobs learn from your preferences and adjust scoring over time.
+	</Card>
+	<Card title="Multiple Integrations" icon="puzzle">
+		Works with Radarr, Sonarr, Jellyseerr, Trakt, and TMDB.
+	</Card>
+</CardGrid>
+
+## Quick Example
+
+```yaml
+jobs:
+  trending_movies:
+    enabled: true
+    schedule: "0 */6 * * *"  # Every 6 hours
+    limit: 20
+    filters:
+      min_rating: 6.5
+      min_votes: 1000
+      exclude_genres: ["Documentary"]
+```
+
+This configuration automatically checks for trending movies every 6 hours, applying quality filters to ensure you only get content rated 6.5+ with at least 1,000 votes.
+
+## Features at a Glance
+
+- **Automated Job Scheduling**: Set up recurring jobs to fetch content
+- **Preview Mode**: See what will be added before committing
+- **Filter System**: Min/max ratings, votes, runtime, genres, keywords
+- **Scoring Engine**: Rank content by multiple weighted factors
+- **Web UI**: Manage configuration and view activity from your browser
+- **REST API**: Integrate with other tools
+- **Docker Ready**: Single container deployment
+
+## Next Steps
+
+<CardGrid>
+	<Card title="Quick Start Guide" icon="document">
+		Get Blockbusterr running in under 5 minutes.
+		[Start here →](/blockbusterr/getting-started/quickstart/)
+	</Card>
+	<Card title="Learn About Jobs" icon="list-format">
+		Understand how jobs work and what types are available.
+		[Read more →](/blockbusterr/concepts/jobs/)
+	</Card>
+</CardGrid>

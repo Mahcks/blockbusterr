@@ -73,5 +73,10 @@ temp/
 # Dependencies
 vendor/
 
+# Docs
+docs/node_modules/
+docs/dist/
+docs/.astro/
+
 # Claude AI files
 CLAUDE.md

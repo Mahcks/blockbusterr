@@ -1,0 +1,138 @@
+/* Blockbusterr Custom Theme */
+
+:root {
+	/* Brand colors - movie/entertainment themed */
+	--sl-color-accent-low: #1e1b4b;
+	--sl-color-accent: #8b5cf6;
+	--sl-color-accent-high: #a78bfa;
+	
+	/* Custom gradient for header (optional) */
+	--blockbusterr-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Dark mode adjustments */
+:root[data-theme='dark'] {
+	--sl-color-accent-low: #2e1065;
+	--sl-color-accent: #a78bfa;
+	--sl-color-accent-high: #c4b5fd;
+}
+
+/* Enhanced cards with hover effects */
+.sl-card {
+	border-radius: 0.75rem;
+	transition: all 0.3s ease;
+	border: 1px solid var(--sl-color-gray-5);
+}
+
+.sl-card:hover {
+	transform: translateY(-4px);
+	box-shadow: 0 12px 24px rgba(139, 92, 246, 0.15);
+	border-color: var(--sl-color-accent);
+}
+
+/* Badge styling */
+.sl-badge {
+	font-weight: 600;
+	border-radius: 0.375rem;
+	padding: 0.25rem 0.75rem;
+	font-size: 0.875rem;
+}
+
+/* Code blocks */
+code {
+	font-size: 0.9em;
+	border-radius: 0.25rem;
+}
+
+.expressive-code {
+	margin: 1.5rem 0;
+	border-radius: 0.5rem;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Tables */
+table {
+	width: 100%;
+	display: table;
+	border-radius: 0.5rem;
+	overflow: hidden;
+}
+
+th {
+	background: var(--sl-color-accent-low);
+	font-weight: 600;
+	padding: 0.75rem 1rem;
+}
+
+td {
+	padding: 0.75rem 1rem;
+}
+
+tr:hover {
+	background: var(--sl-color-gray-6);
+	transition: background 0.2s ease;
+}
+
+/* Aside/Callout improvements */
+.starlight-aside {
+	border-left-width: 4px;
+	border-radius: 0.5rem;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Step numbers */
+.sl-steps > li::before {
+	background: var(--sl-color-accent);
+	font-weight: 700;
+	box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
+/* Tabs styling */
+.sl-tabs {
+	border-radius: 0.5rem;
+	overflow: hidden;
+}
+
+/* Link styling - exclude buttons and cards */
+a:not(.sl-link-card):not(.action) {
+	text-decoration-color: var(--sl-color-accent);
+	text-decoration-thickness: 2px;
+	transition: all 0.2s ease;
+}
+
+a:not(.sl-link-card):not(.action):hover {
+	text-decoration-thickness: 3px;
+	color: var(--sl-color-accent-high);
+}
+
+/* Hero action buttons - ensure text is visible */
+.hero .action a {
+	color: inherit !important;
+	text-decoration: none !important;
+}
+
+.hero .action a:hover {
+	color: inherit !important;
+}
+
+/* Sidebar improvements */
+.sidebar-content {
+	padding-top: 1rem;
+}
+
+.sidebar-content a[aria-current="page"] {
+	background: var(--sl-color-accent-low);
+	color: var(--sl-color-white);
+	border-radius: 0.375rem;
+	font-weight: 600;
+}
+
+/* Hero section (homepage) improvements */
+.hero {
+	text-align: center;
+}
+
+.hero .tagline {
+	font-size: 1.25rem;
+	color: var(--sl-color-gray-3);
+}

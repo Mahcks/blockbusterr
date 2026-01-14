@@ -1,0 +1,358 @@
+---
+title: Installation
+description: Different ways to install and run Blockbusterr
+---
+
+import { Tabs, TabItem, Steps, Card, CardGrid, Aside } from '@astrojs/starlight/components';
+
+Choose your preferred installation method to get Blockbusterr running.
+
+## Prerequisites
+
+<CardGrid>
+<Card title="Docker" icon="seti:docker">
+Docker 20.10+ or Docker Desktop
+</Card>
+<Card title="Storage" icon="laptop">
+50GB+ recommended for database and logs
+</Card>
+<Card title="Network" icon="star">
+Access to Trakt, TMDB, and your *arr stack
+</Card>
+</CardGrid>
+
+## Installation Methods
+
+<Tabs>
+<TabItem label="Docker Run" icon="seti:docker">
+
+**Quickest way to get started** - Single command deployment.
+
+<Steps>
+
+1. Pull the latest image:
+
+   ```bash
+   docker pull ghcr.io/mahcks/blockbusterr:latest
+   ```
+
+2. Run the container:
+
+   ```bash
+   docker run -d \
+     --name blockbusterr \
+     -p 9090:9090 \
+     -v $(pwd)/data:/app/data \
+     -e TZ=America/New_York \
+     ghcr.io/mahcks/blockbusterr:latest
+   ```
+
+3. Access the web UI at `http://localhost:9090`
+
+</Steps>
+
+<Aside type="tip">
+Use `docker logs blockbusterr -f` to view live logs and verify startup.
+</Aside>
+
+</TabItem>
+<TabItem label="Docker Compose" icon="seti:yml">
+
+**Best for production** - Easy management and restarts.
+
+<Steps>
+
+1. Create `docker-compose.yaml`:
+
+   ```yaml
+   version: '3.8'
+
+   services:
+     blockbusterr:
+       image: ghcr.io/mahcks/blockbusterr:latest
+       container_name: blockbusterr
+       ports:
+         - "9090:9090"
+       volumes:
+         - ./data:/app/data
+         - ./config:/app/config  # Optional: external config
+       environment:
+         - TZ=America/New_York
+       restart: unless-stopped
+   ```
+
+2. Start the stack:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+3. View logs:
+
+   ```bash
+   docker-compose logs -f blockbusterr
+   ```
+
+</Steps>
+
+<Aside type="note">
+The config volume is optional - you can configure everything through the web UI.
+</Aside>
+
+</TabItem>
+<TabItem label="With Full Stack" icon="puzzle">
+
+**Complete setup** - Blockbusterr + Radarr + Sonarr on the same network.
+
+```yaml
+version: '3.8'
+
+networks:
+  media:
+    driver: bridge
+
+services:
+  blockbusterr:
+    image: ghcr.io/mahcks/blockbusterr:latest
+    container_name: blockbusterr
+    networks:
+      - media
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./blockbusterr/data:/app/data
+    environment:
+      - TZ=America/New_York
+    restart: unless-stopped
+  
+  radarr:
+    image: linuxserver/radarr:latest
+    container_name: radarr
+    networks:
+      - media
+    ports:
+      - "7878:7878"
+    volumes:
+      - ./radarr/config:/config
+      - /path/to/movies:/movies
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    restart: unless-stopped
+  
+  sonarr:
+    image: linuxserver/sonarr:latest
+    container_name: sonarr
+    networks:
+      - media
+    ports:
+      - "8989:8989"
+    volumes:
+      - ./sonarr/config:/config
+      - /path/to/tv:/tv
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    restart: unless-stopped
+```
+
+<Aside type="caution">
+When using container networking, use container names in URLs:
+- Radarr: `http://radarr:7878`
+- Sonarr: `http://sonarr:8989`
+</Aside>
+
+</TabItem>
+<TabItem label="Binary" icon="rocket">
+
+**For advanced users** - Direct binary execution without Docker.
+
+<Steps>
+
+1. Download the latest release from [GitHub Releases](https://github.com/mahcks/blockbusterr/releases)
+
+2. Extract the archive:
+
+   ```bash
+   tar -xzf blockbusterr-linux-amd64.tar.gz
+   cd blockbusterr
+   ```
+
+3. Make the binary executable:
+
+   ```bash
+   chmod +x blockbusterr
+   ```
+
+4. Run Blockbusterr:
+
+   ```bash
+   ./blockbusterr
+   ```
+
+</Steps>
+
+<Aside type="note">
+The binary expects `config.yaml` in the same directory or in `./config/`.
+</Aside>
+
+</TabItem>
+<TabItem label="From Source" icon="github">
+
+**For developers** - Build from source code.
+
+<Steps>
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/mahcks/blockbusterr.git
+   cd blockbusterr
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   go mod download
+   ```
+
+3. Build the binary:
+
+   ```bash
+   make build
+   ```
+
+4. Run Blockbusterr:
+
+   ```bash
+   ./bin/blockbusterr
+   ```
+
+</Steps>
+
+**Development mode with hot reload:**
+
+```bash
+make dev
+```
+
+</TabItem>
+</Tabs>
+
+## Environment Variables
+
+Configure Blockbusterr behavior with environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `9090` | HTTP server port |
+| `CONFIG_PATH` | `./config/config.yaml` | Path to config file |
+| `DATA_PATH` | `./data` | Path to database directory |
+| `LOG_LEVEL` | `info` | Logging level (debug, info, warn, error) |
+| `TZ` | `UTC` | Timezone for scheduling |
+
+**Example with custom settings:**
+
+```bash
+docker run -d \
+  --name blockbusterr \
+  -p 8080:8080 \
+  -e PORT=8080 \
+  -e LOG_LEVEL=debug \
+  -e TZ=Europe/London \
+  -v $(pwd)/data:/app/data \
+  ghcr.io/mahcks/blockbusterr:latest
+```
+
+## Health Check
+
+Verify Blockbusterr is running correctly:
+
+```bash
+curl http://localhost:9090/api/v1/health
+```
+
+Expected response:
+
+```json
+{
+  "status": "healthy",
+  "version": "1.0.0",
+  "uptime": "2h34m12s"
+}
+```
+
+## Updating
+
+<Tabs>
+<TabItem label="Docker" icon="seti:docker">
+
+```bash
+docker pull ghcr.io/mahcks/blockbusterr:latest
+docker stop blockbusterr
+docker rm blockbusterr
+# Then run the original docker run command
+```
+
+</TabItem>
+<TabItem label="Docker Compose" icon="seti:yml">
+
+```bash
+docker-compose pull blockbusterr
+docker-compose up -d blockbusterr
+```
+
+</TabItem>
+<TabItem label="Binary/Source" icon="rocket">
+
+Download the new release or pull the latest code:
+
+```bash
+git pull origin master
+make build
+./bin/blockbusterr
+```
+
+</TabItem>
+</Tabs>
+
+<Aside type="caution" title="Backup Before Updating">
+Always backup your `data` directory before major version upgrades:
+
+```bash
+cp -r data data.backup
+```
+</Aside>
+
+## Troubleshooting
+
+<CardGrid>
+<Card title="Port Already in Use" icon="warning">
+Change the port mapping: `-p 8080:9090` (host:container)
+</Card>
+<Card title="Permission Denied" icon="error">
+Ensure the data directory is writable: `chmod -R 777 data/`
+</Card>
+<Card title="Can't Connect to *arr" icon="puzzle">
+Use container names if on same Docker network, not `localhost`
+</Card>
+<Card title="Database Locked" icon="laptop">
+Only run one Blockbusterr instance per data directory
+</Card>
+</CardGrid>
+
+## Next Steps
+
+<CardGrid>
+<Card title="Quick Start" icon="rocket" href="/blockbusterr/getting-started/quickstart">
+Get up and running in 5 minutes
+</Card>
+<Card title="Configuration" icon="setting" href="/blockbusterr/getting-started/configuration">
+Configure Trakt and your integrations
+</Card>
+<Card title="Set Up Jobs" icon="star" href="/blockbusterr/concepts/jobs">
+Create automated content discovery jobs
+</Card>
+</CardGrid>

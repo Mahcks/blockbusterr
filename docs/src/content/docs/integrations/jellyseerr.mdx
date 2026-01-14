@@ -1,0 +1,558 @@
+---
+title: Jellyseerr Integration
+description: Configure Jellyseerr for request-based workflows
+---
+
+import { Steps, Card, CardGrid, Aside, Badge, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Badge text="Multi-User" variant="tip" /> <Badge text="Request Workflow" variant="note" />
+
+Jellyseerr integration enables request-based workflows perfect for multi-user environments.
+
+## Overview
+
+When using Jellyseerr mode, Blockbusterr creates **requests** in Jellyseerr instead of directly adding to Radarr/Sonarr. This gives you an approval workflow.
+
+<CardGrid>
+<Card title="What is Jellyseerr?" icon="information">
+Jellyseerr is a request management system for Plex/Jellyfin that allows users to request content and admins to approve/deny requests before downloading.
+
+**Website:** [jellyseerr.dev](https://jellyseerr.dev)
+</Card>
+<Card title="Why Use It?" icon="approve-check">
+- Multi-user request management
+- Approval workflows
+- Request quotas per user
+- User permissions
+- Request history tracking
+- Discord/email notifications
+</Card>
+</CardGrid>
+
+## Prerequisites
+
+<Steps>
+
+1. **Running Jellyseerr instance** (v1.0.0+)
+2. **Jellyseerr configured** with Radarr and/or Sonarr
+3. **Jellyseerr API key** from settings
+
+</Steps>
+
+<Aside type="note">
+Blockbusterr creates requests in Jellyseerr, but Radarr/Sonarr configuration must be done in Jellyseerr itself.
+</Aside>
+
+## Installation
+
+<Tabs>
+<TabItem label="Docker Compose" icon="seti:yml">
+
+Add Jellyseerr to your compose stack:
+
+```yaml
+version: '3.8'
+
+networks:
+  media:
+    driver: bridge
+
+services:
+  blockbusterr:
+    image: ghcr.io/mahcks/blockbusterr:latest
+    container_name: blockbusterr
+    networks:
+      - media
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./blockbusterr/data:/app/data
+    environment:
+      - TZ=America/New_York
+    restart: unless-stopped
+  
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    networks:
+      - media
+    ports:
+      - "5055:5055"
+    volumes:
+      - ./jellyseerr/config:/app/config
+    environment:
+      - TZ=America/New_York
+    restart: unless-stopped
+  
+  radarr:
+    image: linuxserver/radarr:latest
+    container_name: radarr
+    networks:
+      - media
+    # ... radarr config
+  
+  sonarr:
+    image: linuxserver/sonarr:latest
+    container_name: sonarr
+    networks:
+      - media
+    # ... sonarr config
+```
+
+<Aside type="tip">
+Using a shared Docker network allows containers to communicate by name: `http://jellyseerr:5055`
+</Aside>
+
+</TabItem>
+<TabItem label="Separate Hosts" icon="laptop">
+
+If Jellyseerr is on a different machine:
+
+**In Blockbusterr config:**
+
+```yaml
+jellyseerr:
+  enabled: true
+  url: "http://192.168.1.50:5055"  # Use IP address
+  api_key: "your_jellyseerr_api_key"
+```
+
+<Aside type="caution">
+Ensure firewall rules allow communication between Blockbusterr and Jellyseerr hosts.
+</Aside>
+
+</TabItem>
+</Tabs>
+
+## Getting API Key
+
+<Steps>
+
+1. Open Jellyseerr web interface at `http://localhost:5055`
+
+2. Click your **profile icon** (top right)
+
+3. Go to **Settings** → **General**
+
+4. Scroll to **API Key** section
+
+5. Click **Generate API Key** if not already generated
+
+6. **Copy the API key**
+
+</Steps>
+
+<Aside type="caution" title="Keep It Secret">
+The API key grants full access to Jellyseerr - treat it like a password!
+</Aside>
+
+## Configuration
+
+<Tabs>
+<TabItem label="Basic Setup" icon="pencil">
+
+Minimal configuration to enable Jellyseerr:
+
+```yaml
+integration:
+  mode: "jellyseerr"  # Use Jellyseerr mode
+
+jellyseerr:
+  enabled: true
+  url: "http://jellyseerr:5055"
+  api_key: "your_jellyseerr_api_key"
+```
+
+<Steps>
+
+1. Add configuration to `config.yaml`
+2. Restart Blockbusterr
+3. Verify connection in logs
+4. Enable jobs to start creating requests
+
+</Steps>
+
+</TabItem>
+<TabItem label="Advanced Options" icon="setting">
+
+Additional configuration options:
+
+```yaml
+integration:
+  mode: "jellyseerr"
+
+jellyseerr:
+  enabled: true
+  url: "http://jellyseerr:5055"
+  api_key: "your_jellyseerr_api_key"
+  
+  # Optional: Default user ID for requests
+  user_id: 1  # Admin user
+  
+  # Optional: Request tags
+  tags:
+    - "blockbusterr"
+    - "automated"
+```
+
+**`user_id`:** The Jellyseerr user who "creates" the request. Defaults to admin (ID: 1).
+
+**`tags`:** Tags applied to all requests for easy filtering.
+
+</TabItem>
+<TabItem label="Docker Network" icon="seti:docker">
+
+When using Docker Compose with shared network:
+
+```yaml
+# In docker-compose.yaml
+networks:
+  media:
+
+services:
+  blockbusterr:
+    networks:
+      - media
+  
+  jellyseerr:
+    networks:
+      - media
+```
+
+```yaml
+# In config.yaml
+jellyseerr:
+  url: "http://jellyseerr:5055"  # Use container name
+```
+
+<Aside type="danger">
+**Don't use `localhost` or `127.0.0.1`** - these point to the Blockbusterr container itself, not Jellyseerr!
+</Aside>
+
+</TabItem>
+</Tabs>
+
+## Testing Connection
+
+<Tabs>
+<TabItem label="Manual Test" icon="rocket">
+
+Test the connection with curl:
+
+```bash
+curl "http://jellyseerr:5055/api/v1/status" \
+  -H "X-Api-Key: YOUR_API_KEY"
+```
+
+**Expected response:**
+
+```json
+{
+  "version": "1.9.2",
+  "commitTag": "v1.9.2",
+  "updateAvailable": false,
+  "commitsBehind": 0
+}
+```
+
+</TabItem>
+<TabItem label="Blockbusterr Test" icon="laptop">
+
+Check Blockbusterr logs after starting:
+
+```bash
+docker logs blockbusterr | grep jellyseerr
+```
+
+**Look for:**
+
+```
+[INFO] Connected to Jellyseerr v1.9.2
+[INFO] Jellyseerr integration enabled
+```
+
+**If you see errors:**
+
+```
+[ERROR] Failed to connect to Jellyseerr: connection refused
+```
+
+Check:
+- Jellyseerr is running
+- URL is correct
+- API key is valid
+- Network connectivity
+
+</TabItem>
+</Tabs>
+
+## Configuring Jellyseerr
+
+<Steps>
+
+1. **Add Radarr to Jellyseerr:**
+   - Settings → Radarr → Add Radarr Server
+   - Enter Radarr URL and API key
+   - Select quality profile and root folder
+   - Test connection
+
+2. **Add Sonarr to Jellyseerr:**
+   - Settings → Sonarr → Add Sonarr Server
+   - Enter Sonarr URL and API key
+   - Select quality profile and root folder
+   - Test connection
+
+3. **Configure Auto-Approve (Optional):**
+   - Settings → Users → Select user
+   - Enable **Auto-Approve Movies**
+   - Enable **Auto-Approve TV Shows**
+   - Or set approval thresholds
+
+4. **Set Request Limits (Optional):**
+   - Settings → Users → Select user
+   - Set **Movie Request Limit** (e.g., 10 per week)
+   - Set **TV Request Limit** (e.g., 5 per week)
+
+</Steps>
+
+## Request Workflow
+
+<Tabs>
+<TabItem label="Standard Flow" icon="rocket">
+
+<Steps>
+
+1. **Blockbusterr job runs** (e.g., trending_movies)
+
+2. **Content fetched** from Trakt
+
+3. **Filters applied** - content must pass Blockbusterr filters
+
+4. **Score threshold** - content must meet threshold_score
+
+5. **Request created** in Jellyseerr
+
+6. **Jellyseerr shows** request in dashboard
+
+7. **Admin reviews** and approves/denies
+
+8. **If approved**, Jellyseerr sends to Radarr/Sonarr
+
+9. **Radarr/Sonarr** searches and downloads
+
+</Steps>
+
+</TabItem>
+<TabItem label="Auto-Approve Flow" icon="star">
+
+<Steps>
+
+1. **Blockbusterr job runs**
+
+2. **High-score content** found (e.g., 85+)
+
+3. **Request created** in Jellyseerr
+
+4. **Jellyseerr auto-approves** (based on user settings)
+
+5. **Immediately sent** to Radarr/Sonarr
+
+6. **Download starts** automatically
+
+</Steps>
+
+<Aside type="tip" title="Best of Both Worlds">
+Set auto-approve for high scores (85+) and manual review for medium scores (65-84).
+</Aside>
+
+</TabItem>
+</Tabs>
+
+## Example Configurations
+
+<Tabs>
+<TabItem label="Family Server" icon="star">
+
+**Scenario:** Multiple users with approval workflow.
+
+```yaml
+integration:
+  mode: "jellyseerr"
+
+jellyseerr:
+  enabled: true
+  url: "http://jellyseerr:5055"
+  api_key: "your_key"
+  user_id: 1  # Admin creates requests
+
+jobs:
+  family_movies:
+    type: "movie"
+    list_type: "trakt_popular"
+    enabled: true
+    schedule: "0 8 * * *"  # Daily at 8 AM
+    fetch_count: 50
+    threshold_score: 65
+```
+
+**In Jellyseerr:**
+- Kids: 5 requests/week, manual approval
+- Parents: Auto-approve enabled
+
+**Result:** 10-15 movie requests daily, family reviews together
+
+</TabItem>
+<TabItem label="Curated Library" icon="heart">
+
+**Scenario:** Quality-focused with manual curation.
+
+```yaml
+integration:
+  mode: "jellyseerr"
+
+jellyseerr:
+  enabled: true
+  url: "http://jellyseerr:5055"
+  api_key: "your_key"
+
+jobs:
+  quality_movies:
+    type: "movie"
+    list_type: "smart_trakt_popular"
+    enabled: true
+    schedule: "0 0 * * 0"  # Weekly
+    fetch_count: 100
+    threshold_score: 75
+```
+
+**In Jellyseerr:**
+- All requests require approval
+- No auto-approve
+
+**Result:** 15-20 high-quality requests/week, manually curated
+
+</TabItem>
+<TabItem label="Hybrid Approach" icon="puzzle">
+
+**Scenario:** Auto-add best, approve medium quality.
+
+```yaml
+jobs:
+  excellent_movies:
+    type: "movie"
+    list_type: "trakt_favorited"
+    threshold_score: 85  # Very high
+  
+  good_movies:
+    type: "movie"
+    list_type: "trakt_popular"
+    threshold_score: 65  # Medium
+```
+
+**In Jellyseerr:**
+- Score 85+: Auto-approve
+- Score 65-84: Manual review
+
+</TabItem>
+</Tabs>
+
+## Monitoring Requests
+
+<CardGrid>
+<Card title="Jellyseerr Dashboard" icon="laptop">
+View all requests, their status (pending/approved/declined), and requester
+</Card>
+<Card title="Blockbusterr Activity" icon="list">
+Check what Blockbusterr has created in the Activity log
+</Card>
+<Card title="Request Notifications" icon="star">
+Configure Discord/Email notifications in Jellyseerr for new requests
+</Card>
+</CardGrid>
+
+## Troubleshooting
+
+<Tabs>
+<TabItem label="Connection Issues" icon="warning">
+
+**Problem:** Can't connect to Jellyseerr
+
+<Steps>
+
+1. Check Jellyseerr is running:
+   ```bash
+   docker ps | grep jellyseerr
+   ```
+
+2. Verify network connectivity:
+   ```bash
+   docker exec blockbusterr ping jellyseerr
+   ```
+
+3. Test API key:
+   ```bash
+   curl "http://jellyseerr:5055/api/v1/status" -H "X-Api-Key: YOUR_KEY"
+   ```
+
+4. Check Blockbusterr logs:
+   ```bash
+   docker logs blockbusterr
+   ```
+
+</Steps>
+
+</TabItem>
+<TabItem label="Requests Not Created" icon="error">
+
+**Problem:** Jobs run but no requests in Jellyseerr
+
+**Common causes:**
+
+- Content already requested
+- Content fails filters
+- Score below threshold
+- Content already in Radarr/Sonarr
+
+**Debug:**
+
+```bash
+# Check activity log
+curl http://localhost:9090/api/v1/activity
+
+# Preview job to see what would be added
+curl -X POST http://localhost:9090/api/v1/jobs/preview/trending-movies
+```
+
+</TabItem>
+<TabItem label="Wrong User" icon="puzzle">
+
+**Problem:** Requests show wrong user
+
+Set `user_id` in config:
+
+```yaml
+jellyseerr:
+  user_id: 1  # Admin user (default)
+```
+
+Find user IDs in Jellyseerr: **Settings** → **Users**
+
+</TabItem>
+</Tabs>
+
+## Next Steps
+
+<CardGrid>
+<Card title="Integration Modes" icon="puzzle" href="/blockbusterr/concepts/integration-modes">
+Learn about Direct vs Jellyseerr modes
+</Card>
+<Card title="Configure Jobs" icon="rocket" href="/blockbusterr/concepts/jobs">
+Set up automated content discovery
+</Card>
+<Card title="Use Cases" icon="star" href="/blockbusterr/examples/use-cases">
+See real-world examples
+</Card>
+<Card title="Jellyseerr Docs" icon="open-book" href="https://docs.jellyseerr.dev">
+Official Jellyseerr documentation
+</Card>
+</CardGrid>

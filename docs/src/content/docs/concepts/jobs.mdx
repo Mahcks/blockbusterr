@@ -1,0 +1,545 @@
+---
+title: Jobs Overview
+description: Understanding Blockbusterr's automated job system
+---
+
+import { Tabs, TabItem, Card, CardGrid, Aside, Badge, Steps, Code } from '@astrojs/starlight/components';
+
+Jobs are automated tasks that fetch content from Trakt and add it to your media library on a schedule.
+
+## Available Job Types
+
+<Badge text="17 Jobs" variant="success" /> <Badge text="9 Categories" variant="note" />
+
+<CardGrid>
+<Card title="Trending" icon="star">
+<Badge text="trending_movies" variant="tip" />
+<Badge text="trending_shows" variant="tip" />
+
+What's hot **right now** - current buzz and viral content.
+
+**Update frequency:** Every 6 hours
+</Card>
+
+<Card title="Popular" icon="heart">
+<Badge text="popular_movies" variant="note" />
+<Badge text="popular_shows" variant="note" />
+
+Most **watched** content over the past week.
+
+**Update frequency:** Daily
+</Card>
+
+<Card title="Smart Popular" icon="rocket">
+<Badge text="smart_popular_movies" variant="success" />
+<Badge text="smart_popular_shows" variant="success" />
+
+**Adaptive scoring** - balances mainstream blockbusters with quality control.
+
+**Update frequency:** Daily
+</Card>
+
+<Card title="Box Office" icon="trophy">
+<Badge text="box_office" variant="caution" />
+
+Current **theatrical** box office hits.
+
+**Update frequency:** Weekly
+</Card>
+
+<Card title="Anticipated" icon="telescope">
+<Badge text="anticipated_movies" variant="tip" />
+<Badge text="anticipated_shows" variant="tip" />
+
+Most **anticipated** upcoming releases.
+
+**Update frequency:** Weekly
+</Card>
+
+<Card title="Favorited" icon="approve-check">
+<Badge text="favorited_movies" variant="success" />
+<Badge text="favorited_shows" variant="success" />
+
+Most **favorited** by community.
+
+**Update frequency:** Daily
+</Card>
+
+<Card title="Played" icon="play">
+<Badge text="played_movies" variant="note" />
+<Badge text="played_shows" variant="note" />
+
+Most **played** (total plays, rewatchable).
+
+**Update frequency:** Daily
+</Card>
+
+<Card title="Watched" icon="eye-open">
+<Badge text="watched_movies" variant="tip" />
+<Badge text="watched_shows" variant="tip" />
+
+Most **watched** by unique users.
+
+**Update frequency:** Daily
+</Card>
+
+<Card title="Collected" icon="archive">
+<Badge text="collected_movies" variant="caution" />
+<Badge text="collected_shows" variant="caution" />
+
+Most **collected** in user libraries (essentials).
+
+**Update frequency:** Weekly
+</Card>
+</CardGrid>
+
+## Job Configuration
+
+<Tabs>
+<TabItem label="Basic" icon="pencil">
+
+Minimal configuration to get started:
+
+```yaml
+jobs:
+  trending_movies:
+    type: "movie"
+    list_type: "trakt_trending"
+    enabled: true
+    schedule: "0 */6 * * *"  # Every 6 hours
+    fetch_count: 20
+    threshold_score: 65
+```
+
+</TabItem>
+<TabItem label="Advanced" icon="setting">
+
+Full configuration with filters and scoring:
+
+```yaml
+jobs:
+  curated_popular:
+    type: "movie"
+    list_type: "trakt_popular"
+    enabled: true
+    schedule: "0 0 * * *"    # Daily at midnight
+    fetch_count: 100          # Fetch 100 items
+    threshold_score: 70       # Score must be 70+
+    
+    # Optional: Override global filters for this job
+    filters:
+      min_runtime: 90
+      max_runtime: 180
+      exclude_genres:
+        - "documentary"
+    
+    # Optional: Override global scoring for this job
+    scoring:
+      imdb_rating_weight: 0.5
+      trakt_rating_weight: 0.5
+```
+
+</TabItem>
+<TabItem label="Smart Job" icon="rocket">
+
+Smart job with adaptive thresholds:
+
+```yaml
+jobs:
+  smart_popular_movies:
+    type: "movie"
+    list_type: "smart_trakt_popular"
+    enabled: true
+    schedule: "0 6 * * *"     # Daily at 6 AM
+    fetch_count: 50
+    threshold_score: 70       # Base threshold
+    
+    # Smart-specific settings
+    base_min_rating: 7.0      # Baseline rating requirement
+    adjustment_factor: 2.0    # How aggressive (0.5-3.0)
+```
+
+See [Smart Jobs](/blockbusterr/concepts/smart-jobs/) for details.
+
+</TabItem>
+</Tabs>
+
+### Configuration Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `type` | string | Yes | `"movie"` or `"show"` |
+| `list_type` | string | Yes | Which Trakt list to use |
+| `enabled` | boolean | Yes | Enable or disable the job |
+| `schedule` | string | Yes | Cron schedule |
+| `fetch_count` | integer | Yes | Max items to fetch from Trakt |
+| `threshold_score` | integer | Yes | Minimum score (0-100) to add |
+| `filters` | object | No | Override global filters |
+| `scoring` | object | No | Override global scoring weights |
+
+## Scheduling
+
+<Tabs>
+<TabItem label="Cron Syntax" icon="document">
+
+Jobs use standard cron syntax:
+
+```
+┌───────────── minute (0 - 59)
+│ ┌───────────── hour (0 - 23)
+│ │ ┌───────────── day of month (1 - 31)
+│ │ │ ┌───────────── month (1 - 12)
+│ │ │ │ ┌───────────── day of week (0 - 6, Sunday = 0)
+│ │ │ │ │
+* * * * *
+```
+
+</TabItem>
+<TabItem label="Common Patterns" icon="star">
+
+| Pattern | Description | Use Case |
+|---------|-------------|----------|
+| `"0 */6 * * *"` | Every 6 hours | Trending content |
+| `"0 0 * * *"` | Daily at midnight | Popular/favorited |
+| `"0 12 * * 1"` | Monday at noon | Weekly updates |
+| `"*/30 * * * *"` | Every 30 minutes | Aggressive (not recommended) |
+| `"0 0 1 * *"` | 1st of month | Monthly collections |
+| `"0 6,18 * * *"` | 6 AM and 6 PM | Twice daily |
+
+</TabItem>
+<TabItem label="Best Practices" icon="approve-check">
+
+**Stagger your schedules:**
+
+```yaml
+trending_movies:
+  schedule: "0 0 * * *"    # Midnight
+
+popular_movies:
+  schedule: "0 6 * * *"    # 6 AM
+
+anticipated_movies:
+  schedule: "0 12 * * *"   # Noon
+
+favorited_shows:
+  schedule: "0 18 * * *"   # 6 PM
+```
+
+<Aside type="tip">
+Don't run all jobs at once - spread them throughout the day to avoid API rate limits and server load.
+</Aside>
+
+</TabItem>
+</Tabs>
+
+## Job Workflow
+
+<Steps>
+
+1. **Fetch from Trakt**
+   
+   Job contacts Trakt API and retrieves the specified list (trending, popular, etc.)
+
+2. **Apply Filters**
+   
+   Content is filtered based on your criteria (ratings, genres, certifications, etc.)
+
+3. **Fetch Metadata**
+   
+   Retrieve IMDb/TMDB ratings and additional metadata for scoring
+
+4. **Calculate Scores**
+   
+   Weighted scoring algorithm calculates a 0-100 score for each item
+
+5. **Check Threshold**
+   
+   Only items meeting `threshold_score` proceed
+
+6. **Check Existing**
+   
+   Skip content already in Radarr/Sonarr or Jellyseerr
+
+7. **Add Content**
+   
+   Send to Radarr/Sonarr (direct mode) or create Jellyseerr request
+
+8. **Log Activity**
+   
+   Record what was added/rejected in the activity log
+
+</Steps>
+
+## Preview Jobs
+
+<Aside type="tip" title="Always Preview First">
+Use the preview feature to see what will be added **before** enabling a job.
+</Aside>
+
+<Tabs>
+<TabItem label="Web UI" icon="laptop">
+
+<Steps>
+
+1. Navigate to **Jobs** page
+2. Configure your job settings
+3. Click **Preview** button
+4. Review the results:
+   - ✅ Items that will be added
+   - ⚠️ Items filtered out (with reasons)
+   - ℹ️ Items already in library
+5. Adjust filters/scoring as needed
+6. Enable when satisfied
+
+</Steps>
+
+</TabItem>
+<TabItem label="API" icon="rocket">
+
+```bash
+# Preview a job
+curl -X POST http://localhost:9090/api/v1/jobs/preview/trending-movies
+
+# Response
+{
+  "would_add": [
+    {
+      "title": "Dune: Part Two",
+      "year": 2024,
+      "score": 87,
+      "reason": "Passes all filters"
+    }
+  ],
+  "filtered_out": [
+    {
+      "title": "Low Budget Horror",
+      "year": 2024,
+      "score": 45,
+      "reason": "Score below threshold (65)"
+    }
+  ],
+  "already_in_library": [
+    {
+      "title": "The Batman",
+      "year": 2022
+    }
+  ],
+  "stats": {
+    "total_fetched": 50,
+    "would_add": 8,
+    "filtered_out": 35,
+    "already_added": 7
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Manual Triggering
+
+<Tabs>
+<TabItem label="Web UI" icon="laptop">
+
+Click the **▶ Run Now** button next to any enabled job to trigger it immediately.
+
+</TabItem>
+<TabItem label="API" icon="rocket">
+
+```bash
+curl -X POST http://localhost:9090/api/v1/jobs/trigger/trending-movies
+```
+
+</TabItem>
+</Tabs>
+
+<Aside type="note">
+Manual triggers ignore the schedule but respect all filters, scoring, and thresholds.
+</Aside>
+
+## Job Comparison
+
+<Tabs>
+<TabItem label="By Freshness" icon="star">
+
+| Job Type | Update Speed | Best For |
+|----------|--------------|----------|
+| **Trending** | Every 6 hours | Latest buzz, viral moments |
+| **Popular** | Daily | Current favorites |
+| **Box Office** | Weekly | Theatrical releases |
+| **Anticipated** | Weekly | Future releases |
+
+</TabItem>
+<TabItem label="By Quality" icon="approve-check">
+
+| Job Type | Quality Level | Volume |
+|----------|---------------|--------|
+| **Smart Popular** | High (adaptive) | Medium |
+| **Favorited** | High (community-vetted) | Low-Medium |
+| **Watched** | Medium-High (proven) | Medium |
+| **Trending** | Variable | High |
+
+</TabItem>
+<TabItem label="By Use Case" icon="puzzle">
+
+**For Current Events:**
+- Trending (every 6 hours)
+- Popular (daily)
+
+**For Quality Curation:**
+- Smart Popular (adaptive thresholds)
+- Favorited (community favorites)
+- Watched (proven completion)
+
+**For Completionism:**
+- Collected (essentials)
+- Popular + Trending (high volume)
+
+**For Future Planning:**
+- Anticipated (upcoming)
+- Box Office (new releases)
+
+</TabItem>
+</Tabs>
+
+## Example Configurations
+
+<Tabs>
+<TabItem label="Balanced" icon="approve-check">
+
+**Goal:** Good mix of current and quality content.
+
+```yaml
+jobs:
+  trending_movies:
+    type: "movie"
+    list_type: "trakt_trending"
+    enabled: true
+    schedule: "0 */6 * * *"
+    fetch_count: 50
+    threshold_score: 65
+  
+  smart_popular_movies:
+    type: "movie"
+    list_type: "smart_trakt_popular"
+    enabled: true
+    schedule: "0 0 * * *"
+    fetch_count: 30
+    threshold_score: 70
+  
+  favorited_movies:
+    type: "movie"
+    list_type: "trakt_favorited"
+    enabled: true
+    schedule: "0 12 * * 0"  # Weekly
+    fetch_count: 20
+    threshold_score: 75
+```
+
+**Result:** ~10-15 movies/week, mix of current and quality
+
+</TabItem>
+<TabItem label="Quality Focus" icon="star">
+
+**Goal:** Only the best content.
+
+```yaml
+jobs:
+  smart_popular_movies:
+    type: "movie"
+    list_type: "smart_trakt_popular"
+    enabled: true
+    schedule: "0 0 * * 0"  # Weekly
+    fetch_count: 100
+    threshold_score: 80  # High bar
+  
+  favorited_movies:
+    type: "movie"
+    list_type: "trakt_favorited"
+    enabled: true
+    schedule: "0 0 * * 0"
+    fetch_count: 50
+    threshold_score: 85  # Very high bar
+```
+
+**Result:** ~5-8 excellent movies/week
+
+</TabItem>
+<TabItem label="High Volume" icon="rocket">
+
+**Goal:** Catch everything trending.
+
+```yaml
+jobs:
+  trending_movies:
+    type: "movie"
+    list_type: "trakt_trending"
+    enabled: true
+    schedule: "0 */6 * * *"  # Every 6 hours
+    fetch_count: 200
+    threshold_score: 50  # Low bar
+  
+  popular_movies:
+    type: "movie"
+    list_type: "trakt_popular"
+    enabled: true
+    schedule: "0 0 * * *"
+    fetch_count: 150
+    threshold_score: 55
+```
+
+**Result:** ~50-100 movies/week (requires storage!)
+
+</TabItem>
+</Tabs>
+
+## Best Practices
+
+<CardGrid>
+<Card title="Start Conservative" icon="approve-check">
+Begin with high thresholds (75+) and strict filters, then relax as needed.
+</Card>
+<Card title="Preview Everything" icon="magnifier">
+Always preview jobs before enabling to avoid unwanted content.
+</Card>
+<Card title="Stagger Schedules" icon="rocket">
+Spread job runs throughout the day to avoid API rate limits.
+</Card>
+<Card title="Monitor Activity" icon="laptop">
+Check the Activity log weekly to see what's being added.
+</Card>
+<Card title="Use Smart Jobs" icon="star">
+Smart Popular jobs automatically balance quality and popularity.
+</Card>
+<Card title="Set Reasonable Limits" icon="setting">
+Start with lower fetch_count (20-30) and increase gradually.
+</Card>
+</CardGrid>
+
+## Troubleshooting
+
+<Aside type="caution" title="No Content Being Added?">
+Common issues:
+- Threshold score too high (try lowering to 60-65)
+- Filters too strict (check min_rating, min_votes)
+- Content already in library (check activity log)
+- Job not enabled (verify `enabled: true`)
+- Schedule not running (check cron syntax)
+</Aside>
+
+## Next Steps
+
+<CardGrid>
+<Card title="Filters & Scoring" icon="setting" href="/blockbusterr/concepts/filters">
+Configure filtering and scoring rules
+</Card>
+<Card title="Smart Jobs" icon="rocket" href="/blockbusterr/concepts/smart-jobs">
+Learn about adaptive smart jobs
+</Card>
+<Card title="Integration Modes" icon="puzzle" href="/blockbusterr/concepts/integration-modes">
+Choose Direct or Jellyseerr mode
+</Card>
+<Card title="Use Cases" icon="star" href="/blockbusterr/examples/use-cases">
+See real-world examples
+</Card>
+</CardGrid>
