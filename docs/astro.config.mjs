@@ -30,6 +30,14 @@ export default defineConfig({
 						content: 'https://blockbusterr.dev/banner.png',
 					},
 				},
+				{
+					tag: 'script',
+					attrs: {
+						defer: true,
+						src: 'https://static.cloudflareinsights.com/beacon.min.js',
+						'data-cf-beacon': '{"token": "d3a46d82612243b18b3bc3e640f37803"}',
+					},
+				},
 			],
 			
 			social: [
