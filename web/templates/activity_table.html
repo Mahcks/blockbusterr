@@ -90,6 +90,7 @@
             {{if eq .Status "added"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-300 rounded-lg text-sm font-semibold ring-1 ring-green-500/30">✓ Added</div>
             {{else if eq .Status "requested"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-blue-300 rounded-lg text-sm font-semibold ring-1 ring-blue-500/30">📋 Requested</div>
             {{else if eq .Status "rejected"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-300 rounded-lg text-sm font-semibold ring-1 ring-red-500/30">✗ Rejected</div>
+            {{else if eq .Status "blocked"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-500/20 text-gray-300 rounded-lg text-sm font-semibold ring-1 ring-gray-500/30">🚫 Blocked</div>
             {{else if eq .Status "skipped"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/20 text-yellow-300 rounded-lg text-sm font-semibold ring-1 ring-yellow-500/30">⊘ Skipped</div>
             {{else if eq .Status "failed"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 text-red-300 rounded-lg text-sm font-semibold ring-1 ring-red-600/30">⚠ Failed</div>
             {{else}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-500/20 text-slate-300 rounded-lg text-sm font-semibold ring-1 ring-slate-500/30">{{.Status}}</div>{{end}}
@@ -132,6 +133,19 @@
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path>
               </svg>
               Add Anyway
+            </button>
+            {{end}}
+            {{if or (eq .Status "added") (eq .Status "requested") (eq .Status "rejected")}}
+            <button 
+              hx-post="/v1/activity/{{.ID}}/block"
+              hx-swap="none"
+              hx-confirm="Are you sure you want to block '{{.Title}}'? It will be added to your blocklist and never added again."
+              data-card-id="{{.ID}}"
+              class="block-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-lg text-xs font-semibold text-white transition-all duration-200 ring-1 ring-red-500/50 hover:ring-red-400/50 shadow-lg hover:shadow-red-500/20">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"></path>
+              </svg>
+              Block
             </button>
             {{end}}
             {{if .FilterDetails}}
@@ -250,6 +264,64 @@ document.body.addEventListener('htmx:afterRequest', function(evt) {
         showNotification(response.error || 'Failed to add media', 'error');
       } catch (e) {
         showNotification('Failed to add media', 'error');
+      }
+    }
+  }
+  
+  // Handle successful "Block" responses
+  if (evt.detail.pathInfo.requestPath.includes('/block')) {
+    if (evt.detail.successful) {
+      try {
+        const response = JSON.parse(evt.detail.xhr.responseText);
+        if (response.success) {
+          // Show success notification
+          showNotification(response.message, 'success');
+          
+          // Find and update the card in place
+          const button = evt.detail.elt;
+          const card = button.closest('.bg-gradient-to-br');
+          if (card) {
+            // Update the status badge from green (added) or blue (requested) to gray (blocked)
+            const statusBadge = card.querySelector('[class*="bg-green-500/20"], [class*="bg-blue-500/20"]');
+            if (statusBadge) {
+              statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-500/20 text-gray-300 rounded-lg text-sm font-semibold ring-1 ring-gray-500/30';
+              statusBadge.innerHTML = '🚫 Blocked';
+            }
+            
+            // Update the message text
+            const messageSpan = card.querySelector('.text-slate-400.italic');
+            if (messageSpan) {
+              messageSpan.textContent = 'Blocked by user';
+            } else {
+              // Add message if it doesn't exist
+              const timestampDiv = card.querySelector('.flex.items-center.gap-3.text-xs.text-slate-400');
+              if (timestampDiv) {
+                const separator = document.createElement('span');
+                separator.className = 'text-slate-500';
+                separator.textContent = '•';
+                timestampDiv.appendChild(separator);
+                
+                const newMessage = document.createElement('span');
+                newMessage.className = 'text-slate-400 italic';
+                newMessage.textContent = 'Blocked by user';
+                timestampDiv.appendChild(newMessage);
+              }
+            }
+            
+            // Remove the "Block" button
+            button.remove();
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing response:', e);
+      }
+    } else {
+      // Show error notification
+      try {
+        const response = JSON.parse(evt.detail.xhr.responseText);
+        showNotification(response.error || 'Failed to block media', 'error');
+      } catch (e) {
+        showNotification('Failed to block media', 'error');
       }
     }
   }
