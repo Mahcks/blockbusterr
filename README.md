@@ -7,21 +7,21 @@ Blockbusterr automatically adds trending, popular, and highly-rated movies and T
 [![GitHub release](https://img.shields.io/github/v/release/Mahcks/blockbusterr)](https://github.com/Mahcks/blockbusterr/releases)
 [![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-ghcr.io-blue)](https://github.com/mahcks/blockbusterr/pkgs/container/blockbusterr)
 [![License](https://img.shields.io/github/license/Mahcks/blockbusterr)](LICENSE)
-[![Documentation](https://img.shields.io/badge/docs-live-blue)](https://mahcks.github.io/blockbusterr/)
+[![Documentation](https://img.shields.io/badge/docs-live-blue)](https://blockbusterr.dev/)
 
 ---
 
 ## Documentation
 
-**Full documentation available at [mahcks.github.io/blockbusterr](https://mahcks.github.io/blockbusterr/)**
+**Full documentation available at [blockbusterr.dev](https://blockbusterr.dev/)**
 
-- [Quick Start Guide](https://mahcks.github.io/blockbusterr/getting-started/quickstart/)
-- [Installation Methods](https://mahcks.github.io/blockbusterr/getting-started/installation/)
-- [Configuration](https://mahcks.github.io/blockbusterr/getting-started/configuration/)
-- [Jobs Overview](https://mahcks.github.io/blockbusterr/concepts/jobs/)
-- [Filters & Scoring](https://mahcks.github.io/blockbusterr/concepts/filters/)
-- [Real-World Examples](https://mahcks.github.io/blockbusterr/examples/use-cases/)
-- [API Reference](https://mahcks.github.io/blockbusterr/api/overview/)
+- [Quick Start Guide](https://blockbusterr.dev/getting-started/quickstart/)
+- [Installation Methods](https://blockbusterr.dev/getting-started/installation/)
+- [Configuration](https://blockbusterr.dev/getting-started/configuration/)
+- [Jobs Overview](https://blockbusterr.dev/concepts/jobs/)
+- [Filters & Scoring](https://blockbusterr.dev/concepts/filters/)
+- [Real-World Examples](https://blockbusterr.dev/examples/use-cases/)
+- [API Reference](https://blockbusterr.dev/api/overview/)
 
 ---
 
@@ -39,7 +39,7 @@ docker run -d \
 
 Then open `http://localhost:9090` and configure your services.
 
-**[→ Full Quick Start Guide](https://mahcks.github.io/blockbusterr/getting-started/quickstart/)**
+**[→ Full Quick Start Guide](https://blockbusterr.dev/getting-started/quickstart/)**
 
 ---
 
@@ -92,7 +92,7 @@ Then open `http://localhost:9090` and configure your services.
 - **Genre Specialist** - Sci-fi and fantasy only, no comedies or romance
 - **Completionist** - Add everything trending with minimal filtering
 
-**[→ See Real-World Examples](https://mahcks.github.io/blockbusterr/examples/use-cases/)**
+**[→ See Real-World Examples](https://blockbusterr.dev/examples/use-cases/)**
 
 ---
 
@@ -115,7 +115,7 @@ services:
     restart: unless-stopped
 ```
 
-**Other methods:** Binary, from source, with full stack → **[Installation Guide](https://mahcks.github.io/blockbusterr/getting-started/installation/)**
+**Other methods:** Binary, from source, with full stack → **[Installation Guide](https://blockbusterr.dev/getting-started/installation/)**
 
 ---
 
@@ -126,7 +126,7 @@ Blockbusterr can be configured via:
 - **config.yaml** - Mount as volume or edit in container
 - **Environment Variables** - For Docker deployments
 
-**[→ Configuration Guide](https://mahcks.github.io/blockbusterr/getting-started/configuration/)**
+**[→ Configuration Guide](https://blockbusterr.dev/getting-started/configuration/)**
 
 ---
 
@@ -140,7 +140,7 @@ Blockbusterr can be configured via:
 6. **Add to library** - Direct to Radarr/Sonarr or create Jellyseerr request
 7. **Log activity** - Track what was added with posters and metadata
 
-**[→ Learn About Jobs](https://mahcks.github.io/blockbusterr/concepts/jobs/)** | **[→ Filters & Scoring](https://mahcks.github.io/blockbusterr/concepts/filters/)**
+**[→ Learn About Jobs](https://blockbusterr.dev/concepts/jobs/)** | **[→ Filters & Scoring](https://blockbusterr.dev/concepts/filters/)**
 
 ---
 
