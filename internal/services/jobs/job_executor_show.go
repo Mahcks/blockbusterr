@@ -125,7 +125,6 @@ func (e *ShowJobExecutor) executeShowsDirect(
 		}
 
 		series := lookupResults[0]
-		log.Debugf("Looked up '%s' -> found '%s' (TVDB: %d)", show.Title, series.Title, series.TvdbID)
 
 		// Check if lookup returned a series that's already in Sonarr (has an ID assigned)
 		if series.ID > 0 {
