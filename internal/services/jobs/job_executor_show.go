@@ -104,8 +104,20 @@ func (e *ShowJobExecutor) executeShowsDirect(
 	failed := 0
 
 	for _, show := range shows {
-		// Lookup series in Sonarr to get TVDB ID
-		lookupResults, err := sonarrClient.LookupSeries(ctx, fmt.Sprintf("trakt:%d", show.IDs.Trakt))
+		// Try to lookup series in Sonarr - prefer TVDB ID if available, otherwise use title
+		var lookupResults []integrations.SonarrSeries
+		var err error
+
+		if show.IDs.TVDB > 0 {
+			lookupResults, err = sonarrClient.LookupSeries(ctx, fmt.Sprintf("tvdb:%d", show.IDs.TVDB))
+			if err != nil || len(lookupResults) == 0 {
+				log.Warnf("TVDB lookup failed for '%s (%d)', trying title search", show.Title, show.Year)
+				lookupResults, err = sonarrClient.LookupSeries(ctx, show.Title)
+			}
+		} else {
+			lookupResults, err = sonarrClient.LookupSeries(ctx, show.Title)
+		}
+
 		if err != nil || len(lookupResults) == 0 {
 			log.Errorf("Failed to lookup show '%s (%d)' in Sonarr: %v", show.Title, show.Year, err)
 			failed++
@@ -113,6 +125,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 		}
 
 		series := lookupResults[0]
+		log.Debugf("Looked up '%s' -> found '%s' (TVDB: %d)", show.Title, series.Title, series.TvdbID)
 
 		// Check if lookup returned a series that's already in Sonarr (has an ID assigned)
 		if series.ID > 0 {
