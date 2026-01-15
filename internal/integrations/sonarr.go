@@ -243,7 +243,7 @@ func (s *Sonarr) GetSeries(ctx context.Context) ([]SonarrSeries, error) {
 
 // LookupSeries searches for a TV series by TVDB ID or title
 func (s *Sonarr) LookupSeries(ctx context.Context, term string) ([]SonarrSeries, error) {
-	endpoint := fmt.Sprintf("/series/lookup?term=%s", term)
+	endpoint := fmt.Sprintf("/series/lookup?term=%s", url.QueryEscape(term))
 
 	resp, err := s.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
