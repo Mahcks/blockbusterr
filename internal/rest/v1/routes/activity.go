@@ -19,11 +19,25 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 	router.Get("/activity/logs", func(c *fiber.Ctx) error {
 		db := gctx.Database()
 
-		// Get limit from query params (default 50)
-		limit := 50
+		// Get pagination params
+		page := 1
+		if pageStr := c.Query("page"); pageStr != "" {
+			if parsedPage, err := strconv.Atoi(pageStr); err == nil && parsedPage > 0 {
+				page = parsedPage
+			}
+		}
+
+		pageSize := 50
+		if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
+			if parsedSize, err := strconv.Atoi(pageSizeStr); err == nil && parsedSize > 0 && parsedSize <= 200 {
+				pageSize = parsedSize
+			}
+		}
+
+		// Legacy support for limit param
 		if limitStr := c.Query("limit"); limitStr != "" {
 			if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
-				limit = parsedLimit
+				pageSize = parsedLimit
 			}
 		}
 
@@ -36,7 +50,9 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		_ = c.Query("sort")                // Reserved for future use
 		_ = c.Query("order")               // Reserved for future use
 
-		logs, err := db.GetRecentActivityFiltered(limit, status, mediaType, jobType)
+		// Fetch more logs than needed to apply filters and calculate total
+		fetchLimit := pageSize * 100 // Fetch enough for filtering
+		logs, err := db.GetRecentActivityFiltered(fetchLimit, status, mediaType, jobType)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to retrieve activity logs",
@@ -81,13 +97,51 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			logs = filtered
 		}
 
+		// Calculate pagination
+		totalRecords := len(logs)
+		totalPages := (totalRecords + pageSize - 1) / pageSize
+		if totalPages == 0 {
+			totalPages = 1
+		}
+		if page > totalPages {
+			page = totalPages
+		}
+
+		// Apply pagination
+		startIdx := (page - 1) * pageSize
+		endIdx := startIdx + pageSize
+		if startIdx >= totalRecords {
+			startIdx = 0
+		}
+		if endIdx > totalRecords {
+			endIdx = totalRecords
+		}
+
+		paginatedLogs := logs
+		if totalRecords > 0 {
+			paginatedLogs = logs[startIdx:endIdx]
+		}
+
 		// Check if this is an HTMX request (wants HTML)
 		if c.Get("HX-Request") == "true" {
-			return c.Render("activity_table", logs)
+			// For HTMX, return the table with pagination controls
+			return c.Render("activity_table", fiber.Map{
+				"Logs":         paginatedLogs,
+				"Page":         page,
+				"PageSize":     pageSize,
+				"TotalRecords": totalRecords,
+				"TotalPages":   totalPages,
+			})
 		}
 
 		// Otherwise return JSON (for API clients)
-		return c.JSON(logs)
+		return c.JSON(fiber.Map{
+			"logs":          paginatedLogs,
+			"page":          page,
+			"page_size":     pageSize,
+			"total_records": totalRecords,
+			"total_pages":   totalPages,
+		})
 	})
 
 	// Get activity chart data
@@ -164,7 +218,16 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 	router.Get("/activity/rejection-breakdown", func(c *fiber.Ctx) error {
 		db := gctx.Database()
 
-		// Get recent rejected items to analyze filter reasons
+		// Get all rejected count for accurate total
+		stats, err := db.GetActivityStats()
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to retrieve rejection data",
+			})
+		}
+		totalRejected, _ := stats["total_rejected"].(int)
+
+		// Get recent rejected items to analyze filter reasons (sample up to 1000)
 		logs, err := db.GetRecentActivityFiltered(1000, "rejected", "", "")
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -213,7 +276,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		}
 
 		return c.JSON(fiber.Map{
-			"total_rejected": len(logs),
+			"total_rejected": totalRejected,
 			"breakdown":      reasonCounts,
 		})
 	})

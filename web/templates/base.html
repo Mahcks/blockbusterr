@@ -14,10 +14,41 @@
               primary: "#3b82f6",
               secondary: "#1e293b",
             },
+            animation: {
+              'slide-in': 'slide-in 0.3s ease-out',
+              'fade-in': 'fade-in 0.2s ease-out',
+            },
+            keyframes: {
+              'slide-in': {
+                '0%': { transform: 'translateX(100%)', opacity: '0' },
+                '100%': { transform: 'translateX(0)', opacity: '1' },
+              },
+              'fade-in': {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+            },
           },
         },
       };
     </script>
+    <style>
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1e293b;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+      }
+    </style>
   </head>
   <body class="bg-slate-900 text-slate-100 min-h-screen">
     <header class="bg-slate-800 border-b border-slate-700">
@@ -38,6 +69,13 @@
           </a>
           <a href="/activity" class="px-4 py-3 text-slate-300 hover:text-blue-400 hover:border-b-2 hover:border-blue-400 transition-colors {{if eq .Title "Blockbusterr - Activity Log"}}text-blue-400 border-b-2 border-blue-400{{end}}">
             Activity Log
+          </a>
+          <div class="flex-1"></div>
+          <a href="https://blockbusterr.dev/getting-started/quickstart/" target="_blank" rel="noopener noreferrer" class="px-4 py-3 text-slate-300 hover:text-blue-400 hover:border-b-2 hover:border-blue-400 transition-colors flex items-center gap-1">
+            Documentation
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+            </svg>
           </a>
         </nav>
       </div>

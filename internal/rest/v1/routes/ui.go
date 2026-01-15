@@ -228,9 +228,6 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 	app.Post("/jobs/config/save", func(c *fiber.Ctx) error {
 		cfg := rg.gctx.Config()
 
-		// Get all form keys to detect which fields were actually submitted
-		formData := c.Request().PostArgs()
-
 		// Update global sync interval if provided
 		if syncInterval := c.FormValue("jobs.sync_interval"); syncInterval != "" {
 			cfg.Jobs.SyncInterval = syncInterval
@@ -241,9 +238,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			cfg.Jobs.Mode = mode
 		}
 
-		// Helper to check if a field was submitted (even if empty)
+		// Helper to check if a field was submitted (using Fiber's FormValue which handles multipart)
 		hasField := func(key string) bool {
-			return formData.Has(key)
+			return c.FormValue(key) != ""
 		}
 
 		// Movies - Trending

@@ -1,0 +1,60 @@
+{{/* Card Component - Reusable card wrapper */}}
+{{define "card"}}
+<div class="bg-slate-800 rounded-lg border border-slate-700 p-6 {{.Class}}">
+  {{.Content}}
+</div>
+{{end}}
+
+{{/* Card Header - For cards with titles and descriptions */}}
+{{define "card-header"}}
+<div class="{{.WrapperClass}}">
+  {{if .Icon}}
+  <div class="flex items-center gap-3 mb-2">
+    {{.Icon}}
+    <h3 class="text-xl font-semibold text-slate-100">{{.Title}}</h3>
+    {{if .Badge}}
+      {{.Badge}}
+    {{end}}
+  </div>
+  {{else}}
+  <h3 class="text-xl font-semibold text-slate-100 mb-2">{{.Title}}</h3>
+  {{end}}
+  {{if .Description}}
+  <p class="text-sm text-slate-400">{{.Description}}</p>
+  {{end}}
+</div>
+{{end}}
+
+{{/* Section Header - For major page sections */}}
+{{define "section-header"}}
+<div class="mb-6 {{.Class}}">
+  <h2 class="text-3xl font-bold text-blue-400 mb-2 flex items-center gap-3">
+    {{if .Icon}}{{.Icon}}{{end}}
+    {{.Title}}
+  </h2>
+  {{if .Description}}
+  <p class="text-slate-300">{{.Description}}</p>
+  {{end}}
+</div>
+{{end}}
+
+{{/* Gradient Card - Card with gradient header */}}
+{{define "gradient-card"}}
+<div class="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden {{.Class}}">
+  <div class="bg-gradient-to-r {{.GradientFrom}} {{.GradientTo}} p-4 border-b border-slate-700">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        {{if .Icon}}{{.Icon}}{{end}}
+        <h3 class="text-xl font-semibold text-slate-100">{{.Title}}</h3>
+      </div>
+      {{if .Badge}}{{.Badge}}{{end}}
+    </div>
+    {{if .Subtitle}}
+    <p class="text-xs text-slate-400 mt-2">{{.Subtitle}}</p>
+    {{end}}
+  </div>
+  <div class="p-6">
+    {{.Content}}
+  </div>
+</div>
+{{end}}

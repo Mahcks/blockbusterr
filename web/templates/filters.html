@@ -2,75 +2,114 @@
 <div class="space-y-6">
   <div id="message-container"></div>
 
-  <!-- Info Section -->
-  <div class="bg-slate-800 rounded-lg border border-slate-700 p-6">
-    <h2 class="text-2xl font-bold text-blue-400 mb-4">Content Filters</h2>
-    <p class="text-slate-300">Configure filters to control which movies and shows are added to your library. These filters apply to all jobs.</p>
+  <!-- Info Alert -->
+  <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4 mb-4">
+    <div class="flex items-start">
+      <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+      </svg>
+      <div>
+        <h4 class="font-semibold text-blue-300 mb-1">Content Filters</h4>
+        <p class="text-sm text-slate-300">
+          Configure filters to control which movies and shows are added to your library. These filters apply globally to all jobs.
+        </p>
+      </div>
+    </div>
   </div>
 
   <!-- Tab Buttons -->
-  <div class="flex border-b border-slate-700">
-    <button onclick="showTab('movies')" id="movies-tab" class="px-6 py-3 text-blue-400 border-b-2 border-blue-400 font-semibold">
+  <div class="flex border-b border-slate-700 mb-4">
+    <button onclick="showTab('movies')" id="movies-tab" class="px-6 py-3 text-blue-400 border-b-2 border-blue-400 font-semibold transition-colors">
       Movies
     </button>
-    <button onclick="showTab('shows')" id="shows-tab" class="px-6 py-3 text-slate-400 hover:text-slate-300">
+    <button onclick="showTab('shows')" id="shows-tab" class="px-6 py-3 text-slate-400 hover:text-slate-300 transition-colors">
       Shows
     </button>
   </div>
 
-  <form hx-post="/config/filters" hx-target="#message-container" hx-swap="innerHTML">
+  <form hx-post="/config/filters" hx-target="#message-container" hx-swap="innerHTML" class="space-y-6">
     <!-- Movies Tab -->
     <div id="movies-content" class="space-y-6">
-      <div class="bg-slate-800 rounded-lg border border-slate-700 p-6">
-        <h3 class="text-xl font-semibold text-slate-100 mb-4">Movie Filters</h3>
+      <div class="bg-slate-800 rounded-lg p-6 mb-4">
+        <h3 class="text-xl font-semibold text-slate-100 mb-6 flex items-center gap-2">
+          <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path>
+          </svg>
+          Movie Filters
+        </h3>
         
         <div class="space-y-6">
           <!-- Allowed Countries -->
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Allowed Countries</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              <svg class="w-4 h-4 inline mr-1 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Allowed Countries
+            </label>
             <div class="flex gap-2 mb-2">
-              <input type="text" id="movie-country-input" placeholder="US, GB, CA..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
-              <button type="button" onclick="addMovieCountry()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+              <input type="text" id="movie-country-input" placeholder="US, GB, CA..." class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+              <button type="button" onclick="addMovieCountry()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">Add</button>
             </div>
             <div id="movie-countries-list" class="space-y-2"></div>
           </div>
 
           <!-- Allowed Languages -->
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Allowed Languages</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              <svg class="w-4 h-4 inline mr-1 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+              </svg>
+              Allowed Languages
+            </label>
             <div class="flex gap-2 mb-2">
-              <input type="text" id="movie-language-input" placeholder="en, es, fr..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
-              <button type="button" onclick="addMovieLanguage()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+              <input type="text" id="movie-language-input" placeholder="en, es, fr..." class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+              <button type="button" onclick="addMovieLanguage()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">Add</button>
             </div>
             <div id="movie-languages-list" class="space-y-2"></div>
           </div>
 
           <!-- Blacklisted Genres -->
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Genres</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              <svg class="w-4 h-4 inline mr-1 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+              </svg>
+              Blacklisted Genres
+            </label>
             <div class="flex gap-2 mb-2">
-              <input type="text" id="movie-genre-input" placeholder="horror, documentary..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
-              <button type="button" onclick="addMovieGenre()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+              <input type="text" id="movie-genre-input" placeholder="horror, documentary..." class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+              <button type="button" onclick="addMovieGenre()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">Add</button>
             </div>
             <div id="movie-genres-list" class="space-y-2"></div>
           </div>
 
           <!-- Blacklisted Keywords -->
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Keywords</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              <svg class="w-4 h-4 inline mr-1 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+              </svg>
+              Blacklisted Keywords
+            </label>
             <div class="flex gap-2 mb-2">
-              <input type="text" id="movie-keyword-input" placeholder="christmas, musical..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
-              <button type="button" onclick="addMovieKeyword()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+              <input type="text" id="movie-keyword-input" placeholder="christmas, musical..." class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+              <button type="button" onclick="addMovieKeyword()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">Add</button>
             </div>
             <div id="movie-keywords-list" class="space-y-2"></div>
           </div>
 
           <!-- Blacklisted IDs -->
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Trakt IDs</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              <svg class="w-4 h-4 inline mr-1 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Blacklisted Trakt IDs
+            </label>
             <div class="flex gap-2 mb-2">
-              <input type="number" id="movie-id-input" placeholder="123456..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
-              <button type="button" onclick="addMovieID()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+              <input type="number" id="movie-id-input" placeholder="123456..." class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+              <button type="button" onclick="addMovieID()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">Add</button>
             </div>
             <div id="movie-ids-list" class="space-y-2"></div>
           </div>
@@ -79,11 +118,11 @@
           <div class="grid md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Min Runtime (minutes)</label>
-              <input type="number" name="movie_min_runtime" value="{{.Config.Filters.Movies.BlacklistedMinRuntime}}" placeholder="60" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <input type="number" name="movie_min_runtime" value="{{.Config.Filters.Movies.BlacklistedMinRuntime}}" placeholder="60" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Max Runtime (minutes)</label>
-              <input type="number" name="movie_max_runtime" value="{{.Config.Filters.Movies.BlacklistedMaxRuntime}}" placeholder="180" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <input type="number" name="movie_max_runtime" value="{{.Config.Filters.Movies.BlacklistedMaxRuntime}}" placeholder="180" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
           </div>
 
@@ -91,22 +130,22 @@
           <div class="grid md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Min Year</label>
-              <input type="number" name="movie_min_year" value="{{.Config.Filters.Movies.BlacklistedMinYear}}" placeholder="2000" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <input type="number" name="movie_min_year" value="{{.Config.Filters.Movies.BlacklistedMinYear}}" placeholder="2000" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Max Year</label>
-              <input type="number" name="movie_max_year" value="{{.Config.Filters.Movies.BlacklistedMaxYear}}" placeholder="2025" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <input type="number" name="movie_max_year" value="{{.Config.Filters.Movies.BlacklistedMaxYear}}" placeholder="2025" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
           </div>
 
           <!-- Rating Thresholds -->
-          <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4 mb-4">
+          <div class="bg-indigo-900/20 border border-indigo-700/50 rounded-lg p-4">
             <div class="flex items-start">
-              <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+              <svg class="w-5 h-5 text-indigo-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
               </svg>
               <div class="text-xs text-slate-300">
-                <p class="font-semibold mb-1">Quality Control Filters</p>
+                <p class="font-semibold mb-1 text-indigo-300">Quality Control</p>
                 <p>Set minimum rating and vote thresholds to ensure only high-quality content is added. Content below these thresholds will be automatically filtered out.</p>
               </div>
             </div>
@@ -118,7 +157,7 @@
                 Min Rating (0-10)
                 <span class="text-xs text-slate-400 ml-1">(0 = disabled)</span>
               </label>
-              <input type="number" name="movie_min_rating" value="{{.Config.Filters.Movies.MinRating}}" placeholder="6.5" step="0.1" min="0" max="10" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <input type="number" name="movie_min_rating" value="{{.Config.Filters.Movies.MinRating}}" placeholder="6.5" step="0.1" min="0" max="10" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
               <p class="mt-1 text-xs text-slate-400">Example: 6.5 filters out movies below 6.5/10</p>
             </div>
             <div>
@@ -126,7 +165,7 @@
                 Min Votes
                 <span class="text-xs text-slate-400 ml-1">(0 = disabled)</span>
               </label>
-              <input type="number" name="movie_min_votes" value="{{.Config.Filters.Movies.MinVotes}}" placeholder="1000" min="0" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <input type="number" name="movie_min_votes" value="{{.Config.Filters.Movies.MinVotes}}" placeholder="1000" min="0" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
               <p class="mt-1 text-xs text-slate-400">Example: 1000 requires at least 1000 votes</p>
             </div>
           </div>
@@ -137,65 +176,100 @@
     <!-- Shows Tab -->
     <div id="shows-content" class="space-y-6" style="display:none;">
       <div class="bg-slate-800 rounded-lg border border-slate-700 p-6">
-        <h3 class="text-xl font-semibold text-slate-100 mb-4">Show Filters</h3>
+        <h3 class="text-xl font-semibold text-slate-100 mb-6 flex items-center gap-2">
+          <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+          </svg>
+          Show Filters
+        </h3>
         
         <div class="space-y-6">
           <!-- Allowed Countries -->
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Allowed Countries</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              <svg class="w-4 h-4 inline mr-1 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Allowed Countries
+            </label>
             <div class="flex gap-2 mb-2">
-              <input type="text" id="show-country-input" placeholder="US, GB, CA..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
-              <button type="button" onclick="addShowCountry()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+              <input type="text" id="show-country-input" placeholder="US, GB, CA..." class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+              <button type="button" onclick="addShowCountry()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">Add</button>
             </div>
             <div id="show-countries-list" class="space-y-2"></div>
           </div>
 
           <!-- Allowed Languages -->
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Allowed Languages</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              <svg class="w-4 h-4 inline mr-1 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+              </svg>
+              Allowed Languages
+            </label>
             <div class="flex gap-2 mb-2">
-              <input type="text" id="show-language-input" placeholder="en, es, fr..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
-              <button type="button" onclick="addShowLanguage()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+              <input type="text" id="show-language-input" placeholder="en, es, fr..." class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+              <button type="button" onclick="addShowLanguage()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">Add</button>
             </div>
             <div id="show-languages-list" class="space-y-2"></div>
           </div>
 
           <!-- Blacklisted Genres -->
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Genres</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              <svg class="w-4 h-4 inline mr-1 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+              </svg>
+              Blacklisted Genres
+            </label>
             <div class="flex gap-2 mb-2">
-              <input type="text" id="show-genre-input" placeholder="horror, documentary..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
-              <button type="button" onclick="addShowGenre()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+              <input type="text" id="show-genre-input" placeholder="reality, documentary..." class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+              <button type="button" onclick="addShowGenre()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">Add</button>
             </div>
             <div id="show-genres-list" class="space-y-2"></div>
           </div>
 
           <!-- Blacklisted Keywords -->
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Keywords</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              <svg class="w-4 h-4 inline mr-1 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+              </svg>
+              Blacklisted Keywords
+            </label>
             <div class="flex gap-2 mb-2">
-              <input type="text" id="show-keyword-input" placeholder="reality, cooking..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
-              <button type="button" onclick="addShowKeyword()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+              <input type="text" id="show-keyword-input" placeholder="reality, cooking..." class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+              <button type="button" onclick="addShowKeyword()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">Add</button>
             </div>
             <div id="show-keywords-list" class="space-y-2"></div>
           </div>
 
           <!-- Blacklisted Networks -->
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Networks</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              <svg class="w-4 h-4 inline mr-1 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+              </svg>
+              Blacklisted Networks
+            </label>
             <div class="flex gap-2 mb-2">
-              <input type="text" id="show-network-input" placeholder="MTV, Lifetime..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
-              <button type="button" onclick="addShowNetwork()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+              <input type="text" id="show-network-input" placeholder="MTV, Lifetime..." class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+              <button type="button" onclick="addShowNetwork()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">Add</button>
             </div>
             <div id="show-networks-list" class="space-y-2"></div>
           </div>
 
           <!-- Blacklisted IDs -->
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Blacklisted Trakt IDs</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              <svg class="w-4 h-4 inline mr-1 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Blacklisted Trakt IDs
+            </label>
             <div class="flex gap-2 mb-2">
-              <input type="number" id="show-id-input" placeholder="123456..." class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
-              <button type="button" onclick="addShowID()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Add</button>
+              <input type="number" id="show-id-input" placeholder="123456..." class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+              <button type="button" onclick="addShowID()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">Add</button>
             </div>
             <div id="show-ids-list" class="space-y-2"></div>
           </div>
@@ -204,11 +278,11 @@
           <div class="grid md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Min Runtime (minutes)</label>
-              <input type="number" name="show_min_runtime" value="{{.Config.Filters.Shows.BlacklistedMinRuntime}}" placeholder="20" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <input type="number" name="show_min_runtime" value="{{.Config.Filters.Shows.BlacklistedMinRuntime}}" placeholder="20" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Max Runtime (minutes)</label>
-              <input type="number" name="show_max_runtime" value="{{.Config.Filters.Shows.BlacklistedMaxRuntime}}" placeholder="60" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <input type="number" name="show_max_runtime" value="{{.Config.Filters.Shows.BlacklistedMaxRuntime}}" placeholder="60" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
           </div>
 
@@ -216,22 +290,22 @@
           <div class="grid md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Min Year</label>
-              <input type="number" name="show_min_year" value="{{.Config.Filters.Shows.BlacklistedMinYear}}" placeholder="2000" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <input type="number" name="show_min_year" value="{{.Config.Filters.Shows.BlacklistedMinYear}}" placeholder="2000" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Max Year</label>
-              <input type="number" name="show_max_year" value="{{.Config.Filters.Shows.BlacklistedMaxYear}}" placeholder="2025" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <input type="number" name="show_max_year" value="{{.Config.Filters.Shows.BlacklistedMaxYear}}" placeholder="2025" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
           </div>
 
           <!-- Rating Thresholds -->
-          <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4 mb-4">
+          <div class="bg-indigo-900/20 border border-indigo-700/50 rounded-lg p-4">
             <div class="flex items-start">
-              <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+              <svg class="w-5 h-5 text-indigo-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
               </svg>
               <div class="text-xs text-slate-300">
-                <p class="font-semibold mb-1">Quality Control Filters</p>
+                <p class="font-semibold mb-1 text-indigo-300">Quality Control</p>
                 <p>Set minimum rating and vote thresholds to ensure only high-quality content is added. Content below these thresholds will be automatically filtered out.</p>
               </div>
             </div>
@@ -243,7 +317,7 @@
                 Min Rating (0-10)
                 <span class="text-xs text-slate-400 ml-1">(0 = disabled)</span>
               </label>
-              <input type="number" name="show_min_rating" value="{{.Config.Filters.Shows.MinRating}}" placeholder="7.0" step="0.1" min="0" max="10" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <input type="number" name="show_min_rating" value="{{.Config.Filters.Shows.MinRating}}" placeholder="7.0" step="0.1" min="0" max="10" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
               <p class="mt-1 text-xs text-slate-400">Example: 7.0 filters out shows below 7.0/10</p>
             </div>
             <div>
@@ -251,7 +325,7 @@
                 Min Votes
                 <span class="text-xs text-slate-400 ml-1">(0 = disabled)</span>
               </label>
-              <input type="number" name="show_min_votes" value="{{.Config.Filters.Shows.MinVotes}}" placeholder="500" min="0" class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100">
+              <input type="number" name="show_min_votes" value="{{.Config.Filters.Shows.MinVotes}}" placeholder="500" min="0" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
               <p class="mt-1 text-xs text-slate-400">Example: 500 requires at least 500 votes</p>
             </div>
           </div>
@@ -259,7 +333,10 @@
       </div>
     </div>
 
-    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg transition">
+    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+      </svg>
       Save Filters
     </button>
   </form>
@@ -316,9 +393,9 @@ function removeItem(arr, listId, fieldName, val) {
 function renderList(arr, listId, fieldName) {
   const list = document.getElementById(listId);
   list.innerHTML = arr.map(v => `
-    <div class="flex items-center justify-between bg-slate-900 px-4 py-2 rounded-lg border border-slate-700">
-      <span class="text-slate-200">${v}</span>
-      <button type="button" onclick="removeItem(${getArrayName(fieldName)}, '${listId}', '${fieldName}', '${v}')" class="text-red-400 hover:text-red-300">Remove</button>
+    <div class="flex items-center justify-between bg-slate-900 px-4 py-2.5 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors">
+      <span class="text-slate-200 font-medium">${v}</span>
+      <button type="button" onclick="removeItem(${getArrayName(fieldName)}, '${listId}', '${fieldName}', '${v}')" class="text-red-400 hover:text-red-300 font-semibold transition-colors">Remove</button>
       <input type="hidden" name="${fieldName}" value="${v}">
     </div>
   `).join('');

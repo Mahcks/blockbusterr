@@ -1,0 +1,87 @@
+{{/* Common SVG Icons */}}
+
+{{/* Info Icon */}}
+{{define "icon-info"}}
+<svg class="{{if .Size}}{{.Size}}{{else}}w-5 h-5{{end}} {{if .Color}}{{.Color}}{{else}}text-blue-400{{end}} {{.Class}}" fill="currentColor" viewBox="0 0 20 20">
+  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+</svg>
+{{end}}
+
+{{/* Check Icon */}}
+{{define "icon-check"}}
+<svg class="{{if .Size}}{{.Size}}{{else}}w-5 h-5{{end}} {{if .Color}}{{.Color}}{{else}}text-green-400{{end}} {{.Class}}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+</svg>
+{{end}}
+
+{{/* X Icon */}}
+{{define "icon-x"}}
+<svg class="{{if .Size}}{{.Size}}{{else}}w-5 h-5{{end}} {{if .Color}}{{.Color}}{{else}}text-red-400{{end}} {{.Class}}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+</svg>
+{{end}}
+
+{{/* Warning Icon */}}
+{{define "icon-warning"}}
+<svg class="{{if .Size}}{{.Size}}{{else}}w-5 h-5{{end}} {{if .Color}}{{.Color}}{{else}}text-yellow-400{{end}} {{.Class}}" fill="currentColor" viewBox="0 0 20 20">
+  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+</svg>
+{{end}}
+
+{{/* Loading Spinner */}}
+{{define "icon-spinner"}}
+<svg class="animate-spin {{if .Size}}{{.Size}}{{else}}h-5 w-5{{end}} {{if .Color}}{{.Color}}{{else}}text-blue-400{{end}} {{.Class}}" fill="none" viewBox="0 0 24 24">
+  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+</svg>
+{{end}}
+
+{{/* Star Icon */}}
+{{define "icon-star"}}
+<svg class="{{if .Size}}{{.Size}}{{else}}w-5 h-5{{end}} {{if .Color}}{{.Color}}{{else}}text-yellow-400{{end}} {{.Class}}" fill="currentColor" viewBox="0 0 20 20">
+  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+</svg>
+{{end}}
+
+{{/* Movie/Film Icon */}}
+{{define "icon-film"}}
+<svg class="{{if .Size}}{{.Size}}{{else}}w-5 h-5{{end}} {{if .Color}}{{.Color}}{{else}}text-purple-400{{end}} {{.Class}}" fill="currentColor" viewBox="0 0 20 20">
+  <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
+</svg>
+{{end}}
+
+{{/* Clock Icon */}}
+{{define "icon-clock"}}
+<svg class="{{if .Size}}{{.Size}}{{else}}w-5 h-5{{end}} {{if .Color}}{{.Color}}{{else}}text-blue-400{{end}} {{.Class}}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+</svg>
+{{end}}
+
+{{/* Chevron Down */}}
+{{define "icon-chevron-down"}}
+<svg class="{{if .Size}}{{.Size}}{{else}}w-5 h-5{{end}} {{if .Color}}{{.Color}}{{else}}text-slate-400{{end}} {{.Class}} transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+</svg>
+{{end}}
+
+{{/* Settings/Cog Icon */}}
+{{define "icon-settings"}}
+<svg class="{{if .Size}}{{.Size}}{{else}}w-5 h-5{{end}} {{if .Color}}{{.Color}}{{else}}text-slate-400{{end}} {{.Class}}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+</svg>
+{{end}}
+
+{{/* Play Icon */}}
+{{define "icon-play"}}
+<svg class="{{if .Size}}{{.Size}}{{else}}w-5 h-5{{end}} {{if .Color}}{{.Color}}{{else}}text-green-400{{end}} {{.Class}}" fill="currentColor" viewBox="0 0 20 20">
+  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+</svg>
+{{end}}
+
+{{/* Calendar Icon */}}
+{{define "icon-calendar"}}
+<svg class="{{if .Size}}{{.Size}}{{else}}w-5 h-5{{end}} {{if .Color}}{{.Color}}{{else}}text-blue-400{{end}} {{.Class}}" fill="currentColor" viewBox="0 0 20 20">
+  <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path>
+</svg>
+{{end}}

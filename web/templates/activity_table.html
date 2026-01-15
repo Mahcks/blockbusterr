@@ -1,9 +1,9 @@
 {{define "activity_table"}}
-{{if .}}
-<div class="space-y-3">
-  {{range $index, $log := .}}
-  <div class="bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50 hover:border-slate-600/50 transition-all duration-200 overflow-hidden shadow-lg hover:shadow-xl">
-    <div class="flex gap-4 p-4">
+{{if .Logs}}
+<div class="space-y-4">
+  {{range $index, $log := .Logs}}
+  <div class="{{if eq (mod $index 2) 0}}bg-slate-800{{else}}bg-slate-900{{end}} rounded-lg p-5 mb-4">
+    <div class="flex gap-4 p-5">
       <!-- Poster Section -->
       <div class="flex-shrink-0">
         {{if $log.PosterURL}}
@@ -27,9 +27,9 @@
         <!-- Header Row -->
         <div class="flex items-start justify-between gap-4 mb-3">
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1">
-              <h3 class="text-lg font-semibold text-white truncate">{{.Title}}</h3>
-              {{if .Year}}<span class="text-slate-400 text-sm font-medium">({{.Year}})</span>{{end}}
+            <div class="flex items-center gap-2 mb-2">
+              <h3 class="text-xl font-bold text-white truncate">{{.Title}}</h3>
+              {{if .Year}}<span class="text-slate-400 text-base font-medium">({{.Year}})</span>{{end}}
               {{if eq .MediaType "movie"}}
               <svg class="w-5 h-5 text-blue-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
@@ -109,7 +109,7 @@
         </div>
 
         <!-- Footer Row -->
-        <div class="flex items-center justify-between gap-4 pt-3 border-t border-slate-700/50">
+        <div class="flex items-center justify-between gap-4 pt-3 mt-3">
           <div class="flex items-center gap-3 text-xs text-slate-400">
             <span class="inline-flex items-center gap-1.5">
               <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
@@ -164,7 +164,7 @@
 
     <!-- Filter Details Panel (Hidden by Default) -->
     {{if .FilterDetails}}
-    <div id="details-{{$index}}" class="hidden border-t border-slate-700/50 bg-slate-900/50 p-4">
+    <div id="details-{{$index}}" class="hidden bg-slate-900/50 rounded-lg p-4 mt-4">
       <div class="flex items-center gap-2 mb-3">
         <svg class="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"></path>
@@ -177,6 +177,95 @@
   </div>
   {{end}}
 </div>
+
+<!-- Pagination Controls -->
+{{if gt .TotalPages 1}}
+<div class="flex items-center justify-between pt-6 mt-6">
+  <div class="text-sm text-slate-400">
+    Page {{.Page}} of {{.TotalPages}} ({{.TotalRecords}} total results)
+  </div>
+  
+  <div class="flex items-center gap-2">
+    <!-- Previous Button -->
+    {{if gt .Page 1}}
+    <button onclick="goToPage({{sub .Page 1}})" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors flex items-center gap-2">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+      </svg>
+      Previous
+    </button>
+    {{else}}
+    <button disabled class="px-3 py-2 bg-slate-800 text-slate-600 rounded-lg text-sm cursor-not-allowed flex items-center gap-2">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+      </svg>
+      Previous
+    </button>
+    {{end}}
+    
+    <!-- Page Numbers -->
+    <div class="flex items-center gap-1">
+      {{$currentPage := .Page}}
+      {{$totalPages := .TotalPages}}
+      {{$startPage := 1}}
+      {{$endPage := $totalPages}}
+      
+      {{if gt $totalPages 7}}
+        {{if gt $currentPage 4}}
+          {{$startPage = sub $currentPage 2}}
+        {{end}}
+        {{if lt $currentPage (sub $totalPages 3)}}
+          {{$endPage = add $currentPage 2}}
+          {{if lt $startPage 1}}
+            {{$endPage = add $endPage (sub 1 $startPage)}}
+            {{$startPage = 1}}
+          {{end}}
+        {{end}}
+        {{if gt $startPage 1}}
+          <button onclick="goToPage(1)" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">1</button>
+          {{if gt $startPage 2}}
+            <span class="px-2 text-slate-500">...</span>
+          {{end}}
+        {{end}}
+      {{end}}
+      
+      {{range $i := iterate $startPage $endPage}}
+        {{if eq $i $currentPage}}
+          <button class="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">{{$i}}</button>
+        {{else}}
+          <button onclick="goToPage({{$i}})" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">{{$i}}</button>
+        {{end}}
+      {{end}}
+      
+      {{if gt $totalPages 7}}
+        {{if lt $endPage $totalPages}}
+          {{if lt $endPage (sub $totalPages 1)}}
+            <span class="px-2 text-slate-500">...</span>
+          {{end}}
+          <button onclick="goToPage({{$totalPages}})" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">{{$totalPages}}</button>
+        {{end}}
+      {{end}}
+    </div>
+    
+    <!-- Next Button -->
+    {{if lt .Page .TotalPages}}
+    <button onclick="goToPage({{add .Page 1}})" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors flex items-center gap-2">
+      Next
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+      </svg>
+    </button>
+    {{else}}
+    <button disabled class="px-3 py-2 bg-slate-800 text-slate-600 rounded-lg text-sm cursor-not-allowed flex items-center gap-2">
+      Next
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+      </svg>
+    </button>
+    {{end}}
+  </div>
+</div>
+{{end}}
 
 <script>
 // Parse and display filter details after cards are loaded

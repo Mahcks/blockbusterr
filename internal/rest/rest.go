@@ -47,6 +47,28 @@ func New(gctx global.Context) error {
 	engine.AddFunc("mul", func(a, b float64) float64 {
 		return a * b
 	})
+	engine.AddFunc("muli", func(a, b int) int {
+		return a * b
+	})
+	engine.AddFunc("add", func(a, b int) int {
+		return a + b
+	})
+	engine.AddFunc("sub", func(a, b int) int {
+		return a - b
+	})
+	engine.AddFunc("iterate", func(start, end int) []int {
+		result := []int{}
+		for i := start; i <= end; i++ {
+			result = append(result, i)
+		}
+		return result
+	})
+	engine.AddFunc("mod", func(a, b int) int {
+		if b == 0 {
+			return 0
+		}
+		return a % b
+	})
 
 	app := fiber.New(fiber.Config{
 		Views:                 engine,
