@@ -386,12 +386,13 @@ function addSelectedJob() {
   
   // Enable the job
   config[jobKey].enabled = true;
-  
+
   // Save to server
   saveJobConfig(jobKey, () => {
     renderJobsList();
     updateJobSelector();
     showNotification(`${jobDefinitions[jobKey].name} added successfully!`, 'success');
+    openJobModal(jobKey); // Open settings dialog immediately
   });
 }
 
