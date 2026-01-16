@@ -1,7 +1,21 @@
+
 {{define "jobs"}}
+
 
 <!-- Info Alert -->
 {{template "alert-info" .AlertInfo}}
+
+{{if .TraktDisabled}}
+<div class="bg-yellow-200 border-l-4 border-yellow-500 text-yellow-900 p-4 mb-6 rounded-lg shadow">
+  <div class="flex items-center">
+    <svg class="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86l-7.09 12.26A2 2 0 005.18 19h13.64a2 2 0 001.98-2.88l-7.09-12.26a2 2 0 00-3.42 0z" />
+    </svg>
+    <span class="font-semibold">Warning:</span>
+    <span class="ml-2">Trakt integration is <b>disabled</b>. Please configure your Trakt credentials in the <a href="/config" class="underline text-blue-700">settings</a> page to enable Trakt-powered jobs.</span>
+  </div>
+</div>
+{{end}}
 
 <div class="space-y-6">
   <!-- Global Settings -->
@@ -290,32 +304,13 @@
   </div>
 </div>
 
-<script>
-// Load jobDefinitions from shared static file
-// prettier-ignore
-// eslint-disable-next-line
+
 <script src="/static/jobDefinitions.js"></script>
+<script>
 
 // Load config from template
-const config = {
-  trending_movies: { enabled: {{.Config.Jobs.TrendingMovies.Enabled}}, limit: {{.Config.Jobs.TrendingMovies.Limit}}, sync_interval: '{{.Config.Jobs.TrendingMovies.SyncInterval}}', mode: '{{.Config.Jobs.TrendingMovies.Mode}}' },
-  popular_movies: { enabled: {{.Config.Jobs.PopularMovies.Enabled}}, limit: {{.Config.Jobs.PopularMovies.Limit}}, sync_interval: '{{.Config.Jobs.PopularMovies.SyncInterval}}', mode: '{{.Config.Jobs.PopularMovies.Mode}}' },
-  box_office: { enabled: {{.Config.Jobs.BoxOffice.Enabled}}, limit: {{.Config.Jobs.BoxOffice.Limit}}, sync_interval: '{{.Config.Jobs.BoxOffice.SyncInterval}}', mode: '{{.Config.Jobs.BoxOffice.Mode}}' },
-  anticipated_movies: { enabled: {{.Config.Jobs.AnticipatedMovies.Enabled}}, limit: {{.Config.Jobs.AnticipatedMovies.Limit}}, sync_interval: '{{.Config.Jobs.AnticipatedMovies.SyncInterval}}', mode: '{{.Config.Jobs.AnticipatedMovies.Mode}}' },
-  favorited_movies: { enabled: {{.Config.Jobs.FavoritedMovies.Enabled}}, limit: {{.Config.Jobs.FavoritedMovies.Limit}}, period: '{{.Config.Jobs.FavoritedMovies.Period}}', sync_interval: '{{.Config.Jobs.FavoritedMovies.SyncInterval}}', mode: '{{.Config.Jobs.FavoritedMovies.Mode}}' },
-  played_movies: { enabled: {{.Config.Jobs.PlayedMovies.Enabled}}, limit: {{.Config.Jobs.PlayedMovies.Limit}}, period: '{{.Config.Jobs.PlayedMovies.Period}}', sync_interval: '{{.Config.Jobs.PlayedMovies.SyncInterval}}', mode: '{{.Config.Jobs.PlayedMovies.Mode}}' },
-  watched_movies: { enabled: {{.Config.Jobs.WatchedMovies.Enabled}}, limit: {{.Config.Jobs.WatchedMovies.Limit}}, period: '{{.Config.Jobs.WatchedMovies.Period}}', sync_interval: '{{.Config.Jobs.WatchedMovies.SyncInterval}}', mode: '{{.Config.Jobs.WatchedMovies.Mode}}' },
-  collected_movies: { enabled: {{.Config.Jobs.CollectedMovies.Enabled}}, limit: {{.Config.Jobs.CollectedMovies.Limit}}, period: '{{.Config.Jobs.CollectedMovies.Period}}', sync_interval: '{{.Config.Jobs.CollectedMovies.SyncInterval}}', mode: '{{.Config.Jobs.CollectedMovies.Mode}}' },
-  smart_popular_movies: { enabled: {{.Config.Jobs.SmartPopularMovies.Enabled}}, limit: {{.Config.Jobs.SmartPopularMovies.Limit}}, base_min_rating: {{.Config.Jobs.SmartPopularMovies.BaseMinRating}}, adjustment_factor: {{.Config.Jobs.SmartPopularMovies.AdjustmentFactor}}, sync_interval: '{{.Config.Jobs.SmartPopularMovies.SyncInterval}}', mode: '{{.Config.Jobs.SmartPopularMovies.Mode}}' },
-  trending_shows: { enabled: {{.Config.Jobs.TrendingShows.Enabled}}, limit: {{.Config.Jobs.TrendingShows.Limit}}, sync_interval: '{{.Config.Jobs.TrendingShows.SyncInterval}}', mode: '{{.Config.Jobs.TrendingShows.Mode}}' },
-  popular_shows: { enabled: {{.Config.Jobs.PopularShows.Enabled}}, limit: {{.Config.Jobs.PopularShows.Limit}}, sync_interval: '{{.Config.Jobs.PopularShows.SyncInterval}}', mode: '{{.Config.Jobs.PopularShows.Mode}}' },
-  anticipated_shows: { enabled: {{.Config.Jobs.AnticipatedShows.Enabled}}, limit: {{.Config.Jobs.AnticipatedShows.Limit}}, sync_interval: '{{.Config.Jobs.AnticipatedShows.SyncInterval}}', mode: '{{.Config.Jobs.AnticipatedShows.Mode}}' },
-  favorited_shows: { enabled: {{.Config.Jobs.FavoritedShows.Enabled}}, limit: {{.Config.Jobs.FavoritedShows.Limit}}, period: '{{.Config.Jobs.FavoritedShows.Period}}', sync_interval: '{{.Config.Jobs.FavoritedShows.SyncInterval}}', mode: '{{.Config.Jobs.FavoritedShows.Mode}}' },
-  played_shows: { enabled: {{.Config.Jobs.PlayedShows.Enabled}}, limit: {{.Config.Jobs.PlayedShows.Limit}}, period: '{{.Config.Jobs.PlayedShows.Period}}', sync_interval: '{{.Config.Jobs.PlayedShows.SyncInterval}}', mode: '{{.Config.Jobs.PlayedShows.Mode}}' },
-  watched_shows: { enabled: {{.Config.Jobs.WatchedShows.Enabled}}, limit: {{.Config.Jobs.WatchedShows.Limit}}, period: '{{.Config.Jobs.WatchedShows.Period}}', sync_interval: '{{.Config.Jobs.WatchedShows.SyncInterval}}', mode: '{{.Config.Jobs.WatchedShows.Mode}}' },
-  collected_shows: { enabled: {{.Config.Jobs.CollectedShows.Enabled}}, limit: {{.Config.Jobs.CollectedShows.Limit}}, period: '{{.Config.Jobs.CollectedShows.Period}}', sync_interval: '{{.Config.Jobs.CollectedShows.SyncInterval}}', mode: '{{.Config.Jobs.CollectedShows.Mode}}' },
-  smart_popular_shows: { enabled: {{.Config.Jobs.SmartPopularShows.Enabled}}, limit: {{.Config.Jobs.SmartPopularShows.Limit}}, base_min_rating: {{.Config.Jobs.SmartPopularShows.BaseMinRating}}, adjustment_factor: {{.Config.Jobs.SmartPopularShows.AdjustmentFactor}}, sync_interval: '{{.Config.Jobs.SmartPopularShows.SyncInterval}}', mode: '{{.Config.Jobs.SmartPopularShows.Mode}}' }
-};
+
+const config = JSON.parse('{{json .Config.Jobs}}');
 
 let currentJobKey = null;
 
@@ -368,11 +363,12 @@ function renderJobsList() {
 
 function updateJobSelector() {
   const selector = document.getElementById('job-selector');
-  const disabledJobs = Object.keys(config).filter(key => !config[key].enabled);
+  const disabledJobs = Object.keys(config).filter(key => !config[key].enabled && jobDefinitions[key]);
   
   selector.innerHTML = '<option value="">-- Select a job to add --</option>' + 
     disabledJobs.map(key => {
       const job = jobDefinitions[key];
+      if (!job) return '';
       return `<option value="${key}">${job.name} (${job.category})</option>`;
     }).join('');
   
@@ -484,6 +480,7 @@ function saveJobConfig(jobKey, callback) {
   Object.keys(config).forEach(key => {
     const keyConfig = config[key];
     const def = jobDefinitions[key];
+    if (!def) return; // Defensive: skip if not in jobDefinitions
     // Send 'on' for enabled, 'off' for disabled
     formData.append(`${def.configKey}.enabled`, keyConfig.enabled ? 'on' : 'off');
     formData.append(`${def.configKey}.limit`, keyConfig.limit);

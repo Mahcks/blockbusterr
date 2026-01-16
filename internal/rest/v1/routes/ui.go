@@ -60,11 +60,14 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			Content: "Jobs automatically fetch content from Trakt and add them to Radarr/Sonarr based on the sync interval. Click on a job to configure its settings, or use the dropdown below to add new jobs to your list.",
 			Class:   "mb-4",
 		}
+		cfg := rg.gctx.Config()
+		traktDisabled := (cfg.Trakt.ClientID == "" || cfg.Trakt.ClientSecret == "")
 		return c.Render("jobs", fiber.Map{
-			"Title":     "Blockbusterr - Jobs",
-			"Config":    rg.gctx.Config(),
-			"Version":   rg.gctx.Metadata().Version,
-			"AlertInfo": alert,
+			"Title":         "Blockbusterr - Jobs",
+			"Config":        cfg,
+			"Version":       rg.gctx.Metadata().Version,
+			"AlertInfo":     alert,
+			"TraktDisabled": traktDisabled,
 		}, "base")
 	})
 
