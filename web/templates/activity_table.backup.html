@@ -1,0 +1,549 @@
+<!-- BACKUP: This is the previous version of activity_table.html before full rewrite. -->
+{{/*
+{{if .Logs}}
+<div class="space-y-4">
+  {{range $index, $log := .Logs}}
+  <div class="rounded-lg p-0 mb-4 overflow-hidden bg-slate-800">
+    <div class="flex gap-4">
+      <!-- Job Gradient & Icon Banner -->
+      <div class="flex flex-col items-center justify-center min-w-[56px] bg-gradient-to-r" id="job-gradient-{{$index}}" style="min-height: 100%;">
+        <span id="job-icon-{{$index}}"></span>
+      </div>
+      <!-- Poster Section -->
+      <div class="flex-shrink-0">
+        {{if $log.PosterURL}}
+        <img src="{{$log.PosterURL}}" alt="{{$log.Title}}" class="w-24 h-36 object-cover rounded-lg shadow-xl ring-1 ring-white/10" loading="lazy">
+        {{else}}
+        <div class="w-24 h-36 bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center shadow-xl ring-1 ring-white/10">
+          <svg class="w-12 h-12 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        {{end}}
+      </div>
+      <!-- Content Section -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-start justify-between gap-4 mb-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-2">
+              <h3 class="text-xl font-bold text-white truncate">{{$log.Title}}</h3>
+              {{if $log.Year}}<span class="text-slate-400 text-base font-medium">({{$log.Year}})</span>{{end}}
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            {{if $log.TMDBID}}
+            <a href="https://www.themoviedb.org/{{if eq $log.MediaType "movie"}}movie{{else}}tv{{end}}/{{$log.TMDBID}}" target="_blank" class="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
+              TMDB
+            </a>
+            {{end}}
+            {{if $log.TVDBID}}
+            <a href="https://www.thetvdb.com/dereferrer/series/{{$log.TVDBID}}" target="_blank" class="inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
+              TVDB
+            </a>
+            {{end}}
+          </div>
+          <!-- Job Type Badge -->
+          <div>
+            {{if eq $log.JobType "trending_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs font-medium ring-1 ring-blue-500/30">🔥 Trending Movies</span>
+            {{else if eq $log.JobType "trending_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-xs font-medium ring-1 ring-purple-500/30">🔥 Trending Shows</span>
+            {{else if eq $log.JobType "popular_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-medium ring-1 ring-green-500/30">⭐ Popular Movies</span>
+            {{else if eq $log.JobType "popular_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-500/20 text-teal-300 rounded-full text-xs font-medium ring-1 ring-teal-500/30">⭐ Popular Shows</span>
+            {{else if eq $log.JobType "anticipated_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-500/20 text-orange-300 rounded-full text-xs font-medium ring-1 ring-orange-500/30">🎬 Anticipated Movies</span>
+            {{else if eq $log.JobType "anticipated_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/20 text-red-300 rounded-full text-xs font-medium ring-1 ring-red-500/30">📺 Anticipated Shows</span>
+            {{else if eq $log.JobType "box_office"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-500/20 text-yellow-300 rounded-full text-xs font-medium ring-1 ring-yellow-500/30">💰 Box Office</span>
+            {{else if eq $log.JobType "watched_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-medium ring-1 ring-indigo-500/30">👁️ Watched Movies</span>
+            {{else if eq $log.JobType "watched_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-pink-500/20 text-pink-300 rounded-full text-xs font-medium ring-1 ring-pink-500/30">👁️ Watched Shows</span>
+            {{else if eq $log.JobType "played_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-xs font-medium ring-1 ring-cyan-500/30">▶️ Played Movies</span>
+            {{else if eq $log.JobType "played_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-500/20 text-rose-300 rounded-full text-xs font-medium ring-1 ring-rose-500/30">▶️ Played Shows</span>
+            {{else if eq $log.JobType "collected_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-lime-500/20 text-lime-300 rounded-full text-xs font-medium ring-1 ring-lime-500/30">📚 Collected Movies</span>
+            {{else if eq $log.JobType "collected_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-xs font-medium ring-1 ring-emerald-500/30">📚 Collected Shows</span>
+            {{else if eq $log.JobType "favorited_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-xs font-medium ring-1 ring-amber-500/30">💖 Favorited Movies</span>
+            {{else if eq $log.JobType "favorited_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-fuchsia-500/20 text-fuchsia-300 rounded-full text-xs font-medium ring-1 ring-fuchsia-500/30">💖 Favorited Shows</span>
+            {{else}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-500/20 text-slate-300 rounded-full text-xs font-medium ring-1 ring-slate-500/30">{{$log.JobType}}</span>{{end}}
+          </div>
+        </div>
+        <!-- Score/Status Column -->
+        <div class="flex flex-col items-end gap-2 flex-shrink-0">
+          <!-- Status Badge -->
+          {{if eq $log.Status "added"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-300 rounded-lg text-sm font-semibold ring-1 ring-green-500/30">✓ Added</div>
+          {{else if eq $log.Status "requested"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-blue-300 rounded-lg text-sm font-semibold ring-1 ring-blue-500/30">📋 Requested</div>
+          {{else if eq $log.Status "rejected"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-300 rounded-lg text-sm font-semibold ring-1 ring-red-500/30">✗ Rejected</div>
+          {{else if eq $log.Status "blocked"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-500/20 text-gray-300 rounded-lg text-sm font-semibold ring-1 ring-gray-500/30">🚫 Blocked</div>
+          {{else if eq $log.Status "skipped"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/20 text-yellow-300 rounded-lg text-sm font-semibold ring-1 ring-yellow-500/30">⊘ Skipped</div>
+          {{else if eq $log.Status "failed"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 text-red-300 rounded-lg text-sm font-semibold ring-1 ring-red-600/30">⚠ Failed</div>
+          {{else}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-500/20 text-slate-300 rounded-lg text-sm font-semibold ring-1 ring-slate-500/30">{{$log.Status}}</div>{{end}}
+          <!-- Score Badge -->
+          {{if $log.Score}}
+          <div class="text-center">
+            {{$scorePercent := printf "%.0f" (mul $log.Score 100)}}
+            {{if ge $log.Score 0.8}}<div class="inline-flex flex-col items-center px-3 py-2 bg-green-500/20 rounded-lg ring-1 ring-green-500/30"><div class="text-green-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-green-400/70">Score</div>{{if $log.Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{$log.Rank}}</div>{{end}}</div>
+            {{else if ge $log.Score 0.6}}<div class="inline-flex flex-col items-center px-3 py-2 bg-blue-500/20 rounded-lg ring-1 ring-blue-500/30"><div class="text-blue-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-blue-400/70">Score</div>{{if $log.Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{$log.Rank}}</div>{{end}}</div>
+            {{else if ge $log.Score 0.4}}<div class="inline-flex flex-col items-center px-3 py-2 bg-yellow-500/20 rounded-lg ring-1 ring-yellow-500/30"><div class="text-yellow-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-yellow-400/70">Score</div>{{if $log.Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{$log.Rank}}</div>{{end}}</div>
+            {{else}}<div class="inline-flex flex-col items-center px-3 py-2 bg-slate-500/20 rounded-lg ring-1 ring-slate-500/30"><div class="text-slate-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-slate-400/70">Score</div>{{if $log.Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{$log.Rank}}</div>{{end}}</div>{{end}}
+          </div>
+          {{end}}
+        </div>
+      </div>
+      <!-- Footer Row -->
+      <div class="flex items-center justify-between gap-4 pt-3 mt-3">
+        <div class="flex items-center gap-3 text-xs text-slate-400">
+          <span class="inline-flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
+            {{$log.Timestamp.Format "Jan 2, 3:04 PM"}}
+          </span>
+          {{if $log.Message}}
+          <span class="text-slate-500">•</span>
+          <span class="text-slate-400 italic">{{$log.Message}}</span>
+          {{end}}
+        </div>
+        <div class="flex items-center gap-2">
+          {{if eq $log.Status "rejected"}}
+          <button 
+            hx-post="/v1/activity/{{$log.ID}}/add-anyway"
+            hx-swap="none"
+            hx-confirm="Are you sure you want to add '{{$log.Title}}' anyway? This will bypass all filters."
+            data-card-id="{{$log.ID}}"
+            class="add-anyway-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-xs font-semibold text-white transition-all duration-200 ring-1 ring-green-500/50 hover:ring-green-400/50 shadow-lg hover:shadow-green-500/20">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path>
+            </svg>
+            Add Anyway
+          </button>
+          {{end}}
+          {{if or (eq $log.Status "added") (eq $log.Status "requested") (eq $log.Status "rejected")}}
+          <button 
+            hx-post="/v1/activity/{{$log.ID}}/block"
+            hx-swap="none"
+            hx-confirm="Are you sure you want to block '{{$log.Title}}'? It will be added to your blocklist and never added again."
+            data-card-id="{{$log.ID}}"
+            class="block-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-lg text-xs font-semibold text-white transition-all duration-200 ring-1 ring-red-500/50 hover:ring-red-400/50 shadow-lg hover:shadow-red-500/20">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"></path>
+            </svg>
+            Block
+          </button>
+          {{end}}
+          {{if $log.FilterDetails}}
+          <button onclick='toggleDetails({{$index}})' class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-xs font-medium text-slate-300 transition-all duration-200 ring-1 ring-slate-600/50 hover:ring-slate-500/50">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+              <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+            </svg>
+            View Filter Details
+          </button>
+          {{end}}
+        </div>
+      </div>
+    </div>
+    <!-- Filter Details Panel (Hidden by Default) -->
+    {{if $log.FilterDetails}}
+    <div id="details-{{$index}}" class="hidden bg-slate-900/50 rounded-lg p-4 mt-4">
+      <div class="flex items-center gap-2 mb-3">
+        <svg class="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"></path>
+        </svg>
+        <h4 class="font-semibold text-slate-200">Filter Evaluation Details</h4>
+      </div>
+      <div class="filter-details-content grid gap-2" data-filter-details="{{$log.FilterDetails}}"></div>
+    </div>
+    {{end}}
+  </div>
+</div>
+<!-- Pagination Controls and scripts remain unchanged -->
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
+                TMDB
+              </a>
+              {{end}}
+              {{if .TVDBID}}
+              <a href="https://www.thetvdb.com/dereferrer/series/{{.TVDBID}}" target="_blank" class="inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
+                TVDB
+              </a>
+              {{end}}
+            </div>
+
+            <!-- Job Type Badge -->
+            <div>
+              {{if eq .JobType "trending_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs font-medium ring-1 ring-blue-500/30">🔥 Trending Movies</span>
+              {{else if eq .JobType "trending_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-xs font-medium ring-1 ring-purple-500/30">🔥 Trending Shows</span>
+              {{else if eq .JobType "popular_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-medium ring-1 ring-green-500/30">⭐ Popular Movies</span>
+              {{else if eq .JobType "popular_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-500/20 text-teal-300 rounded-full text-xs font-medium ring-1 ring-teal-500/30">⭐ Popular Shows</span>
+              {{else if eq .JobType "anticipated_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-500/20 text-orange-300 rounded-full text-xs font-medium ring-1 ring-orange-500/30">🎬 Anticipated Movies</span>
+              {{else if eq .JobType "anticipated_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/20 text-red-300 rounded-full text-xs font-medium ring-1 ring-red-500/30">📺 Anticipated Shows</span>
+              {{else if eq .JobType "box_office"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-500/20 text-yellow-300 rounded-full text-xs font-medium ring-1 ring-yellow-500/30">💰 Box Office</span>
+              {{else if eq .JobType "watched_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-medium ring-1 ring-indigo-500/30">👁️ Watched Movies</span>
+              {{else if eq .JobType "watched_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-pink-500/20 text-pink-300 rounded-full text-xs font-medium ring-1 ring-pink-500/30">👁️ Watched Shows</span>
+              {{else if eq .JobType "played_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-xs font-medium ring-1 ring-cyan-500/30">▶️ Played Movies</span>
+              {{else if eq .JobType "played_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-500/20 text-rose-300 rounded-full text-xs font-medium ring-1 ring-rose-500/30">▶️ Played Shows</span>
+              {{else if eq .JobType "collected_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-lime-500/20 text-lime-300 rounded-full text-xs font-medium ring-1 ring-lime-500/30">📚 Collected Movies</span>
+              {{else if eq .JobType "collected_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-xs font-medium ring-1 ring-emerald-500/30">📚 Collected Shows</span>
+              {{else if eq .JobType "favorited_movies"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-xs font-medium ring-1 ring-amber-500/30">💖 Favorited Movies</span>
+              {{else if eq .JobType "favorited_shows"}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-fuchsia-500/20 text-fuchsia-300 rounded-full text-xs font-medium ring-1 ring-fuchsia-500/30">💖 Favorited Shows</span>
+              {{else}}<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-500/20 text-slate-300 rounded-full text-xs font-medium ring-1 ring-slate-500/30">{{.JobType}}</span>{{end}}
+            </div>
+          </div>
+
+          <!-- Score/Status Column -->
+          <div class="flex flex-col items-end gap-2 flex-shrink-0">
+            <!-- Status Badge -->
+            {{if eq .Status "added"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-300 rounded-lg text-sm font-semibold ring-1 ring-green-500/30">✓ Added</div>
+            {{else if eq .Status "requested"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-blue-300 rounded-lg text-sm font-semibold ring-1 ring-blue-500/30">📋 Requested</div>
+            {{else if eq .Status "rejected"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-300 rounded-lg text-sm font-semibold ring-1 ring-red-500/30">✗ Rejected</div>
+            {{else if eq .Status "blocked"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-500/20 text-gray-300 rounded-lg text-sm font-semibold ring-1 ring-gray-500/30">🚫 Blocked</div>
+            {{else if eq .Status "skipped"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/20 text-yellow-300 rounded-lg text-sm font-semibold ring-1 ring-yellow-500/30">⊘ Skipped</div>
+            {{else if eq .Status "failed"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 text-red-300 rounded-lg text-sm font-semibold ring-1 ring-red-600/30">⚠ Failed</div>
+            {{else}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-500/20 text-slate-300 rounded-lg text-sm font-semibold ring-1 ring-slate-500/30">{{.Status}}</div>{{end}}
+            
+            <!-- Score Badge -->
+            {{if .Score}}
+            <div class="text-center">
+              {{$scorePercent := printf "%.0f" (mul .Score 100)}}
+              {{if ge .Score 0.8}}<div class="inline-flex flex-col items-center px-3 py-2 bg-green-500/20 rounded-lg ring-1 ring-green-500/30"><div class="text-green-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-green-400/70">Score</div>{{if .Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{.Rank}}</div>{{end}}</div>
+              {{else if ge .Score 0.6}}<div class="inline-flex flex-col items-center px-3 py-2 bg-blue-500/20 rounded-lg ring-1 ring-blue-500/30"><div class="text-blue-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-blue-400/70">Score</div>{{if .Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{.Rank}}</div>{{end}}</div>
+              {{else if ge .Score 0.4}}<div class="inline-flex flex-col items-center px-3 py-2 bg-yellow-500/20 rounded-lg ring-1 ring-yellow-500/30"><div class="text-yellow-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-yellow-400/70">Score</div>{{if .Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{.Rank}}</div>{{end}}</div>
+              {{else}}<div class="inline-flex flex-col items-center px-3 py-2 bg-slate-500/20 rounded-lg ring-1 ring-slate-500/30"><div class="text-slate-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-slate-400/70">Score</div>{{if .Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{.Rank}}</div>{{end}}</div>{{end}}
+            </div>
+            {{end}}
+          </div>
+        </div>
+
+        <!-- Footer Row -->
+        <div class="flex items-center justify-between gap-4 pt-3 mt-3">
+          <div class="flex items-center gap-3 text-xs text-slate-400">
+            <span class="inline-flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
+              {{.Timestamp.Format "Jan 2, 3:04 PM"}}
+            </span>
+            {{if .Message}}
+            <span class="text-slate-500">•</span>
+            <span class="text-slate-400 italic">{{.Message}}</span>
+            {{end}}
+          </div>
+          <div class="flex items-center gap-2">
+            {{if eq .Status "rejected"}}
+            <button 
+              hx-post="/v1/activity/{{.ID}}/add-anyway"
+              hx-swap="none"
+              hx-confirm="Are you sure you want to add '{{.Title}}' anyway? This will bypass all filters."
+              data-card-id="{{.ID}}"
+              class="add-anyway-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-xs font-semibold text-white transition-all duration-200 ring-1 ring-green-500/50 hover:ring-green-400/50 shadow-lg hover:shadow-green-500/20">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path>
+              </svg>
+              Add Anyway
+            </button>
+            {{end}}
+            {{if or (eq .Status "added") (eq .Status "requested") (eq .Status "rejected")}}
+            <button 
+              hx-post="/v1/activity/{{.ID}}/block"
+              hx-swap="none"
+              hx-confirm="Are you sure you want to block '{{.Title}}'? It will be added to your blocklist and never added again."
+              data-card-id="{{.ID}}"
+              class="block-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-lg text-xs font-semibold text-white transition-all duration-200 ring-1 ring-red-500/50 hover:ring-red-400/50 shadow-lg hover:shadow-red-500/20">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"></path>
+              </svg>
+              Block
+            </button>
+            {{end}}
+            {{if .FilterDetails}}
+            <button onclick='toggleDetails({{.ID}})' class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-xs font-medium text-slate-300 transition-all duration-200 ring-1 ring-slate-600/50 hover:ring-slate-500/50">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+              </svg>
+              View Filter Details
+            </button>
+            {{end}}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Details Panel (Hidden by Default) -->
+    {{if .FilterDetails}}
+    <div id="details-{{.ID}}" class="hidden bg-slate-900/50 rounded-lg p-4 mt-4">
+      <div class="flex items-center gap-2 mb-3">
+        <svg class="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"></path>
+        </svg>
+        <h4 class="font-semibold text-slate-200">Filter Evaluation Details</h4>
+      </div>
+      <div class="filter-details-content grid gap-2" data-filter-details="{{.FilterDetails}}"></div>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+
+<!-- Pagination Controls -->
+{{if gt .TotalPages 1}}
+<div class="flex items-center justify-between pt-6 mt-6">
+  <div class="text-sm text-slate-400">
+    Page {{.Page}} of {{.TotalPages}} ({{.TotalRecords}} total results)
+  </div>
+  
+  <div class="flex items-center gap-2">
+    <!-- Previous Button -->
+    {{if gt .Page 1}}
+    <button class="go-to-page-btn px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors flex items-center gap-2" data-page="{{sub .Page 1}}">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+      </svg>
+      Previous
+    </button>
+    {{else}}
+    <button disabled class="px-3 py-2 bg-slate-800 text-slate-600 rounded-lg text-sm cursor-not-allowed flex items-center gap-2">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+      </svg>
+      Previous
+    </button>
+    {{end}}
+    
+    <!-- Page Numbers -->
+    <div class="flex items-center gap-1">
+      {{$currentPage := .Page}}
+      {{$totalPages := .TotalPages}}
+      {{$startPage := 1}}
+      {{$endPage := $totalPages}}
+      
+      {{if gt $totalPages 7}}
+        {{if gt $currentPage 4}}
+          {{$startPage = sub $currentPage 2}}
+        {{end}}
+        {{if lt $currentPage (sub $totalPages 3)}}
+          {{$endPage = add $currentPage 2}}
+          {{if lt $startPage 1}}
+            {{$endPage = add $endPage (sub 1 $startPage)}}
+            {{$startPage = 1}}
+          {{end}}
+        {{end}}
+        {{if gt $startPage 1}}
+          <button onclick="goToPage(1)" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">1</button>
+          {{if gt $startPage 2}}
+            <span class="px-2 text-slate-500">...</span>
+          {{end}}
+        {{end}}
+      {{end}}
+      
+      {{range $i := iterate $startPage $endPage}}
+        {{if eq $i $currentPage}}
+          <button class="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">{{$i}}</button>
+        {{else}}
+          <button class="go-to-page-btn px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors" data-page="{{$i}}">{{$i}}</button>
+        {{end}}
+      {{end}}
+      
+      {{if gt $totalPages 7}}
+        {{if lt $endPage $totalPages}}
+          {{if lt $endPage (sub $totalPages 1)}}
+            <span class="px-2 text-slate-500">...</span>
+          {{end}}
+          <button class="go-to-page-btn px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors" data-page="{{$totalPages}}">{{$totalPages}}</button>
+        {{end}}
+      {{end}}
+    </div>
+    
+    <!-- Next Button -->
+    {{if lt .Page .TotalPages}}
+    <button class="go-to-page-btn px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors flex items-center gap-2" data-page="{{add .Page 1}}">
+      Next
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+      </svg>
+    </button>
+    {{else}}
+    <button disabled class="px-3 py-2 bg-slate-800 text-slate-600 rounded-lg text-sm cursor-not-allowed flex items-center gap-2">
+      Next
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+      </svg>
+    </button>
+    {{end}}
+  </div>
+</div>
+
+<script>
+// Pagination button handler
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.go-to-page-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var page = this.getAttribute('data-page');
+      if (page) goToPage(parseInt(page, 10));
+    });
+  });
+});
+// Parse and display filter details after cards are loaded
+document.querySelectorAll('.filter-details-content').forEach(function(el) {
+  const filterDetails = el.getAttribute('data-filter-details');
+  if (filterDetails) {
+    try {
+      const checks = JSON.parse(filterDetails);
+      let html = '';
+      checks.forEach(check => {
+        const icon = check.passed ? '✓' : '✗';
+        const iconBg = check.passed ? 'bg-green-500/20 text-green-400 ring-green-500/30' : 'bg-red-500/20 text-red-400 ring-red-500/30';
+        const borderColor = check.passed ? 'border-green-500/30' : 'border-red-500/30';
+        html += `
+          <div class="flex items-start gap-3 p-3 bg-slate-800/50 rounded-lg border ${borderColor}">
+            <div class="flex-shrink-0 w-6 h-6 rounded-full ${iconBg} ring-1 flex items-center justify-center font-bold text-sm">
+              ${icon}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold text-slate-200 mb-0.5">${check.name}</div>
+              <div class="text-sm text-slate-400">${check.message}</div>
+            </div>
+          </div>
+        `;
+      });
+      el.innerHTML = html;
+    } catch (e) {
+      console.error('Error parsing filter details:', e);
+    }
+  }
+});
+// Handle successful "Add Anyway" responses
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+  if (evt.detail.pathInfo.requestPath.includes('/add-anyway')) {
+    if (evt.detail.successful) {
+      try {
+        const response = JSON.parse(evt.detail.xhr.responseText);
+        if (response.success) {
+          // Show success notification
+          showNotification(response.message, 'success');
+          // Find and update the card in place without refreshing
+          const button = evt.detail.elt;
+          const card = button.closest('.bg-gradient-to-br');
+          if (card) {
+            // Update the status badge
+            const statusBadge = card.querySelector('[class*="bg-red-500/20"]');
+            if (statusBadge) {
+              statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-300 rounded-lg text-sm font-semibold ring-1 ring-green-500/30';
+              statusBadge.innerHTML = '✓ Added';
+            }
+            // Update the message text
+            const messageSpan = card.querySelector('.text-slate-400.italic');
+            if (messageSpan) {
+              messageSpan.textContent = 'Manually added by user';
+            } else {
+              // Add message if it doesn't exist
+              const timestampDiv = card.querySelector('.flex.items-center.gap-3.text-xs.text-slate-400');
+              if (timestampDiv && !messageSpan) {
+                const separator = document.createElement('span');
+                separator.className = 'text-slate-500';
+                separator.textContent = '•';
+                timestampDiv.appendChild(separator);
+                const newMessage = document.createElement('span');
+                newMessage.className = 'text-slate-400 italic';
+                newMessage.textContent = 'Manually added by user';
+                timestampDiv.appendChild(newMessage);
+              }
+            }
+            // Remove the "Add Anyway" button
+            button.remove();
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing response:', e);
+      }
+    } else {
+      // Show error notification
+      try {
+        const response = JSON.parse(evt.detail.xhr.responseText);
+        showNotification(response.error || 'Failed to add media', 'error');
+      } catch (e) {
+        showNotification('Failed to add media', 'error');
+      }
+    }
+  }
+  // Handle successful "Block" responses
+  if (evt.detail.pathInfo.requestPath.includes('/block')) {
+    if (evt.detail.successful) {
+      try {
+        const response = JSON.parse(evt.detail.xhr.responseText);
+        if (response.success) {
+          // Show success notification
+          showNotification(response.message, 'success');
+          // Find and update the card in place
+          const button = evt.detail.elt;
+          const card = button.closest('.bg-gradient-to-br');
+          if (card) {
+            // Update the status badge from green (added) or blue (requested) to gray (blocked)
+            const statusBadge = card.querySelector('[class*="bg-green-500/20"], [class*="bg-blue-500/20"]');
+            if (statusBadge) {
+              statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-500/20 text-gray-300 rounded-lg text-sm font-semibold ring-1 ring-gray-500/30';
+              statusBadge.innerHTML = '🚫 Blocked';
+            }
+            // Update the message text
+            const messageSpan = card.querySelector('.text-slate-400.italic');
+            if (messageSpan) {
+              messageSpan.textContent = 'Blocked by user';
+            } else {
+              // Add message if it doesn't exist
+              const timestampDiv = card.querySelector('.flex.items-center.gap-3.text-xs.text-slate-400');
+              if (timestampDiv) {
+                const separator = document.createElement('span');
+                separator.className = 'text-slate-500';
+                separator.textContent = '•';
+                timestampDiv.appendChild(separator);
+                const newMessage = document.createElement('span');
+                newMessage.className = 'text-slate-400 italic';
+                newMessage.textContent = 'Blocked by user';
+                timestampDiv.appendChild(newMessage);
+              }
+            }
+            // Remove the "Block" button
+            button.remove();
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing response:', e);
+      }
+    } else {
+      // Show error notification
+      try {
+        const response = JSON.parse(evt.detail.xhr.responseText);
+        showNotification(response.error || 'Failed to block media', 'error');
+      } catch (e) {
+        showNotification('Failed to block media', 'error');
+      }
+    }
+  }
+});
+// Simple notification function
+function showNotification(message, type) {
+  const notification = document.createElement('div');
+  const bgColor = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+  notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in`;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  setTimeout(() => {
+    notification.classList.add('animate-fade-out');
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+// Set job gradients and icons for activity table (moved outside Go template logic)
+document.addEventListener('DOMContentLoaded', function() {
+  (window.jobDefinitions = window.jobDefinitions || {});
+  document.querySelectorAll('[id^="job-gradient-"]').forEach(function(banner, idx) {
+    var jobType = (window.logsForActivityTable && window.logsForActivityTable[idx] && window.logsForActivityTable[idx].JobType) || null;
+    if (!jobType) return;
+    var def = jobDefinitions[jobType];
+    if (def && def.gradient) {
+      banner.className += ' bg-gradient-to-r ' + def.gradient;
+    }
+    var iconSpan = document.getElementById('job-icon-' + idx);
+    if (iconSpan && def && def.icon) {
+      iconSpan.innerHTML = def.icon;
+      iconSpan.className = def.iconColor;
+    }
+  });
+});
+
+
+</script>
+
+*/}}

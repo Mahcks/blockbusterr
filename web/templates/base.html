@@ -58,9 +58,6 @@
         </div>
         <!-- Navigation -->
         <nav class="flex space-x-1 pb-0 -mb-px">
-          <a href="/config" class="px-4 py-3 text-slate-300 hover:text-blue-400 hover:border-b-2 hover:border-blue-400 transition-colors {{if eq .Title "Blockbusterr - Configuration"}}text-blue-400 border-b-2 border-blue-400{{end}}">
-            Configuration
-          </a>
           <a href="/jobs" class="px-4 py-3 text-slate-300 hover:text-blue-400 hover:border-b-2 hover:border-blue-400 transition-colors {{if eq .Title "Blockbusterr - Jobs"}}text-blue-400 border-b-2 border-blue-400{{end}}">
             Jobs
           </a>
@@ -68,7 +65,10 @@
             Filters
           </a>
           <a href="/activity" class="px-4 py-3 text-slate-300 hover:text-blue-400 hover:border-b-2 hover:border-blue-400 transition-colors {{if eq .Title "Blockbusterr - Activity Log"}}text-blue-400 border-b-2 border-blue-400{{end}}">
-            Activity Log
+            Activity
+          </a>
+          <a href="/config" class="px-4 py-3 text-slate-300 hover:text-blue-400 hover:border-b-2 hover:border-blue-400 transition-colors {{if or (eq .Title "Blockbusterr - Configuration") (eq .Title "Blockbusterr - Settings")}}text-blue-400 border-b-2 border-blue-400{{end}}">
+            Settings
           </a>
           <div class="flex-1"></div>
           <a href="https://blockbusterr.dev/getting-started/quickstart/" target="_blank" rel="noopener noreferrer" class="px-4 py-3 text-slate-300 hover:text-blue-400 hover:border-b-2 hover:border-blue-400 transition-colors flex items-center gap-1">
