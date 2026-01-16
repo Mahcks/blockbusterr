@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
 // determineConfigPath finds the best location to save config file
@@ -37,19 +38,33 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 
 	// Configuration page route
 	app.Get("/config", func(c *fiber.Ctx) error {
+		alert := structures.AlertInfo{
+			ID:      "welcome-info",
+			Title:   "Getting Started",
+			Content: "Automatically add trending, popular, and highly-rated movies and TV shows from Trakt.tv to your Radarr and Sonarr instances.<ol class='list-decimal list-inside space-y-1 mt-2'><li>Get your Trakt API credentials from <a href='https://trakt.tv/oauth/applications' target='_blank' class='text-blue-400 hover:underline'>trakt.tv/oauth/applications</a></li><li>Enter your Radarr and Sonarr connection details below</li><li>Test each connection to verify credentials</li><li>Load and select quality profiles and root folders</li><li>Save your configuration and head to the <a href='/jobs' class='text-blue-400 hover:underline'>Jobs page</a> to enable automation</li></ol>",
+			Class:   "mb-4",
+		}
 		return c.Render("index", fiber.Map{
-			"Title":   "Blockbusterr - Configuration",
-			"Config":  rg.gctx.Config(),
-			"Version": rg.gctx.Metadata().Version,
+			"Title":     "Blockbusterr - Configuration",
+			"Config":    rg.gctx.Config(),
+			"Version":   rg.gctx.Metadata().Version,
+			"AlertInfo": alert,
 		}, "base")
 	})
 
 	// Jobs page route (explicit)
 	app.Get("/jobs", func(c *fiber.Ctx) error {
+		alert := structures.AlertInfo{
+			ID:      "jobs-info",
+			Title:   "About Jobs",
+			Content: "Jobs automatically fetch content from Trakt and add them to Radarr/Sonarr based on the sync interval. Click on a job to configure its settings, or use the dropdown below to add new jobs to your list.",
+			Class:   "mb-4",
+		}
 		return c.Render("jobs", fiber.Map{
-			"Title":   "Blockbusterr - Jobs",
-			"Config":  rg.gctx.Config(),
-			"Version": rg.gctx.Metadata().Version,
+			"Title":     "Blockbusterr - Jobs",
+			"Config":    rg.gctx.Config(),
+			"Version":   rg.gctx.Metadata().Version,
+			"AlertInfo": alert,
 		}, "base")
 	})
 
@@ -620,10 +635,17 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 
 	// Filters page route
 	app.Get("/filters", func(c *fiber.Ctx) error {
+		alert := structures.AlertInfo{
+			ID:      "filters-info",
+			Title:   "Content Filters",
+			Content: "Configure filters to control which movies and shows are added to your library. These filters apply globally to all jobs.",
+			Class:   "mb-4",
+		}
 		return c.Render("filters", fiber.Map{
-			"Title":   "Blockbusterr - Filters",
-			"Config":  rg.gctx.Config(),
-			"Version": rg.gctx.Metadata().Version,
+			"Title":     "Blockbusterr - Filters",
+			"Config":    rg.gctx.Config(),
+			"Version":   rg.gctx.Metadata().Version,
+			"AlertInfo": alert,
 		}, "base")
 	})
 

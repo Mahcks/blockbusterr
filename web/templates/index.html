@@ -1,27 +1,6 @@
 {{define "index"}}
-<div class="bg-slate-800 rounded-lg p-6 mb-6">
-  <h2 class="text-2xl font-bold text-blue-400 mb-4">Welcome to Blockbusterr</h2>
-  <p class="text-slate-300 mb-4">
-    Automatically add trending, popular, and highly-rated movies and TV shows from Trakt.tv to your Radarr and Sonarr instances.
-  </p>
-  <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4 mb-4">
-    <div class="flex items-start">
-      <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-      </svg>
-      <div class="text-sm text-slate-300">
-        <p class="font-semibold text-blue-300 mb-2">Getting Started:</p>
-        <ol class="list-decimal list-inside space-y-1">
-          <li>Get your Trakt API credentials from <a href="https://trakt.tv/oauth/applications" target="_blank" class="text-blue-400 hover:underline">trakt.tv/oauth/applications</a></li>
-          <li>Enter your Radarr and Sonarr connection details below</li>
-          <li>Test each connection to verify credentials</li>
-          <li>Load and select quality profiles and root folders</li>
-          <li>Save your configuration and head to the <a href="/jobs" class="text-blue-400 hover:underline">Jobs page</a> to enable automation</li>
-        </ol>
-      </div>
-    </div>
-  </div>
-</div>
+  
+{{template "alert-info" .AlertInfo}}
 
 <div class="bg-slate-800 rounded-lg p-6 mb-6" id="config-form">
   <h2 class="text-2xl font-bold text-blue-400 mb-8">Configuration</h2>
@@ -196,7 +175,7 @@
               </svg>
               <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
-              </svg>
+            </svg>
             </button>
           </div>
         </div>
@@ -305,7 +284,7 @@
               </svg>
               <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
-              </svg>
+            </svg>
             </button>
           </div>
         </div>
@@ -369,7 +348,7 @@
     <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
       <h3 class="text-xl font-semibold text-purple-400 mb-6 flex items-center gap-2">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l-2 2 4-4"></path>
         </svg>
         Jellyseerr Settings <span class="text-sm font-normal text-slate-400">(Optional)</span>
       </h3>
@@ -421,7 +400,7 @@
               </svg>
               <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
-              </svg>
+            </svg>
             </button>
           </div>
         </div>
@@ -1215,14 +1194,14 @@
         messageDiv.textContent = '✗ ' + (result.error || 'Failed to import configuration');
         messageDiv.classList.remove('hidden');
         submitBtn.disabled = false;
-        submitBtn.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> Upload & Apply';
+        submitBtn.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Upload & Apply';
       }
     } catch (err) {
       messageDiv.className = 'mt-4 bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg';
       messageDiv.textContent = '✗ Network error: ' + err.message;
       messageDiv.classList.remove('hidden');
       submitBtn.disabled = false;
-      submitBtn.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> Upload & Apply';
+      submitBtn.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Upload & Apply';
     }
   });
 
@@ -1275,14 +1254,16 @@
         messageDiv.textContent = '✗ ' + (result.error || 'Failed to restore configuration');
         messageDiv.classList.remove('hidden');
         submitBtn.disabled = false;
-        submitBtn.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Restore Backup';
+        submitBtn.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg> Restore Backup';
       }
     } catch (err) {
       messageDiv.className = 'mt-4 bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg';
       messageDiv.textContent = '✗ Network error: ' + err.message;
       messageDiv.classList.remove('hidden');
       submitBtn.disabled = false;
-      submitBtn.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Restore Backup';
+      submitBtn.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg> Restore Backup';
     }
   });
 </script>

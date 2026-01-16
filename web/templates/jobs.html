@@ -1,22 +1,9 @@
 {{define "jobs"}}
-<div class="space-y-6">
-  <!-- Info Alert -->
-  <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4 mb-4">
-    <div class="flex items-start">
-      <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-      </svg>
-      <div>
-        <h4 class="font-semibold text-blue-300 mb-1">About Jobs</h4>
-        <p class="text-sm text-slate-300">
-          Jobs automatically fetch content from Trakt and add them to Radarr/Sonarr based on the sync interval. 
-          Click on a job to configure its settings, or use the dropdown below to add new jobs to your list.
-          {{if eq .Version "dev"}}<span class="font-semibold text-yellow-400 block mt-1">⚠️ Running in DEV mode - jobs will run in dry-run (no content will be added).</span>{{end}}
-        </p>
-      </div>
-    </div>
-  </div>
 
+<!-- Info Alert -->
+{{template "alert-info" .AlertInfo}}
+
+<div class="space-y-6">
   <!-- Global Settings -->
   <div class="bg-slate-800 rounded-lg p-6 mb-4">
     <h2 class="text-2xl font-semibold text-slate-100 mb-6 flex items-center gap-2">
@@ -154,7 +141,7 @@
             min="1"
             max="100"
             class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-          />
+            />
           <p class="text-xs text-slate-400 mt-1">Number of items to fetch (1-100)</p>
         </div>
 

@@ -44,6 +44,9 @@ func New(gctx global.Context) error {
 		b, _ := json.Marshal(v)
 		return template.JS(b)
 	})
+	engine.AddFunc("safeHTML", func(s string) template.HTML {
+		return template.HTML(s)
+	})
 	engine.AddFunc("mul", func(a, b float64) float64 {
 		return a * b
 	})
