@@ -20,31 +20,7 @@
 <div class="space-y-6">
 
 
-  <!-- Add Job Section -->
-  <div class="bg-slate-800 rounded-lg p-6 mb-4">
-    <h2 class="text-xl font-semibold text-slate-100 mb-4 flex items-center gap-2">
-      <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-      </svg>
-      Add New Job
-    </h2>
-    <p class="text-sm text-slate-400 mb-4">Select a job from the list below to add it to your active jobs</p>
-    
-    <div class="flex gap-2">
-      <select id="job-selector" class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
-        <option value="">-- Select a job to add --</option>
-      </select>
-      <button
-        onclick="addSelectedJob()"
-        class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-        </svg>
-        Add Job
-      </button>
-    </div>
-  </div>
+
 
   <!-- Active Jobs List -->
   <div class="bg-slate-800 rounded-lg p-6 mb-4">
@@ -65,188 +41,208 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
       </svg>
       <p class="text-lg font-medium">No active jobs</p>
-      <p class="text-sm mt-1">Add a job from the dropdown above to get started</p>
+      <p class="text-sm mt-1">Enable a job from the disabled list below to get started</p>
+    </div>
+
+    <hr class="my-8 border-slate-700">
+
+    <h2 class="text-2xl font-semibold text-slate-400 mb-6 flex items-center gap-2">
+      <svg class="w-6 h-6 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+      </svg>
+      Disabled Jobs
+    </h2>
+
+    <div id="disabled-jobs-list" class="space-y-3">
+      <!-- Disabled jobs will be dynamically rendered here -->
     </div>
   </div>
-</div>
 
-<!-- Job Configuration Modal -->
-<div id="job-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
-  <div class="absolute inset-0 bg-slate-900/90" onclick="closeJobModal()"></div>
-  <div class="relative bg-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700">
-    <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 z-10">
-      <div class="flex items-center justify-between">
-        <h3 class="text-2xl font-bold text-slate-100" id="modal-title"></h3>
-        <button onclick="closeJobModal()" class="text-slate-400 hover:text-slate-200 transition">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-      </div>
-      <p class="text-sm text-slate-400 mt-1" id="modal-description"></p>
-    </div>
-
-    <div class="p-6">
-      <form id="job-config-form" hx-post="/jobs/config/save" hx-target="#job-message" hx-swap="innerHTML" class="space-y-4">
-        <input type="hidden" id="modal-job-key" name="job-key" value="">
-        
-        <!-- Limit -->
-        <div>
-          <label for="modal-limit" class="block text-sm font-medium text-slate-300 mb-2">
-            Content Limit
-          </label>
-          <input
-            type="number"
-            id="modal-limit"
-            name="limit"
-            min="1"
-            max="100"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-            />
-          <p class="text-xs text-slate-400 mt-1">Number of items to fetch (1-100)</p>
-        </div>
-
-        <!-- Advanced Settings -->
-        <div class="border-t border-slate-700 pt-4">
+  <!-- Job Configuration Modal -->
+  <div id="job-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-800 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <!-- Modal Header -->
+      <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 z-10">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 id="modal-title" class="text-2xl font-bold text-slate-100"></h2>
+            <p id="modal-description" class="text-sm text-slate-400 mt-1"></p>
+          </div>
           <button
-            type="button"
-            onclick="toggleModalAdvanced()"
-            class="flex items-center justify-between w-full text-sm font-medium text-slate-300 hover:text-blue-400 transition-colors"
+            onclick="closeJobModal()"
+            class="text-slate-400 hover:text-slate-200 transition-colors"
           >
-            <span>Advanced Settings</span>
-            <svg id="advanced-chevron" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
-          
-          <div id="modal-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-            <!-- Period field (for favorited/played/watched/collected jobs) -->
-            <div id="modal-period-container" class="hidden">
-              <label for="modal-period" class="block text-sm font-medium text-slate-300 mb-2">
-                Time Period
-              </label>
-              <select
-                id="modal-period"
-                name="period"
-                class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              >
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-                <option value="all">All Time</option>
-              </select>
-              <p class="text-xs text-slate-400 mt-1">Timeframe for this job</p>
-            </div>
+        </div>
+      </div>
 
-            <!-- Smart job fields (base_min_rating and adjustment_factor) -->
-            <div id="modal-smart-container" class="hidden space-y-4">
-              <div>
-                <label for="modal-base-rating" class="block text-sm font-medium text-slate-300 mb-2">
-                  Base Minimum Rating
-                </label>
-                <input
-                  type="number"
-                  id="modal-base-rating"
-                  name="base_min_rating"
-                  min="0"
-                  max="10"
-                  step="0.1"
-                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                />
-                <p class="text-xs text-slate-400 mt-1">Baseline rating threshold (adjusted by popularity)</p>
-              </div>
-              
-              <div>
-                <label for="modal-adjustment-factor" class="block text-sm font-medium text-slate-300 mb-2">
-                  Adjustment Factor
-                </label>
-                <input
-                  type="number"
-                  id="modal-adjustment-factor"
-                  name="adjustment_factor"
-                  min="0"
-                  max="5"
-                  step="0.1"
-                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                />
-                <p class="text-xs text-slate-400 mt-1">How much to adjust (0.5=mild, 2.0=aggressive)</p>
-              </div>
+      <!-- Modal Body -->
+      <div class="p-6">
+        <form id="job-config-form" hx-post="/jobs/config/save" hx-target="#job-message" hx-swap="innerHTML" class="space-y-4">
+          <input type="hidden" id="modal-job-key" name="job-key" value="">
 
-              <div class="bg-indigo-900/20 border border-indigo-700/50 rounded-lg p-3">
-                <p class="text-xs text-indigo-300">
-                  <strong>How it works:</strong> Popular content (high votes) gets lower rating requirements, niche content gets higher requirements.
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <label for="modal-interval" class="block text-sm font-medium text-slate-300 mb-2">
-                Custom Sync Interval
-              </label>
-              <input
-                type="text"
-                id="modal-interval"
-                name="sync_interval"
-                placeholder="Leave empty to use default"
-                class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+          <!-- Limit -->
+          <div>
+            <label for="modal-limit" class="block text-sm font-medium text-slate-300 mb-2">
+              Content Limit
+            </label>
+            <input
+              type="number"
+              id="modal-limit"
+              name="limit"
+              min="1"
+              max="100"
+              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               />
-              <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
-            </div>
-            
-            <div>
-              <label for="modal-mode" class="block text-sm font-medium text-slate-300 mb-2">
-                Custom Mode
-              </label>
-              <select
-                id="modal-mode"
-                name="mode"
-                class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              >
-                <option value="">Use Default</option>
-                <option value="direct">Direct (Radarr/Sonarr)</option>
-                <option value="jellyseerr">Jellyseerr</option>
-              </select>
-              <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+            <p class="text-xs text-slate-400 mt-1">Number of items to fetch (1-100)</p>
+          </div>
+
+          <!-- Advanced Settings -->
+          <div class="border-t border-slate-700 pt-4">
+            <button
+              type="button"
+              onclick="toggleModalAdvanced()"
+              class="flex items-center justify-between w-full text-sm font-medium text-slate-300 hover:text-blue-400 transition-colors"
+            >
+              <span>Advanced Settings</span>
+              <svg id="advanced-chevron" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+
+            <div id="modal-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <!-- Period field (for favorited/played/watched/collected jobs) -->
+              <div id="modal-period-container" class="hidden">
+                <label for="modal-period" class="block text-sm font-medium text-slate-300 mb-2">
+                  Time Period
+                </label>
+                <select
+                  id="modal-period"
+                  name="period"
+                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                  <option value="all">All Time</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Timeframe for this job</p>
+              </div>
+
+              <!-- Smart job fields (base_min_rating and adjustment_factor) -->
+              <div id="modal-smart-container" class="hidden space-y-4">
+                <div>
+                  <label for="modal-base-rating" class="block text-sm font-medium text-slate-300 mb-2">
+                    Base Minimum Rating
+                  </label>
+                  <input
+                    type="number"
+                    id="modal-base-rating"
+                    name="base_min_rating"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  />
+                  <p class="text-xs text-slate-400 mt-1">Baseline rating threshold (adjusted by popularity)</p>
+                </div>
+
+                <div>
+                  <label for="modal-adjustment-factor" class="block text-sm font-medium text-slate-300 mb-2">
+                    Adjustment Factor
+                  </label>
+                  <input
+                    type="number"
+                    id="modal-adjustment-factor"
+                    name="adjustment_factor"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  />
+                  <p class="text-xs text-slate-400 mt-1">How much to adjust (0.5=mild, 2.0=aggressive)</p>
+                </div>
+
+                <div class="bg-indigo-900/20 border border-indigo-700/50 rounded-lg p-3">
+                  <p class="text-xs text-indigo-300">
+                    <strong>How it works:</strong> Popular content (high votes) gets lower rating requirements, niche content gets higher requirements.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label for="modal-interval" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Sync Interval
+                </label>
+                <input
+                  type="text"
+                  id="modal-interval"
+                  name="sync_interval"
+                  placeholder="Leave empty to use default"
+                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                />
+                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+              </div>
+
+              <div>
+                <label for="modal-mode" class="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Mode
+                </label>
+                <select
+                  id="modal-mode"
+                  name="mode"
+                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  <option value="">Use Default</option>
+                  <option value="direct">Direct (Radarr/Sonarr)</option>
+                  <option value="jellyseerr">Jellyseerr</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div id="job-message"></div>
+          <div id="job-message"></div>
 
-        <!-- Action Buttons -->
-        <div class="flex gap-2 pt-4">
-          <button
-            type="submit"
-            class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors duration-200"
-          >
-            Save Changes
-          </button>
+          <!-- Action Buttons -->
+          <div class="flex gap-2 pt-4">
+            <button
+              type="submit"
+              class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors duration-200"
+            >
+              Save Changes
+            </button>
+            <button
+              type="button"
+              onclick="previewJob()"
+              class="flex-1 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors duration-200"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              onclick="runJobNow()"
+              class="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200"
+            >
+              Run Now
+            </button>
+          </div>
+
+          <!-- Enable/Disable Job Button -->
           <button
             type="button"
-            onclick="previewJob()"
-            class="flex-1 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors duration-200"
+            id="toggle-job-button"
+            onclick="toggleJobEnabled()"
+            class="w-full px-4 py-2.5 font-semibold rounded-lg transition-colors duration-200"
           >
-            Preview
           </button>
-          <button
-            type="button"
-            onclick="runJobNow()"
-            class="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200"
-          >
-            Run Now
-          </button>
-        </div>
-
-        <!-- Remove Job Button -->
-        <button
-          type="button"
-          onclick="removeJob()"
-          class="w-full px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-semibold rounded-lg transition-colors duration-200 border border-red-600/50"
-        >
-          Disable Job (Settings Preserved)
-        </button>
-        <p class="text-xs text-slate-400 text-center -mt-2">Your job settings will be saved and can be re-enabled later</p>
-      </form>
+          <p id="toggle-job-description" class="text-xs text-slate-400 text-center -mt-2"></p>
+        </form>
+      </div>
     </div>
   </div>
 </div>
@@ -263,64 +259,102 @@ let currentJobKey = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('Config loaded:', config);
+  console.log('Job definitions:', Object.keys(jobDefinitions));
   renderJobsList();
-  updateJobSelector();
 });
 
 function renderJobsList() {
-  const container = document.getElementById('active-jobs-list');
+  const activeContainer = document.getElementById('active-jobs-list');
+  const disabledContainer = document.getElementById('disabled-jobs-list');
   const noJobsMsg = document.getElementById('no-jobs-message');
-  const enabledJobs = Object.keys(config).filter(key => config[key].enabled);
-  
+
+  // Filter out jobs that don't have definitions and separate by enabled status
+  const enabledJobs = Object.keys(config).filter(key => {
+    if (!jobDefinitions[key]) {
+      console.warn(`Job definition not found for key: ${key}`);
+      return false;
+    }
+    return config[key].enabled;
+  });
+
+  const disabledJobs = Object.keys(config).filter(key => {
+    if (!jobDefinitions[key]) {
+      return false;
+    }
+    return !config[key].enabled;
+  });
+
+  // Active jobs
   if (enabledJobs.length === 0) {
-    container.innerHTML = '';
+    activeContainer.innerHTML = '';
     noJobsMsg.classList.remove('hidden');
-    return;
-  }
-  
-  noJobsMsg.classList.add('hidden');
-  container.innerHTML = enabledJobs.map(key => {
-    const job = jobDefinitions[key];
-    const cfg = config[key];
-    return `
-      <div class="bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden hover:border-slate-600 transition-colors">
-        <div class="bg-gradient-to-r ${job.gradient} p-4 cursor-pointer" onclick="openJobModal('${key}')">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class="${job.iconColor}">${job.icon}</span>
-              <div>
-                <h3 class="text-lg font-semibold text-slate-100">${job.name}</h3>
-                <p class="text-xs text-slate-400">${job.description}</p>
+  } else {
+    noJobsMsg.classList.add('hidden');
+    activeContainer.innerHTML = enabledJobs.map(key => {
+      const job = jobDefinitions[key];
+      const cfg = config[key];
+      return `
+        <div class="bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden hover:border-slate-600 transition-colors">
+          <div class="bg-gradient-to-r ${job.gradient} p-4 cursor-pointer" onclick="openJobModal('${key}')">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="${job.iconColor}">${job.icon}</span>
+                <div>
+                  <h3 class="text-lg font-semibold text-slate-100">${job.name}</h3>
+                  <p class="text-xs text-slate-400">${job.description}</p>
+                </div>
               </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <span class="px-3 py-1 text-xs font-semibold rounded-full bg-slate-700/50 text-slate-300">
-                ${cfg.limit} items
-              </span>
-              <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-              </svg>
+              <div class="flex items-center gap-3">
+                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-slate-700/50 text-slate-300">
+                  ${cfg.limit} items
+                </span>
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    `;
-  }).join('');
+      `;
+    }).join('');
+  }
+
+  // Disabled jobs
+  if (disabledJobs.length === 0) {
+    disabledContainer.innerHTML = '<p class="text-center py-8 text-slate-500">All jobs are enabled</p>';
+  } else {
+    disabledContainer.innerHTML = disabledJobs.map(key => {
+      const job = jobDefinitions[key];
+      const cfg = config[key];
+      return `
+        <div class="bg-slate-900/30 rounded-lg border border-slate-700/50 overflow-hidden opacity-50 hover:opacity-70 hover:border-slate-600/50 transition-all">
+          <div class="bg-gradient-to-r ${job.gradient} p-4 cursor-pointer" onclick="openJobModal('${key}')">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="${job.iconColor}">${job.icon}</span>
+                <div>
+                  <h3 class="text-lg font-semibold text-slate-300">${job.name}</h3>
+                  <p class="text-xs text-slate-400">${job.description}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-slate-700/30 text-slate-400">
+                  ${cfg.limit} items
+                </span>
+                <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
 }
 
-function updateJobSelector() {
-  const selector = document.getElementById('job-selector');
-  const disabledJobs = Object.keys(config).filter(key => !config[key].enabled && jobDefinitions[key]);
-  
-  selector.innerHTML = '<option value="">-- Select a job to add --</option>' + 
-    disabledJobs.map(key => {
-      const job = jobDefinitions[key];
-      if (!job) return '';
-      return `<option value="${key}">${job.name} (${job.category})</option>`;
-    }).join('');
-  
-  selector.disabled = disabledJobs.length === 0;
-}
+// updateJobSelector removed: no longer needed
 
 function addSelectedJob() {
   const selector = document.getElementById('job-selector');
@@ -337,7 +371,6 @@ function addSelectedJob() {
   // Save to server
   saveJobConfig(jobKey, () => {
     renderJobsList();
-    updateJobSelector();
     showNotification(`${jobDefinitions[jobKey].name} added successfully!`, 'success');
     openJobModal(jobKey); // Open settings dialog immediately
   });
@@ -347,14 +380,14 @@ function openJobModal(jobKey) {
   currentJobKey = jobKey;
   const job = jobDefinitions[jobKey];
   const cfg = config[jobKey];
-  
+
   document.getElementById('modal-title').textContent = job.name;
   document.getElementById('modal-description').textContent = job.description;
   document.getElementById('modal-job-key').value = jobKey;
   document.getElementById('modal-limit').value = cfg.limit;
   document.getElementById('modal-interval').value = cfg.sync_interval || '';
   document.getElementById('modal-mode').value = cfg.mode || '';
-  
+
   // Show/hide period field for jobs that have it
   const periodJobs = ['favorited_movies', 'played_movies', 'watched_movies', 'collected_movies', 'favorited_shows', 'played_shows', 'watched_shows', 'collected_shows'];
   const periodContainer = document.getElementById('modal-period-container');
@@ -364,7 +397,7 @@ function openJobModal(jobKey) {
   } else {
     periodContainer.classList.add('hidden');
   }
-  
+
   // Show/hide smart job fields
   const smartJobs = ['smart_popular_movies', 'smart_popular_shows'];
   const smartContainer = document.getElementById('modal-smart-container');
@@ -375,7 +408,23 @@ function openJobModal(jobKey) {
   } else {
     smartContainer.classList.add('hidden');
   }
-  
+
+  // Update enable/disable button based on job status
+  const toggleButton = document.getElementById('toggle-job-button');
+  const toggleDescription = document.getElementById('toggle-job-description');
+
+  if (cfg.enabled) {
+    // Job is enabled - show disable button
+    toggleButton.textContent = 'Disable Job (Settings Preserved)';
+    toggleButton.className = 'w-full px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-semibold rounded-lg transition-colors duration-200 border border-red-600/50';
+    toggleDescription.textContent = 'Your job settings will be saved and can be re-enabled later';
+  } else {
+    // Job is disabled - show enable button
+    toggleButton.textContent = 'Enable Job';
+    toggleButton.className = 'w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200';
+    toggleDescription.textContent = 'Enable this job to start automatically fetching content';
+  }
+
   document.getElementById('job-modal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 }
@@ -401,23 +450,38 @@ function toggleModalAdvanced() {
   }
 }
 
-function removeJob() {
+function toggleJobEnabled() {
   if (!currentJobKey) return;
-  
+
   const jobName = jobDefinitions[currentJobKey].name;
-  
-  if (!confirm(`Disable ${jobName}? Your settings will be preserved and you can re-enable this job later.`)) {
-    return;
+  const cfg = config[currentJobKey];
+  const isCurrentlyEnabled = cfg.enabled;
+
+  if (isCurrentlyEnabled) {
+    // Disabling the job
+    if (!confirm(`Disable ${jobName}? Your settings will be preserved and you can re-enable this job later.`)) {
+      return;
+    }
+    config[currentJobKey].enabled = false;
+
+    saveJobConfig(currentJobKey, () => {
+      closeJobModal();
+      renderJobsList();
+      showNotification(`${jobName} disabled successfully! Settings have been preserved.`, 'success');
+    });
+  } else {
+    // Enabling the job
+    if (!confirm(`Enable ${jobName}? This job will start running on its configured schedule.`)) {
+      return;
+    }
+    config[currentJobKey].enabled = true;
+
+    saveJobConfig(currentJobKey, () => {
+      closeJobModal();
+      renderJobsList();
+      showNotification(`${jobName} enabled successfully!`, 'success');
+    });
   }
-  
-  config[currentJobKey].enabled = false;
-  
-  saveJobConfig(currentJobKey, () => {
-    closeJobModal();
-    renderJobsList();
-    updateJobSelector();
-    showNotification(`${jobName} disabled successfully! Settings have been preserved.`, 'success');
-  });
 }
 
 function saveJobConfig(jobKey, callback) {
