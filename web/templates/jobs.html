@@ -18,60 +18,7 @@
 {{end}}
 
 <div class="space-y-6">
-  <!-- Global Settings -->
-  <div class="bg-slate-800 rounded-lg p-6 mb-4">
-    <h2 class="text-2xl font-semibold text-slate-100 mb-6 flex items-center gap-2">
-      <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-      </svg>
-      Global Settings
-    </h2>
 
-    <form hx-post="/jobs/config/save" hx-target="#global-message" hx-swap="innerHTML" class="space-y-4">
-      <div class="grid md:grid-cols-2 gap-4">
-        <div>
-          <label for="sync_interval" class="block text-sm font-medium text-slate-300 mb-2">
-            Default Sync Interval <span class="text-red-400">*</span>
-          </label>
-          <input
-            type="text"
-            id="sync_interval"
-            name="jobs.sync_interval"
-            value="{{.Config.Jobs.SyncInterval}}"
-            placeholder="1h"
-            required
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-          />
-          <p class="text-xs text-slate-400 mt-1">How often jobs run by default (e.g., 1h, 30m, 0 */2 * * *)</p>
-        </div>
-        
-        <div>
-          <label for="default_mode" class="block text-sm font-medium text-slate-300 mb-2">
-            Default Mode <span class="text-red-400">*</span>
-          </label>
-          <select
-            id="default_mode"
-            name="jobs.mode"
-            required
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-          >
-            <option value="direct" {{if eq .Config.Jobs.Mode "direct"}}selected{{end}}>Direct (Radarr/Sonarr)</option>
-            <option value="jellyseerr" {{if eq .Config.Jobs.Mode "jellyseerr"}}selected{{end}}>Jellyseerr</option>
-          </select>
-          <p class="text-xs text-slate-400 mt-1">Default integration mode for all jobs</p>
-        </div>
-      </div>
-      
-      <button
-        type="submit"
-        class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors duration-200"
-      >
-        Save Global Settings
-      </button>
-      
-      <div id="global-message"></div>
-    </form>
-  </div>
 
   <!-- Add Job Section -->
   <div class="bg-slate-800 rounded-lg p-6 mb-4">

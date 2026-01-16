@@ -112,6 +112,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		jellyseerrRequestEmail := c.FormValue("jellyseerr.request_credentials.email")
 		jellyseerrRequestPassword := c.FormValue("jellyseerr.request_credentials.password")
 		jobsMode := c.FormValue("jobs.mode")
+		jobsSyncInterval := c.FormValue("jobs.sync_interval")
 		globalLimitMovies := c.FormValue("jobs.global_limit_movies")
 		globalLimitShows := c.FormValue("jobs.global_limit_shows")
 		globalPeriod := c.FormValue("jobs.global_period")
@@ -140,8 +141,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Jellyseerr.UserID = jellyseerrUserID
 		cfg.Jellyseerr.RequestCredentials.Email = jellyseerrRequestEmail
 		cfg.Jellyseerr.RequestCredentials.Password = jellyseerrRequestPassword
+		// Only set jobs.mode if present (for radio group)
 		if jobsMode != "" {
 			cfg.Jobs.Mode = jobsMode
+		}
+		if jobsSyncInterval != "" {
+			cfg.Jobs.SyncInterval = jobsSyncInterval
 		}
 		if globalPeriod != "" {
 			cfg.Jobs.GlobalPeriod = globalPeriod
