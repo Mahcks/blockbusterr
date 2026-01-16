@@ -27,12 +27,22 @@ func determineConfigPath() string {
 
 // RegisterUIRoutes handles web UI routes
 func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
-	// Root route for web UI - redirect to jobs
+	// Root route for web UI - show jobs page with full context
 	app.Get("/", func(c *fiber.Ctx) error {
+		alert := structures.AlertInfo{
+			ID:      "jobs-info",
+			Title:   "About Jobs",
+			Content: "Jobs automatically fetch content from Trakt and add them to Radarr/Sonarr based on the sync interval. Click on a job to configure its settings, or use the dropdown below to add new jobs to your list.",
+			Class:   "mb-4",
+		}
+		cfg := rg.gctx.Config()
+		traktDisabled := (cfg.Trakt.ClientID == "" || cfg.Trakt.ClientSecret == "")
 		return c.Render("jobs", fiber.Map{
-			"Title":   "Blockbusterr - Jobs",
-			"Config":  rg.gctx.Config(),
-			"Version": rg.gctx.Metadata().Version,
+			"Title":         "Blockbusterr - Jobs",
+			"Config":        cfg,
+			"Version":       rg.gctx.Metadata().Version,
+			"AlertInfo":     alert,
+			"TraktDisabled": traktDisabled,
 		}, "base")
 	})
 
