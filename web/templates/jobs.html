@@ -927,7 +927,7 @@
 
     // Re-render with filter
     if (previewData) {
-      renderPreview(previewData);
+      renderPreview(previewData, currentFilter);
     }
   }
 
@@ -936,7 +936,7 @@
     document.body.style.overflow = "auto";
   }
 
-  function renderPreview(data) {
+  function renderPreview(data, filter) {
     // Render stats
     const willAdd = data.total_found - data.already_exists - data.filtered_out;
     document.getElementById("preview-stats").innerHTML = `
@@ -959,19 +959,35 @@
   `;
 
     // Render items
-    if (!data.items || data.items.length === 0) {
+    // Filter items based on filter
+    let filteredItems;
+    if (data.items && Array.isArray(data.items)) {
+      filteredItems = data.items;
+      if (filter === "will_add") {
+        filteredItems = filteredItems.filter(item => !item.already_exists && !item.filtered_out);
+      } else if (filter === "already_exists") {
+        filteredItems = filteredItems.filter(item => item.already_exists);
+      } else if (filter === "filtered_out") {
+        filteredItems = filteredItems.filter(item => item.filtered_out);
+      }
+    } else {
+      filteredItems = [];
+    }
+
+    if (!filteredItems || filteredItems.length === 0) {
       document.getElementById("preview-content").innerHTML = `
-      <div class="text-center py-12">
-        <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="flex flex-col items-center justify-center py-12" style="min-height: 300px;">
+        <svg class="w-16 h-16 mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
         </svg>
-        <p class="text-slate-400">No items found</p>
+        <p class="text-slate-400 text-lg font-semibold">No items found for this filter.</p>
+        <p class="text-slate-500 text-sm mt-2">Try another filter or adjust your job settings.</p>
       </div>
     `;
       return;
     }
 
-    const itemsHtml = data.items
+    const itemsHtml = filteredItems
       .map((item) => {
         let statusBadge = "";
         let statusClass = "";
