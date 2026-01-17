@@ -974,7 +974,12 @@
 <div class="bg-slate-800 rounded-lg border border-slate-700 p-6">
   <h2 class="text-2xl font-bold text-blue-400 mb-4">About</h2>
   <div class="space-y-2 text-slate-300">
-    <p><strong class="text-slate-100">Version:</strong> {{.Version}}</p>
+    <p>
+      <strong class="text-slate-100">Version:</strong> {{.Version}}
+      {{if or (contains .Version "beta") (contains .Version "alpha")}}
+        <span class="ml-2 text-sm text-yellow-400">💛 Thanks for testing!</span>
+      {{end}}
+    </p>
     <p>
       <strong class="text-slate-100">Config File:</strong> {{if
       .Config.ConfigFilePath}}{{.Config.ConfigFilePath}}{{else}}Not using config

@@ -72,6 +72,9 @@ func New(gctx global.Context) error {
 		}
 		return a % b
 	})
+	engine.AddFunc("contains", func(s, substr string) bool {
+		return strings.Contains(s, substr)
+	})
 
 	app := fiber.New(fiber.Config{
 		Views:                 engine,

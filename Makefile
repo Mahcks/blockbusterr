@@ -202,12 +202,13 @@ beta:
 	echo ""; \
 	echo "📦 Building Docker image..."; \
 	COMMIT=$$(git rev-parse HEAD); \
-	docker build \
+	docker buildx build \
 		--build-arg VERSION=$$NEXT_BETA \
 		--build-arg COMMIT=$$COMMIT \
 		--platform linux/amd64,linux/arm64 \
 		-t ghcr.io/mahcks/blockbusterr:$$NEXT_BETA \
 		-t ghcr.io/mahcks/blockbusterr:latest-beta \
+		--push \
 		.; \
 	if [ $$? -ne 0 ]; then \
 		echo ""; \
@@ -215,13 +216,10 @@ beta:
 		exit 1; \
 	fi; \
 	echo ""; \
-	echo "🚀 Pushing to GitHub Container Registry..."; \
-	docker push ghcr.io/mahcks/blockbusterr:$$NEXT_BETA; \
-	docker push ghcr.io/mahcks/blockbusterr:latest-beta; \
-	echo ""; \
 	echo "✅ Beta release complete!"; \
 	echo "   Version: $$NEXT_BETA"; \
 	echo "   Image: ghcr.io/mahcks/blockbusterr:$$NEXT_BETA"; \
+	echo "   Platforms: linux/amd64, linux/arm64"; \
 	echo ""; \
 	echo "📝 To test this version:"; \
 	echo "   image: ghcr.io/mahcks/blockbusterr:$$NEXT_BETA"
