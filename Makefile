@@ -29,6 +29,11 @@ help:
 	@echo "  vet             Run go vet"
 	@echo "  check           Run fmt, vet, and lint"
 	@echo ""
+	@echo "Docker Commands:"
+	@echo "  docker-build    Build Docker image"
+	@echo "  docker-run      Run Docker container"
+	@echo "  beta            Build and push beta version (usage: make beta VERSION=v1.2.0)"
+	@echo ""
 
 # Build the application
 build:
@@ -173,6 +178,53 @@ docker-build:
 docker-run:
 	@echo "Running Docker container..."
 	@docker run -p 9090:9090 -v $(PWD)/data:/app/data -v $(PWD)/config:/app/config blockbusterr:latest
+
+# Beta versioning and deployment
+# Usage: make beta VERSION=v1.2.0
+beta:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Usage: make beta VERSION=v1.2.0"; \
+		echo "Example: make beta VERSION=v1.2.0"; \
+		exit 1; \
+	fi
+	@echo "🔍 Finding latest beta version for $(VERSION)..."
+	@LATEST_BETA=$$(git tag -l "$(VERSION)-beta.*" | sort -V | tail -n 1); \
+	if [ -z "$$LATEST_BETA" ]; then \
+		NEXT_BETA="$(VERSION)-beta.1"; \
+		echo "   No existing beta tags found. Starting at $$NEXT_BETA"; \
+	else \
+		BETA_NUM=$$(echo $$LATEST_BETA | sed 's/.*-beta\.\([0-9]*\)/\1/'); \
+		NEXT_NUM=$$((BETA_NUM + 1)); \
+		NEXT_BETA="$(VERSION)-beta.$$NEXT_NUM"; \
+		echo "   Latest beta: $$LATEST_BETA"; \
+		echo "   Next beta: $$NEXT_BETA"; \
+	fi; \
+	echo ""; \
+	echo "📦 Building Docker image..."; \
+	COMMIT=$$(git rev-parse HEAD); \
+	docker build \
+		--build-arg VERSION=$$NEXT_BETA \
+		--build-arg COMMIT=$$COMMIT \
+		--platform linux/amd64,linux/arm64 \
+		-t ghcr.io/mahcks/blockbusterr:$$NEXT_BETA \
+		-t ghcr.io/mahcks/blockbusterr:latest-beta \
+		.; \
+	if [ $$? -ne 0 ]; then \
+		echo ""; \
+		echo "❌ Build failed!"; \
+		exit 1; \
+	fi; \
+	echo ""; \
+	echo "🚀 Pushing to GitHub Container Registry..."; \
+	docker push ghcr.io/mahcks/blockbusterr:$$NEXT_BETA; \
+	docker push ghcr.io/mahcks/blockbusterr:latest-beta; \
+	echo ""; \
+	echo "✅ Beta release complete!"; \
+	echo "   Version: $$NEXT_BETA"; \
+	echo "   Image: ghcr.io/mahcks/blockbusterr:$$NEXT_BETA"; \
+	echo ""; \
+	echo "📝 To test this version:"; \
+	echo "   image: ghcr.io/mahcks/blockbusterr:$$NEXT_BETA"
 
 # Development workflow
 dev-setup: install build

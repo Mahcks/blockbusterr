@@ -23,14 +23,16 @@ var (
 
 func main() {
 	// If Version wasn't set at build time via ldflags, use env var or default
-	if Version == "dev" {
+	if Version == "dev" || Version == "" {
 		if v := os.Getenv("VERSION"); v != "" {
 			Version = v
+		} else if Version == "" {
+			Version = "dev"
 		}
 	}
 
 	// If Timestamp wasn't set at build time via ldflags, use env var or current time
-	if Timestamp == "unknown" {
+	if Timestamp == "unknown" || Timestamp == "" {
 		if t := os.Getenv("TIMESTAMP"); t != "" {
 			Timestamp = t
 		} else {
