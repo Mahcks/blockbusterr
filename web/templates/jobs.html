@@ -388,6 +388,22 @@ function openJobModal(jobKey) {
   document.getElementById('modal-interval').value = cfg.sync_interval || '';
   document.getElementById('modal-mode').value = cfg.mode || '';
 
+  // Set max limit based on job type
+  const limitInput = document.getElementById('modal-limit');
+  const limitDescription = limitInput.parentElement.querySelector('.text-xs');
+
+  if (jobKey === 'box_office') {
+    limitInput.max = 10;
+    limitDescription.textContent = 'Number of items to fetch (1-10)';
+    // If current value exceeds 10, set it to 10
+    if (cfg.limit > 10) {
+      limitInput.value = 10;
+    }
+  } else {
+    limitInput.max = 100;
+    limitDescription.textContent = 'Number of items to fetch (1-100)';
+  }
+
   // Show/hide period field for jobs that have it
   const periodJobs = ['favorited_movies', 'played_movies', 'watched_movies', 'collected_movies', 'favorited_shows', 'played_shows', 'watched_shows', 'collected_shows'];
   const periodContainer = document.getElementById('modal-period-container');
