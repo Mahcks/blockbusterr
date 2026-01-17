@@ -1,33 +1,52 @@
-
 {{define "jobs"}}
 
-
 <!-- Info Alert -->
-{{template "alert-info" .AlertInfo}}
-
-{{if .TraktDisabled}}
-<div class="bg-yellow-200 border-l-4 border-yellow-500 text-yellow-900 p-4 mb-6 rounded-lg shadow">
+{{template "alert-info" .AlertInfo}} {{if .TraktDisabled}}
+<div
+  class="bg-yellow-200 border-l-4 border-yellow-500 text-yellow-900 p-4 mb-6 rounded-lg shadow"
+>
   <div class="flex items-center">
-    <svg class="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86l-7.09 12.26A2 2 0 005.18 19h13.64a2 2 0 001.98-2.88l-7.09-12.26a2 2 0 00-3.42 0z" />
+    <svg
+      class="w-6 h-6 mr-2 text-yellow-600"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M12 9v2m0 4h.01M10.29 3.86l-7.09 12.26A2 2 0 005.18 19h13.64a2 2 0 001.98-2.88l-7.09-12.26a2 2 0 00-3.42 0z"
+      />
     </svg>
     <span class="font-semibold">Warning:</span>
-    <span class="ml-2">Trakt integration is <b>disabled</b>. Please configure your Trakt credentials in the <a href="/config" class="underline text-blue-700">settings</a> page to enable Trakt-powered jobs.</span>
+    <span class="ml-2"
+      >Trakt integration is <b>disabled</b>. Please configure your Trakt
+      credentials in the
+      <a href="/config" class="underline text-blue-700">settings</a> page to
+      enable Trakt-powered jobs.</span
+    >
   </div>
 </div>
 {{end}}
 
 <div class="space-y-6">
-
-
-
-
   <!-- Active Jobs List -->
   <div class="bg-slate-800 rounded-lg p-6 mb-4">
-    <h2 class="text-2xl font-semibold text-slate-100 mb-6 flex items-center gap-2">
-      <svg class="w-6 h-6 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+    <h2
+      class="text-2xl font-semibold text-slate-100 mb-6 flex items-center gap-2"
+    >
+      <svg
+        class="w-6 h-6 text-purple-400"
+        fill="currentColor"
+        viewBox="0 0 20 20"
+      >
         <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
-        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+        <path
+          fill-rule="evenodd"
+          d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+          clip-rule="evenodd"
+        ></path>
       </svg>
       Active Jobs
     </h2>
@@ -37,19 +56,41 @@
     </div>
 
     <div id="no-jobs-message" class="hidden text-center py-8 text-slate-400">
-      <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+      <svg
+        class="w-16 h-16 mx-auto mb-4 text-slate-600"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+        ></path>
       </svg>
       <p class="text-lg font-medium">No active jobs</p>
-      <p class="text-sm mt-1">Enable a job from the disabled list below to get started</p>
+      <p class="text-sm mt-1">
+        Enable a job from the disabled list below to get started
+      </p>
     </div>
 
-    <hr class="my-8 border-slate-700">
+    <hr class="my-8 border-slate-700" />
 
-    <h2 class="text-2xl font-semibold text-slate-400 mb-6 flex items-center gap-2">
-      <svg class="w-6 h-6 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+    <h2
+      class="text-2xl font-semibold text-slate-400 mb-6 flex items-center gap-2"
+    >
+      <svg
+        class="w-6 h-6 text-slate-500"
+        fill="currentColor"
+        viewBox="0 0 20 20"
+      >
         <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
-        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+        <path
+          fill-rule="evenodd"
+          d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+          clip-rule="evenodd"
+        ></path>
       </svg>
       Disabled Jobs
     </h2>
@@ -59,9 +100,101 @@
     </div>
   </div>
 
+  <!-- Job Preview Modal -->
+  <div
+    id="preview-modal"
+    class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    tabindex="-1"
+  >
+    <div
+      class="bg-slate-800 rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+    >
+      <!-- Modal Header -->
+      <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 z-10">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2
+              id="preview-title"
+              class="text-2xl font-bold text-slate-100"
+            ></h2>
+            <p class="text-sm text-slate-400 mt-1">
+              Preview of what this job will fetch
+            </p>
+          </div>
+          <button
+            onclick="closePreviewModal()"
+            class="text-slate-400 hover:text-slate-200 transition-colors"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
+        <!-- Summary Stats -->
+        <div id="preview-stats" class="mt-4 grid grid-cols-4 gap-4"></div>
+
+        <!-- Filter Tabs -->
+        <div class="mt-4 flex gap-2">
+          <button
+            onclick="filterPreview('all')"
+            id="filter-all"
+            class="px-4 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white"
+          >
+            All
+          </button>
+          <button
+            onclick="filterPreview('will_add')"
+            id="filter-will_add"
+            class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+          >
+            Will Add
+          </button>
+          <button
+            onclick="filterPreview('already_exists')"
+            id="filter-already_exists"
+            class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+          >
+            Already Exists
+          </button>
+          <button
+            onclick="filterPreview('filtered_out')"
+            id="filter-filtered_out"
+            class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+          >
+            Filtered Out
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body -->
+      <div id="preview-content" class="p-6">
+        <div class="flex items-center justify-center py-12">
+          <div
+            class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"
+          ></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Job Configuration Modal -->
-  <div id="job-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-800 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+  <div
+    id="job-modal"
+    class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+  >
+    <div
+      class="bg-slate-800 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+    >
       <!-- Modal Header -->
       <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 z-10">
         <div class="flex items-center justify-between">
@@ -73,8 +206,18 @@
             onclick="closeJobModal()"
             class="text-slate-400 hover:text-slate-200 transition-colors"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
             </svg>
           </button>
         </div>
@@ -82,12 +225,21 @@
 
       <!-- Modal Body -->
       <div class="p-6">
-        <form id="job-config-form" hx-post="/jobs/config/save" hx-target="#job-message" hx-swap="innerHTML" class="space-y-4">
-          <input type="hidden" id="modal-job-key" name="job-key" value="">
+        <form
+          id="job-config-form"
+          hx-post="/jobs/config/save"
+          hx-target="#job-message"
+          hx-swap="innerHTML"
+          class="space-y-4"
+        >
+          <input type="hidden" id="modal-job-key" name="job-key" value="" />
 
           <!-- Limit -->
           <div>
-            <label for="modal-limit" class="block text-sm font-medium text-slate-300 mb-2">
+            <label
+              for="modal-limit"
+              class="block text-sm font-medium text-slate-300 mb-2"
+            >
               Content Limit
             </label>
             <input
@@ -97,8 +249,10 @@
               min="1"
               max="100"
               class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-            <p class="text-xs text-slate-400 mt-1">Number of items to fetch (1-100)</p>
+            />
+            <p class="text-xs text-slate-400 mt-1">
+              Number of items to fetch (1-100)
+            </p>
           </div>
 
           <!-- Advanced Settings -->
@@ -109,15 +263,32 @@
               class="flex items-center justify-between w-full text-sm font-medium text-slate-300 hover:text-blue-400 transition-colors"
             >
               <span>Advanced Settings</span>
-              <svg id="advanced-chevron" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              <svg
+                id="advanced-chevron"
+                class="w-4 h-4 transition-transform duration-200"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"
+                ></path>
               </svg>
             </button>
 
-            <div id="modal-advanced" class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+            <div
+              id="modal-advanced"
+              class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700"
+            >
               <!-- Period field (for favorited/played/watched/collected jobs) -->
               <div id="modal-period-container" class="hidden">
-                <label for="modal-period" class="block text-sm font-medium text-slate-300 mb-2">
+                <label
+                  for="modal-period"
+                  class="block text-sm font-medium text-slate-300 mb-2"
+                >
                   Time Period
                 </label>
                 <select
@@ -130,13 +301,18 @@
                   <option value="yearly">Yearly</option>
                   <option value="all">All Time</option>
                 </select>
-                <p class="text-xs text-slate-400 mt-1">Timeframe for this job</p>
+                <p class="text-xs text-slate-400 mt-1">
+                  Timeframe for this job
+                </p>
               </div>
 
               <!-- Smart job fields (base_min_rating and adjustment_factor) -->
               <div id="modal-smart-container" class="hidden space-y-4">
                 <div>
-                  <label for="modal-base-rating" class="block text-sm font-medium text-slate-300 mb-2">
+                  <label
+                    for="modal-base-rating"
+                    class="block text-sm font-medium text-slate-300 mb-2"
+                  >
                     Base Minimum Rating
                   </label>
                   <input
@@ -148,11 +324,16 @@
                     step="0.1"
                     class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   />
-                  <p class="text-xs text-slate-400 mt-1">Baseline rating threshold (adjusted by popularity)</p>
+                  <p class="text-xs text-slate-400 mt-1">
+                    Baseline rating threshold (adjusted by popularity)
+                  </p>
                 </div>
 
                 <div>
-                  <label for="modal-adjustment-factor" class="block text-sm font-medium text-slate-300 mb-2">
+                  <label
+                    for="modal-adjustment-factor"
+                    class="block text-sm font-medium text-slate-300 mb-2"
+                  >
                     Adjustment Factor
                   </label>
                   <input
@@ -164,18 +345,27 @@
                     step="0.1"
                     class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   />
-                  <p class="text-xs text-slate-400 mt-1">How much to adjust (0.5=mild, 2.0=aggressive)</p>
+                  <p class="text-xs text-slate-400 mt-1">
+                    How much to adjust (0.5=mild, 2.0=aggressive)
+                  </p>
                 </div>
 
-                <div class="bg-indigo-900/20 border border-indigo-700/50 rounded-lg p-3">
+                <div
+                  class="bg-indigo-900/20 border border-indigo-700/50 rounded-lg p-3"
+                >
                   <p class="text-xs text-indigo-300">
-                    <strong>How it works:</strong> Popular content (high votes) gets lower rating requirements, niche content gets higher requirements.
+                    <strong>How it works:</strong> Popular content (high votes)
+                    gets lower rating requirements, niche content gets higher
+                    requirements.
                   </p>
                 </div>
               </div>
 
               <div>
-                <label for="modal-interval" class="block text-sm font-medium text-slate-300 mb-2">
+                <label
+                  for="modal-interval"
+                  class="block text-sm font-medium text-slate-300 mb-2"
+                >
                   Custom Sync Interval
                 </label>
                 <input
@@ -185,11 +375,16 @@
                   placeholder="Leave empty to use default"
                   class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 />
-                <p class="text-xs text-slate-400 mt-1">Override default interval (e.g., 1h, 30m, 0 */2 * * *)</p>
+                <p class="text-xs text-slate-400 mt-1">
+                  Override default interval (e.g., 1h, 30m, 0 */2 * * *)
+                </p>
               </div>
 
               <div>
-                <label for="modal-mode" class="block text-sm font-medium text-slate-300 mb-2">
+                <label
+                  for="modal-mode"
+                  class="block text-sm font-medium text-slate-300 mb-2"
+                >
                   Custom Mode
                 </label>
                 <select
@@ -201,7 +396,9 @@
                   <option value="direct">Direct (Radarr/Sonarr)</option>
                   <option value="jellyseerr">Jellyseerr</option>
                 </select>
-                <p class="text-xs text-slate-400 mt-1">Override default integration mode</p>
+                <p class="text-xs text-slate-400 mt-1">
+                  Override default integration mode
+                </p>
               </div>
             </div>
           </div>
@@ -238,63 +435,67 @@
             id="toggle-job-button"
             onclick="toggleJobEnabled()"
             class="w-full px-4 py-2.5 font-semibold rounded-lg transition-colors duration-200"
-          >
-          </button>
-          <p id="toggle-job-description" class="text-xs text-slate-400 text-center -mt-2"></p>
+          ></button>
+          <p
+            id="toggle-job-description"
+            class="text-xs text-slate-400 text-center -mt-2"
+          ></p>
         </form>
       </div>
     </div>
   </div>
 </div>
 
-
 <script src="/static/jobDefinitions.js"></script>
 <script>
+  // Load config from template
 
-// Load config from template
+  const config = JSON.parse("{{json .Config.Jobs}}");
 
-const config = JSON.parse('{{json .Config.Jobs}}');
+  let currentJobKey = null;
+  let previewJobKey = null;
+  let previewData = null;
+  let currentFilter = "all";
 
-let currentJobKey = null;
-
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('Config loaded:', config);
-  console.log('Job definitions:', Object.keys(jobDefinitions));
-  renderJobsList();
-});
-
-function renderJobsList() {
-  const activeContainer = document.getElementById('active-jobs-list');
-  const disabledContainer = document.getElementById('disabled-jobs-list');
-  const noJobsMsg = document.getElementById('no-jobs-message');
-
-  // Filter out jobs that don't have definitions and separate by enabled status
-  const enabledJobs = Object.keys(config).filter(key => {
-    if (!jobDefinitions[key]) {
-      console.warn(`Job definition not found for key: ${key}`);
-      return false;
-    }
-    return config[key].enabled;
+  // Initialize
+  document.addEventListener("DOMContentLoaded", function () {
+    console.log("Config loaded:", config);
+    console.log("Job definitions:", Object.keys(jobDefinitions));
+    renderJobsList();
   });
 
-  const disabledJobs = Object.keys(config).filter(key => {
-    if (!jobDefinitions[key]) {
-      return false;
-    }
-    return !config[key].enabled;
-  });
+  function renderJobsList() {
+    const activeContainer = document.getElementById("active-jobs-list");
+    const disabledContainer = document.getElementById("disabled-jobs-list");
+    const noJobsMsg = document.getElementById("no-jobs-message");
 
-  // Active jobs
-  if (enabledJobs.length === 0) {
-    activeContainer.innerHTML = '';
-    noJobsMsg.classList.remove('hidden');
-  } else {
-    noJobsMsg.classList.add('hidden');
-    activeContainer.innerHTML = enabledJobs.map(key => {
-      const job = jobDefinitions[key];
-      const cfg = config[key];
-      return `
+    // Filter out jobs that don't have definitions and separate by enabled status
+    const enabledJobs = Object.keys(config).filter((key) => {
+      if (!jobDefinitions[key]) {
+        console.warn(`Job definition not found for key: ${key}`);
+        return false;
+      }
+      return config[key].enabled;
+    });
+
+    const disabledJobs = Object.keys(config).filter((key) => {
+      if (!jobDefinitions[key]) {
+        return false;
+      }
+      return !config[key].enabled;
+    });
+
+    // Active jobs
+    if (enabledJobs.length === 0) {
+      activeContainer.innerHTML = "";
+      noJobsMsg.classList.remove("hidden");
+    } else {
+      noJobsMsg.classList.add("hidden");
+      activeContainer.innerHTML = enabledJobs
+        .map((key) => {
+          const job = jobDefinitions[key];
+          const cfg = config[key];
+          return `
         <div class="bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden hover:border-slate-600 transition-colors">
           <div class="bg-gradient-to-r ${job.gradient} p-4 cursor-pointer" onclick="openJobModal('${key}')">
             <div class="flex items-center justify-between">
@@ -317,17 +518,20 @@ function renderJobsList() {
           </div>
         </div>
       `;
-    }).join('');
-  }
+        })
+        .join("");
+    }
 
-  // Disabled jobs
-  if (disabledJobs.length === 0) {
-    disabledContainer.innerHTML = '<p class="text-center py-8 text-slate-500">All jobs are enabled</p>';
-  } else {
-    disabledContainer.innerHTML = disabledJobs.map(key => {
-      const job = jobDefinitions[key];
-      const cfg = config[key];
-      return `
+    // Disabled jobs
+    if (disabledJobs.length === 0) {
+      disabledContainer.innerHTML =
+        '<p class="text-center py-8 text-slate-500">All jobs are enabled</p>';
+    } else {
+      disabledContainer.innerHTML = disabledJobs
+        .map((key) => {
+          const job = jobDefinitions[key];
+          const cfg = config[key];
+          return `
         <div class="bg-slate-900/30 rounded-lg border border-slate-700/50 overflow-hidden opacity-50 hover:opacity-70 hover:border-slate-600/50 transition-all">
           <div class="bg-gradient-to-r ${job.gradient} p-4 cursor-pointer" onclick="openJobModal('${key}')">
             <div class="flex items-center justify-between">
@@ -350,264 +554,526 @@ function renderJobsList() {
           </div>
         </div>
       `;
-    }).join('');
-  }
-}
-
-// updateJobSelector removed: no longer needed
-
-function addSelectedJob() {
-  const selector = document.getElementById('job-selector');
-  const jobKey = selector.value;
-  
-  if (!jobKey) {
-    showNotification('Please select a job to add', 'error');
-    return;
-  }
-  
-  // Enable the job
-  config[jobKey].enabled = true;
-
-  // Save to server
-  saveJobConfig(jobKey, () => {
-    renderJobsList();
-    showNotification(`${jobDefinitions[jobKey].name} added successfully!`, 'success');
-    openJobModal(jobKey); // Open settings dialog immediately
-  });
-}
-
-function openJobModal(jobKey) {
-  currentJobKey = jobKey;
-  const job = jobDefinitions[jobKey];
-  const cfg = config[jobKey];
-
-  document.getElementById('modal-title').textContent = job.name;
-  document.getElementById('modal-description').textContent = job.description;
-  document.getElementById('modal-job-key').value = jobKey;
-  document.getElementById('modal-limit').value = cfg.limit;
-  document.getElementById('modal-interval').value = cfg.sync_interval || '';
-  document.getElementById('modal-mode').value = cfg.mode || '';
-
-  // Set max limit based on job type
-  const limitInput = document.getElementById('modal-limit');
-  const limitDescription = limitInput.parentElement.querySelector('.text-xs');
-
-  if (jobKey === 'box_office') {
-    limitInput.max = 10;
-    limitDescription.textContent = 'Number of items to fetch (1-10)';
-    // If current value exceeds 10, set it to 10
-    if (cfg.limit > 10) {
-      limitInput.value = 10;
+        })
+        .join("");
     }
-  } else {
-    limitInput.max = 100;
-    limitDescription.textContent = 'Number of items to fetch (1-100)';
   }
 
-  // Show/hide period field for jobs that have it
-  const periodJobs = ['favorited_movies', 'played_movies', 'watched_movies', 'collected_movies', 'favorited_shows', 'played_shows', 'watched_shows', 'collected_shows'];
-  const periodContainer = document.getElementById('modal-period-container');
-  if (periodJobs.includes(jobKey)) {
-    periodContainer.classList.remove('hidden');
-    document.getElementById('modal-period').value = cfg.period || 'weekly';
-  } else {
-    periodContainer.classList.add('hidden');
-  }
+  // updateJobSelector removed: no longer needed
 
-  // Show/hide smart job fields
-  const smartJobs = ['smart_popular_movies', 'smart_popular_shows'];
-  const smartContainer = document.getElementById('modal-smart-container');
-  if (smartJobs.includes(jobKey)) {
-    smartContainer.classList.remove('hidden');
-    document.getElementById('modal-base-rating').value = cfg.base_min_rating || 7.0;
-    document.getElementById('modal-adjustment-factor').value = cfg.adjustment_factor || 1.0;
-  } else {
-    smartContainer.classList.add('hidden');
-  }
+  function addSelectedJob() {
+    const selector = document.getElementById("job-selector");
+    const jobKey = selector.value;
 
-  // Update enable/disable button based on job status
-  const toggleButton = document.getElementById('toggle-job-button');
-  const toggleDescription = document.getElementById('toggle-job-description');
-
-  if (cfg.enabled) {
-    // Job is enabled - show disable button
-    toggleButton.textContent = 'Disable Job (Settings Preserved)';
-    toggleButton.className = 'w-full px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-semibold rounded-lg transition-colors duration-200 border border-red-600/50';
-    toggleDescription.textContent = 'Your job settings will be saved and can be re-enabled later';
-  } else {
-    // Job is disabled - show enable button
-    toggleButton.textContent = 'Enable Job';
-    toggleButton.className = 'w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200';
-    toggleDescription.textContent = 'Enable this job to start automatically fetching content';
-  }
-
-  document.getElementById('job-modal').classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeJobModal() {
-  document.getElementById('job-modal').classList.add('hidden');
-  document.body.style.overflow = 'auto';
-  document.getElementById('modal-advanced').classList.add('hidden');
-  document.getElementById('advanced-chevron').style.transform = '';
-  currentJobKey = null;
-}
-
-function toggleModalAdvanced() {
-  const advanced = document.getElementById('modal-advanced');
-  const chevron = document.getElementById('advanced-chevron');
-  
-  if (advanced.classList.contains('hidden')) {
-    advanced.classList.remove('hidden');
-    chevron.style.transform = 'rotate(180deg)';
-  } else {
-    advanced.classList.add('hidden');
-    chevron.style.transform = 'rotate(0deg)';
-  }
-}
-
-function toggleJobEnabled() {
-  if (!currentJobKey) return;
-
-  const jobName = jobDefinitions[currentJobKey].name;
-  const cfg = config[currentJobKey];
-  const isCurrentlyEnabled = cfg.enabled;
-
-  if (isCurrentlyEnabled) {
-    // Disabling the job
-    if (!confirm(`Disable ${jobName}? Your settings will be preserved and you can re-enable this job later.`)) {
+    if (!jobKey) {
+      showNotification("Please select a job to add", "error");
       return;
     }
-    config[currentJobKey].enabled = false;
 
-    saveJobConfig(currentJobKey, () => {
-      closeJobModal();
-      renderJobsList();
-      showNotification(`${jobName} disabled successfully! Settings have been preserved.`, 'success');
-    });
-  } else {
-    // Enabling the job
-    if (!confirm(`Enable ${jobName}? This job will start running on its configured schedule.`)) {
-      return;
-    }
-    config[currentJobKey].enabled = true;
+    // Enable the job
+    config[jobKey].enabled = true;
 
-    saveJobConfig(currentJobKey, () => {
-      closeJobModal();
+    // Save to server
+    saveJobConfig(jobKey, () => {
       renderJobsList();
-      showNotification(`${jobName} enabled successfully!`, 'success');
+      showNotification(
+        `${jobDefinitions[jobKey].name} added successfully!`,
+        "success",
+      );
+      openJobModal(jobKey); // Open settings dialog immediately
     });
   }
-}
 
-function saveJobConfig(jobKey, callback) {
-  const cfg = config[jobKey];
-  const formData = new FormData();
-  
-  // Add all job configs as hidden fields
-  Object.keys(config).forEach(key => {
-    const keyConfig = config[key];
-    const def = jobDefinitions[key];
-    if (!def) return; // Defensive: skip if not in jobDefinitions
-    // Send 'on' for enabled, 'off' for disabled
-    formData.append(`${def.configKey}.enabled`, keyConfig.enabled ? 'on' : 'off');
-    formData.append(`${def.configKey}.limit`, keyConfig.limit);
-    if (keyConfig.sync_interval) formData.append(`${def.configKey}.sync_interval`, keyConfig.sync_interval);
-    if (keyConfig.mode) formData.append(`${def.configKey}.mode`, keyConfig.mode);
-    if (keyConfig.period) formData.append(`${def.configKey}.period`, keyConfig.period);
-    if (keyConfig.base_min_rating !== undefined) formData.append(`${def.configKey}.base_min_rating`, keyConfig.base_min_rating);
-    if (keyConfig.adjustment_factor !== undefined) formData.append(`${def.configKey}.adjustment_factor`, keyConfig.adjustment_factor);
-  });
-  
-  // Add global settings
-  formData.append('jobs.sync_interval', '{{.Config.Jobs.SyncInterval}}');
-  formData.append('jobs.mode', '{{.Config.Jobs.Mode}}');
-  
-  let responseStatus = 0;
-  fetch('/jobs/config/save', {
-    method: 'POST',
-    body: formData
-  })
-  .then(response => {
-    responseStatus = response.status;
-    if (!response.ok) {
-      throw new Error('Server returned error: ' + response.status);
-    }
-    return response.text();
-  })
-  .then((responseText) => {
-    // Check if response contains actual error (not just the word in script)
-    if (responseStatus >= 400 || (responseText && responseText.includes('showNotification') && responseText.includes("'error'"))) {
-      showNotification('Failed to save configuration', 'error');
-      return;
-    }
-    if (callback) callback();
-  })
-  .catch(error => {
-    showNotification('Failed to save: ' + error.message, 'error');
-  });
-}
+  function openJobModal(jobKey) {
+    currentJobKey = jobKey;
+    const job = jobDefinitions[jobKey];
+    const cfg = config[jobKey];
 
-// Handle form submission
-document.getElementById('job-config-form').addEventListener('submit', function(e) {
-  e.preventDefault();
-  
-  if (!currentJobKey) return;
-  
-  const limit = parseInt(document.getElementById('modal-limit').value);
-  const interval = document.getElementById('modal-interval').value;
-  const mode = document.getElementById('modal-mode').value;
-  
-  config[currentJobKey].limit = limit;
-  config[currentJobKey].sync_interval = interval;
-  config[currentJobKey].mode = mode;
-  
-  // Update period if applicable
-  const periodJobs = ['favorited_movies', 'played_movies', 'watched_movies', 'collected_movies', 'favorited_shows', 'played_shows', 'watched_shows', 'collected_shows'];
-  if (periodJobs.includes(currentJobKey)) {
-    config[currentJobKey].period = document.getElementById('modal-period').value;
-  }
-  
-  // Update smart job fields if applicable
-  const smartJobs = ['smart_popular_movies', 'smart_popular_shows'];
-  if (smartJobs.includes(currentJobKey)) {
-    config[currentJobKey].base_min_rating = parseFloat(document.getElementById('modal-base-rating').value);
-    config[currentJobKey].adjustment_factor = parseFloat(document.getElementById('modal-adjustment-factor').value);
-  }
-  
-  saveJobConfig(currentJobKey, () => {
-    renderJobsList();
-    showNotification('Job configuration saved successfully!', 'success');
-  });
-});
+    document.getElementById("modal-title").textContent = job.name;
+    document.getElementById("modal-description").textContent = job.description;
+    document.getElementById("modal-job-key").value = jobKey;
+    document.getElementById("modal-limit").value = cfg.limit;
+    document.getElementById("modal-interval").value = cfg.sync_interval || "";
+    document.getElementById("modal-mode").value = cfg.mode || "";
 
-function previewJob() {
-  if (!currentJobKey) return;
-  
-  showNotification('Preview functionality coming soon!', 'info');
-}
+    // Set max limit based on job type
+    const limitInput = document.getElementById("modal-limit");
+    const limitDescription = limitInput.parentElement.querySelector(".text-xs");
 
-function runJobNow() {
-  if (!currentJobKey) return;
-  
-  if (!confirm(`Run ${jobDefinitions[currentJobKey].name} now?`)) return;
-  
-  const jobName = currentJobKey.replace(/_/g, '-');
-  
-  fetch(`/v1/jobs/trigger/${jobName}`, {
-    method: 'POST'
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.error) {
-      showNotification(data.error, 'error');
+    if (jobKey === "box_office") {
+      limitInput.max = 10;
+      limitDescription.textContent = "Number of items to fetch (1-10)";
+      // If current value exceeds 10, set it to 10
+      if (cfg.limit > 10) {
+        limitInput.value = 10;
+      }
     } else {
-      showNotification(data.message || 'Job started successfully!', 'success');
+      limitInput.max = 100;
+      limitDescription.textContent = "Number of items to fetch (1-100)";
     }
-  })
-  .catch(error => {
-    showNotification('Failed to run job: ' + error.message, 'error');
-  });
-}
+
+    // Show/hide period field for jobs that have it
+    const periodJobs = [
+      "favorited_movies",
+      "played_movies",
+      "watched_movies",
+      "collected_movies",
+      "favorited_shows",
+      "played_shows",
+      "watched_shows",
+      "collected_shows",
+    ];
+    const periodContainer = document.getElementById("modal-period-container");
+    if (periodJobs.includes(jobKey)) {
+      periodContainer.classList.remove("hidden");
+      document.getElementById("modal-period").value = cfg.period || "weekly";
+    } else {
+      periodContainer.classList.add("hidden");
+    }
+
+    // Show/hide smart job fields
+    const smartJobs = ["smart_popular_movies", "smart_popular_shows"];
+    const smartContainer = document.getElementById("modal-smart-container");
+    if (smartJobs.includes(jobKey)) {
+      smartContainer.classList.remove("hidden");
+      document.getElementById("modal-base-rating").value =
+        cfg.base_min_rating || 7.0;
+      document.getElementById("modal-adjustment-factor").value =
+        cfg.adjustment_factor || 1.0;
+    } else {
+      smartContainer.classList.add("hidden");
+    }
+
+    // Update enable/disable button based on job status
+    const toggleButton = document.getElementById("toggle-job-button");
+    const toggleDescription = document.getElementById("toggle-job-description");
+
+    if (cfg.enabled) {
+      // Job is enabled - show disable button
+      toggleButton.textContent = "Disable Job (Settings Preserved)";
+      toggleButton.className =
+        "w-full px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-semibold rounded-lg transition-colors duration-200 border border-red-600/50";
+      toggleDescription.textContent =
+        "Your job settings will be saved and can be re-enabled later";
+    } else {
+      // Job is disabled - show enable button
+      toggleButton.textContent = "Enable Job";
+      toggleButton.className =
+        "w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200";
+      toggleDescription.textContent =
+        "Enable this job to start automatically fetching content";
+    }
+
+    document.getElementById("job-modal").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeJobModal() {
+    document.getElementById("job-modal").classList.add("hidden");
+    document.body.style.overflow = "auto";
+    document.getElementById("modal-advanced").classList.add("hidden");
+    document.getElementById("advanced-chevron").style.transform = "";
+    currentJobKey = null;
+  }
+
+  function toggleModalAdvanced() {
+    const advanced = document.getElementById("modal-advanced");
+    const chevron = document.getElementById("advanced-chevron");
+
+    if (advanced.classList.contains("hidden")) {
+      advanced.classList.remove("hidden");
+      chevron.style.transform = "rotate(180deg)";
+    } else {
+      advanced.classList.add("hidden");
+      chevron.style.transform = "rotate(0deg)";
+    }
+  }
+
+  function toggleJobEnabled() {
+    if (!currentJobKey) return;
+
+    const jobName = jobDefinitions[currentJobKey].name;
+    const cfg = config[currentJobKey];
+    const isCurrentlyEnabled = cfg.enabled;
+
+    if (isCurrentlyEnabled) {
+      // Disabling the job
+      if (
+        !confirm(
+          `Disable ${jobName}? Your settings will be preserved and you can re-enable this job later.`,
+        )
+      ) {
+        return;
+      }
+      config[currentJobKey].enabled = false;
+
+      saveJobConfig(currentJobKey, () => {
+        closeJobModal();
+        renderJobsList();
+        showNotification(
+          `${jobName} disabled successfully! Settings have been preserved.`,
+          "success",
+        );
+      });
+    } else {
+      // Enabling the job
+      if (
+        !confirm(
+          `Enable ${jobName}? This job will start running on its configured schedule.`,
+        )
+      ) {
+        return;
+      }
+      config[currentJobKey].enabled = true;
+
+      saveJobConfig(currentJobKey, () => {
+        closeJobModal();
+        renderJobsList();
+        showNotification(`${jobName} enabled successfully!`, "success");
+      });
+    }
+  }
+
+  function saveJobConfig(jobKey, callback) {
+    const cfg = config[jobKey];
+    const formData = new FormData();
+
+    // Add all job configs as hidden fields
+    Object.keys(config).forEach((key) => {
+      const keyConfig = config[key];
+      const def = jobDefinitions[key];
+      if (!def) return; // Defensive: skip if not in jobDefinitions
+      // Send 'on' for enabled, 'off' for disabled
+      formData.append(
+        `${def.configKey}.enabled`,
+        keyConfig.enabled ? "on" : "off",
+      );
+      formData.append(`${def.configKey}.limit`, keyConfig.limit);
+      if (keyConfig.sync_interval)
+        formData.append(
+          `${def.configKey}.sync_interval`,
+          keyConfig.sync_interval,
+        );
+      if (keyConfig.mode)
+        formData.append(`${def.configKey}.mode`, keyConfig.mode);
+      if (keyConfig.period)
+        formData.append(`${def.configKey}.period`, keyConfig.period);
+      if (keyConfig.base_min_rating !== undefined)
+        formData.append(
+          `${def.configKey}.base_min_rating`,
+          keyConfig.base_min_rating,
+        );
+      if (keyConfig.adjustment_factor !== undefined)
+        formData.append(
+          `${def.configKey}.adjustment_factor`,
+          keyConfig.adjustment_factor,
+        );
+    });
+
+    // Add global settings
+    formData.append("jobs.sync_interval", "{{.Config.Jobs.SyncInterval}}");
+    formData.append("jobs.mode", "{{.Config.Jobs.Mode}}");
+
+    let responseStatus = 0;
+    fetch("/jobs/config/save", {
+      method: "POST",
+      body: formData,
+    })
+      .then((response) => {
+        responseStatus = response.status;
+        if (!response.ok) {
+          throw new Error("Server returned error: " + response.status);
+        }
+        return response.text();
+      })
+      .then((responseText) => {
+        // Check if response contains actual error (not just the word in script)
+        if (
+          responseStatus >= 400 ||
+          (responseText &&
+            responseText.includes("showNotification") &&
+            responseText.includes("'error'"))
+        ) {
+          showNotification("Failed to save configuration", "error");
+          return;
+        }
+        if (callback) callback();
+      })
+      .catch((error) => {
+        showNotification("Failed to save: " + error.message, "error");
+      });
+  }
+
+  // Handle form submission
+  document
+    .getElementById("job-config-form")
+    .addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      if (!currentJobKey) return;
+
+      const limit = parseInt(document.getElementById("modal-limit").value);
+      const interval = document.getElementById("modal-interval").value;
+      const mode = document.getElementById("modal-mode").value;
+
+      config[currentJobKey].limit = limit;
+      config[currentJobKey].sync_interval = interval;
+      config[currentJobKey].mode = mode;
+
+      // Update period if applicable
+      const periodJobs = [
+        "favorited_movies",
+        "played_movies",
+        "watched_movies",
+        "collected_movies",
+        "favorited_shows",
+        "played_shows",
+        "watched_shows",
+        "collected_shows",
+      ];
+      if (periodJobs.includes(currentJobKey)) {
+        config[currentJobKey].period =
+          document.getElementById("modal-period").value;
+      }
+
+      // Update smart job fields if applicable
+      const smartJobs = ["smart_popular_movies", "smart_popular_shows"];
+      if (smartJobs.includes(currentJobKey)) {
+        config[currentJobKey].base_min_rating = parseFloat(
+          document.getElementById("modal-base-rating").value,
+        );
+        config[currentJobKey].adjustment_factor = parseFloat(
+          document.getElementById("modal-adjustment-factor").value,
+        );
+      }
+
+      saveJobConfig(currentJobKey, () => {
+        renderJobsList();
+        showNotification("Job configuration saved successfully!", "success");
+      });
+    });
+
+  function previewJob() {
+    if (!currentJobKey) return;
+
+    // Store the job key for preview before closing the modal
+    previewJobKey = currentJobKey;
+    closeJobModal();
+
+    setTimeout(() => {
+      if (!previewJobKey) return;
+      // Reset filter
+      currentFilter = "all";
+
+      const jobName = jobDefinitions[previewJobKey].name;
+      document.getElementById("preview-title").textContent = jobName;
+      document.getElementById("preview-modal").classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+
+      // Show loading spinner
+      document.getElementById("preview-content").innerHTML = `
+        <div class="flex items-center justify-center py-12">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"></div>
+        </div>
+      `;
+
+      // Convert job key to API format (underscores to hyphens)
+      const apiJobName = previewJobKey.replace(/_/g, "-");
+
+      // Fetch preview data
+      fetch(`/v1/jobs/preview/${apiJobName}`, {
+        method: "POST",
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          previewData = data;
+          renderPreview(data);
+
+          // Focus the preview modal for accessibility
+          setTimeout(() => {
+            document.getElementById("preview-modal").focus();
+          }, 100);
+        })
+        .catch((error) => {
+          document.getElementById("preview-content").innerHTML = `
+            <div class="text-center py-12">
+              <svg class="w-16 h-16 mx-auto mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <p class="text-slate-300 text-lg font-medium">Failed to load preview</p>
+              <p class="text-slate-400 text-sm mt-2">${error.message}</p>
+            </div>
+          `;
+        });
+      // Clear previewJobKey after use
+      previewJobKey = null;
+    }, 150);
+  }
+
+  function filterPreview(filter) {
+    currentFilter = filter;
+
+    // Update button styles
+    ["all", "will_add", "already_exists", "filtered_out"].forEach((f) => {
+      const btn = document.getElementById(`filter-${f}`);
+      if (f === filter) {
+        btn.className =
+          "px-4 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white";
+      } else {
+        btn.className =
+          "px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600";
+      }
+    });
+
+    // Re-render with filter
+    if (previewData) {
+      renderPreview(previewData);
+    }
+  }
+
+  function closePreviewModal() {
+    document.getElementById("preview-modal").classList.add("hidden");
+    document.body.style.overflow = "auto";
+  }
+
+  function renderPreview(data) {
+    // Render stats
+    const willAdd = data.total_found - data.already_exists - data.filtered_out;
+    document.getElementById("preview-stats").innerHTML = `
+    <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+      <div class="text-2xl font-bold text-slate-100">${data.total_found}</div>
+      <div class="text-xs text-slate-400 mt-1">Total Found</div>
+    </div>
+    <div class="bg-green-900/20 rounded-lg p-4 border border-green-700/50">
+      <div class="text-2xl font-bold text-green-400">${willAdd}</div>
+      <div class="text-xs text-green-300 mt-1">Will Add</div>
+    </div>
+    <div class="bg-blue-900/20 rounded-lg p-4 border border-blue-700/50">
+      <div class="text-2xl font-bold text-blue-400">${data.already_exists}</div>
+      <div class="text-xs text-blue-300 mt-1">Already Exists</div>
+    </div>
+    <div class="bg-red-900/20 rounded-lg p-4 border border-red-700/50">
+      <div class="text-2xl font-bold text-red-400">${data.filtered_out}</div>
+      <div class="text-xs text-red-300 mt-1">Filtered Out</div>
+    </div>
+  `;
+
+    // Render items
+    if (!data.items || data.items.length === 0) {
+      document.getElementById("preview-content").innerHTML = `
+      <div class="text-center py-12">
+        <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+        </svg>
+        <p class="text-slate-400">No items found</p>
+      </div>
+    `;
+      return;
+    }
+
+    const itemsHtml = data.items
+      .map((item) => {
+        let statusBadge = "";
+        let statusClass = "";
+
+        if (item.filtered_out) {
+          statusBadge = `<span class="px-2 py-1 text-xs font-semibold rounded bg-red-900/30 text-red-400 border border-red-700/50">Filtered: ${item.filter_reason}</span>`;
+          statusClass = "opacity-50";
+        } else if (item.already_exists) {
+          statusBadge = `<span class="px-2 py-1 text-xs font-semibold rounded bg-blue-900/30 text-blue-400 border border-blue-700/50">Already Exists</span>`;
+          statusClass = "opacity-75";
+        } else {
+          statusBadge = `<span class="px-2 py-1 text-xs font-semibold rounded bg-green-900/30 text-green-400 border border-green-700/50">Will Add</span>`;
+        }
+
+        const posterHtml =
+          data.has_posters && item.poster_url
+            ? `<img src="${item.poster_url}" alt="${item.title}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full bg-slate-700\\'><svg class=\\'w-8 h-8 text-slate-500\\' fill=\\'currentColor\\' viewBox=\\'0 0 20 20\\'><path d=\\'M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4z\\' /></svg></div>'">`
+            : `<div class="flex items-center justify-center h-full bg-slate-700"><svg class="w-8 h-8 text-slate-500" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4z" /></svg></div>`;
+
+        return `
+      <div class="bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden hover:border-slate-600 transition-all ${statusClass}">
+        <div class="flex gap-4 p-4">
+          <div class="flex-shrink-0 w-24 h-36 rounded overflow-hidden bg-slate-700">
+            ${posterHtml}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-semibold text-slate-100 truncate">${item.title}</h3>
+                <div class="flex items-center gap-2 mt-1 text-sm text-slate-400">
+                  ${item.year ? `<span>${item.year}</span>` : ""}
+                  ${
+                    item.rating
+                      ? `<span class="flex items-center gap-1">
+                    <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                    ${item.rating.toFixed(1)}
+                  </span>`
+                      : ""
+                  }
+                  ${item.votes ? `<span>(${item.votes.toLocaleString()} votes)</span>` : ""}
+                </div>
+                ${
+                  item.genres && item.genres.length > 0
+                    ? `
+                  <div class="flex flex-wrap gap-1 mt-2">
+                    ${item.genres
+                      .slice(0, 3)
+                      .map(
+                        (genre) =>
+                          `<span class="px-2 py-0.5 text-xs rounded bg-slate-700/50 text-slate-300">${genre}</span>`,
+                      )
+                      .join("")}
+                  </div>
+                `
+                    : ""
+                }
+              </div>
+              <div class="flex-shrink-0">
+                ${statusBadge}
+              </div>
+            </div>
+            ${item.overview ? `<p class="text-sm text-slate-400 mt-3 line-clamp-2">${item.overview}</p>` : ""}
+          </div>
+        </div>
+      </div>
+    `;
+      })
+      .join("");
+
+    document.getElementById("preview-content").innerHTML = `
+    <div class="space-y-3">
+      ${itemsHtml}
+    </div>
+  `;
+  }
+
+  function runJobNow() {
+    if (!currentJobKey) return;
+
+    if (!confirm(`Run ${jobDefinitions[currentJobKey].name} now?`)) return;
+
+    const jobName = currentJobKey.replace(/_/g, "-");
+
+    fetch(`/v1/jobs/trigger/${jobName}`, {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.error) {
+          showNotification(data.error, "error");
+        } else {
+          showNotification(
+            data.message || "Job started successfully!",
+            "success",
+          );
+        }
+      })
+      .catch((error) => {
+        showNotification("Failed to run job: " + error.message, "error");
+      });
+  }
 </script>
+
+{{template "components/footer.html" .}}
 {{end}}

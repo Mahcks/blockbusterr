@@ -1,0 +1,56 @@
+{{define "components/footer.html"}}
+<footer class="w-full bg-slate-900 border-t border-slate-800 mt-12 py-8 px-4 text-slate-400">
+  <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+    <div class="flex flex-col md:flex-row items-center gap-4">
+      <a href="https://www.buymeacoffee.com/mahcks" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-400/10 border border-yellow-400/30 rounded-lg text-yellow-300 hover:bg-yellow-400/20 transition">
+          <!-- Buy Me a Coffee Official Icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" width="20" height="20" viewBox="0 0 32 32" class="w-5 h-5">
+            <path d="M9.197 0l-1.619 3.735h-2.407v3.359h0.921l0.943 5.975h-1.473l1.948 10.973 1.249-0.015 1.256 7.973h11.891l0.083-0.531 1.172-7.443 1.188 0.015 1.943-10.973h-1.407l0.937-5.975h1.011v-3.359h-2.557l-1.625-3.735zM9.901 1.073h12.057l1.025 2.375h-14.115zM6.235 4.803h19.525v1.228h-19.525zM6.839 14.136h18.183l-1.568 8.823-7.536-0.079-7.511 0.079z"/>
+          </svg>
+        Buy Me a Coffee
+      </a>
+        <a href="https://discord.gg/yourdiscord" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-400/10 border border-blue-400/30 rounded-lg text-blue-300 hover:bg-blue-400/20 transition">
+          <!-- Discord Bootstrap Icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-discord w-5 h-5" viewBox="0 0 16 16">
+            <path d="M13.545 2.907a13.2 13.2 0 0 0-3.257-1.011.05.05 0 0 0-.052.025c-.141.25-.297.577-.406.833a12.2 12.2 0 0 0-3.658 0 8 8 0 0 0-.412-.833.05.05 0 0 0-.052-.025c-1.125.194-2.22.534-3.257 1.011a.04.04 0 0 0-.021.018C.356 6.024-.213 9.047.066 12.032q.003.022.021.037a13.3 13.3 0 0 0 3.995 2.02.05.05 0 0 0 .056-.019q.463-.63.818-1.329a.05.05 0 0 0-.01-.059l-.018-.011a9 9 0 0 1-1.248-.595.05.05 0 0 1-.02-.066l.015-.019q.127-.095.248-.195a.05.05 0 0 1 .051-.007c2.619 1.196 5.454 1.196 8.041 0a.05.05 0 0 1 .053.007q.121.1.248.195a.05.05 0 0 1-.004.085 8 8 0 0 1-1.249.594.05.05 0 0 0-.03.03.05.05 0 0 0 .003.041c.24.465.515.909.817 1.329a.05.05 0 0 0 .056.019 13.2 13.2 0 0 0 4.001-2.02.05.05 0 0 0 .021-.037c.334-3.451-.559-6.449-2.366-9.106a.03.03 0 0 0-.02-.019m-8.198 7.307c-.789 0-1.438-.724-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.45.73 1.438 1.613 0 .888-.637 1.612-1.438 1.612m5.316 0c-.788 0-1.438-.724-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.451.73 1.438 1.613 0 .888-.631 1.612-1.438 1.612"/>
+          </svg>
+        Discord
+      </a>
+      <a href="https://github.com/Mahcks/blockbusterr/discussions" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-700/10 border border-slate-400/30 rounded-lg text-slate-300 hover:bg-slate-400/20 transition">
+        <!-- GitHub Logo Icon -->
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+          Discussions
+      </a>
+    </div>
+    <div class="flex flex-col items-center gap-1 text-xs md:flex-row md:gap-4">
+      <span>
+        Version: <span class="font-semibold text-slate-200">{{.Version}}</span>
+        <span class="mx-2">|</span>
+        Latest: <a id="latest-version" class="font-semibold text-blue-300 underline hover:text-blue-400" href="#" target="_blank" rel="noopener">...</a>
+      </span>
+      <span class="mt-1 md:mt-0">&copy; 2026 Blockbusterr &mdash; Credits: <a href="https://github.com/mahcks/blockbusterr" class="underline hover:text-blue-400">mahcks & contributors</a></span>
+    </div>
+  </div>
+</footer>
+<script>
+// Fetch latest version from GitHub
+fetch('https://api.github.com/repos/mahcks/blockbusterr/releases/latest')
+  .then(r => r.json())
+  .then(data => {
+    console.log(data);
+    if (data.tag_name) {
+      var latest = document.getElementById('latest-version');
+      latest.textContent = data.tag_name;
+      if (data.html_url) {
+        latest.href = data.html_url;
+      }
+    }
+  })
+  .catch(() => {
+    document.getElementById('latest-version').textContent = 'unavailable';
+  });
+
+</script>
+{{end}}
