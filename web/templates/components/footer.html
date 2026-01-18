@@ -26,7 +26,10 @@
     </div>
     <div class="flex flex-col items-center gap-1 text-xs md:flex-row md:gap-4">
       <span>
-        Version: <span class="font-semibold text-slate-200">{{.Version}}</span>{{$isBeta := contains .Version "beta"}}{{$isAlpha := contains .Version "alpha"}}{{if or $isBeta $isAlpha}}<span class="ml-1 text-xs text-yellow-400">💛 Thanks for testing!</span>{{end}}
+        Version: <span class="font-semibold text-slate-200">{{.Version}}</span>
+        {{- if or (contains .Version "beta") (contains .Version "alpha") -}}
+        <span class="ml-1 text-xs text-yellow-400">💛 Thanks for testing!</span>
+        {{- end}}
         <span class="mx-2">|</span>
         Latest: <a id="latest-version" class="font-semibold text-blue-300 underline hover:text-blue-400" href="#" target="_blank" rel="noopener">...</a>
       </span>

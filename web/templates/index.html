@@ -976,9 +976,9 @@
   <div class="space-y-2 text-slate-300">
     <p>
       <strong class="text-slate-100">Version:</strong> {{.Version}}
-      {{$isBeta := contains .Version "beta"}}{{$isAlpha := contains .Version "alpha"}}{{if or $isBeta $isAlpha}}
+      {{- if or (contains .Version "beta") (contains .Version "alpha")}}
         <span class="ml-2 text-sm text-yellow-400">💛 Thanks for testing!</span>
-      {{end}}
+      {{- end}}
     </p>
     <p>
       <strong class="text-slate-100">Config File:</strong> {{if
