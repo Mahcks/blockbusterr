@@ -18,7 +18,7 @@
     <button
       onclick="showTab('shows')"
       id="shows-tab"
-      class="px-6 py-3 text-slate-400 hover:text-slate-300 transition-colors"
+      class="px-6 py-3 text-slate-400 hover:text-slate-300 border-b-2 border-transparent transition-colors"
     >
       Shows
     </button>
@@ -28,11 +28,10 @@
     hx-post="/config/filters"
     hx-target="#message-container"
     hx-swap="innerHTML"
-    class="space-y-6"
   >
     <!-- Movies Tab -->
-    <div id="movies-content" class="space-y-6">
-      <div class="bg-slate-800 rounded-lg p-6 mb-4">
+    <div id="movies-content" class="space-y-0">
+      <div class="bg-slate-800 rounded-lg p-6">
         <h3
           class="text-xl font-semibold text-slate-100 mb-6 flex items-center gap-2"
         >
@@ -359,8 +358,8 @@
     </div>
 
     <!-- Shows Tab -->
-    <div id="shows-content" class="space-y-6" style="display: none">
-      <div class="bg-slate-800 rounded-lg border border-slate-700 p-6">
+    <div id="shows-content" class="space-y-0" style="display: none">
+      <div class="bg-slate-800 rounded-lg p-6">
         <h3
           class="text-xl font-semibold text-slate-100 mb-6 flex items-center gap-2"
         >
@@ -724,7 +723,7 @@
 
     <button
       type="submit"
-      class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+      class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 mt-6"
     >
       <svg
         class="w-5 h-5"
@@ -760,12 +759,12 @@
   function showTab(tab) {
     document.getElementById("movies-tab").className =
       tab === "movies"
-        ? "px-6 py-3 text-blue-400 border-b-2 border-blue-400 font-semibold"
-        : "px-6 py-3 text-slate-400 hover:text-slate-300";
+        ? "px-6 py-3 text-blue-400 border-b-2 border-blue-400 font-semibold transition-colors"
+        : "px-6 py-3 text-slate-400 hover:text-slate-300 border-b-2 border-transparent transition-colors";
     document.getElementById("shows-tab").className =
       tab === "shows"
-        ? "px-6 py-3 text-blue-400 border-b-2 border-blue-400 font-semibold"
-        : "px-6 py-3 text-slate-400 hover:text-slate-300";
+        ? "px-6 py-3 text-blue-400 border-b-2 border-blue-400 font-semibold transition-colors"
+        : "px-6 py-3 text-slate-400 hover:text-slate-300 border-b-2 border-transparent transition-colors";
     document.getElementById("movies-content").style.display =
       tab === "movies" ? "block" : "none";
     document.getElementById("shows-content").style.display =

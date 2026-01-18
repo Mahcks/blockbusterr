@@ -59,10 +59,10 @@ Then open `http://localhost:9090` and configure your services.
 ## 📸 Screenshots
 
 ### Dashboard & Configuration
-![Configuration](reference-docs/images/configuration.png)
+![Settings](reference-docs/images/settings.png)
 
 ### Job Preview & Management
-![Jobs Preview](reference-docs/images/jobs_preview.png)
+![Jobs Preview](reference-docs/images/jobs.png)
 
 ### Activity Log
 ![Activity Log](reference-docs/images/activity_log_preview.png)
