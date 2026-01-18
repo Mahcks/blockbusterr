@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
 // determineConfigPath finds the best location to save config file
@@ -26,30 +27,57 @@ func determineConfigPath() string {
 
 // RegisterUIRoutes handles web UI routes
 func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
-	// Root route for web UI - redirect to jobs
+	// Root route for web UI - show jobs page with full context
 	app.Get("/", func(c *fiber.Ctx) error {
+		alert := structures.AlertInfo{
+			ID:      "jobs-info",
+			Title:   "About Jobs",
+			Content: "Jobs automatically fetch content from Trakt and add them to Radarr/Sonarr based on the sync interval. Click on a job to configure its settings, or use the dropdown below to add new jobs to your list.",
+			Class:   "mb-4",
+		}
+		cfg := rg.gctx.Config()
+		traktDisabled := (cfg.Trakt.ClientID == "" || cfg.Trakt.ClientSecret == "")
 		return c.Render("jobs", fiber.Map{
-			"Title":   "Blockbusterr - Jobs",
-			"Config":  rg.gctx.Config(),
-			"Version": rg.gctx.Metadata().Version,
+			"Title":         "Blockbusterr - Jobs",
+			"Config":        cfg,
+			"Version":       rg.gctx.Metadata().Version,
+			"AlertInfo":     alert,
+			"TraktDisabled": traktDisabled,
 		}, "base")
 	})
 
 	// Configuration page route
 	app.Get("/config", func(c *fiber.Ctx) error {
+		alert := structures.AlertInfo{
+			ID:      "welcome-info",
+			Title:   "Getting Started",
+			Content: "Automatically add trending, popular, and highly-rated movies and TV shows from Trakt.tv to your Radarr and Sonarr instances.<ol class='list-decimal list-inside space-y-1 mt-2'><li>Get your Trakt API credentials from <a href='https://trakt.tv/oauth/applications' target='_blank' class='text-blue-400 hover:underline'>trakt.tv/oauth/applications</a></li><li>Enter your Radarr and Sonarr connection details below</li><li>Test each connection to verify credentials</li><li>Load and select quality profiles and root folders</li><li>Save your configuration and head to the <a href='/jobs' class='text-blue-400 hover:underline'>Jobs page</a> to enable automation</li></ol>",
+			Class:   "mb-4",
+		}
 		return c.Render("index", fiber.Map{
-			"Title":   "Blockbusterr - Configuration",
-			"Config":  rg.gctx.Config(),
-			"Version": rg.gctx.Metadata().Version,
+			"Title":     "Blockbusterr - Configuration",
+			"Config":    rg.gctx.Config(),
+			"Version":   rg.gctx.Metadata().Version,
+			"AlertInfo": alert,
 		}, "base")
 	})
 
 	// Jobs page route (explicit)
 	app.Get("/jobs", func(c *fiber.Ctx) error {
+		alert := structures.AlertInfo{
+			ID:      "jobs-info",
+			Title:   "About Jobs",
+			Content: "Jobs automatically fetch content from Trakt and add them to Radarr/Sonarr based on the sync interval. Click on a job to configure its settings, or use the dropdown below to add new jobs to your list.",
+			Class:   "mb-4",
+		}
+		cfg := rg.gctx.Config()
+		traktDisabled := (cfg.Trakt.ClientID == "" || cfg.Trakt.ClientSecret == "")
 		return c.Render("jobs", fiber.Map{
-			"Title":   "Blockbusterr - Jobs",
-			"Config":  rg.gctx.Config(),
-			"Version": rg.gctx.Metadata().Version,
+			"Title":         "Blockbusterr - Jobs",
+			"Config":        cfg,
+			"Version":       rg.gctx.Metadata().Version,
+			"AlertInfo":     alert,
+			"TraktDisabled": traktDisabled,
 		}, "base")
 	})
 
@@ -84,6 +112,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		jellyseerrRequestEmail := c.FormValue("jellyseerr.request_credentials.email")
 		jellyseerrRequestPassword := c.FormValue("jellyseerr.request_credentials.password")
 		jobsMode := c.FormValue("jobs.mode")
+		jobsSyncInterval := c.FormValue("jobs.sync_interval")
 		globalLimitMovies := c.FormValue("jobs.global_limit_movies")
 		globalLimitShows := c.FormValue("jobs.global_limit_shows")
 		globalPeriod := c.FormValue("jobs.global_period")
@@ -112,8 +141,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Jellyseerr.UserID = jellyseerrUserID
 		cfg.Jellyseerr.RequestCredentials.Email = jellyseerrRequestEmail
 		cfg.Jellyseerr.RequestCredentials.Password = jellyseerrRequestPassword
+		// Only set jobs.mode if present (for radio group)
 		if jobsMode != "" {
 			cfg.Jobs.Mode = jobsMode
+		}
+		if jobsSyncInterval != "" {
+			cfg.Jobs.SyncInterval = jobsSyncInterval
 		}
 		if globalPeriod != "" {
 			cfg.Jobs.GlobalPeriod = globalPeriod
@@ -228,9 +261,6 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 	app.Post("/jobs/config/save", func(c *fiber.Ctx) error {
 		cfg := rg.gctx.Config()
 
-		// Get all form keys to detect which fields were actually submitted
-		formData := c.Request().PostArgs()
-
 		// Update global sync interval if provided
 		if syncInterval := c.FormValue("jobs.sync_interval"); syncInterval != "" {
 			cfg.Jobs.SyncInterval = syncInterval
@@ -241,9 +271,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			cfg.Jobs.Mode = mode
 		}
 
-		// Helper to check if a field was submitted (even if empty)
+		// Helper to check if a field was submitted (using Fiber's FormValue which handles multipart)
 		hasField := func(key string) bool {
-			return formData.Has(key)
+			return c.FormValue(key) != ""
 		}
 
 		// Movies - Trending
@@ -623,10 +653,17 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 
 	// Filters page route
 	app.Get("/filters", func(c *fiber.Ctx) error {
+		alert := structures.AlertInfo{
+			ID:      "filters-info",
+			Title:   "Content Filters",
+			Content: "Configure filters to control which movies and shows are added to your library. These filters apply globally to all jobs.",
+			Class:   "mb-4",
+		}
 		return c.Render("filters", fiber.Map{
-			"Title":   "Blockbusterr - Filters",
-			"Config":  rg.gctx.Config(),
-			"Version": rg.gctx.Metadata().Version,
+			"Title":     "Blockbusterr - Filters",
+			"Config":    rg.gctx.Config(),
+			"Version":   rg.gctx.Metadata().Version,
+			"AlertInfo": alert,
 		}, "base")
 	})
 

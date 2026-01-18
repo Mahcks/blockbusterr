@@ -22,14 +22,22 @@ var (
 )
 
 func main() {
-	Timestamp := time.Now().Format(time.RFC3339)
-
-	if v := os.Getenv("VERSION"); v != "" {
-		Version = v
+	// If Version wasn't set at build time via ldflags, use env var or default
+	if Version == "dev" || Version == "" {
+		if v := os.Getenv("VERSION"); v != "" {
+			Version = v
+		} else if Version == "" {
+			Version = "dev"
+		}
 	}
 
-	if t := os.Getenv("TIMESTAMP"); t != "" {
-		Timestamp = t
+	// If Timestamp wasn't set at build time via ldflags, use env var or current time
+	if Timestamp == "unknown" || Timestamp == "" {
+		if t := os.Getenv("TIMESTAMP"); t != "" {
+			Timestamp = t
+		} else {
+			Timestamp = time.Now().Format(time.RFC3339)
+		}
 	}
 
 	// Set the log level based on the version

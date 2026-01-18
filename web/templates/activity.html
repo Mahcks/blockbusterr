@@ -1,4 +1,5 @@
 {{define "activity"}}
+<script src="/static/jobDefinitions.js"></script>
 <div class="space-y-6">
   <!-- Header -->
   <div class="mb-6">
@@ -35,7 +36,7 @@
   </div>
 
   <!-- Rejection Breakdown -->
-  <div id="rejection-breakdown" class="bg-slate-800 rounded-lg shadow-lg p-6 mb-6 hidden">
+  <div id="rejection-breakdown" class="bg-slate-800 rounded-lg p-6 mb-6 hidden">
     <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
       <svg class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
@@ -49,7 +50,7 @@
   </div>
 
   <!-- Activity Chart -->
-  <div class="bg-slate-800 rounded-lg shadow-lg p-6 mb-6">
+  <div class="bg-slate-800 rounded-lg p-6 mb-6">
     <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
       <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
         <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
@@ -60,7 +61,7 @@
   </div>
 
   <!-- Filters & Controls -->
-  <div class="bg-slate-800 rounded-lg shadow-lg p-6">
+  <div class="bg-slate-800 rounded-lg p-6">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-xl font-semibold flex items-center gap-2">
         <svg class="w-6 h-6 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
@@ -87,22 +88,22 @@
 
     <!-- Quick Status Filter Buttons -->
     <div class="flex flex-wrap gap-2 mb-4">
-      <button onclick="quickFilterStatus('')" id="filter-all" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors border-2 border-blue-500">
+      <button onclick="quickFilterStatus('')" id="filter-all" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-all duration-200 border-2 border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800">
         All
       </button>
-      <button onclick="quickFilterStatus('added')" id="filter-added" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors border-2 border-transparent">
+      <button onclick="quickFilterStatus('added')" id="filter-added" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-all duration-200 border-2 border-transparent focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800">
         <span class="text-green-400">✓</span> Added
       </button>
-      <button onclick="quickFilterStatus('rejected')" id="filter-rejected" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors border-2 border-transparent">
+      <button onclick="quickFilterStatus('rejected')" id="filter-rejected" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-all duration-200 border-2 border-transparent focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800">
         <span class="text-red-400">✗</span> Rejected
       </button>
-      <button onclick="quickFilterStatus('skipped')" id="filter-skipped" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors border-2 border-transparent">
+      <button onclick="quickFilterStatus('skipped')" id="filter-skipped" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-all duration-200 border-2 border-transparent focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800">
         <span class="text-yellow-400">⊘</span> Skipped
       </button>
-      <button onclick="quickFilterStatus('requested')" id="filter-requested" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors border-2 border-transparent">
+      <button onclick="quickFilterStatus('requested')" id="filter-requested" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-all duration-200 border-2 border-transparent focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800">
         <span class="text-blue-400">→</span> Requested
       </button>
-      <button onclick="quickFilterStatus('failed')" id="filter-failed" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors border-2 border-transparent">
+      <button onclick="quickFilterStatus('failed')" id="filter-failed" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-all duration-200 border-2 border-transparent focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800">
         <span class="text-red-400">⚠</span> Failed
       </button>
     </div>
@@ -115,7 +116,7 @@
           type="text" 
           id="searchInput" 
           placeholder="Search by title..." 
-          class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 pr-10 text-sm" 
+          class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 pr-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
           onkeyup="debounceSearch()">
         <svg class="absolute right-3 top-2.5 w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
@@ -123,7 +124,7 @@
       </div>
 
       <!-- Status Filter -->
-      <select id="statusFilter" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm" onchange="applyFilters()">
+      <select id="statusFilter" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="applyFilters()">
         <option value="">All Status</option>
         <option value="added">✓ Added</option>
         <option value="requested">→ Requested</option>
@@ -133,14 +134,14 @@
       </select>
 
       <!-- Media Type Filter -->
-      <select id="mediaFilter" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm" onchange="applyFilters()">
+      <select id="mediaFilter" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="applyFilters()">
         <option value="">All Media Types</option>
         <option value="movie">🎬 Movies</option>
         <option value="show">📺 Shows</option>
       </select>
 
       <!-- Job Type Filter -->
-      <select id="jobFilter" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm" onchange="applyFilters()">
+      <select id="jobFilter" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="applyFilters()">
         <option value="">All Job Types</option>
         <option value="trending_movies">Trending Movies</option>
         <option value="trending_shows">Trending Shows</option>
@@ -162,7 +163,7 @@
 
     <!-- Date Range & Limit -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-      <select id="dateRangeFilter" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm" onchange="applyFilters()">
+      <select id="dateRangeFilter" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="applyFilters()">
         <option value="">All Time</option>
         <option value="today">Today</option>
         <option value="yesterday">Yesterday</option>
@@ -170,17 +171,15 @@
         <option value="month">Last 30 Days</option>
       </select>
 
-      <select id="limitSelect" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm" onchange="applyFilters()">
-        <option value="25">Show 25</option>
-        <option value="50" selected>Show 50</option>
-        <option value="100">Show 100</option>
-        <option value="200">Show 200</option>
-        <option value="500">Show 500</option>
+      <select id="pageSizeSelect" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="changePageSize()">
+        <option value="25">25 per page</option>
+        <option value="50" selected>50 per page</option>
+        <option value="100">100 per page</option>
       </select>
 
       <button 
         onclick="applyFilters()" 
-        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm transition-colors flex items-center justify-center gap-2">
+        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800">
         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
         </svg>
@@ -203,7 +202,7 @@
     </div>
 
     <div id="activityTable" 
-         hx-get="/v1/activity/logs?limit=50" 
+         hx-get="/v1/activity/logs?page=1&pageSize=50" 
          hx-trigger="load"
          hx-swap="innerHTML"
          hx-indicator="#loadingIndicator"
@@ -241,6 +240,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
     let currentSort = { field: 'timestamp', direction: 'desc' };
+    let currentPage = 1;
     let autoRefreshInterval = null;
     let searchTimeout = null;
     let activityChart = null;
@@ -268,15 +268,27 @@
       setupAutoRefresh();
     }
 
+    function goToPage(page) {
+      currentPage = page;
+      applyFilters();
+      // Scroll to top of activity table
+      document.getElementById('activityTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function changePageSize() {
+      currentPage = 1; // Reset to first page when changing page size
+      applyFilters();
+    }
+
     function applyFilters() {
-      const limit = document.getElementById('limitSelect').value;
+      const pageSize = document.getElementById('pageSizeSelect').value;
       const status = document.getElementById('statusFilter').value;
       const media = document.getElementById('mediaFilter').value;
       const job = document.getElementById('jobFilter').value;
       const dateRange = document.getElementById('dateRangeFilter').value;
       const search = document.getElementById('searchInput').value;
       
-      let url = `/v1/activity/logs?limit=${limit}`;
+      let url = `/v1/activity/logs?page=${currentPage}&pageSize=${pageSize}`;
       if (status) url += `&status=${status}`;
       if (media) url += `&media=${media}`;
       if (job) url += `&job=${job}`;
@@ -313,21 +325,28 @@
       applyFilters();
     }
 
+
     function quickFilterStatus(status) {
       // Update the status filter dropdown
       document.getElementById('statusFilter').value = status;
-      
       // Update button styles
       document.querySelectorAll('[id^="filter-"]').forEach(btn => {
         btn.classList.remove('border-blue-500');
         btn.classList.add('border-transparent');
       });
-      
       const btnId = status ? `filter-${status}` : 'filter-all';
       document.getElementById(btnId).classList.remove('border-transparent');
       document.getElementById(btnId).classList.add('border-blue-500');
-      
       applyFilters();
+    }
+
+    // Allow filtering by job type from activity_table.html
+    function quickFilterJob(jobType) {
+      const jobFilter = document.getElementById('jobFilter');
+      if (jobFilter) {
+        jobFilter.value = jobType;
+        applyFilters();
+      }
     }
 
     function toggleDetails(index) {
@@ -577,4 +596,6 @@
     }
   </script>
 </div>
+
+{{template "components/footer.html" .}}
 {{end}}

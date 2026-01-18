@@ -1,0 +1,52 @@
+{{/* Status Badge - For enabled/disabled states */}}
+{{define "badge-status"}}
+<span class="px-2 py-1 text-xs font-semibold rounded-full {{if .Enabled}}bg-green-500/20 text-green-400{{else}}bg-slate-600/50 text-slate-400{{end}} {{.Class}}">
+  {{if .Enabled}}{{if .EnabledText}}{{.EnabledText}}{{else}}ENABLED{{end}}{{else}}{{if .DisabledText}}{{.DisabledText}}{{else}}DISABLED{{end}}{{end}}
+</span>
+{{end}}
+
+{{/* Color Badge - Custom colored badge */}}
+{{define "badge"}}
+<span class="px-2 py-1 text-xs font-semibold rounded-full {{.BgColor}} {{.TextColor}} {{.Class}}">
+  {{.Text}}
+</span>
+{{end}}
+
+{{/* Success Badge */}}
+{{define "badge-success"}}
+<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-500/20 text-green-400 {{.Class}}">
+  {{if .Icon}}{{.Icon}}{{end}}
+  {{.Text}}
+</span>
+{{end}}
+
+{{/* Warning Badge */}}
+{{define "badge-warning"}}
+<span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500/20 text-yellow-400 {{.Class}}">
+  {{if .Icon}}{{.Icon}}{{end}}
+  {{.Text}}
+</span>
+{{end}}
+
+{{/* Danger Badge */}}
+{{define "badge-danger"}}
+<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-500/20 text-red-400 {{.Class}}">
+  {{if .Icon}}{{.Icon}}{{end}}
+  {{.Text}}
+</span>
+{{end}}
+
+{{/* Info Badge */}}
+{{define "badge-info"}}
+<span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-400 {{.Class}}">
+  {{if .Icon}}{{.Icon}}{{end}}
+  {{.Text}}
+</span>
+{{end}}
+
+{{/* Count Badge - For numerical values */}}
+{{define "badge-count"}}
+<span class="inline-flex items-center justify-center px-2 py-1 text-xs font-bold rounded-full bg-slate-700 text-slate-200 {{.Class}}">
+  {{.Count}}
+</span>
+{{end}}

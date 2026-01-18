@@ -557,6 +557,13 @@ func PreviewBoxOffice(cfg *config.Config, db *database.Database) PreviewResponse
 		return response
 	}
 
+	// Trakt API always returns 10 box office movies regardless of limit parameter
+	// Slice the results to respect the configured limit
+	limit := cfg.Jobs.BoxOffice.Limit
+	if limit > 0 && limit < len(boxOfficeMovies) {
+		boxOfficeMovies = boxOfficeMovies[:limit]
+	}
+
 	response.TotalFound = len(boxOfficeMovies)
 
 	// Create clients once before the loop
