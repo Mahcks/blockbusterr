@@ -89,9 +89,17 @@ func fetchBoxOfficeMovies(ctx context.Context, trakt *integrations.Trakt, limit 
 	if err != nil {
 		return nil, err
 	}
-	movies := make([]integrations.Movie, len(boxOfficeMovies))
-	for i, bom := range boxOfficeMovies {
-		movies[i] = bom.Movie
+
+	// Trakt API always returns 10 box office movies regardless of limit parameter
+	// Slice the results to respect the configured limit
+	actualLimit := len(boxOfficeMovies)
+	if limit > 0 && limit < actualLimit {
+		actualLimit = limit
+	}
+
+	movies := make([]integrations.Movie, actualLimit)
+	for i := 0; i < actualLimit; i++ {
+		movies[i] = boxOfficeMovies[i].Movie
 	}
 	return movies, nil
 }
