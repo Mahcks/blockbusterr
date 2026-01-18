@@ -31,6 +31,43 @@
 {{end}}
 
 <div class="space-y-6">
+  <!-- Add Job Section -->
+  <div class="bg-slate-800 rounded-lg p-6 mb-4">
+    <h2
+      class="text-2xl font-semibold text-slate-100 mb-4 flex items-center gap-2"
+    >
+      <svg
+        class="w-6 h-6 text-green-400"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+        ></path>
+      </svg>
+      Add New Job
+    </h2>
+    <div class="flex gap-3">
+      <select
+        id="job-selector"
+        class="flex-1 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-purple-500"
+      >
+        <option value="">Select a job to add...</option>
+        <!-- Options will be populated dynamically -->
+      </select>
+      <button
+        onclick="addSelectedJob()"
+        class="px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg"
+      >
+        Add Job
+      </button>
+    </div>
+  </div>
+
   <!-- Active Jobs List -->
   <div class="bg-slate-800 rounded-lg p-6 mb-4">
     <h2
@@ -71,32 +108,8 @@
       </svg>
       <p class="text-lg font-medium">No active jobs</p>
       <p class="text-sm mt-1">
-        Enable a job from the disabled list below to get started
+        Add a job from the dropdown above to get started
       </p>
-    </div>
-
-    <hr class="my-8 border-slate-700" />
-
-    <h2
-      class="text-2xl font-semibold text-slate-400 mb-6 flex items-center gap-2"
-    >
-      <svg
-        class="w-6 h-6 text-slate-500"
-        fill="currentColor"
-        viewBox="0 0 20 20"
-      >
-        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
-        <path
-          fill-rule="evenodd"
-          d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-          clip-rule="evenodd"
-        ></path>
-      </svg>
-      Disabled Jobs
-    </h2>
-
-    <div id="disabled-jobs-list" class="space-y-3">
-      <!-- Disabled jobs will be dynamically rendered here -->
     </div>
   </div>
 
@@ -466,10 +479,10 @@
 
   function renderJobsList() {
     const activeContainer = document.getElementById("active-jobs-list");
-    const disabledContainer = document.getElementById("disabled-jobs-list");
     const noJobsMsg = document.getElementById("no-jobs-message");
+    const jobSelector = document.getElementById("job-selector");
 
-    // Filter out jobs that don't have definitions and separate by enabled status
+    // Filter enabled jobs
     const enabledJobs = Object.keys(config).filter((key) => {
       if (!jobDefinitions[key]) {
         console.warn(`Job definition not found for key: ${key}`);
@@ -478,12 +491,17 @@
       return config[key].enabled;
     });
 
-    const disabledJobs = Object.keys(config).filter((key) => {
-      if (!jobDefinitions[key]) {
-        return false;
-      }
-      return !config[key].enabled;
+    // Get available jobs (not currently enabled)
+    const availableJobs = Object.keys(jobDefinitions).filter((key) => {
+      return !config[key] || !config[key].enabled;
     });
+
+    // Update dropdown with available jobs
+    jobSelector.innerHTML = '<option value="">Select a job to add...</option>' +
+      availableJobs.map((key) => {
+        const job = jobDefinitions[key];
+        return `<option value="${key}">${job.icon} ${job.name}</option>`;
+      }).join("");
 
     // Active jobs
     if (enabledJobs.length === 0) {
@@ -497,9 +515,9 @@
           const cfg = config[key];
           return `
         <div class="bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden hover:border-slate-600 transition-colors">
-          <div class="bg-gradient-to-r ${job.gradient} p-4 cursor-pointer" onclick="openJobModal('${key}')">
+          <div class="bg-gradient-to-r ${job.gradient} p-4">
             <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-3 cursor-pointer flex-1" onclick="openJobModal('${key}')">
                 <span class="${job.iconColor}">${job.icon}</span>
                 <div>
                   <h3 class="text-lg font-semibold text-slate-100">${job.name}</h3>
@@ -510,45 +528,15 @@
                 <span class="px-3 py-1 text-xs font-semibold rounded-full bg-slate-700/50 text-slate-300">
                   ${cfg.limit} items
                 </span>
-                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-        })
-        .join("");
-    }
-
-    // Disabled jobs
-    if (disabledJobs.length === 0) {
-      disabledContainer.innerHTML =
-        '<p class="text-center py-8 text-slate-500">All jobs are enabled</p>';
-    } else {
-      disabledContainer.innerHTML = disabledJobs
-        .map((key) => {
-          const job = jobDefinitions[key];
-          const cfg = config[key];
-          return `
-        <div class="bg-slate-900/30 rounded-lg border border-slate-700/50 overflow-hidden opacity-50 hover:opacity-70 hover:border-slate-600/50 transition-all">
-          <div class="bg-gradient-to-r ${job.gradient} p-4 cursor-pointer" onclick="openJobModal('${key}')">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <span class="${job.iconColor}">${job.icon}</span>
-                <div>
-                  <h3 class="text-lg font-semibold text-slate-300">${job.name}</h3>
-                  <p class="text-xs text-slate-400">${job.description}</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-slate-700/30 text-slate-400">
-                  ${cfg.limit} items
-                </span>
-                <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
+                <button
+                  onclick="deleteJob('${key}')"
+                  class="p-2 hover:bg-red-500/20 rounded-lg transition-colors group"
+                  title="Delete job"
+                >
+                  <svg class="w-5 h-5 text-slate-400 group-hover:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
@@ -559,8 +547,6 @@
     }
   }
 
-  // updateJobSelector removed: no longer needed
-
   function addSelectedJob() {
     const selector = document.getElementById("job-selector");
     const jobKey = selector.value;
@@ -570,8 +556,18 @@
       return;
     }
 
-    // Enable the job
-    config[jobKey].enabled = true;
+    // Initialize config if it doesn't exist
+    if (!config[jobKey]) {
+      config[jobKey] = {
+        enabled: true,
+        limit: jobDefinitions[jobKey].defaultLimit || 50,
+        sync_interval: "",
+        mode: "",
+      };
+    } else {
+      // Enable the job
+      config[jobKey].enabled = true;
+    }
 
     // Save to server
     saveJobConfig(jobKey, () => {
@@ -581,6 +577,26 @@
         "success",
       );
       openJobModal(jobKey); // Open settings dialog immediately
+    });
+  }
+
+  function deleteJob(jobKey) {
+    const job = jobDefinitions[jobKey];
+
+    if (!confirm(`Are you sure you want to delete "${job.name}"? This will remove all its settings.`)) {
+      return;
+    }
+
+    // Disable the job
+    config[jobKey].enabled = false;
+
+    // Save to server
+    saveJobConfig(jobKey, () => {
+      renderJobsList();
+      showNotification(
+        `${job.name} removed successfully!`,
+        "success",
+      );
     });
   }
 
