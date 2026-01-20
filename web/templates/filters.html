@@ -744,17 +744,50 @@
 </div>
 
 <script>
-  const movieCountries = [];
-  const movieLanguages = [];
-  const movieGenres = [];
-  const movieKeywords = [];
-  const movieIDs = [];
-  const showCountries = [];
-  const showLanguages = [];
-  const showGenres = [];
-  const showKeywords = [];
-  const showNetworks = [];
-  const showIDs = [];
+  const movieCountries = [
+    {{- range $i, $v := .Config.Filters.Movies.AllowedCountries -}}
+      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
+  ];
+  const movieLanguages = [
+    {{- range $i, $v := .Config.Filters.Movies.AllowedLanguages -}}
+      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
+  ];
+  const movieGenres = [
+    {{- range $i, $v := .Config.Filters.Movies.BlacklistedGenres -}}
+      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
+  ];
+  const movieKeywords = [
+    {{- range $i, $v := .Config.Filters.Movies.BlacklistedKeywords -}}
+      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
+  ];
+  const movieIDs = [
+    {{- range $i, $v := .Config.Filters.Movies.BlacklistedTMDBIds -}}
+      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
+  ];
+  const showCountries = [
+    {{- range $i, $v := .Config.Filters.Shows.AllowedCountries -}}
+      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
+  ];
+  const showLanguages = [
+    {{- range $i, $v := .Config.Filters.Shows.AllowedLanguages -}}
+      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
+  ];
+  const showGenres = [
+    {{- range $i, $v := .Config.Filters.Shows.BlacklistedGenres -}}
+      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
+  ];
+  const showKeywords = [
+    {{- range $i, $v := .Config.Filters.Shows.BlacklistedKeywords -}}
+      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
+  ];
+  const showNetworks = [
+    {{- range $i, $v := .Config.Filters.Shows.BlacklistedNetworks -}}
+      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
+  ];
+  const showIDs = [
+    {{- range $i, $v := .Config.Filters.Shows.BlacklistedTVDBIds -}}
+      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
+  ];
 
   function showTab(tab) {
     document.getElementById("movies-tab").className =
@@ -905,128 +938,7 @@
     return map[fieldName];
   }
 
-  // Load existing config
-  {
-    {
-      range.Config.Filters.Movies.AllowedCountries;
-    }
-  }
-  movieCountries.push("{{.}}");
-  {
-    {
-      end;
-    }
-  }
-  {
-    {
-      range.Config.Filters.Movies.AllowedLanguages;
-    }
-  }
-  movieLanguages.push("{{.}}");
-  {
-    {
-      end;
-    }
-  }
-  {
-    {
-      range.Config.Filters.Movies.BlacklistedGenres;
-    }
-  }
-  movieGenres.push("{{.}}");
-  {
-    {
-      end;
-    }
-  }
-  {
-    {
-      range.Config.Filters.Movies.BlacklistedKeywords;
-    }
-  }
-  movieKeywords.push("{{.}}");
-  {
-    {
-      end;
-    }
-  }
-  {
-    {
-      range.Config.Filters.Movies.BlacklistedTMDBIds;
-    }
-  }
-  movieIDs.push("{{.}}");
-  {
-    {
-      end;
-    }
-  }
-  {
-    {
-      range.Config.Filters.Shows.AllowedCountries;
-    }
-  }
-  showCountries.push("{{.}}");
-  {
-    {
-      end;
-    }
-  }
-  {
-    {
-      range.Config.Filters.Shows.AllowedLanguages;
-    }
-  }
-  showLanguages.push("{{.}}");
-  {
-    {
-      end;
-    }
-  }
-  {
-    {
-      range.Config.Filters.Shows.BlacklistedGenres;
-    }
-  }
-  showGenres.push("{{.}}");
-  {
-    {
-      end;
-    }
-  }
-  {
-    {
-      range.Config.Filters.Shows.BlacklistedKeywords;
-    }
-  }
-  showKeywords.push("{{.}}");
-  {
-    {
-      end;
-    }
-  }
-  {
-    {
-      range.Config.Filters.Shows.BlacklistedNetworks;
-    }
-  }
-  showNetworks.push("{{.}}");
-  {
-    {
-      end;
-    }
-  }
-  {
-    {
-      range.Config.Filters.Shows.BlacklistedTVDBIds;
-    }
-  }
-  showIDs.push("{{.}}");
-  {
-    {
-      end;
-    }
-  }
+  // Arrays are now initialized above using Go template output
 
   renderList(movieCountries, "movie-countries-list", "movie_allowed_countries");
   renderList(movieLanguages, "movie-languages-list", "movie_allowed_languages");
