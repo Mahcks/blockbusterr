@@ -8,6 +8,7 @@ Blockbusterr automatically adds trending, popular, and highly-rated movies and T
 [![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-ghcr.io-blue)](https://github.com/mahcks/blockbusterr/pkgs/container/blockbusterr)
 [![License](https://img.shields.io/github/license/Mahcks/blockbusterr)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-live-blue)](https://blockbusterr.dev/)
+[![Discord](https://img.shields.io/discord/1463322126999097386?label=Discord&logo=discord&color=5865F2)](https://discord.com/invite/c8vb3VZqmg)
 
 ---
 
@@ -155,6 +156,12 @@ git clone https://github.com/mahcks/blockbusterr.git
 cd blockbusterr
 make dev
 ```
+---
+
+## Community
+
+Join our Discord for support, questions, and discussion:  
+[https://discord.com/invite/c8vb3VZqmg](https://discord.com/invite/c8vb3VZqmg)
 
 ---
 
