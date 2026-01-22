@@ -46,6 +46,11 @@ export default defineConfig({
 					label: 'GitHub',
 					href: 'https://github.com/mahcks/blockbusterr',
 				},
+				{
+					icon: 'discord',
+					label: 'Discord',
+					href: 'https://discord.com/invite/c8vb3VZqmg',
+				}
 			],
 			
 			// Edit link (optional - links to GitHub)
