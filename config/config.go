@@ -67,6 +67,7 @@ type Config struct {
 		APIKey         string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
 		QualityProfile int    `mapstructure:"quality_profile" json:"quality_profile" yaml:"quality_profile"`
 		RootFolder     string `mapstructure:"root_folder" json:"root_folder" yaml:"root_folder"`
+		Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor"`
 	} `mapstructure:"sonarr" json:"sonarr" yaml:"sonarr"`
 
 	Jellyseerr struct {
@@ -114,6 +115,7 @@ type Config struct {
 			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"trending_shows" json:"trending_shows" yaml:"trending_shows"`
 
 		PopularMovies struct {
@@ -132,6 +134,7 @@ type Config struct {
 			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"popular_shows" json:"popular_shows" yaml:"popular_shows"`
 
 		BoxOffice struct {
@@ -205,6 +208,7 @@ type Config struct {
 			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"favorited_shows" json:"favorited_shows" yaml:"favorited_shows"`
 
 		PlayedShows struct {
@@ -214,6 +218,7 @@ type Config struct {
 			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"played_shows" json:"played_shows" yaml:"played_shows"`
 
 		WatchedShows struct {
@@ -223,6 +228,7 @@ type Config struct {
 			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"watched_shows" json:"watched_shows" yaml:"watched_shows"`
 
 		CollectedShows struct {
@@ -232,6 +238,7 @@ type Config struct {
 			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"collected_shows" json:"collected_shows" yaml:"collected_shows"`
 
 		AnticipatedShows struct {
@@ -240,6 +247,7 @@ type Config struct {
 			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"anticipated_shows" json:"anticipated_shows" yaml:"anticipated_shows"`
 
 		SmartPopularMovies struct {
@@ -260,6 +268,7 @@ type Config struct {
 			AdjustmentFactor float64 `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor"`
 			SyncInterval     string  `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode             string  `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor          string  `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"smart_popular_shows" json:"smart_popular_shows" yaml:"smart_popular_shows"`
 	} `mapstructure:"jobs" json:"jobs" yaml:"jobs"`
 

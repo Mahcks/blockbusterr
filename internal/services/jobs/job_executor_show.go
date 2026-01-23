@@ -146,12 +146,21 @@ func (e *ShowJobExecutor) executeShowsDirect(
 			log.Warnf("Show '%s (%d)' has no TVDB ID, may cause issues", show.Title, show.Year)
 		}
 
+		monitor := jobConfig.Monitor
+		if monitor == "" {
+			monitor = e.Config.Sonarr.Monitor
+		}
+		if monitor == "" {
+			monitor = "all"
+		}
+
 		// Configure series for Sonarr
 		series.QualityProfileID = e.Config.Sonarr.QualityProfile
 		series.Monitored = true
 		series.RootFolderPath = e.Config.Sonarr.RootFolder
 		series.AddOptions = &integrations.SonarrAddOptions{
 			SearchForMissingEpisodes: true,
+			Monitor:                  monitor,
 		}
 
 		// Add series to Sonarr (or simulate in dry-run mode)

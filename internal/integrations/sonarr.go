@@ -103,6 +103,7 @@ type SonarrSeries struct {
 	QualityProfileID  int               `json:"qualityProfileId"`
 	LanguageProfileID int               `json:"languageProfileId,omitempty"`
 	Monitored         bool              `json:"monitored"`
+	Monitor           string            `json:"monitor,omitempty"`
 	SeriesType        string            `json:"seriesType,omitempty"`
 	SeasonFolder      bool              `json:"seasonFolder"`
 	RootFolderPath    string            `json:"rootFolderPath"`
@@ -112,7 +113,8 @@ type SonarrSeries struct {
 
 // SonarrAddOptions specifies options when adding a series
 type SonarrAddOptions struct {
-	SearchForMissingEpisodes bool `json:"searchForMissingEpisodes"`
+	SearchForMissingEpisodes bool   `json:"searchForMissingEpisodes"`
+	Monitor                  string `json:"monitor,omitempty"`
 }
 
 // QualityProfile represents a Sonarr quality profile

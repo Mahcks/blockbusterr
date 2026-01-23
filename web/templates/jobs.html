@@ -393,6 +393,37 @@
                 </p>
               </div>
 
+              <!-- Monitor (Sonarr only) -->
+              <div id="modal-monitor-container" class="hidden">
+                <label
+                  for="modal-monitor"
+                  class="block text-sm font-medium text-slate-300 mb-2"
+                >
+                  Monitor
+                </label>
+                <select
+                  id="modal-monitor"
+                  name="monitor"
+                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  <option value="all">All Episodes</option>
+                  <option value="future">Future Episodes</option>
+                  <option value="missing">Missing Episodes</option>
+                  <option value="existing">Existing Episodes</option>
+                  <option value="firstSeason">First Season</option>
+                  <option value="lastSeason">Last Season</option>
+                  <option value="latestSeason">Latest Season</option>
+                  <option value="pilot">Pilot Episode</option>
+                  <option value="recent">Recent Episodes</option>
+                  <option value="monitorSpecials">Monitor Specials</option>
+                  <option value="unmonitorSpecials">Unmonitor Specials</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">
+                  Only add movies with at least this availability (overrides
+                  global setting for this job)
+                </p>
+              </div>
+
               <div>
                 <label
                   for="modal-mode"
@@ -513,6 +544,17 @@
   // Load config from template
 
   const config = JSON.parse("{{json .Config.Jobs}}");
+
+  const sonarrJobs = [
+    "trending_shows",
+    "popular_shows",
+    "favorited_shows",
+    "played_shows",
+    "watched_shows",
+    "collected_shows",
+    "anticipated_shows",
+    "smart_popular_shows",
+  ];
 
   let currentJobKey = null;
   let previewJobKey = null;
@@ -737,7 +779,7 @@
       minAvailContainer.classList.add("hidden");
     }
 
-    // Show/hide monitor for Radarr movie jobs
+    // Show/hide monitor for Radarr movie jobs and Sonarr jobs
     const monitorContainer = document.getElementById(
       "modal-monitor-container",
     );
@@ -745,6 +787,9 @@
       monitorContainer.classList.remove("hidden");
       document.getElementById("modal-monitor").value =
         cfg.monitor || "";
+    } else if (sonarrJobs.includes(jobKey)) {
+      monitorContainer.classList.remove("hidden");
+      document.getElementById("modal-monitor").value = cfg.monitor || "all";
     } else {
       monitorContainer.classList.add("hidden");
     }
@@ -974,6 +1019,11 @@
         config[currentJobKey].adjustment_factor = parseFloat(
           document.getElementById("modal-adjustment-factor").value,
         );
+      }
+
+      if (sonarrJobs.includes(currentJobKey)) {
+        config[currentJobKey].monitor =
+          document.getElementById("modal-monitor").value;
       }
 
       saveJobConfig(currentJobKey, () => {
