@@ -102,6 +102,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		radarrAPIKey := c.FormValue("radarr.api_key")
 		radarrQualityProfile := c.FormValue("radarr.quality_profile")
 		radarrRootFolder := c.FormValue("radarr.root_folder")
+		radarrMinimumAvailability := c.FormValue("radarr.minimum_availability")
 		sonarrURL := c.FormValue("sonarr.url")
 		sonarrAPIKey := c.FormValue("sonarr.api_key")
 		sonarrQualityProfile := c.FormValue("sonarr.quality_profile")
@@ -133,6 +134,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Radarr.URL = radarrURL
 		cfg.Radarr.APIKey = radarrAPIKey
 		cfg.Radarr.RootFolder = radarrRootFolder
+		cfg.Radarr.MinimumAvailability = radarrMinimumAvailability
 		cfg.Sonarr.URL = sonarrURL
 		cfg.Sonarr.APIKey = sonarrAPIKey
 		cfg.Sonarr.RootFolder = sonarrRootFolder
@@ -291,6 +293,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.trending_movies.mode") {
 				cfg.Jobs.TrendingMovies.Mode = c.FormValue("jobs.trending_movies.mode")
 			}
+			if hasField("jobs.trending_movies.minimum_availability") {
+				cfg.Jobs.TrendingMovies.MinimumAvailability = c.FormValue("jobs.trending_movies.minimum_availability")
+			}
 		}
 
 		// Movies - Popular
@@ -308,7 +313,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.popular_movies.mode") {
 				cfg.Jobs.PopularMovies.Mode = c.FormValue("jobs.popular_movies.mode")
 			}
-		} // Movies - Box Office
+			if hasField("jobs.popular_movies.minimum_availability") {
+				cfg.Jobs.PopularMovies.MinimumAvailability = c.FormValue("jobs.popular_movies.minimum_availability")
+			}
+		}
+
+		// Movies - Box Office
 		if hasField("jobs.box_office.enabled") || hasField("jobs.box_office.limit") {
 			cfg.Jobs.BoxOffice.Enabled = c.FormValue("jobs.box_office.enabled") == "on"
 			if limit := c.FormValue("jobs.box_office.limit"); limit != "" {
@@ -323,7 +333,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.box_office.mode") {
 				cfg.Jobs.BoxOffice.Mode = c.FormValue("jobs.box_office.mode")
 			}
-		} // Movies - Favorited
+			if hasField("jobs.box_office.minimum_availability") {
+				cfg.Jobs.BoxOffice.MinimumAvailability = c.FormValue("jobs.box_office.minimum_availability")
+			}
+		}
+
+		// Movies - Favorited
 		if hasField("jobs.favorited_movies.enabled") || hasField("jobs.favorited_movies.limit") || hasField("jobs.favorited_movies.period") {
 			cfg.Jobs.FavoritedMovies.Enabled = c.FormValue("jobs.favorited_movies.enabled") == "on"
 			if limit := c.FormValue("jobs.favorited_movies.limit"); limit != "" {
@@ -340,6 +355,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			}
 			if hasField("jobs.favorited_movies.mode") {
 				cfg.Jobs.FavoritedMovies.Mode = c.FormValue("jobs.favorited_movies.mode")
+			}
+			if hasField("jobs.favorited_movies.minimum_availability") {
+				cfg.Jobs.FavoritedMovies.MinimumAvailability = c.FormValue("jobs.favorited_movies.minimum_availability")
 			}
 		}
 
@@ -361,6 +379,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.played_movies.mode") {
 				cfg.Jobs.PlayedMovies.Mode = c.FormValue("jobs.played_movies.mode")
 			}
+			if hasField("jobs.played_movies.minimum_availability") {
+				cfg.Jobs.PlayedMovies.MinimumAvailability = c.FormValue("jobs.played_movies.minimum_availability")
+			}
 		}
 
 		// Movies - Watched
@@ -380,6 +401,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			}
 			if hasField("jobs.watched_movies.mode") {
 				cfg.Jobs.WatchedMovies.Mode = c.FormValue("jobs.watched_movies.mode")
+			}
+			if hasField("jobs.watched_movies.minimum_availability") {
+				cfg.Jobs.WatchedMovies.MinimumAvailability = c.FormValue("jobs.watched_movies.minimum_availability")
 			}
 		}
 
@@ -401,6 +425,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.collected_movies.mode") {
 				cfg.Jobs.CollectedMovies.Mode = c.FormValue("jobs.collected_movies.mode")
 			}
+			if hasField("jobs.collected_movies.minimum_availability") {
+				cfg.Jobs.CollectedMovies.MinimumAvailability = c.FormValue("jobs.collected_movies.minimum_availability")
+			}
 		}
 
 		// Movies - Anticipated
@@ -417,6 +444,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			}
 			if hasField("jobs.anticipated_movies.mode") {
 				cfg.Jobs.AnticipatedMovies.Mode = c.FormValue("jobs.anticipated_movies.mode")
+			}
+			if hasField("jobs.anticipated_movies.minimum_availability") {
+				cfg.Jobs.AnticipatedMovies.MinimumAvailability = c.FormValue("jobs.anticipated_movies.minimum_availability")
 			}
 		}
 
@@ -435,7 +465,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.trending_shows.mode") {
 				cfg.Jobs.TrendingShows.Mode = c.FormValue("jobs.trending_shows.mode")
 			}
-		} // Shows - Popular
+		}
+
+		// Shows - Popular
 		if hasField("jobs.popular_shows.enabled") || hasField("jobs.popular_shows.limit") {
 			cfg.Jobs.PopularShows.Enabled = c.FormValue("jobs.popular_shows.enabled") == "on"
 			if limit := c.FormValue("jobs.popular_shows.limit"); limit != "" {
@@ -450,7 +482,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.popular_shows.mode") {
 				cfg.Jobs.PopularShows.Mode = c.FormValue("jobs.popular_shows.mode")
 			}
-		} // Shows - Favorited
+		}
+
+		// Shows - Favorited
 		if hasField("jobs.favorited_shows.enabled") || hasField("jobs.favorited_shows.limit") || hasField("jobs.favorited_shows.period") {
 			cfg.Jobs.FavoritedShows.Enabled = c.FormValue("jobs.favorited_shows.enabled") == "on"
 			if limit := c.FormValue("jobs.favorited_shows.limit"); limit != "" {
@@ -571,6 +605,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			}
 			if hasField("jobs.smart_popular_movies.mode") {
 				cfg.Jobs.SmartPopularMovies.Mode = c.FormValue("jobs.smart_popular_movies.mode")
+			}
+			if hasField("jobs.smart_popular_movies.minimum_availability") {
+				cfg.Jobs.SmartPopularMovies.MinimumAvailability = c.FormValue("jobs.smart_popular_movies.minimum_availability")
 			}
 		}
 

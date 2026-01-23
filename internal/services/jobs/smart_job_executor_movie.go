@@ -14,12 +14,13 @@ import (
 
 // SmartJobConfig extends JobConfig with adaptive rating parameters
 type SmartJobConfig struct {
-	JobName          string
-	MediaType        string
-	Mode             string
-	Limit            int
-	BaseMinRating    float64
-	AdjustmentFactor float64
+	JobName             string
+	MediaType           string
+	Mode                string
+	MinimumAvailability string // Radarr only
+	Limit               int
+	BaseMinRating       float64
+	AdjustmentFactor    float64
 }
 
 // SmartMovieJobExecutor handles execution of smart popular movie jobs with adaptive rating thresholds

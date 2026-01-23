@@ -10,11 +10,12 @@ import (
 
 // JobConfig contains common configuration for all jobs
 type JobConfig struct {
-	JobName   string // e.g., "trending_movies", "popular_shows"
-	MediaType string // "movie" or "show"
-	Mode      string // "direct" or "jellyseerr"
-	Limit     int
-	Period    string // For watched/collected/played jobs
+	JobName             string // e.g., "trending_movies", "popular_shows"
+	MediaType           string // "movie" or "show"
+	Mode                string // "direct" or "jellyseerr"
+	MinimumAvailability string // For direct mode only - "announced", "in_cinemas", or "released"
+	Limit               int
+	Period              string // For watched/collected/played jobs
 }
 
 // ScoreInfo holds scoring information for a media item
