@@ -54,10 +54,11 @@ type Config struct {
 	} `mapstructure:"tmdb" json:"tmdb" yaml:"tmdb"`
 
 	Radarr struct {
-		URL            string `mapstructure:"url" json:"url" yaml:"url"`
-		APIKey         string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
-		QualityProfile int    `mapstructure:"quality_profile" json:"quality_profile" yaml:"quality_profile"`
-		RootFolder     string `mapstructure:"root_folder" json:"root_folder" yaml:"root_folder"`
+		URL                 string `mapstructure:"url" json:"url" yaml:"url"`
+		APIKey              string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+		QualityProfile      int    `mapstructure:"quality_profile" json:"quality_profile" yaml:"quality_profile"`
+		RootFolder          string `mapstructure:"root_folder" json:"root_folder" yaml:"root_folder"`
+		MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
 	} `mapstructure:"radarr" json:"radarr" yaml:"radarr"`
 
 	Sonarr struct {
@@ -97,11 +98,12 @@ type Config struct {
 		GlobalPeriod      string `mapstructure:"global_period" json:"global_period" yaml:"global_period,omitempty"` // sync, daily, weekly, monthly
 
 		TrendingMovies struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
+			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
 		} `mapstructure:"trending_movies" json:"trending_movies" yaml:"trending_movies"`
 
 		TrendingShows struct {
@@ -113,11 +115,12 @@ type Config struct {
 		} `mapstructure:"trending_shows" json:"trending_shows" yaml:"trending_shows"`
 
 		PopularMovies struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
+			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
 		} `mapstructure:"popular_movies" json:"popular_movies" yaml:"popular_movies"`
 
 		PopularShows struct {
@@ -129,55 +132,61 @@ type Config struct {
 		} `mapstructure:"popular_shows" json:"popular_shows" yaml:"popular_shows"`
 
 		BoxOffice struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
+			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
 		} `mapstructure:"box_office" json:"box_office" yaml:"box_office"`
 
 		FavoritedMovies struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period         string `mapstructure:"period" json:"period" yaml:"period"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period              string `mapstructure:"period" json:"period" yaml:"period"`
+			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
+			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
 		} `mapstructure:"favorited_movies" json:"favorited_movies" yaml:"favorited_movies"`
 
 		PlayedMovies struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period         string `mapstructure:"period" json:"period" yaml:"period"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period              string `mapstructure:"period" json:"period" yaml:"period"`
+			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
+			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
 		} `mapstructure:"played_movies" json:"played_movies" yaml:"played_movies"`
 
 		WatchedMovies struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period         string `mapstructure:"period" json:"period" yaml:"period"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period              string `mapstructure:"period" json:"period" yaml:"period"`
+			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
+			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
 		} `mapstructure:"watched_movies" json:"watched_movies" yaml:"watched_movies"`
 
 		CollectedMovies struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period         string `mapstructure:"period" json:"period" yaml:"period"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period              string `mapstructure:"period" json:"period" yaml:"period"`
+			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
+			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
 		} `mapstructure:"collected_movies" json:"collected_movies" yaml:"collected_movies"`
 
 		AnticipatedMovies struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
+			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
 		} `mapstructure:"anticipated_movies" json:"anticipated_movies" yaml:"anticipated_movies"`
 
 		FavoritedShows struct {
@@ -225,12 +234,13 @@ type Config struct {
 		} `mapstructure:"anticipated_shows" json:"anticipated_shows" yaml:"anticipated_shows"`
 
 		SmartPopularMovies struct {
-			Enabled          bool    `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit            int     `mapstructure:"limit" json:"limit" yaml:"limit"`
-			BaseMinRating    float64 `mapstructure:"base_min_rating" json:"base_min_rating" yaml:"base_min_rating"`
-			AdjustmentFactor float64 `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor"`
-			SyncInterval     string  `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode             string  `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Enabled             bool    `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit               int     `mapstructure:"limit" json:"limit" yaml:"limit"`
+			BaseMinRating       float64 `mapstructure:"base_min_rating" json:"base_min_rating" yaml:"base_min_rating"`
+			AdjustmentFactor    float64 `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor"`
+			SyncInterval        string  `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode                string  `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			MinimumAvailability string  `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
 		} `mapstructure:"smart_popular_movies" json:"smart_popular_movies" yaml:"smart_popular_movies"`
 
 		SmartPopularShows struct {

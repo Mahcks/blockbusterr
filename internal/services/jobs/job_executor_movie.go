@@ -111,6 +111,14 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 			continue
 		}
 
+		minAvail := jobConfig.MinimumAvailability
+		if minAvail == "" {
+			minAvail = e.Config.Radarr.MinimumAvailability
+		}
+		if minAvail == "" {
+			minAvail = "announced" // or your preferred default
+		}
+
 		// Create movie object for Radarr
 		radarrMovie := integrations.RadarrMovie{
 			Title:               movie.Title,
@@ -118,7 +126,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 			TmdbID:              movie.IDs.TMDB,
 			QualityProfileID:    e.Config.Radarr.QualityProfile,
 			Monitored:           true,
-			MinimumAvailability: "announced",
+			MinimumAvailability: minAvail,
 			RootFolderPath:      e.Config.Radarr.RootFolder,
 			AddOptions: &integrations.RadarrAddOptions{
 				SearchForMovie: true,
