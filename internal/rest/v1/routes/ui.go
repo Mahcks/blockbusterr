@@ -106,6 +106,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		sonarrAPIKey := c.FormValue("sonarr.api_key")
 		sonarrQualityProfile := c.FormValue("sonarr.quality_profile")
 		sonarrRootFolder := c.FormValue("sonarr.root_folder")
+		sonarrMonitor := c.FormValue("sonarr.monitor")
 		jellyseerrURL := c.FormValue("jellyseerr.url")
 		jellyseerrAPIKey := c.FormValue("jellyseerr.api_key")
 		jellyseerrUserID := c.FormValue("jellyseerr.user_id")
@@ -136,6 +137,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Sonarr.URL = sonarrURL
 		cfg.Sonarr.APIKey = sonarrAPIKey
 		cfg.Sonarr.RootFolder = sonarrRootFolder
+		cfg.Sonarr.Monitor = sonarrMonitor
 		cfg.Jellyseerr.URL = jellyseerrURL
 		cfg.Jellyseerr.APIKey = jellyseerrAPIKey
 		cfg.Jellyseerr.UserID = jellyseerrUserID
@@ -435,7 +437,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.trending_shows.mode") {
 				cfg.Jobs.TrendingShows.Mode = c.FormValue("jobs.trending_shows.mode")
 			}
-		} // Shows - Popular
+			if hasField("jobs.trending_shows.monitor") {
+				cfg.Jobs.TrendingShows.Monitor = c.FormValue("jobs.trending_shows.monitor")
+			}
+		}
+
+		// Shows - Popular
 		if hasField("jobs.popular_shows.enabled") || hasField("jobs.popular_shows.limit") {
 			cfg.Jobs.PopularShows.Enabled = c.FormValue("jobs.popular_shows.enabled") == "on"
 			if limit := c.FormValue("jobs.popular_shows.limit"); limit != "" {
@@ -450,7 +457,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.popular_shows.mode") {
 				cfg.Jobs.PopularShows.Mode = c.FormValue("jobs.popular_shows.mode")
 			}
-		} // Shows - Favorited
+			if hasField("jobs.popular_shows.monitor") {
+				cfg.Jobs.PopularShows.Monitor = c.FormValue("jobs.popular_shows.monitor")
+			}
+		}
+
+		// Shows - Favorited
 		if hasField("jobs.favorited_shows.enabled") || hasField("jobs.favorited_shows.limit") || hasField("jobs.favorited_shows.period") {
 			cfg.Jobs.FavoritedShows.Enabled = c.FormValue("jobs.favorited_shows.enabled") == "on"
 			if limit := c.FormValue("jobs.favorited_shows.limit"); limit != "" {
@@ -467,6 +479,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			}
 			if hasField("jobs.favorited_shows.mode") {
 				cfg.Jobs.FavoritedShows.Mode = c.FormValue("jobs.favorited_shows.mode")
+			}
+			if hasField("jobs.favorited_shows.monitor") {
+				cfg.Jobs.FavoritedShows.Monitor = c.FormValue("jobs.favorited_shows.monitor")
 			}
 		}
 
@@ -488,6 +503,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.played_shows.mode") {
 				cfg.Jobs.PlayedShows.Mode = c.FormValue("jobs.played_shows.mode")
 			}
+			if hasField("jobs.played_shows.monitor") {
+				cfg.Jobs.PlayedShows.Monitor = c.FormValue("jobs.played_shows.monitor")
+			}
 		}
 
 		// Shows - Watched
@@ -507,6 +525,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			}
 			if hasField("jobs.watched_shows.mode") {
 				cfg.Jobs.WatchedShows.Mode = c.FormValue("jobs.watched_shows.mode")
+			}
+			if hasField("jobs.watched_shows.monitor") {
+				cfg.Jobs.WatchedShows.Monitor = c.FormValue("jobs.watched_shows.monitor")
 			}
 		}
 
@@ -528,6 +549,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.collected_shows.mode") {
 				cfg.Jobs.CollectedShows.Mode = c.FormValue("jobs.collected_shows.mode")
 			}
+			if hasField("jobs.collected_shows.monitor") {
+				cfg.Jobs.CollectedShows.Monitor = c.FormValue("jobs.collected_shows.monitor")
+			}
 		}
 
 		// Shows - Anticipated
@@ -544,6 +568,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			}
 			if hasField("jobs.anticipated_shows.mode") {
 				cfg.Jobs.AnticipatedShows.Mode = c.FormValue("jobs.anticipated_shows.mode")
+			}
+			if hasField("jobs.anticipated_shows.monitor") {
+				cfg.Jobs.AnticipatedShows.Monitor = c.FormValue("jobs.anticipated_shows.monitor")
 			}
 		}
 
@@ -598,6 +625,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			}
 			if hasField("jobs.smart_popular_shows.mode") {
 				cfg.Jobs.SmartPopularShows.Mode = c.FormValue("jobs.smart_popular_shows.mode")
+			}
+			if hasField("jobs.smart_popular_shows.monitor") {
+				cfg.Jobs.SmartPopularShows.Monitor = c.FormValue("jobs.smart_popular_shows.monitor")
 			}
 		}
 

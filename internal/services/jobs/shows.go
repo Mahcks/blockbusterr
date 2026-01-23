@@ -25,6 +25,7 @@ func RunAnticipatedShows(cfg *config.Config, db *database.Database, dryRun bool)
 		JobName:   "anticipated_shows",
 		MediaType: "show",
 		Mode:      mode,
+		Monitor:   cfg.Jobs.AnticipatedShows.Monitor,
 		Limit:     cfg.Jobs.AnticipatedShows.Limit,
 	}, fetchAnticipatedShows)
 }
@@ -46,6 +47,7 @@ func RunCollectedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		JobName:   "collected_shows",
 		MediaType: "show",
 		Mode:      mode,
+		Monitor:   cfg.Jobs.CollectedShows.Monitor,
 		Limit:     cfg.Jobs.CollectedShows.Limit,
 		Period:    cfg.Jobs.CollectedShows.Period,
 	}, fetchCollectedShows)
@@ -68,6 +70,7 @@ func RunFavoritedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		JobName:   "favorited_shows",
 		MediaType: "show",
 		Mode:      mode,
+		Monitor:   cfg.Jobs.FavoritedShows.Monitor,
 		Limit:     cfg.Jobs.FavoritedShows.Limit,
 		Period:    cfg.Jobs.FavoritedShows.Period,
 	}, fetchFavoritedShows)
@@ -90,6 +93,7 @@ func RunPlayedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		JobName:   "played_shows",
 		MediaType: "show",
 		Mode:      mode,
+		Monitor:   cfg.Jobs.PlayedShows.Monitor,
 		Limit:     cfg.Jobs.PlayedShows.Limit,
 		Period:    cfg.Jobs.PlayedShows.Period,
 	}, fetchPlayedShows)
@@ -112,6 +116,7 @@ func RunTrendingShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		JobName:   "trending_shows",
 		MediaType: "show",
 		Mode:      mode,
+		Monitor:   cfg.Jobs.TrendingShows.Monitor,
 		Limit:     cfg.Jobs.TrendingShows.Limit,
 	}, fetchTrendingShows)
 }
@@ -133,6 +138,7 @@ func RunPopularShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		JobName:   "popular_shows",
 		MediaType: "show",
 		Mode:      mode,
+		Monitor:   cfg.Jobs.PopularShows.Monitor,
 		Limit:     cfg.Jobs.PopularShows.Limit,
 	}, fetchPopularShows)
 }
@@ -154,7 +160,7 @@ func RunWatchedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		JobName:   "watched_shows",
 		MediaType: "show",
 		Mode:      mode,
-		Limit:     cfg.Jobs.WatchedShows.Limit,
+		Monitor:   cfg.Jobs.WatchedShows.Monitor,
 		Period:    cfg.Jobs.WatchedShows.Period,
 	}, fetchWatchedShows)
 }
@@ -176,6 +182,7 @@ func RunSmartPopularShows(cfg *config.Config, db *database.Database, dryRun bool
 		JobName:          "smart_popular_shows",
 		MediaType:        "show",
 		Mode:             mode,
+		Monitor:          cfg.Jobs.SmartPopularShows.Monitor,
 		Limit:            cfg.Jobs.SmartPopularShows.Limit,
 		BaseMinRating:    cfg.Jobs.SmartPopularShows.BaseMinRating,
 		AdjustmentFactor: cfg.Jobs.SmartPopularShows.AdjustmentFactor,

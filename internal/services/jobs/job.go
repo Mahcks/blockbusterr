@@ -13,6 +13,7 @@ type JobConfig struct {
 	JobName   string // e.g., "trending_movies", "popular_shows"
 	MediaType string // "movie" or "show"
 	Mode      string // "direct" or "jellyseerr"
+	Monitor   string // For Sonarr: "all", "future", "missing", "existing", "pilot", "firstSeason", "latestSeason", "none"
 	Limit     int
 	Period    string // For watched/collected/played jobs
 }

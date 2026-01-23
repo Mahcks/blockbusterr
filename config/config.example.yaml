@@ -21,6 +21,7 @@ sonarr:
   api_key: ""
   quality_profile: 1  # Update after connecting - check Sonarr Settings > Profiles
   root_folder: ""  # Example: /tv
+  monitor: "" # Default monitoring option for added shows, options: "all", "future", missing", "existing", "firstSeason", "lastSeason", "latestSeason", "pilot", "recent", "monitorSpecials", "unmonitorSpecials"
 
 jellyseerr:
   # Jellyseerr/Overseerr connection settings (optional - alternative to direct Radarr/Sonarr)

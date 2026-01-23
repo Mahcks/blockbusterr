@@ -393,6 +393,37 @@
                 </p>
               </div>
 
+              <!-- Monitor (Sonarr only) -->
+              <div id="modal-monitor-container" class="hidden">
+                <label
+                  for="modal-monitor"
+                  class="block text-sm font-medium text-slate-300 mb-2"
+                >
+                  Monitor
+                </label>
+                <select
+                  id="modal-monitor"
+                  name="monitor"
+                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  <option value="all">All Episodes</option>
+                  <option value="future">Future Episodes</option>
+                  <option value="missing">Missing Episodes</option>
+                  <option value="existing">Existing Episodes</option>
+                  <option value="firstSeason">First Season</option>
+                  <option value="lastSeason">Last Season</option>
+                  <option value="latestSeason">Latest Season</option>
+                  <option value="pilot">Pilot Episode</option>
+                  <option value="recent">Recent Episodes</option>
+                  <option value="monitorSpecials">Monitor Specials</option>
+                  <option value="unmonitorSpecials">Unmonitor Specials</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">
+                  Only add movies with at least this availability (overrides
+                  global setting for this job)
+                </p>
+              </div>
+
               <div>
                 <label
                   for="modal-mode"
@@ -465,6 +496,17 @@
 
   const config = JSON.parse("{{json .Config.Jobs}}");
 
+  const sonarrJobs = [
+    "trending_shows",
+    "popular_shows",
+    "favorited_shows",
+    "played_shows",
+    "watched_shows",
+    "collected_shows",
+    "anticipated_shows",
+    "smart_popular_shows",
+  ];
+
   let currentJobKey = null;
   let previewJobKey = null;
   let previewData = null;
@@ -497,11 +539,14 @@
     });
 
     // Update dropdown with available jobs
-    jobSelector.innerHTML = '<option value="">Select a job to add...</option>' +
-      availableJobs.map((key) => {
-        const job = jobDefinitions[key];
-        return `<option value="${key}">${job.icon} ${job.name}</option>`;
-      }).join("");
+    jobSelector.innerHTML =
+      '<option value="">Select a job to add...</option>' +
+      availableJobs
+        .map((key) => {
+          const job = jobDefinitions[key];
+          return `<option value="${key}">${job.icon} ${job.name}</option>`;
+        })
+        .join("");
 
     // Active jobs
     if (enabledJobs.length === 0) {
@@ -583,7 +628,11 @@
   function deleteJob(jobKey) {
     const job = jobDefinitions[jobKey];
 
-    if (!confirm(`Are you sure you want to delete "${job.name}"? This will remove all its settings.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${job.name}"? This will remove all its settings.`,
+      )
+    ) {
       return;
     }
 
@@ -593,10 +642,7 @@
     // Save to server
     saveJobConfig(jobKey, () => {
       renderJobsList();
-      showNotification(
-        `${job.name} removed successfully!`,
-        "success",
-      );
+      showNotification(`${job.name} removed successfully!`, "success");
     });
   }
 
@@ -658,6 +704,14 @@
         cfg.adjustment_factor || 1.0;
     } else {
       smartContainer.classList.add("hidden");
+    }
+
+    const monitorContainer = document.getElementById("modal-monitor-container");
+    if (sonarrJobs.includes(jobKey)) {
+      monitorContainer.classList.remove("hidden");
+      document.getElementById("modal-monitor").value = cfg.monitor || "all";
+    } else {
+      monitorContainer.classList.add("hidden");
     }
 
     // Update enable/disable button based on job status
@@ -784,6 +838,8 @@
           `${def.configKey}.adjustment_factor`,
           keyConfig.adjustment_factor,
         );
+      if (keyConfig.monitor !== undefined)
+        formData.append(`${def.configKey}.monitor`, keyConfig.monitor);
     });
 
     // Add global settings
@@ -861,6 +917,11 @@
         config[currentJobKey].adjustment_factor = parseFloat(
           document.getElementById("modal-adjustment-factor").value,
         );
+      }
+
+      if (sonarrJobs.includes(currentJobKey)) {
+        config[currentJobKey].monitor =
+          document.getElementById("modal-monitor").value;
       }
 
       saveJobConfig(currentJobKey, () => {
@@ -980,11 +1041,13 @@
     if (data.items && Array.isArray(data.items)) {
       filteredItems = data.items;
       if (filter === "will_add") {
-        filteredItems = filteredItems.filter(item => !item.already_exists && !item.filtered_out);
+        filteredItems = filteredItems.filter(
+          (item) => !item.already_exists && !item.filtered_out,
+        );
       } else if (filter === "already_exists") {
-        filteredItems = filteredItems.filter(item => item.already_exists);
+        filteredItems = filteredItems.filter((item) => item.already_exists);
       } else if (filter === "filtered_out") {
-        filteredItems = filteredItems.filter(item => item.filtered_out);
+        filteredItems = filteredItems.filter((item) => item.filtered_out);
       }
     } else {
       filteredItems = [];
@@ -1107,5 +1170,4 @@
   }
 </script>
 
-{{template "components/footer.html" .}}
-{{end}}
+{{template "components/footer.html" .}} {{end}}

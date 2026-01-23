@@ -17,6 +17,7 @@ type SmartJobConfig struct {
 	JobName          string
 	MediaType        string
 	Mode             string
+	Monitor          string // Sonarr only
 	Limit            int
 	BaseMinRating    float64
 	AdjustmentFactor float64
