@@ -286,16 +286,13 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 					cfg.Jobs.TrendingMovies.Limit = val
 				}
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.trending_movies.sync_interval") {
 				cfg.Jobs.TrendingMovies.SyncInterval = c.FormValue("jobs.trending_movies.sync_interval")
 			}
-			if hasField("jobs.trending_movies.mode") {
-				cfg.Jobs.TrendingMovies.Mode = c.FormValue("jobs.trending_movies.mode")
-			}
-			if hasField("jobs.trending_movies.minimum_availability") {
-				cfg.Jobs.TrendingMovies.MinimumAvailability = c.FormValue("jobs.trending_movies.minimum_availability")
-			}
+			// Always update mode and minimum_availability (empty string means use default)
+			cfg.Jobs.TrendingMovies.Mode = c.FormValue("jobs.trending_movies.mode")
+			cfg.Jobs.TrendingMovies.MinimumAvailability = c.FormValue("jobs.trending_movies.minimum_availability")
 		}
 
 		// Movies - Popular
@@ -306,16 +303,13 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 					cfg.Jobs.PopularMovies.Limit = val
 				}
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.popular_movies.sync_interval") {
 				cfg.Jobs.PopularMovies.SyncInterval = c.FormValue("jobs.popular_movies.sync_interval")
 			}
-			if hasField("jobs.popular_movies.mode") {
-				cfg.Jobs.PopularMovies.Mode = c.FormValue("jobs.popular_movies.mode")
-			}
-			if hasField("jobs.popular_movies.minimum_availability") {
-				cfg.Jobs.PopularMovies.MinimumAvailability = c.FormValue("jobs.popular_movies.minimum_availability")
-			}
+			// Always update mode and minimum_availability (empty string means use default)
+			cfg.Jobs.PopularMovies.Mode = c.FormValue("jobs.popular_movies.mode")
+			cfg.Jobs.PopularMovies.MinimumAvailability = c.FormValue("jobs.popular_movies.minimum_availability")
 		}
 
 		// Movies - Box Office
@@ -326,16 +320,13 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 					cfg.Jobs.BoxOffice.Limit = val
 				}
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.box_office.sync_interval") {
 				cfg.Jobs.BoxOffice.SyncInterval = c.FormValue("jobs.box_office.sync_interval")
 			}
-			if hasField("jobs.box_office.mode") {
-				cfg.Jobs.BoxOffice.Mode = c.FormValue("jobs.box_office.mode")
-			}
-			if hasField("jobs.box_office.minimum_availability") {
-				cfg.Jobs.BoxOffice.MinimumAvailability = c.FormValue("jobs.box_office.minimum_availability")
-			}
+			// Always update mode and minimum_availability (empty string means use default)
+			cfg.Jobs.BoxOffice.Mode = c.FormValue("jobs.box_office.mode")
+			cfg.Jobs.BoxOffice.MinimumAvailability = c.FormValue("jobs.box_office.minimum_availability")
 		}
 
 		// Movies - Favorited
@@ -349,16 +340,13 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if period := c.FormValue("jobs.favorited_movies.period"); period != "" {
 				cfg.Jobs.FavoritedMovies.Period = period
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.favorited_movies.sync_interval") {
 				cfg.Jobs.FavoritedMovies.SyncInterval = c.FormValue("jobs.favorited_movies.sync_interval")
 			}
-			if hasField("jobs.favorited_movies.mode") {
-				cfg.Jobs.FavoritedMovies.Mode = c.FormValue("jobs.favorited_movies.mode")
-			}
-			if hasField("jobs.favorited_movies.minimum_availability") {
-				cfg.Jobs.FavoritedMovies.MinimumAvailability = c.FormValue("jobs.favorited_movies.minimum_availability")
-			}
+			// Always update mode and minimum_availability (empty string means use default)
+			cfg.Jobs.FavoritedMovies.Mode = c.FormValue("jobs.favorited_movies.mode")
+			cfg.Jobs.FavoritedMovies.MinimumAvailability = c.FormValue("jobs.favorited_movies.minimum_availability")
 		}
 
 		// Movies - Played
@@ -372,16 +360,13 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if period := c.FormValue("jobs.played_movies.period"); period != "" {
 				cfg.Jobs.PlayedMovies.Period = period
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.played_movies.sync_interval") {
 				cfg.Jobs.PlayedMovies.SyncInterval = c.FormValue("jobs.played_movies.sync_interval")
 			}
-			if hasField("jobs.played_movies.mode") {
-				cfg.Jobs.PlayedMovies.Mode = c.FormValue("jobs.played_movies.mode")
-			}
-			if hasField("jobs.played_movies.minimum_availability") {
-				cfg.Jobs.PlayedMovies.MinimumAvailability = c.FormValue("jobs.played_movies.minimum_availability")
-			}
+			// Always update mode and minimum_availability (empty string means use default)
+			cfg.Jobs.PlayedMovies.Mode = c.FormValue("jobs.played_movies.mode")
+			cfg.Jobs.PlayedMovies.MinimumAvailability = c.FormValue("jobs.played_movies.minimum_availability")
 		}
 
 		// Movies - Watched
@@ -395,16 +380,13 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if period := c.FormValue("jobs.watched_movies.period"); period != "" {
 				cfg.Jobs.WatchedMovies.Period = period
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.watched_movies.sync_interval") {
 				cfg.Jobs.WatchedMovies.SyncInterval = c.FormValue("jobs.watched_movies.sync_interval")
 			}
-			if hasField("jobs.watched_movies.mode") {
-				cfg.Jobs.WatchedMovies.Mode = c.FormValue("jobs.watched_movies.mode")
-			}
-			if hasField("jobs.watched_movies.minimum_availability") {
-				cfg.Jobs.WatchedMovies.MinimumAvailability = c.FormValue("jobs.watched_movies.minimum_availability")
-			}
+			// Always update mode and minimum_availability (empty string means use default)
+			cfg.Jobs.WatchedMovies.Mode = c.FormValue("jobs.watched_movies.mode")
+			cfg.Jobs.WatchedMovies.MinimumAvailability = c.FormValue("jobs.watched_movies.minimum_availability")
 		}
 
 		// Movies - Collected
@@ -418,16 +400,13 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if period := c.FormValue("jobs.collected_movies.period"); period != "" {
 				cfg.Jobs.CollectedMovies.Period = period
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.collected_movies.sync_interval") {
 				cfg.Jobs.CollectedMovies.SyncInterval = c.FormValue("jobs.collected_movies.sync_interval")
 			}
-			if hasField("jobs.collected_movies.mode") {
-				cfg.Jobs.CollectedMovies.Mode = c.FormValue("jobs.collected_movies.mode")
-			}
-			if hasField("jobs.collected_movies.minimum_availability") {
-				cfg.Jobs.CollectedMovies.MinimumAvailability = c.FormValue("jobs.collected_movies.minimum_availability")
-			}
+			// Always update mode and minimum_availability (empty string means use default)
+			cfg.Jobs.CollectedMovies.Mode = c.FormValue("jobs.collected_movies.mode")
+			cfg.Jobs.CollectedMovies.MinimumAvailability = c.FormValue("jobs.collected_movies.minimum_availability")
 		}
 
 		// Movies - Anticipated
@@ -438,16 +417,13 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 					cfg.Jobs.AnticipatedMovies.Limit = val
 				}
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.anticipated_movies.sync_interval") {
 				cfg.Jobs.AnticipatedMovies.SyncInterval = c.FormValue("jobs.anticipated_movies.sync_interval")
 			}
-			if hasField("jobs.anticipated_movies.mode") {
-				cfg.Jobs.AnticipatedMovies.Mode = c.FormValue("jobs.anticipated_movies.mode")
-			}
-			if hasField("jobs.anticipated_movies.minimum_availability") {
-				cfg.Jobs.AnticipatedMovies.MinimumAvailability = c.FormValue("jobs.anticipated_movies.minimum_availability")
-			}
+			// Always update mode and minimum_availability (empty string means use default)
+			cfg.Jobs.AnticipatedMovies.Mode = c.FormValue("jobs.anticipated_movies.mode")
+			cfg.Jobs.AnticipatedMovies.MinimumAvailability = c.FormValue("jobs.anticipated_movies.minimum_availability")
 		}
 
 		// Shows - Trending
@@ -458,13 +434,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 					cfg.Jobs.TrendingShows.Limit = val
 				}
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.trending_shows.sync_interval") {
 				cfg.Jobs.TrendingShows.SyncInterval = c.FormValue("jobs.trending_shows.sync_interval")
 			}
-			if hasField("jobs.trending_shows.mode") {
-				cfg.Jobs.TrendingShows.Mode = c.FormValue("jobs.trending_shows.mode")
-			}
+			// Always update mode (empty string means use default)
+			cfg.Jobs.TrendingShows.Mode = c.FormValue("jobs.trending_shows.mode")
 		}
 
 		// Shows - Popular
@@ -475,13 +450,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 					cfg.Jobs.PopularShows.Limit = val
 				}
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.popular_shows.sync_interval") {
 				cfg.Jobs.PopularShows.SyncInterval = c.FormValue("jobs.popular_shows.sync_interval")
 			}
-			if hasField("jobs.popular_shows.mode") {
-				cfg.Jobs.PopularShows.Mode = c.FormValue("jobs.popular_shows.mode")
-			}
+			// Always update mode (empty string means use default)
+			cfg.Jobs.PopularShows.Mode = c.FormValue("jobs.popular_shows.mode")
 		}
 
 		// Shows - Favorited
@@ -495,13 +469,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if period := c.FormValue("jobs.favorited_shows.period"); period != "" {
 				cfg.Jobs.FavoritedShows.Period = period
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.favorited_shows.sync_interval") {
 				cfg.Jobs.FavoritedShows.SyncInterval = c.FormValue("jobs.favorited_shows.sync_interval")
 			}
-			if hasField("jobs.favorited_shows.mode") {
-				cfg.Jobs.FavoritedShows.Mode = c.FormValue("jobs.favorited_shows.mode")
-			}
+			// Always update mode (empty string means use default)
+			cfg.Jobs.FavoritedShows.Mode = c.FormValue("jobs.favorited_shows.mode")
 		}
 
 		// Shows - Played
@@ -515,13 +488,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if period := c.FormValue("jobs.played_shows.period"); period != "" {
 				cfg.Jobs.PlayedShows.Period = period
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.played_shows.sync_interval") {
 				cfg.Jobs.PlayedShows.SyncInterval = c.FormValue("jobs.played_shows.sync_interval")
 			}
-			if hasField("jobs.played_shows.mode") {
-				cfg.Jobs.PlayedShows.Mode = c.FormValue("jobs.played_shows.mode")
-			}
+			// Always update mode (empty string means use default)
+			cfg.Jobs.PlayedShows.Mode = c.FormValue("jobs.played_shows.mode")
 		}
 
 		// Shows - Watched
@@ -535,13 +507,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if period := c.FormValue("jobs.watched_shows.period"); period != "" {
 				cfg.Jobs.WatchedShows.Period = period
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.watched_shows.sync_interval") {
 				cfg.Jobs.WatchedShows.SyncInterval = c.FormValue("jobs.watched_shows.sync_interval")
 			}
-			if hasField("jobs.watched_shows.mode") {
-				cfg.Jobs.WatchedShows.Mode = c.FormValue("jobs.watched_shows.mode")
-			}
+			// Always update mode (empty string means use default)
+			cfg.Jobs.WatchedShows.Mode = c.FormValue("jobs.watched_shows.mode")
 		}
 
 		// Shows - Collected
@@ -555,13 +526,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if period := c.FormValue("jobs.collected_shows.period"); period != "" {
 				cfg.Jobs.CollectedShows.Period = period
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.collected_shows.sync_interval") {
 				cfg.Jobs.CollectedShows.SyncInterval = c.FormValue("jobs.collected_shows.sync_interval")
 			}
-			if hasField("jobs.collected_shows.mode") {
-				cfg.Jobs.CollectedShows.Mode = c.FormValue("jobs.collected_shows.mode")
-			}
+			// Always update mode (empty string means use default)
+			cfg.Jobs.CollectedShows.Mode = c.FormValue("jobs.collected_shows.mode")
 		}
 
 		// Shows - Anticipated
@@ -572,13 +542,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 					cfg.Jobs.AnticipatedShows.Limit = val
 				}
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.anticipated_shows.sync_interval") {
 				cfg.Jobs.AnticipatedShows.SyncInterval = c.FormValue("jobs.anticipated_shows.sync_interval")
 			}
-			if hasField("jobs.anticipated_shows.mode") {
-				cfg.Jobs.AnticipatedShows.Mode = c.FormValue("jobs.anticipated_shows.mode")
-			}
+			// Always update mode (empty string means use default)
+			cfg.Jobs.AnticipatedShows.Mode = c.FormValue("jobs.anticipated_shows.mode")
 		}
 
 		// Movies - Smart Popular
@@ -599,16 +568,13 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 					cfg.Jobs.SmartPopularMovies.AdjustmentFactor = val
 				}
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.smart_popular_movies.sync_interval") {
 				cfg.Jobs.SmartPopularMovies.SyncInterval = c.FormValue("jobs.smart_popular_movies.sync_interval")
 			}
-			if hasField("jobs.smart_popular_movies.mode") {
-				cfg.Jobs.SmartPopularMovies.Mode = c.FormValue("jobs.smart_popular_movies.mode")
-			}
-			if hasField("jobs.smart_popular_movies.minimum_availability") {
-				cfg.Jobs.SmartPopularMovies.MinimumAvailability = c.FormValue("jobs.smart_popular_movies.minimum_availability")
-			}
+			// Always update mode and minimum_availability (empty string means use default)
+			cfg.Jobs.SmartPopularMovies.Mode = c.FormValue("jobs.smart_popular_movies.mode")
+			cfg.Jobs.SmartPopularMovies.MinimumAvailability = c.FormValue("jobs.smart_popular_movies.minimum_availability")
 		}
 
 		// Shows - Smart Popular
@@ -629,13 +595,12 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 					cfg.Jobs.SmartPopularShows.AdjustmentFactor = val
 				}
 			}
-			// Per-job sync interval and mode
+			// Per-job sync interval
 			if hasField("jobs.smart_popular_shows.sync_interval") {
 				cfg.Jobs.SmartPopularShows.SyncInterval = c.FormValue("jobs.smart_popular_shows.sync_interval")
 			}
-			if hasField("jobs.smart_popular_shows.mode") {
-				cfg.Jobs.SmartPopularShows.Mode = c.FormValue("jobs.smart_popular_shows.mode")
-			}
+			// Always update mode (empty string means use default)
+			cfg.Jobs.SmartPopularShows.Mode = c.FormValue("jobs.smart_popular_shows.mode")
 		}
 
 		// Save config to file
