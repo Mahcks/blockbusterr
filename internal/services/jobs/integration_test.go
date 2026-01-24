@@ -110,7 +110,6 @@ func TestFetcherFunctions(t *testing.T) {
 		name    string
 		fetcher MovieFetcher
 	}{
-		{"fetchTrendingMovies", fetchTrendingMovies},
 		{"fetchPopularMovies", fetchPopularMovies},
 		{"fetchAnticipatedMovies", fetchAnticipatedMovies},
 		{"fetchCollectedMovies", fetchCollectedMovies},

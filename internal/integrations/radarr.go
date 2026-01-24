@@ -260,9 +260,3 @@ func (r *Radarr) LookupMovie(ctx context.Context, term string) ([]RadarrMovie, e
 
 	return movies, nil
 }
-
-// Validate checks if the Radarr connection is valid
-func (r *Radarr) Validate(ctx context.Context) error {
-	_, err := r.GetSystemStatus(ctx)
-	return err
-}

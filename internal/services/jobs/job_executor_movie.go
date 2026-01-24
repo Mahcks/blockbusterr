@@ -406,11 +406,6 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 	return passedMovies, scoreMap, decisions
 }
 
-// GetLastDecisions returns the decisions from the last job run
-func (e *MovieJobExecutor) GetLastDecisions() *JobRunDecisions {
-	return e.lastDecisions
-}
-
 // updateDecisionOutcome updates a decision with the final action taken
 func (e *MovieJobExecutor) updateDecisionOutcome(tmdbID int, action, reason string) {
 	if e.lastDecisions == nil {

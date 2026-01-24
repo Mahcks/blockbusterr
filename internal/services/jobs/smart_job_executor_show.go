@@ -221,8 +221,3 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 
 	return passedShows, scoreMap, decisions
 }
-
-// GetLastDecisions returns the decisions from the last job run
-func (e *SmartShowJobExecutor) GetLastDecisions() *JobRunDecisions {
-	return e.lastDecisions
-}

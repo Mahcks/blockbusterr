@@ -230,8 +230,3 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 
 	return passedMovies, scoreMap, decisions
 }
-
-// GetLastDecisions returns the decisions from the last job run
-func (e *SmartMovieJobExecutor) GetLastDecisions() *JobRunDecisions {
-	return e.lastDecisions
-}

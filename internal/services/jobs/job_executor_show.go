@@ -427,11 +427,6 @@ func (e *ShowJobExecutor) evaluateShowsWithDecisions(
 	return passedShows, scoreMap, decisions
 }
 
-// GetLastDecisions returns the decisions from the last job run
-func (e *ShowJobExecutor) GetLastDecisions() *JobRunDecisions {
-	return e.lastDecisions
-}
-
 // updateDecisionOutcome updates a decision with the final action taken
 func (e *ShowJobExecutor) updateDecisionOutcome(tvdbID int, action, reason string) {
 	if e.lastDecisions == nil {

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
@@ -496,42 +495,6 @@ func ShowPassesFilters(show integrations.Show, filters config.ShowFilters) (bool
 	return result.Passed, result.Reason
 }
 
-// FilterMovies filters a list of movies based on configured filters
-func FilterMovies(movies []integrations.Movie, filters config.MovieFilters) []integrations.Movie {
-	if !hasAnyFilters(filters) {
-		return movies
-	}
-
-	filtered := make([]integrations.Movie, 0)
-	for _, movie := range movies {
-		passes, reason := MoviePassesFilters(movie, filters)
-		if passes {
-			filtered = append(filtered, movie)
-		} else {
-			log.Debugf("Filtered out movie '%s' (%d): %s", movie.Title, movie.Year, reason)
-		}
-	}
-	return filtered
-}
-
-// FilterShows filters a list of shows based on configured filters
-func FilterShows(shows []integrations.Show, filters config.ShowFilters) []integrations.Show {
-	if !hasAnyShowFilters(filters) {
-		return shows
-	}
-
-	filtered := make([]integrations.Show, 0)
-	for _, show := range shows {
-		passes, reason := ShowPassesFilters(show, filters)
-		if passes {
-			filtered = append(filtered, show)
-		} else {
-			log.Debugf("Filtered out show '%s' (%d): %s", show.Title, show.Year, reason)
-		}
-	}
-	return filtered
-}
-
 // Helper functions
 
 func contains(slice []string, item string) bool {
@@ -551,80 +514,4 @@ func containsIgnoreCase(slice []string, item string) bool {
 		}
 	}
 	return false
-}
-
-func hasAnyFilters(filters config.MovieFilters) bool {
-	return len(filters.AllowedCountries) > 0 ||
-		len(filters.AllowedLanguages) > 0 ||
-		len(filters.BlacklistedGenres) > 0 ||
-		len(filters.BlacklistedKeywords) > 0 ||
-		len(filters.BlacklistedTMDBIds) > 0 ||
-		filters.BlacklistedMinRuntime > 0 ||
-		filters.BlacklistedMaxRuntime > 0 ||
-		filters.BlacklistedMinYear > 0 ||
-		filters.BlacklistedMaxYear > 0 ||
-		filters.MinRating > 0 ||
-		filters.MinVotes > 0
-}
-
-func hasAnyShowFilters(filters config.ShowFilters) bool {
-	return len(filters.AllowedCountries) > 0 ||
-		len(filters.AllowedLanguages) > 0 ||
-		len(filters.BlacklistedGenres) > 0 ||
-		len(filters.BlacklistedKeywords) > 0 ||
-		len(filters.BlacklistedNetworks) > 0 ||
-		len(filters.BlacklistedTVDBIds) > 0 ||
-		filters.BlacklistedMinRuntime > 0 ||
-		filters.BlacklistedMaxRuntime > 0 ||
-		filters.BlacklistedMinYear > 0 ||
-		filters.BlacklistedMaxYear > 0 ||
-		filters.MinRating > 0 ||
-		filters.MinVotes > 0
-}
-
-// FormatFilterResultAsJSON converts FilterResult to JSON string for storage
-func FormatFilterResultAsJSON(result FilterResult) string {
-	if len(result.Checks) == 0 {
-		return ""
-	}
-
-	// Simple JSON formatting without external dependencies
-	var checks []string
-	for _, check := range result.Checks {
-		passedStr := "false"
-		if check.Passed {
-			passedStr = "true"
-		}
-		// Escape quotes in message
-		msg := strings.ReplaceAll(check.Message, "\"", "\\\"")
-		checks = append(checks, fmt.Sprintf(`{"name":"%s","passed":%s,"message":"%s"}`, check.Name, passedStr, msg))
-	}
-	return "[" + strings.Join(checks, ",") + "]"
-}
-
-// FormatFilterResultSummary creates a human-readable summary of filter results
-func FormatFilterResultSummary(result FilterResult) string {
-	if result.Passed {
-		passedCount := 0
-		for _, check := range result.Checks {
-			if check.Passed {
-				passedCount++
-			}
-		}
-		return fmt.Sprintf("Passed all filters (%d checks)", passedCount)
-	}
-
-	// Find failed checks
-	var failedChecks []string
-	for _, check := range result.Checks {
-		if !check.Passed {
-			failedChecks = append(failedChecks, check.Message)
-		}
-	}
-
-	if len(failedChecks) > 0 {
-		return "Failed: " + strings.Join(failedChecks, "; ")
-	}
-
-	return result.Reason
 }

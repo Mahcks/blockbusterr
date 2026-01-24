@@ -263,9 +263,3 @@ func (s *Sonarr) LookupSeries(ctx context.Context, term string) ([]SonarrSeries,
 
 	return series, nil
 }
-
-// Validate checks if the Sonarr connection is valid
-func (s *Sonarr) Validate(ctx context.Context) error {
-	_, err := s.GetSystemStatus(ctx)
-	return err
-}
