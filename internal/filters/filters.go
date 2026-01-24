@@ -2,6 +2,7 @@ package filters
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/mahcks/blockbusterr/config"
@@ -37,14 +38,7 @@ func MoviePassesFiltersDetailed(movie integrations.Movie, filters config.MovieFi
 
 	// Check TMDB ID blacklist
 	if len(filters.BlacklistedTMDBIds) > 0 {
-		blocked := false
-		for _, id := range filters.BlacklistedTMDBIds {
-			if movie.IDs.TMDB == id {
-				blocked = true
-				break
-			}
-		}
-		if blocked {
+		if slices.Contains(filters.BlacklistedTMDBIds, movie.IDs.TMDB) {
 			result.Checks = append(result.Checks, FilterCheck{
 				Name:    "TMDB Blacklist",
 				Passed:  false,
@@ -62,7 +56,7 @@ func MoviePassesFiltersDetailed(movie integrations.Movie, filters config.MovieFi
 	}
 
 	// Check country filter
-	if len(filters.AllowedCountries) > 0 && !contains(filters.AllowedCountries, "ignore") {
+	if len(filters.AllowedCountries) > 0 && !slices.Contains(filters.AllowedCountries, "ignore") {
 		if movie.Country != "" {
 			if !containsIgnoreCase(filters.AllowedCountries, movie.Country) {
 				result.Checks = append(result.Checks, FilterCheck{
@@ -83,7 +77,7 @@ func MoviePassesFiltersDetailed(movie integrations.Movie, filters config.MovieFi
 	}
 
 	// Check language filter
-	if len(filters.AllowedLanguages) > 0 && !contains(filters.AllowedLanguages, "ignore") {
+	if len(filters.AllowedLanguages) > 0 && !slices.Contains(filters.AllowedLanguages, "ignore") {
 		if movie.Language != "" {
 			if !containsIgnoreCase(filters.AllowedLanguages, movie.Language) {
 				result.Checks = append(result.Checks, FilterCheck{
@@ -104,7 +98,7 @@ func MoviePassesFiltersDetailed(movie integrations.Movie, filters config.MovieFi
 	}
 
 	// Check genre blacklist
-	if len(filters.BlacklistedGenres) > 0 && !contains(filters.BlacklistedGenres, "ignore") {
+	if len(filters.BlacklistedGenres) > 0 && !slices.Contains(filters.BlacklistedGenres, "ignore") {
 		for _, genre := range movie.Genres {
 			if containsIgnoreCase(filters.BlacklistedGenres, genre) {
 				result.Checks = append(result.Checks, FilterCheck{
@@ -287,7 +281,7 @@ func ShowPassesFiltersDetailed(show integrations.Show, filters config.ShowFilter
 	}
 
 	// Check country filter
-	if len(filters.AllowedCountries) > 0 && !contains(filters.AllowedCountries, "ignore") {
+	if len(filters.AllowedCountries) > 0 && !slices.Contains(filters.AllowedCountries, "ignore") {
 		if show.Country != "" && !containsIgnoreCase(filters.AllowedCountries, show.Country) {
 			result.Checks = append(result.Checks, FilterCheck{
 				Name:    "Allowed Countries",
@@ -306,7 +300,7 @@ func ShowPassesFiltersDetailed(show integrations.Show, filters config.ShowFilter
 	}
 
 	// Check language filter
-	if len(filters.AllowedLanguages) > 0 && !contains(filters.AllowedLanguages, "ignore") {
+	if len(filters.AllowedLanguages) > 0 && !slices.Contains(filters.AllowedLanguages, "ignore") {
 		if show.Language != "" && !containsIgnoreCase(filters.AllowedLanguages, show.Language) {
 			result.Checks = append(result.Checks, FilterCheck{
 				Name:    "Allowed Languages",
@@ -325,7 +319,7 @@ func ShowPassesFiltersDetailed(show integrations.Show, filters config.ShowFilter
 	}
 
 	// Check genre blacklist
-	if len(filters.BlacklistedGenres) > 0 && !contains(filters.BlacklistedGenres, "ignore") {
+	if len(filters.BlacklistedGenres) > 0 && !slices.Contains(filters.BlacklistedGenres, "ignore") {
 		for _, genre := range show.Genres {
 			if containsIgnoreCase(filters.BlacklistedGenres, genre) {
 				result.Checks = append(result.Checks, FilterCheck{
@@ -496,15 +490,6 @@ func ShowPassesFilters(show integrations.Show, filters config.ShowFilters) (bool
 }
 
 // Helper functions
-
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
-}
 
 func containsIgnoreCase(slice []string, item string) bool {
 	itemLower := strings.ToLower(item)

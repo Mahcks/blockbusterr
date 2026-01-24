@@ -8,8 +8,8 @@ type APIErrorResponseBodyError struct {
 }
 
 type APIError struct {
-	StatusCode int                    `json:"status_code"`
-	Message    string                 `json:"message"`
-	ErrorCode  int                    `json:"error_code"`
-	Details    map[string]interface{} `json:"details,omitempty"`
+	StatusCode int            `json:"status_code"`
+	Message    string         `json:"message"`
+	ErrorCode  int            `json:"error_code"`
+	Details    map[string]any `json:"details,omitempty"`
 }

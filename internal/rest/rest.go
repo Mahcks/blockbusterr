@@ -41,7 +41,7 @@ func New(gctx global.Context) error {
 	// Initialize template engine with custom functions
 	engine := htmlEngine.New("./web/templates", ".html")
 	engine.Reload(true) // Enable template reloading in development
-	engine.AddFunc("json", func(v interface{}) template.JS {
+	engine.AddFunc("json", func(v any) template.JS {
 		b, _ := json.Marshal(v)
 		return template.JS(b)
 	})

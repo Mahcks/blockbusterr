@@ -58,7 +58,7 @@ func NewSonarr(config SonarrConfig) *Sonarr {
 }
 
 // doRequest performs an HTTP request to the Sonarr API
-func (s *Sonarr) doRequest(ctx context.Context, method, endpoint string, body interface{}) (*http.Response, error) {
+func (s *Sonarr) doRequest(ctx context.Context, method, endpoint string, body any) (*http.Response, error) {
 	if s.baseURL == "" {
 		return nil, errors.New("Sonarr base URL is not configured")
 	}

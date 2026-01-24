@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -206,7 +207,7 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 		for _, decision := range decisions {
 			if !decision.PassedFilters {
 				posterURL := GetTMDBPosterURL(e.Config, decision.TMDBID, "movie")
-				e.Database.LogActivity(database.ActivityLog{
+				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp:     time.Now(),
 					JobType:       jobConfig.JobName,
 					MediaType:     "movie",
@@ -221,6 +222,9 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 					Message:       decision.ActionReason,
 					FilterDetails: FilterChecksToJSON(decision.FilterChecks),
 				})
+				if err != nil {
+					slog.Error("Failed to log activity for movie", "title", decision.Title, "year", decision.Year, "err", err)
+				}
 			}
 		}
 	}

@@ -15,8 +15,8 @@ import (
 
 // ShareableConfig contains only the shareable parts of the config (no credentials)
 type ShareableConfig struct {
-	Scoring interface{} `yaml:"scoring"`
-	Jobs    interface{} `yaml:"jobs"`
+	Scoring any `yaml:"scoring"`
+	Jobs    any `yaml:"jobs"`
 	Filters struct {
 		Movies config.MovieFilters `yaml:"movies"`
 		Shows  config.ShowFilters  `yaml:"shows"`
@@ -29,7 +29,7 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 		cfg := gctx.Config()
 
 		// Create shareable config with only filters, jobs, and scoring
-		shareableData := map[string]interface{}{
+		shareableData := map[string]any{
 			"scoring": cfg.Scoring,
 			"jobs":    cfg.Jobs,
 			"filters": cfg.Filters,
@@ -109,8 +109,8 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 
 		// Update only the shareable sections
 		if err := yaml.Unmarshal(data, &struct {
-			Scoring interface{} `yaml:"scoring"`
-			Jobs    interface{} `yaml:"jobs"`
+			Scoring any `yaml:"scoring"`
+			Jobs    any `yaml:"jobs"`
 			Filters struct {
 				Movies config.MovieFilters `yaml:"movies"`
 				Shows  config.ShowFilters  `yaml:"shows"`
