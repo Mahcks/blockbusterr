@@ -232,6 +232,22 @@
             ↻ Load Root Folders
           </button>
         </div>
+
+        <div>
+          <label for="radarr-minimum-availability" class="block text-sm font-medium text-slate-300 mb-2">
+            Minimum Availability
+          </label>
+          <select
+            id="radarr-minimum-availability"
+            name="radarr.minimum_availability"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          >
+            <option value="announced" {{if eq .Config.Radarr.MinimumAvailability "announced"}}selected{{end}}>Announced</option>
+            <option value="inCinemas" {{if eq .Config.Radarr.MinimumAvailability "inCinemas"}}selected{{end}}>In Cinemas</option>
+            <option value="released" {{if eq .Config.Radarr.MinimumAvailability "released"}}selected{{end}}>Released</option>
+          </select>
+          <p class="mt-1 text-xs text-slate-400">Default minimum availability for new movies added to Radarr.</p>
+        </div>
       </div>
     </div>
 

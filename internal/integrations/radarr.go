@@ -58,7 +58,7 @@ func NewRadarr(config RadarrConfig) *Radarr {
 }
 
 // doRequest performs an HTTP request to the Radarr API
-func (r *Radarr) doRequest(ctx context.Context, method, endpoint string, body interface{}) (*http.Response, error) {
+func (r *Radarr) doRequest(ctx context.Context, method, endpoint string, body any) (*http.Response, error) {
 	if r.baseURL == "" {
 		return nil, errors.New("Radarr base URL is not configured")
 	}
@@ -259,10 +259,4 @@ func (r *Radarr) LookupMovie(ctx context.Context, term string) ([]RadarrMovie, e
 	}
 
 	return movies, nil
-}
-
-// Validate checks if the Radarr connection is valid
-func (r *Radarr) Validate(ctx context.Context) error {
-	_, err := r.GetSystemStatus(ctx)
-	return err
 }

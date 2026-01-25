@@ -3,6 +3,7 @@ package routes
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -149,7 +150,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		db := gctx.Database()
 
 		// Get last 7 days of activity
-		chartData := make(map[string]interface{})
+		chartData := make(map[string]any)
 		labels := []string{}
 		added := []int{}
 		rejected := []int{}
@@ -390,13 +391,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			}
 
 			// Check if already blocked
-			alreadyBlocked := false
-			for _, id := range cfg.Filters.Movies.BlacklistedTMDBIds {
-				if id == activityLog.TMDBID {
-					alreadyBlocked = true
-					break
-				}
-			}
+			alreadyBlocked := slices.Contains(cfg.Filters.Movies.BlacklistedTMDBIds, activityLog.TMDBID)
 
 			if !alreadyBlocked {
 				cfg.Filters.Movies.BlacklistedTMDBIds = append(cfg.Filters.Movies.BlacklistedTMDBIds, activityLog.TMDBID)
@@ -416,13 +411,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			}
 
 			// Check if already blocked
-			alreadyBlocked := false
-			for _, id := range cfg.Filters.Shows.BlacklistedTVDBIds {
-				if id == activityLog.TVDBID {
-					alreadyBlocked = true
-					break
-				}
-			}
+			alreadyBlocked := slices.Contains(cfg.Filters.Shows.BlacklistedTVDBIds, activityLog.TVDBID)
 
 			if !alreadyBlocked {
 				cfg.Filters.Shows.BlacklistedTVDBIds = append(cfg.Filters.Shows.BlacklistedTVDBIds, activityLog.TVDBID)

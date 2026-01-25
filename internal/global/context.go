@@ -3,7 +3,6 @@ package global
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
@@ -87,49 +86,6 @@ func WithCancel(ctx Context) (Context, context.CancelFunc) {
 		Context:  c,
 		cfg:      cfg,
 		metadata: metadata,
-		db:       db,
-	}, cancel
-}
-
-func WithDeadline(ctx Context, deadline time.Time) (Context, context.CancelFunc) {
-	metadata := ctx.Metadata()
-	cfg := ctx.Config()
-	db := ctx.Database()
-
-	c, cancel := context.WithDeadline(ctx, deadline)
-
-	return &gCtx{
-		Context:  c,
-		metadata: metadata,
-		cfg:      cfg,
-		db:       db,
-	}, cancel
-}
-
-func WithValue(ctx Context, key interface{}, value interface{}) Context {
-	metadata := ctx.Metadata()
-	cfg := ctx.Config()
-	db := ctx.Database()
-
-	return &gCtx{
-		Context:  context.WithValue(ctx, key, value),
-		metadata: metadata,
-		cfg:      cfg,
-		db:       db,
-	}
-}
-
-func WithTimeout(ctx Context, timeout time.Duration) (Context, context.CancelFunc) {
-	metadata := ctx.Metadata()
-	cfg := ctx.Config()
-	db := ctx.Database()
-
-	c, cancel := context.WithTimeout(ctx, timeout)
-
-	return &gCtx{
-		Context:  c,
-		metadata: metadata,
-		cfg:      cfg,
 		db:       db,
 	}, cancel
 }

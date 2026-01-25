@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -170,7 +171,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 					// Log failed activity
 					if e.Database != nil {
 						scoreInfo := scoreMap[series.TvdbID]
-						e.Database.LogActivity(database.ActivityLog{
+						err := e.Database.LogActivity(database.ActivityLog{
 							Timestamp: time.Now(),
 							JobType:   jobConfig.JobName,
 							MediaType: "show",
@@ -183,6 +184,9 @@ func (e *ShowJobExecutor) executeShowsDirect(
 							Status:    "failed",
 							Message:   err.Error(),
 						})
+						if err != nil {
+							slog.Error("Failed to log activity for show", "title", show.Title, "year", show.Year, "err", err)
+						}
 					}
 				}
 				continue
@@ -195,7 +199,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 			if e.Database != nil {
 				posterURL := GetShowPosterURL(e.Config, addedSeries.TmdbID, addedSeries.TvdbID)
 				scoreInfo := scoreMap[addedSeries.TvdbID]
-				e.Database.LogActivity(database.ActivityLog{
+				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp: time.Now(),
 					JobType:   jobConfig.JobName,
 					MediaType: "show",
@@ -208,6 +212,9 @@ func (e *ShowJobExecutor) executeShowsDirect(
 					Rank:      scoreInfo.Rank,
 					Status:    "added",
 				})
+				if err != nil {
+					slog.Error("Failed to log activity for show", "title", addedSeries.Title, "year", addedSeries.Year, "err", err)
+				}
 			}
 		}
 
@@ -272,7 +279,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 					if e.Database != nil {
 						scoreInfo := scoreMap[show.IDs.TVDB]
 						filterDetails := e.getFilterDetailsForShow(show.IDs.TVDB)
-						e.Database.LogActivity(database.ActivityLog{
+						err := e.Database.LogActivity(database.ActivityLog{
 							Timestamp:     time.Now(),
 							JobType:       jobConfig.JobName,
 							MediaType:     "show",
@@ -286,6 +293,9 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 							Message:       err.Error(),
 							FilterDetails: filterDetails,
 						})
+						if err != nil {
+							slog.Error("Failed to log activity for show", "title", show.Title, "year", show.Year, "err", err)
+						}
 					}
 				}
 				continue
@@ -305,7 +315,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 					posterURL := GetShowPosterURL(e.Config, show.IDs.TMDB, show.IDs.TVDB)
 					scoreInfo := scoreMap[show.IDs.TVDB]
 					filterDetails := e.getFilterDetailsForShow(show.IDs.TVDB)
-					e.Database.LogActivity(database.ActivityLog{
+					err := e.Database.LogActivity(database.ActivityLog{
 						Timestamp:     time.Now(),
 						JobType:       jobConfig.JobName,
 						MediaType:     "show",
@@ -320,6 +330,9 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 						Message:       fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
 						FilterDetails: filterDetails,
 					})
+					if err != nil {
+						slog.Error("Failed to log activity for show", "title", show.Title, "year", show.Year, "err", err)
+					}
 				}
 			}
 		}
@@ -401,7 +414,7 @@ func (e *ShowJobExecutor) evaluateShowsWithDecisions(
 		for _, decision := range decisions {
 			if !decision.PassedFilters {
 				posterURL := GetShowPosterURL(e.Config, decision.TMDBID, decision.TVDBID)
-				e.Database.LogActivity(database.ActivityLog{
+				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp:     time.Now(),
 					JobType:       jobConfig.JobName,
 					MediaType:     "show",
@@ -417,6 +430,9 @@ func (e *ShowJobExecutor) evaluateShowsWithDecisions(
 					Message:       decision.ActionReason,
 					FilterDetails: FilterChecksToJSON(decision.FilterChecks),
 				})
+				if err != nil {
+					slog.Error("Failed to log activity for show", "title", decision.Title, "year", decision.Year, "err", err)
+				}
 			}
 		}
 	}
@@ -425,11 +441,6 @@ func (e *ShowJobExecutor) evaluateShowsWithDecisions(
 		len(shows), len(passedShows), len(shows)-len(passedShows))
 
 	return passedShows, scoreMap, decisions
-}
-
-// GetLastDecisions returns the decisions from the last job run
-func (e *ShowJobExecutor) GetLastDecisions() *JobRunDecisions {
-	return e.lastDecisions
 }
 
 // updateDecisionOutcome updates a decision with the final action taken

@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -14,12 +15,13 @@ import (
 
 // SmartJobConfig extends JobConfig with adaptive rating parameters
 type SmartJobConfig struct {
-	JobName          string
-	MediaType        string
-	Mode             string
-	Limit            int
-	BaseMinRating    float64
-	AdjustmentFactor float64
+	JobName             string
+	MediaType           string
+	Mode                string
+	MinimumAvailability string // Radarr only
+	Limit               int
+	BaseMinRating       float64
+	AdjustmentFactor    float64
 }
 
 // SmartMovieJobExecutor handles execution of smart popular movie jobs with adaptive rating thresholds
@@ -205,7 +207,7 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 		for _, decision := range decisions {
 			if !decision.PassedFilters {
 				posterURL := GetTMDBPosterURL(e.Config, decision.TMDBID, "movie")
-				e.Database.LogActivity(database.ActivityLog{
+				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp:     time.Now(),
 					JobType:       jobConfig.JobName,
 					MediaType:     "movie",
@@ -220,6 +222,9 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 					Message:       decision.ActionReason,
 					FilterDetails: FilterChecksToJSON(decision.FilterChecks),
 				})
+				if err != nil {
+					slog.Error("Failed to log activity for movie", "title", decision.Title, "year", decision.Year, "err", err)
+				}
 			}
 		}
 	}
@@ -228,9 +233,4 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 		len(movies), len(passedMovies), len(movies)-len(passedMovies))
 
 	return passedMovies, scoreMap, decisions
-}
-
-// GetLastDecisions returns the decisions from the last job run
-func (e *SmartMovieJobExecutor) GetLastDecisions() *JobRunDecisions {
-	return e.lastDecisions
 }

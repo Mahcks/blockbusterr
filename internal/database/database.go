@@ -251,7 +251,7 @@ func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobTy
 		FROM activity_logs
 		WHERE 1=1
 	`
-	args := []interface{}{}
+	args := []any{}
 
 	if status != "" {
 		query += " AND status = ?"
@@ -335,8 +335,8 @@ func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobTy
 }
 
 // GetActivityStats returns statistics about activity
-func (d *Database) GetActivityStats() (map[string]interface{}, error) {
-	stats := make(map[string]interface{})
+func (d *Database) GetActivityStats() (map[string]any, error) {
+	stats := make(map[string]any)
 
 	// Total added
 	var totalAdded int

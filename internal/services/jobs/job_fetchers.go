@@ -8,18 +8,6 @@ import (
 
 // Movie Fetchers
 
-func fetchTrendingMovies(ctx context.Context, trakt *integrations.Trakt, limit int, _ string) ([]integrations.Movie, error) {
-	trendingMovies, err := trakt.GetTrendingMovies(ctx, limit)
-	if err != nil {
-		return nil, err
-	}
-	movies := make([]integrations.Movie, len(trendingMovies))
-	for i, tm := range trendingMovies {
-		movies[i] = tm.Movie
-	}
-	return movies, nil
-}
-
 func fetchPopularMovies(ctx context.Context, trakt *integrations.Trakt, limit int, _ string) ([]integrations.Movie, error) {
 	return trakt.GetPopularMovies(ctx, limit)
 }

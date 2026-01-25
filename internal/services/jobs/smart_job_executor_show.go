@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -196,7 +197,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 		for _, decision := range decisions {
 			if !decision.PassedFilters {
 				posterURL := GetTMDBPosterURL(e.Config, decision.TMDBID, "tv")
-				e.Database.LogActivity(database.ActivityLog{
+				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp:     time.Now(),
 					JobType:       jobConfig.JobName,
 					MediaType:     "tv",
@@ -212,6 +213,9 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 					Message:       decision.ActionReason,
 					FilterDetails: FilterChecksToJSON(decision.FilterChecks),
 				})
+				if err != nil {
+					slog.Error("Failed to log activity for show", "title", decision.Title, "year", decision.Year, "err", err)
+				}
 			}
 		}
 	}
@@ -220,9 +224,4 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 		len(shows), len(passedShows), len(shows)-len(passedShows))
 
 	return passedShows, scoreMap, decisions
-}
-
-// GetLastDecisions returns the decisions from the last job run
-func (e *SmartShowJobExecutor) GetLastDecisions() *JobRunDecisions {
-	return e.lastDecisions
 }

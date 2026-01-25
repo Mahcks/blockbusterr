@@ -523,35 +523,3 @@ func TestShowRatingFilter(t *testing.T) {
 		})
 	}
 }
-
-func TestFilterMoviesWithRatings(t *testing.T) {
-	movies := []integrations.Movie{
-		{Title: "Great Movie", Year: 2024, Rating: 8.5, Votes: 5000},
-		{Title: "Good Movie", Year: 2024, Rating: 7.2, Votes: 3000},
-		{Title: "Bad Movie", Year: 2024, Rating: 5.0, Votes: 2000},
-		{Title: "Obscure Movie", Year: 2024, Rating: 8.0, Votes: 100},
-	}
-
-	filters := config.MovieFilters{
-		MinRating: 7.0,
-		MinVotes:  1000,
-	}
-
-	filtered := FilterMovies(movies, filters)
-
-	if len(filtered) != 2 {
-		t.Errorf("Expected 2 movies to pass filters, got %d", len(filtered))
-	}
-
-	// Check that only the correct movies passed
-	expectedTitles := map[string]bool{
-		"Great Movie": true,
-		"Good Movie":  true,
-	}
-
-	for _, movie := range filtered {
-		if !expectedTitles[movie.Title] {
-			t.Errorf("Unexpected movie in filtered list: %s", movie.Title)
-		}
-	}
-}

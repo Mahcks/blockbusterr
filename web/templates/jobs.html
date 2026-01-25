@@ -30,7 +30,7 @@
 </div>
 {{end}}
 
-<div class="space-y-6">
+<div>
   <!-- Add Job Section -->
   <div class="bg-slate-800 rounded-lg p-6 mb-4">
     <h2
@@ -413,6 +413,30 @@
                   Override default integration mode
                 </p>
               </div>
+
+              <!-- Minimum Availability (Radarr only) -->
+              <div id="modal-min-availability-container" class="hidden">
+                <label
+                  for="modal-min-availability"
+                  class="block text-sm font-medium text-slate-300 mb-2"
+                >
+                  Minimum Availability
+                </label>
+                <select
+                  id="modal-min-availability"
+                  name="minimum_availability"
+                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  <option value="">Use Global Default</option>
+                  <option value="announced">Announced</option>
+                  <option value="inCinemas">In Cinemas</option>
+                  <option value="released">Released</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">
+                  Only add movies with at least this availability (overrides
+                  global setting for this job)
+                </p>
+              </div>
             </div>
           </div>
 
@@ -470,6 +494,18 @@
   let previewData = null;
   let currentFilter = "all";
 
+  const radarrMovieJobs = [
+    "trending_movies",
+    "popular_movies",
+    "box_office",
+    "favorited_movies",
+    "played_movies",
+    "watched_movies",
+    "collected_movies",
+    "anticipated_movies",
+    "smart_popular_movies",
+  ];
+
   // Initialize
   document.addEventListener("DOMContentLoaded", function () {
     console.log("Config loaded:", config);
@@ -497,11 +533,14 @@
     });
 
     // Update dropdown with available jobs
-    jobSelector.innerHTML = '<option value="">Select a job to add...</option>' +
-      availableJobs.map((key) => {
-        const job = jobDefinitions[key];
-        return `<option value="${key}">${job.icon} ${job.name}</option>`;
-      }).join("");
+    jobSelector.innerHTML =
+      '<option value="">Select a job to add...</option>' +
+      availableJobs
+        .map((key) => {
+          const job = jobDefinitions[key];
+          return `<option value="${key}">${job.icon} ${job.name}</option>`;
+        })
+        .join("");
 
     // Active jobs
     if (enabledJobs.length === 0) {
@@ -583,7 +622,11 @@
   function deleteJob(jobKey) {
     const job = jobDefinitions[jobKey];
 
-    if (!confirm(`Are you sure you want to delete "${job.name}"? This will remove all its settings.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${job.name}"? This will remove all its settings.`,
+      )
+    ) {
       return;
     }
 
@@ -593,10 +636,7 @@
     // Save to server
     saveJobConfig(jobKey, () => {
       renderJobsList();
-      showNotification(
-        `${job.name} removed successfully!`,
-        "success",
-      );
+      showNotification(`${job.name} removed successfully!`, "success");
     });
   }
 
@@ -658,6 +698,18 @@
         cfg.adjustment_factor || 1.0;
     } else {
       smartContainer.classList.add("hidden");
+    }
+
+    // Show/hide minimum availability for Radarr movie jobs
+    const minAvailContainer = document.getElementById(
+      "modal-min-availability-container",
+    );
+    if (radarrMovieJobs.includes(jobKey)) {
+      minAvailContainer.classList.remove("hidden");
+      document.getElementById("modal-min-availability").value =
+        cfg.minimum_availability || "";
+    } else {
+      minAvailContainer.classList.add("hidden");
     }
 
     // Update enable/disable button based on job status
@@ -784,6 +836,11 @@
           `${def.configKey}.adjustment_factor`,
           keyConfig.adjustment_factor,
         );
+      if (keyConfig.minimum_availability !== undefined)
+        formData.append(
+          `${def.configKey}.minimum_availability`,
+          keyConfig.minimum_availability,
+        );
     });
 
     // Add global settings
@@ -850,6 +907,13 @@
       if (periodJobs.includes(currentJobKey)) {
         config[currentJobKey].period =
           document.getElementById("modal-period").value;
+      }
+
+      //Save Minimum Availability if applicable
+      if (radarrMovieJobs.includes(currentJobKey)) {
+        config[currentJobKey].minimum_availability = document.getElementById(
+          "modal-min-availability",
+        ).value;
       }
 
       // Update smart job fields if applicable
@@ -980,11 +1044,13 @@
     if (data.items && Array.isArray(data.items)) {
       filteredItems = data.items;
       if (filter === "will_add") {
-        filteredItems = filteredItems.filter(item => !item.already_exists && !item.filtered_out);
+        filteredItems = filteredItems.filter(
+          (item) => !item.already_exists && !item.filtered_out,
+        );
       } else if (filter === "already_exists") {
-        filteredItems = filteredItems.filter(item => item.already_exists);
+        filteredItems = filteredItems.filter((item) => item.already_exists);
       } else if (filter === "filtered_out") {
-        filteredItems = filteredItems.filter(item => item.filtered_out);
+        filteredItems = filteredItems.filter((item) => item.filtered_out);
       }
     } else {
       filteredItems = [];
@@ -1107,5 +1173,4 @@
   }
 </script>
 
-{{template "components/footer.html" .}}
-{{end}}
+{{template "components/footer.html" .}} {{end}}

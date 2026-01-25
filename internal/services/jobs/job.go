@@ -10,11 +10,12 @@ import (
 
 // JobConfig contains common configuration for all jobs
 type JobConfig struct {
-	JobName   string // e.g., "trending_movies", "popular_shows"
-	MediaType string // "movie" or "show"
-	Mode      string // "direct" or "jellyseerr"
-	Limit     int
-	Period    string // For watched/collected/played jobs
+	JobName             string // e.g., "trending_movies", "popular_shows"
+	MediaType           string // "movie" or "show"
+	Mode                string // "direct" or "jellyseerr"
+	MinimumAvailability string // For direct mode only - "announced", "in_cinemas", or "released"
+	Limit               int
+	Period              string // For watched/collected/played jobs
 }
 
 // ScoreInfo holds scoring information for a media item
@@ -30,10 +31,10 @@ type MovieFetcher func(ctx context.Context, trakt *integrations.Trakt, limit int
 type ShowFetcher func(ctx context.Context, trakt *integrations.Trakt, limit int, period string) ([]integrations.Show, error)
 
 // MovieExtractor extracts Movie from wrapped types (e.g., TrendingMovie.Movie)
-type MovieExtractor func(interface{}) integrations.Movie
+type MovieExtractor func(any) integrations.Movie
 
 // ShowExtractor extracts Show from wrapped types (e.g., TrendingShow.Show)
-type ShowExtractor func(interface{}) integrations.Show
+type ShowExtractor func(any) integrations.Show
 
 // DetermineMode checks job-specific mode, falls back to global mode, defaults to "direct"
 func DetermineMode(jobMode, globalMode string) string {

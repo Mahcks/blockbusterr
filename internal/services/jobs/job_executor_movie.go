@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -111,6 +112,14 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 			continue
 		}
 
+		minAvail := jobConfig.MinimumAvailability
+		if minAvail == "" {
+			minAvail = e.Config.Radarr.MinimumAvailability
+		}
+		if minAvail == "" {
+			minAvail = "announced" // or your preferred default
+		}
+
 		// Create movie object for Radarr
 		radarrMovie := integrations.RadarrMovie{
 			Title:               movie.Title,
@@ -118,7 +127,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 			TmdbID:              movie.IDs.TMDB,
 			QualityProfileID:    e.Config.Radarr.QualityProfile,
 			Monitored:           true,
-			MinimumAvailability: "announced",
+			MinimumAvailability: minAvail,
 			RootFolderPath:      e.Config.Radarr.RootFolder,
 			AddOptions: &integrations.RadarrAddOptions{
 				SearchForMovie: true,
@@ -142,7 +151,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 					// Log failure to database
 					if e.Database != nil {
 						scoreInfo := scoreMap[movie.IDs.TMDB]
-						e.Database.LogActivity(database.ActivityLog{
+						err := e.Database.LogActivity(database.ActivityLog{
 							Timestamp: time.Now(),
 							JobType:   jobConfig.JobName,
 							MediaType: "movie",
@@ -155,6 +164,9 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 							Status:    "failed",
 							Message:   err.Error(),
 						})
+						if err != nil {
+							slog.Error("Failed to log activity for movie", "title", movie.Title, "year", movie.Year, "err", err)
+						}
 					}
 				}
 				continue
@@ -167,7 +179,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 			if e.Database != nil {
 				posterURL := GetTMDBPosterURL(e.Config, addedMovie.TmdbID, "movie")
 				scoreInfo := scoreMap[addedMovie.TmdbID]
-				e.Database.LogActivity(database.ActivityLog{
+				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp: time.Now(),
 					JobType:   jobConfig.JobName,
 					MediaType: "movie",
@@ -180,6 +192,9 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 					Rank:      scoreInfo.Rank,
 					Status:    "added",
 				})
+				if err != nil {
+					slog.Error("Failed to log activity for movie", "title", addedMovie.Title, "year", addedMovie.Year, "err", err)
+				}
 			}
 		}
 
@@ -243,7 +258,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 					if e.Database != nil {
 						scoreInfo := scoreMap[movie.IDs.TMDB]
 						filterDetails := e.getFilterDetailsForMovie(movie.IDs.TMDB)
-						e.Database.LogActivity(database.ActivityLog{
+						err := e.Database.LogActivity(database.ActivityLog{
 							Timestamp:     time.Now(),
 							JobType:       jobConfig.JobName,
 							MediaType:     "movie",
@@ -257,6 +272,9 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 							Message:       err.Error(),
 							FilterDetails: filterDetails,
 						})
+						if err != nil {
+							slog.Error("Failed to log activity for movie", "title", movie.Title, "year", movie.Year, "err", err)
+						}
 					}
 				}
 				continue
@@ -276,7 +294,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 					posterURL := GetTMDBPosterURL(e.Config, movie.IDs.TMDB, "movie")
 					scoreInfo := scoreMap[movie.IDs.TMDB]
 					filterDetails := e.getFilterDetailsForMovie(movie.IDs.TMDB)
-					e.Database.LogActivity(database.ActivityLog{
+					err := e.Database.LogActivity(database.ActivityLog{
 						Timestamp:     time.Now(),
 						JobType:       jobConfig.JobName,
 						MediaType:     "movie",
@@ -291,6 +309,9 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 						Message:       fmt.Sprintf("Jellyseerr request ID: %d", result.ID),
 						FilterDetails: filterDetails,
 					})
+					if err != nil {
+						slog.Error("Failed to log activity for movie", "title", movie.Title, "year", movie.Year, "err", err)
+					}
 				}
 			}
 		}
@@ -373,7 +394,7 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 		for _, decision := range decisions {
 			if !decision.PassedFilters {
 				posterURL := GetTMDBPosterURL(e.Config, decision.TMDBID, "movie")
-				e.Database.LogActivity(database.ActivityLog{
+				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp:     time.Now(),
 					JobType:       jobConfig.JobName,
 					MediaType:     "movie",
@@ -388,6 +409,9 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 					Message:       decision.ActionReason,
 					FilterDetails: FilterChecksToJSON(decision.FilterChecks),
 				})
+				if err != nil {
+					slog.Error("Failed to log activity for movie", "title", decision.Title, "year", decision.Year, "err", err)
+				}
 			}
 		}
 	}
@@ -396,11 +420,6 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 		len(movies), len(passedMovies), len(movies)-len(passedMovies))
 
 	return passedMovies, scoreMap, decisions
-}
-
-// GetLastDecisions returns the decisions from the last job run
-func (e *MovieJobExecutor) GetLastDecisions() *JobRunDecisions {
-	return e.lastDecisions
 }
 
 // updateDecisionOutcome updates a decision with the final action taken

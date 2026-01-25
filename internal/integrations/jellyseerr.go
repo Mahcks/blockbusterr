@@ -27,7 +27,6 @@ type JellyseerrConfig struct {
 type Jellyseerr struct {
 	config         JellyseerrConfig
 	client         *http.Client
-	sessionCookie  string
 	sessionExpiry  time.Time
 	sessionMutex   sync.RWMutex
 	useCredentials bool
@@ -177,7 +176,7 @@ func (j *Jellyseerr) ensureAuthenticated() error {
 }
 
 // doRequest performs an HTTP request with proper headers
-func (j *Jellyseerr) doRequest(method, path string, body interface{}) (*http.Response, error) {
+func (j *Jellyseerr) doRequest(method, path string, body any) (*http.Response, error) {
 	var reqBody io.Reader
 	if body != nil {
 		jsonData, err := json.Marshal(body)

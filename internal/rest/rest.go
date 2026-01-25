@@ -14,6 +14,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	htmlEngine "github.com/gofiber/template/html/v2"
 	"github.com/mahcks/blockbusterr/internal/global"
+	"github.com/mahcks/blockbusterr/internal/middleware"
 	v1 "github.com/mahcks/blockbusterr/internal/rest/v1"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes"
 	apiErrors "github.com/mahcks/blockbusterr/pkg/api_errors"
@@ -40,7 +41,7 @@ func New(gctx global.Context) error {
 	// Initialize template engine with custom functions
 	engine := htmlEngine.New("./web/templates", ".html")
 	engine.Reload(true) // Enable template reloading in development
-	engine.AddFunc("json", func(v interface{}) template.JS {
+	engine.AddFunc("json", func(v any) template.JS {
 		b, _ := json.Marshal(v)
 		return template.JS(b)
 	})
@@ -126,6 +127,9 @@ func New(gctx global.Context) error {
 		AllowCredentials: true,
 		ExposeHeaders:    "Content-Length, Content-Type",
 	}))
+
+	// Security headers
+	app.Use(middleware.SecureHeaders())
 
 	// Serve static files
 	app.Static("/static", "./web/static")

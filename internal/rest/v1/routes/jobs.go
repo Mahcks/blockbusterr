@@ -10,74 +10,74 @@ func AddJobsRoutes(router fiber.Router, gctx global.Context) {
 	router.Get("/jobs/status", func(c *fiber.Ctx) error {
 		cfg := gctx.Config()
 
-		status := map[string]interface{}{
+		status := map[string]any{
 			"sync_interval": cfg.Jobs.SyncInterval,
-			"jobs": map[string]interface{}{
-				"trending_movies": map[string]interface{}{
+			"jobs": map[string]any{
+				"trending_movies": map[string]any{
 					"enabled": cfg.Jobs.TrendingMovies.Enabled,
 					"limit":   cfg.Jobs.TrendingMovies.Limit,
 				},
-				"trending_shows": map[string]interface{}{
+				"trending_shows": map[string]any{
 					"enabled": cfg.Jobs.TrendingShows.Enabled,
 					"limit":   cfg.Jobs.TrendingShows.Limit,
 				},
-				"popular_movies": map[string]interface{}{
+				"popular_movies": map[string]any{
 					"enabled": cfg.Jobs.PopularMovies.Enabled,
 					"limit":   cfg.Jobs.PopularMovies.Limit,
 				},
-				"popular_shows": map[string]interface{}{
+				"popular_shows": map[string]any{
 					"enabled": cfg.Jobs.PopularShows.Enabled,
 					"limit":   cfg.Jobs.PopularShows.Limit,
 				},
-				"box_office": map[string]interface{}{
+				"box_office": map[string]any{
 					"enabled": cfg.Jobs.BoxOffice.Enabled,
 					"limit":   cfg.Jobs.BoxOffice.Limit,
 				},
-				"favorited_movies": map[string]interface{}{
+				"favorited_movies": map[string]any{
 					"enabled": cfg.Jobs.FavoritedMovies.Enabled,
 					"limit":   cfg.Jobs.FavoritedMovies.Limit,
 					"period":  cfg.Jobs.FavoritedMovies.Period,
 				},
-				"played_movies": map[string]interface{}{
+				"played_movies": map[string]any{
 					"enabled": cfg.Jobs.PlayedMovies.Enabled,
 					"limit":   cfg.Jobs.PlayedMovies.Limit,
 					"period":  cfg.Jobs.PlayedMovies.Period,
 				},
-				"watched_movies": map[string]interface{}{
+				"watched_movies": map[string]any{
 					"enabled": cfg.Jobs.WatchedMovies.Enabled,
 					"limit":   cfg.Jobs.WatchedMovies.Limit,
 					"period":  cfg.Jobs.WatchedMovies.Period,
 				},
-				"collected_movies": map[string]interface{}{
+				"collected_movies": map[string]any{
 					"enabled": cfg.Jobs.CollectedMovies.Enabled,
 					"limit":   cfg.Jobs.CollectedMovies.Limit,
 					"period":  cfg.Jobs.CollectedMovies.Period,
 				},
-				"anticipated_movies": map[string]interface{}{
+				"anticipated_movies": map[string]any{
 					"enabled": cfg.Jobs.AnticipatedMovies.Enabled,
 					"limit":   cfg.Jobs.AnticipatedMovies.Limit,
 				},
-				"favorited_shows": map[string]interface{}{
+				"favorited_shows": map[string]any{
 					"enabled": cfg.Jobs.FavoritedShows.Enabled,
 					"limit":   cfg.Jobs.FavoritedShows.Limit,
 					"period":  cfg.Jobs.FavoritedShows.Period,
 				},
-				"played_shows": map[string]interface{}{
+				"played_shows": map[string]any{
 					"enabled": cfg.Jobs.PlayedShows.Enabled,
 					"limit":   cfg.Jobs.PlayedShows.Limit,
 					"period":  cfg.Jobs.PlayedShows.Period,
 				},
-				"watched_shows": map[string]interface{}{
+				"watched_shows": map[string]any{
 					"enabled": cfg.Jobs.WatchedShows.Enabled,
 					"limit":   cfg.Jobs.WatchedShows.Limit,
 					"period":  cfg.Jobs.WatchedShows.Period,
 				},
-				"collected_shows": map[string]interface{}{
+				"collected_shows": map[string]any{
 					"enabled": cfg.Jobs.CollectedShows.Enabled,
 					"limit":   cfg.Jobs.CollectedShows.Limit,
 					"period":  cfg.Jobs.CollectedShows.Period,
 				},
-				"anticipated_shows": map[string]interface{}{
+				"anticipated_shows": map[string]any{
 					"enabled": cfg.Jobs.AnticipatedShows.Enabled,
 					"limit":   cfg.Jobs.AnticipatedShows.Limit,
 				},
@@ -327,12 +327,12 @@ func AddJobsRoutes(router fiber.Router, gctx global.Context) {
 			"failed":    0,
 		}
 
-		decisions := make([]map[string]interface{}, 0, len(recentLogs))
+		decisions := make([]map[string]any, 0, len(recentLogs))
 		for _, log := range recentLogs {
 			// Update summary stats
 			summary[log.Status]++
 
-			decision := map[string]interface{}{
+			decision := map[string]any{
 				"title":      log.Title,
 				"year":       log.Year,
 				"media_type": log.MediaType,
