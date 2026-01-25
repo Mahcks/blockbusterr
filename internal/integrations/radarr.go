@@ -109,7 +109,8 @@ type RadarrMovie struct {
 
 // RadarrAddOptions specifies options when adding a movie
 type RadarrAddOptions struct {
-	SearchForMovie bool `json:"searchForMovie"`
+	SearchForMovie bool   `json:"searchForMovie"`
+	Monitor        string `json:"monitor,omitempty"` // "movieOnly", "movieAndCollection", or "none"
 }
 
 // QualityProfile represents a Radarr quality profile

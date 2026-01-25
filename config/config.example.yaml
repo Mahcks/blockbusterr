@@ -15,6 +15,7 @@ radarr:
   quality_profile: 1  # Update after connecting - check Radarr Settings > Profiles
   root_folder: ""  # Example: /movies
   minimum_availability: "released" # Options: "announced", "inCinemas", "released"
+  monitor: "movieOnly" # Options: "movieOnly", "movieAndCollection", "none"
 
 sonarr:
   # Sonarr connection settings

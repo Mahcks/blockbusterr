@@ -14,6 +14,7 @@ type JobConfig struct {
 	MediaType           string // "movie" or "show"
 	Mode                string // "direct" or "jellyseerr"
 	MinimumAvailability string // For direct mode only - "announced", "in_cinemas", or "released"
+	Monitor             string // For Radarr direct mode - "movieOnly", "movieAndCollection", or "none"
 	Limit               int
 	Period              string // For watched/collected/played jobs
 }

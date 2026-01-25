@@ -59,6 +59,7 @@ type Config struct {
 		QualityProfile      int    `mapstructure:"quality_profile" json:"quality_profile" yaml:"quality_profile"`
 		RootFolder          string `mapstructure:"root_folder" json:"root_folder" yaml:"root_folder"`
 		MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
+		Monitor             string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 	} `mapstructure:"radarr" json:"radarr" yaml:"radarr"`
 
 	Sonarr struct {
@@ -104,6 +105,7 @@ type Config struct {
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
+			Monitor             string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"` // "movieOnly", "movieAndCollection", or "none"
 		} `mapstructure:"trending_movies" json:"trending_movies" yaml:"trending_movies"`
 
 		TrendingShows struct {
@@ -121,6 +123,7 @@ type Config struct {
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
+			Monitor             string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"` // "movieOnly", "movieAndCollection", or "none"
 		} `mapstructure:"popular_movies" json:"popular_movies" yaml:"popular_movies"`
 
 		PopularShows struct {
@@ -138,6 +141,7 @@ type Config struct {
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
+			Monitor             string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"` // "movieOnly", "movieAndCollection", or "none"
 		} `mapstructure:"box_office" json:"box_office" yaml:"box_office"`
 
 		FavoritedMovies struct {
@@ -148,6 +152,7 @@ type Config struct {
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
+			Monitor             string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"` // "movieOnly", "movieAndCollection", or "none"
 		} `mapstructure:"favorited_movies" json:"favorited_movies" yaml:"favorited_movies"`
 
 		PlayedMovies struct {
@@ -158,6 +163,7 @@ type Config struct {
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
+			Monitor             string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"` // "movieOnly", "movieAndCollection", or "none"
 		} `mapstructure:"played_movies" json:"played_movies" yaml:"played_movies"`
 
 		WatchedMovies struct {
@@ -168,6 +174,7 @@ type Config struct {
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
+			Monitor             string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"` // "movieOnly", "movieAndCollection", or "none"
 		} `mapstructure:"watched_movies" json:"watched_movies" yaml:"watched_movies"`
 
 		CollectedMovies struct {
@@ -178,6 +185,7 @@ type Config struct {
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
+			Monitor             string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"` // "movieOnly", "movieAndCollection", or "none"
 		} `mapstructure:"collected_movies" json:"collected_movies" yaml:"collected_movies"`
 
 		AnticipatedMovies struct {
@@ -187,6 +195,7 @@ type Config struct {
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
+			Monitor             string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"` // "movieOnly", "movieAndCollection", or "none"
 		} `mapstructure:"anticipated_movies" json:"anticipated_movies" yaml:"anticipated_movies"`
 
 		FavoritedShows struct {
@@ -241,6 +250,7 @@ type Config struct {
 			SyncInterval        string  `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string  `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string  `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
+			Monitor             string  `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"` // "movieOnly", "movieAndCollection", or "none"
 		} `mapstructure:"smart_popular_movies" json:"smart_popular_movies" yaml:"smart_popular_movies"`
 
 		SmartPopularShows struct {

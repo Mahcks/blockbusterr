@@ -405,7 +405,7 @@
                   name="mode"
                   class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 >
-                  <option value="">Use Default</option>
+                  <option value="">Use Global Default</option>
                   <option value="direct">Direct (Radarr/Sonarr)</option>
                   <option value="jellyseerr">Jellyseerr</option>
                 </select>
@@ -435,6 +435,31 @@
                 <p class="text-xs text-slate-400 mt-1">
                   Only add movies with at least this availability (overrides
                   global setting for this job)
+                </p>
+              </div>
+
+              <!-- Monitor (Radarr only) -->
+              <div id="modal-monitor-container" class="hidden">
+                <label
+                  for="modal-monitor"
+                  class="block text-sm font-medium text-slate-300 mb-2"
+                >
+                  Monitor
+                </label>
+                <select
+                  id="modal-monitor"
+                  name="monitor"
+                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  <option value="">Use Global Default</option>
+                  <option value="movieOnly">Movie Only</option>
+                  <option value="movieAndCollection">Movie and Collection</option>
+                  <option value="none">None</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">
+                  Choose how to monitor added movies: "Movie Only" monitors just
+                  the movie, "Movie and Collection" monitors the movie and its
+                  collection, "None" adds without monitoring
                 </p>
               </div>
             </div>
@@ -712,6 +737,18 @@
       minAvailContainer.classList.add("hidden");
     }
 
+    // Show/hide monitor for Radarr movie jobs
+    const monitorContainer = document.getElementById(
+      "modal-monitor-container",
+    );
+    if (radarrMovieJobs.includes(jobKey)) {
+      monitorContainer.classList.remove("hidden");
+      document.getElementById("modal-monitor").value =
+        cfg.monitor || "";
+    } else {
+      monitorContainer.classList.add("hidden");
+    }
+
     // Update enable/disable button based on job status
     const toggleButton = document.getElementById("toggle-job-button");
     const toggleDescription = document.getElementById("toggle-job-description");
@@ -841,6 +878,11 @@
           `${def.configKey}.minimum_availability`,
           keyConfig.minimum_availability,
         );
+      if (keyConfig.monitor !== undefined)
+        formData.append(
+          `${def.configKey}.monitor`,
+          keyConfig.monitor,
+        );
     });
 
     // Add global settings
@@ -913,6 +955,13 @@
       if (radarrMovieJobs.includes(currentJobKey)) {
         config[currentJobKey].minimum_availability = document.getElementById(
           "modal-min-availability",
+        ).value;
+      }
+
+      // Save Monitor if applicable
+      if (radarrMovieJobs.includes(currentJobKey)) {
+        config[currentJobKey].monitor = document.getElementById(
+          "modal-monitor",
         ).value;
       }
 

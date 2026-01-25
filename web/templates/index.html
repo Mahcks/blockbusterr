@@ -248,6 +248,23 @@
           </select>
           <p class="mt-1 text-xs text-slate-400">Default minimum availability for new movies added to Radarr.</p>
         </div>
+
+        <div>
+          <label for="radarr-monitor" class="block text-sm font-medium text-slate-300 mb-2">
+            Monitor
+          </label>
+          <select
+            id="radarr-monitor"
+            name="radarr.monitor"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          >
+            <option value="movieOnly" {{if eq .Config.Radarr.Monitor "movieOnly"}}selected{{end}}>Movie Only</option>
+            <option value="movieAndCollection" {{if eq .Config.Radarr.Monitor "movieAndCollection"}}selected{{end}}>Movie and Collection</option>
+            <option value="none" {{if eq .Config.Radarr.Monitor "none"}}selected{{end}}>None</option>
+          </select>
+          <p class="mt-1 text-xs text-slate-400">Choose how to monitor added movies: "Movie Only" monitors just the movie, "Movie and Collection" monitors the movie and its collection, "None" adds without monitoring</p>
+        </div>
+
       </div>
     </div>
 

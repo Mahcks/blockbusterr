@@ -27,6 +27,7 @@ func RunAnticipatedMovies(cfg *config.Config, db *database.Database, dryRun bool
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.AnticipatedMovies.MinimumAvailability,
+		Monitor:             cfg.Jobs.AnticipatedMovies.Monitor,
 		Limit:               cfg.Jobs.AnticipatedMovies.Limit,
 	}, fetchAnticipatedMovies)
 }
@@ -49,6 +50,7 @@ func RunCollectedMovies(cfg *config.Config, db *database.Database, dryRun bool) 
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.CollectedMovies.MinimumAvailability,
+		Monitor:             cfg.Jobs.CollectedMovies.Monitor,
 		Limit:               cfg.Jobs.CollectedMovies.Limit,
 		Period:              cfg.Jobs.CollectedMovies.Period,
 	}, fetchCollectedMovies)
@@ -72,6 +74,7 @@ func RunFavoritedMovies(cfg *config.Config, db *database.Database, dryRun bool) 
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.FavoritedMovies.MinimumAvailability,
+		Monitor:             cfg.Jobs.FavoritedMovies.Monitor,
 		Limit:               cfg.Jobs.FavoritedMovies.Limit,
 		Period:              cfg.Jobs.FavoritedMovies.Period,
 	}, fetchFavoritedMovies)
@@ -95,6 +98,7 @@ func RunPlayedMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.PlayedMovies.MinimumAvailability,
+		Monitor:             cfg.Jobs.PlayedMovies.Monitor,
 		Limit:               cfg.Jobs.PlayedMovies.Limit,
 		Period:              cfg.Jobs.PlayedMovies.Period,
 	}, fetchPlayedMovies)
@@ -118,6 +122,7 @@ func RunPopularMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.PopularMovies.MinimumAvailability,
+		Monitor:             cfg.Jobs.PopularMovies.Monitor,
 		Limit:               cfg.Jobs.PopularMovies.Limit,
 	}, fetchPopularMovies)
 }
@@ -157,6 +162,7 @@ func RunTrendingMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.TrendingMovies.MinimumAvailability,
+		Monitor:             cfg.Jobs.TrendingMovies.Monitor,
 		Limit:               cfg.Jobs.TrendingMovies.Limit,
 	}, fetcher)
 }
@@ -179,6 +185,7 @@ func RunWatchedMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.WatchedMovies.MinimumAvailability,
+		Monitor:             cfg.Jobs.WatchedMovies.Monitor,
 		Limit:               cfg.Jobs.WatchedMovies.Limit,
 		Period:              cfg.Jobs.WatchedMovies.Period,
 	}, fetchWatchedMovies)
@@ -202,6 +209,7 @@ func RunBoxOffice(cfg *config.Config, db *database.Database, dryRun bool) {
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.BoxOffice.MinimumAvailability,
+		Monitor:             cfg.Jobs.BoxOffice.Monitor,
 		Limit:               cfg.Jobs.BoxOffice.Limit,
 	}, fetchBoxOfficeMovies)
 }
@@ -224,6 +232,7 @@ func RunSmartPopularMovies(cfg *config.Config, db *database.Database, dryRun boo
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.SmartPopularMovies.MinimumAvailability,
+		Monitor:             cfg.Jobs.SmartPopularMovies.Monitor,
 		Limit:               cfg.Jobs.SmartPopularMovies.Limit,
 		BaseMinRating:       cfg.Jobs.SmartPopularMovies.BaseMinRating,
 		AdjustmentFactor:    cfg.Jobs.SmartPopularMovies.AdjustmentFactor,
