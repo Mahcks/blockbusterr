@@ -117,8 +117,20 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 			minAvail = e.Config.Radarr.MinimumAvailability
 		}
 		if minAvail == "" {
-			minAvail = "announced" // or your preferred default
+			minAvail = "announced"
 		}
+
+		// Determine Radarr monitor setting - check job-specific, then global, then default to "movieOnly"
+		monitorSetting := jobConfig.Monitor
+		if monitorSetting == "" {
+			monitorSetting = e.Config.Radarr.Monitor
+		}
+		if monitorSetting == "" {
+			monitorSetting = "movieOnly"
+		}
+
+		// Determine if movie should be monitored based on monitor setting
+		monitored := monitorSetting != "none"
 
 		// Create movie object for Radarr
 		radarrMovie := integrations.RadarrMovie{
@@ -126,11 +138,12 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 			Year:                movie.Year,
 			TmdbID:              movie.IDs.TMDB,
 			QualityProfileID:    e.Config.Radarr.QualityProfile,
-			Monitored:           true,
+			Monitored:           monitored,
 			MinimumAvailability: minAvail,
 			RootFolderPath:      e.Config.Radarr.RootFolder,
 			AddOptions: &integrations.RadarrAddOptions{
-				SearchForMovie: true,
+				SearchForMovie: monitored, // Only search if monitoring
+				Monitor:        monitorSetting,
 			},
 		}
 
@@ -207,7 +220,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 
 // executeMoviesJellyseerr requests movies via Jellyseerr
 func (e *MovieJobExecutor) executeMoviesJellyseerr(
-	ctx context.Context,
+	_ context.Context,
 	jobConfig JobConfig,
 	movies []integrations.Movie,
 	scoreMap map[int]ScoreInfo,

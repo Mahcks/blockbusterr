@@ -103,6 +103,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		radarrQualityProfile := c.FormValue("radarr.quality_profile")
 		radarrRootFolder := c.FormValue("radarr.root_folder")
 		radarrMinimumAvailability := c.FormValue("radarr.minimum_availability")
+		radarrMonitor := c.FormValue("radarr.monitor")
 		sonarrURL := c.FormValue("sonarr.url")
 		sonarrAPIKey := c.FormValue("sonarr.api_key")
 		sonarrQualityProfile := c.FormValue("sonarr.quality_profile")
@@ -135,6 +136,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Radarr.APIKey = radarrAPIKey
 		cfg.Radarr.RootFolder = radarrRootFolder
 		cfg.Radarr.MinimumAvailability = radarrMinimumAvailability
+		cfg.Radarr.Monitor = radarrMonitor
 		cfg.Sonarr.URL = sonarrURL
 		cfg.Sonarr.APIKey = sonarrAPIKey
 		cfg.Sonarr.RootFolder = sonarrRootFolder
@@ -293,6 +295,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			// Always update mode and minimum_availability (empty string means use default)
 			cfg.Jobs.TrendingMovies.Mode = c.FormValue("jobs.trending_movies.mode")
 			cfg.Jobs.TrendingMovies.MinimumAvailability = c.FormValue("jobs.trending_movies.minimum_availability")
+			cfg.Jobs.TrendingMovies.Monitor = c.FormValue("jobs.trending_movies.monitor")
 		}
 
 		// Movies - Popular
@@ -310,6 +313,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			// Always update mode and minimum_availability (empty string means use default)
 			cfg.Jobs.PopularMovies.Mode = c.FormValue("jobs.popular_movies.mode")
 			cfg.Jobs.PopularMovies.MinimumAvailability = c.FormValue("jobs.popular_movies.minimum_availability")
+			cfg.Jobs.PopularMovies.Monitor = c.FormValue("jobs.popular_movies.monitor")
 		}
 
 		// Movies - Box Office
@@ -327,6 +331,8 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			// Always update mode and minimum_availability (empty string means use default)
 			cfg.Jobs.BoxOffice.Mode = c.FormValue("jobs.box_office.mode")
 			cfg.Jobs.BoxOffice.MinimumAvailability = c.FormValue("jobs.box_office.minimum_availability")
+			cfg.Jobs.BoxOffice.Monitor = c.FormValue("jobs.box_office.monitor")
+
 		}
 
 		// Movies - Favorited
@@ -347,6 +353,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			// Always update mode and minimum_availability (empty string means use default)
 			cfg.Jobs.FavoritedMovies.Mode = c.FormValue("jobs.favorited_movies.mode")
 			cfg.Jobs.FavoritedMovies.MinimumAvailability = c.FormValue("jobs.favorited_movies.minimum_availability")
+			cfg.Jobs.FavoritedMovies.Monitor = c.FormValue("jobs.favorited_movies.monitor")
 		}
 
 		// Movies - Played
@@ -367,6 +374,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			// Always update mode and minimum_availability (empty string means use default)
 			cfg.Jobs.PlayedMovies.Mode = c.FormValue("jobs.played_movies.mode")
 			cfg.Jobs.PlayedMovies.MinimumAvailability = c.FormValue("jobs.played_movies.minimum_availability")
+			cfg.Jobs.PlayedMovies.Monitor = c.FormValue("jobs.played_movies.monitor")
 		}
 
 		// Movies - Watched
@@ -387,6 +395,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			// Always update mode and minimum_availability (empty string means use default)
 			cfg.Jobs.WatchedMovies.Mode = c.FormValue("jobs.watched_movies.mode")
 			cfg.Jobs.WatchedMovies.MinimumAvailability = c.FormValue("jobs.watched_movies.minimum_availability")
+			cfg.Jobs.WatchedMovies.Monitor = c.FormValue("jobs.watched_movies.monitor")
 		}
 
 		// Movies - Collected
@@ -407,6 +416,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			// Always update mode and minimum_availability (empty string means use default)
 			cfg.Jobs.CollectedMovies.Mode = c.FormValue("jobs.collected_movies.mode")
 			cfg.Jobs.CollectedMovies.MinimumAvailability = c.FormValue("jobs.collected_movies.minimum_availability")
+			cfg.Jobs.CollectedMovies.Monitor = c.FormValue("jobs.collected_movies.monitor")
 		}
 
 		// Movies - Anticipated
@@ -424,6 +434,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			// Always update mode and minimum_availability (empty string means use default)
 			cfg.Jobs.AnticipatedMovies.Mode = c.FormValue("jobs.anticipated_movies.mode")
 			cfg.Jobs.AnticipatedMovies.MinimumAvailability = c.FormValue("jobs.anticipated_movies.minimum_availability")
+			cfg.Jobs.AnticipatedMovies.Monitor = c.FormValue("jobs.anticipated_movies.monitor")
 		}
 
 		// Shows - Trending
@@ -575,6 +586,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			// Always update mode and minimum_availability (empty string means use default)
 			cfg.Jobs.SmartPopularMovies.Mode = c.FormValue("jobs.smart_popular_movies.mode")
 			cfg.Jobs.SmartPopularMovies.MinimumAvailability = c.FormValue("jobs.smart_popular_movies.minimum_availability")
+			cfg.Jobs.SmartPopularMovies.Monitor = c.FormValue("jobs.smart_popular_movies.monitor")
 		}
 
 		// Shows - Smart Popular

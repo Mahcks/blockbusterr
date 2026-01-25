@@ -19,6 +19,7 @@ type SmartJobConfig struct {
 	MediaType           string
 	Mode                string
 	MinimumAvailability string // Radarr only
+	Monitor             string // Radarr only - "movieOnly", "movieAndCollection", or "none"
 	Limit               int
 	BaseMinRating       float64
 	AdjustmentFactor    float64
@@ -82,10 +83,12 @@ func (e *SmartMovieJobExecutor) Execute(
 
 	// Convert to regular JobConfig for execution
 	regularJobConfig := JobConfig{
-		JobName:   jobConfig.JobName,
-		MediaType: jobConfig.MediaType,
-		Mode:      jobConfig.Mode,
-		Limit:     jobConfig.Limit,
+		JobName:             jobConfig.JobName,
+		MediaType:           jobConfig.MediaType,
+		Mode:                jobConfig.Mode,
+		MinimumAvailability: jobConfig.MinimumAvailability,
+		Monitor:             jobConfig.Monitor,
+		Limit:               jobConfig.Limit,
 	}
 
 	// Route to appropriate handler based on mode
