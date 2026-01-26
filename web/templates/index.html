@@ -395,6 +395,7 @@
             <option value="recent" {{if eq .Config.Sonarr.Monitor "recent"}}selected{{end}}>Recent Episodes</option>
             <option value="monitorSpecials" {{if eq .Config.Sonarr.Monitor "monitorSpecials"}}selected{{end}}>Monitor Specials</option>
             <option value="unmonitorSpecials" {{if eq .Config.Sonarr.Monitor "unmonitorSpecials"}}selected{{end}}>Unmonitor Specials</option>
+            <option value="none" {{if eq .Config.Sonarr.Monitor "none"}}selected{{end}}>None</option>
           </select>
           <p class="mt-1 text-xs text-slate-400">Choose which episodes Sonarr should monitor and download when adding a new series. For example, select "First Season" to only download the first season, or "Future Episodes" to only monitor upcoming episodes.</p>
         </div>

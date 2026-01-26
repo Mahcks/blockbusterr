@@ -14,9 +14,14 @@ type JobConfig struct {
 	MediaType           string // "movie" or "show"
 	Mode                string // "direct" or "jellyseerr"
 	MinimumAvailability string // For direct mode only - "announced", "in_cinemas", or "released"
-	Monitor             string // For Radarr: "movieOnly", "movieAndCollection", "none"; For Sonarr: "all", "future", "missing", "existing", "pilot", "firstSeason", "latestSeason", "none"
-	Limit               int
-	Period              string // For watched/collected/played jobs
+	/*
+		For Radarr: "movieOnly", "movieAndCollection", "none";
+
+		For Sonarr: "all", "future", "missing", "existing", "pilot", "firstSeason", "latestSeason", "none"
+	*/
+	Monitor string
+	Limit   int
+	Period  string // For watched/collected/played jobs
 }
 
 // ScoreInfo holds scoring information for a media item
