@@ -15,15 +15,41 @@ Radarr integration allows Blockbusterr to automatically add movies to your libra
 
 ```yaml
 radarr:
-  enabled: true
   url: "http://radarr:7878"
   api_key: "your_radarr_api_key"
-  quality_profile_id: 1
+  quality_profile: 1
   root_folder: "/movies"
-  search_on_add: true
-  monitored: true
   minimum_availability: "released"
+  monitor: "movieOnly"
 ```
+
+## Monitor Options
+
+The `monitor` setting controls how movies are monitored when added to Radarr.
+
+| Value | Description |
+|-------|-------------|
+| `movieOnly` | Monitor only the movie itself (default) |
+| `movieAndCollection` | Monitor the movie and its entire collection (e.g., all MCU movies) |
+| `none` | Add the movie but don't monitor it for downloads |
+
+:::tip
+Use `movieAndCollection` if you want Radarr to automatically grab other movies in a franchise when you add one from the collection.
+:::
+
+## Minimum Availability Options
+
+The `minimum_availability` setting determines when Radarr considers a movie available for download.
+
+| Value | Description |
+|-------|-------------|
+| `announced` | As soon as the movie is announced |
+| `inCinemas` | When the movie is released in theaters |
+| `released` | When the movie is released on physical/digital media (default, recommended) |
+
+:::caution
+Setting `announced` or `inCinemas` may result in lower quality releases or CAM rips. Use `released` for best quality.
+:::
 
 ## Getting API Key
 
