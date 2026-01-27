@@ -19,7 +19,7 @@ type SmartJobConfig struct {
 	MediaType           string
 	Mode                string
 	MinimumAvailability string // Radarr only
-	Monitor             string // Radarr only - "movieOnly", "movieAndCollection", or "none"
+	Monitor             string // For Radarr: "movieOnly", "movieAndCollection", "none"; For Sonarr: "all", "future", "missing", "existing", "pilot", "firstSeason", "latestSeason", "none"
 	Limit               int
 	BaseMinRating       float64
 	AdjustmentFactor    float64

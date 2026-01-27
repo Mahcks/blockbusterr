@@ -374,6 +374,31 @@
             ↻ Load Root Folders
           </button>
         </div>
+
+        <div>
+          <label for="sonarr-monitor" class="block text-sm font-medium text-slate-300 mb-2">
+            Monitor
+          </label>
+          <select
+            id="sonarr-monitor"
+            name="sonarr.monitor"
+            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          >
+            <option value="all" {{if eq .Config.Sonarr.Monitor "all"}}selected{{end}}>All Episodes</option>
+            <option value="future" {{if eq .Config.Sonarr.Monitor "future"}}selected{{end}}>Future Episodes</option>
+            <option value="missing" {{if eq .Config.Sonarr.Monitor "missing"}}selected{{end}}>Missing Episodes</option>
+            <option value="existing" {{if eq .Config.Sonarr.Monitor "existing"}}selected{{end}}>Existing Episodes</option>
+            <option value="firstSeason" {{if eq .Config.Sonarr.Monitor "firstSeason"}}selected{{end}}>First Season</option>
+            <option value="lastSeason" {{if eq .Config.Sonarr.Monitor "lastSeason"}}selected{{end}}>Last Season</option>
+            <option value="latestSeason" {{if eq .Config.Sonarr.Monitor "latestSeason"}}selected{{end}}>Latest Season</option>
+            <option value="pilot" {{if eq .Config.Sonarr.Monitor "pilot"}}selected{{end}}>Pilot Episode</option>
+            <option value="recent" {{if eq .Config.Sonarr.Monitor "recent"}}selected{{end}}>Recent Episodes</option>
+            <option value="monitorSpecials" {{if eq .Config.Sonarr.Monitor "monitorSpecials"}}selected{{end}}>Monitor Specials</option>
+            <option value="unmonitorSpecials" {{if eq .Config.Sonarr.Monitor "unmonitorSpecials"}}selected{{end}}>Unmonitor Specials</option>
+            <option value="none" {{if eq .Config.Sonarr.Monitor "none"}}selected{{end}}>None</option>
+          </select>
+          <p class="mt-1 text-xs text-slate-400">Choose which episodes Sonarr should monitor and download when adding a new series. For example, select "First Season" to only download the first season, or "Future Episodes" to only monitor upcoming episodes.</p>
+        </div>
       </div>
     </div>
 

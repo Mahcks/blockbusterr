@@ -108,6 +108,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		sonarrAPIKey := c.FormValue("sonarr.api_key")
 		sonarrQualityProfile := c.FormValue("sonarr.quality_profile")
 		sonarrRootFolder := c.FormValue("sonarr.root_folder")
+		sonarrMonitor := c.FormValue("sonarr.monitor")
 		jellyseerrURL := c.FormValue("jellyseerr.url")
 		jellyseerrAPIKey := c.FormValue("jellyseerr.api_key")
 		jellyseerrUserID := c.FormValue("jellyseerr.user_id")
@@ -140,6 +141,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Sonarr.URL = sonarrURL
 		cfg.Sonarr.APIKey = sonarrAPIKey
 		cfg.Sonarr.RootFolder = sonarrRootFolder
+		cfg.Sonarr.Monitor = sonarrMonitor
 		cfg.Jellyseerr.URL = jellyseerrURL
 		cfg.Jellyseerr.APIKey = jellyseerrAPIKey
 		cfg.Jellyseerr.UserID = jellyseerrUserID
@@ -449,8 +451,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.trending_shows.sync_interval") {
 				cfg.Jobs.TrendingShows.SyncInterval = c.FormValue("jobs.trending_shows.sync_interval")
 			}
-			// Always update mode (empty string means use default)
+			// Always update mode and monitor (empty string means use default)
 			cfg.Jobs.TrendingShows.Mode = c.FormValue("jobs.trending_shows.mode")
+			cfg.Jobs.TrendingShows.Monitor = c.FormValue("jobs.trending_shows.monitor")
 		}
 
 		// Shows - Popular
@@ -465,8 +468,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.popular_shows.sync_interval") {
 				cfg.Jobs.PopularShows.SyncInterval = c.FormValue("jobs.popular_shows.sync_interval")
 			}
-			// Always update mode (empty string means use default)
+			// Always update mode and monitor (empty string means use default)
 			cfg.Jobs.PopularShows.Mode = c.FormValue("jobs.popular_shows.mode")
+			cfg.Jobs.PopularShows.Monitor = c.FormValue("jobs.popular_shows.monitor")
 		}
 
 		// Shows - Favorited
@@ -484,8 +488,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.favorited_shows.sync_interval") {
 				cfg.Jobs.FavoritedShows.SyncInterval = c.FormValue("jobs.favorited_shows.sync_interval")
 			}
-			// Always update mode (empty string means use default)
+			// Always update mode and monitor (empty string means use default)
 			cfg.Jobs.FavoritedShows.Mode = c.FormValue("jobs.favorited_shows.mode")
+			cfg.Jobs.FavoritedShows.Monitor = c.FormValue("jobs.favorited_shows.monitor")
 		}
 
 		// Shows - Played
@@ -503,8 +508,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.played_shows.sync_interval") {
 				cfg.Jobs.PlayedShows.SyncInterval = c.FormValue("jobs.played_shows.sync_interval")
 			}
-			// Always update mode (empty string means use default)
+			// Always update mode and monitor (empty string means use default)
 			cfg.Jobs.PlayedShows.Mode = c.FormValue("jobs.played_shows.mode")
+			cfg.Jobs.PlayedShows.Monitor = c.FormValue("jobs.played_shows.monitor")
 		}
 
 		// Shows - Watched
@@ -522,8 +528,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.watched_shows.sync_interval") {
 				cfg.Jobs.WatchedShows.SyncInterval = c.FormValue("jobs.watched_shows.sync_interval")
 			}
-			// Always update mode (empty string means use default)
+			// Always update mode and monitor (empty string means use default)
 			cfg.Jobs.WatchedShows.Mode = c.FormValue("jobs.watched_shows.mode")
+			cfg.Jobs.WatchedShows.Monitor = c.FormValue("jobs.watched_shows.monitor")
 		}
 
 		// Shows - Collected
@@ -541,8 +548,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.collected_shows.sync_interval") {
 				cfg.Jobs.CollectedShows.SyncInterval = c.FormValue("jobs.collected_shows.sync_interval")
 			}
-			// Always update mode (empty string means use default)
+			// Always update mode and monitor (empty string means use default)
 			cfg.Jobs.CollectedShows.Mode = c.FormValue("jobs.collected_shows.mode")
+			cfg.Jobs.CollectedShows.Monitor = c.FormValue("jobs.collected_shows.monitor")
 		}
 
 		// Shows - Anticipated
@@ -557,8 +565,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.anticipated_shows.sync_interval") {
 				cfg.Jobs.AnticipatedShows.SyncInterval = c.FormValue("jobs.anticipated_shows.sync_interval")
 			}
-			// Always update mode (empty string means use default)
+			// Always update mode and monitor (empty string means use default)
 			cfg.Jobs.AnticipatedShows.Mode = c.FormValue("jobs.anticipated_shows.mode")
+			cfg.Jobs.AnticipatedShows.Monitor = c.FormValue("jobs.anticipated_shows.monitor")
 		}
 
 		// Movies - Smart Popular
@@ -611,8 +620,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			if hasField("jobs.smart_popular_shows.sync_interval") {
 				cfg.Jobs.SmartPopularShows.SyncInterval = c.FormValue("jobs.smart_popular_shows.sync_interval")
 			}
-			// Always update mode (empty string means use default)
+			// Always update mode and monitor (empty string means use default)
 			cfg.Jobs.SmartPopularShows.Mode = c.FormValue("jobs.smart_popular_shows.mode")
+			cfg.Jobs.SmartPopularShows.Monitor = c.FormValue("jobs.smart_popular_shows.monitor")
 		}
 
 		// Save config to file
