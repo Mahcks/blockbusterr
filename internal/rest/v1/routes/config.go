@@ -86,7 +86,7 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 				"error": fmt.Sprintf("Failed to open uploaded file: %v", err),
 			})
 		}
-		defer src.Close()
+		defer func() { _ = src.Close() }()
 
 		// Read file contents
 		data, err := io.ReadAll(src)
@@ -161,7 +161,7 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 				"error": fmt.Sprintf("Failed to open uploaded file: %v", err),
 			})
 		}
-		defer src.Close()
+		defer func() { _ = src.Close() }()
 
 		// Read file contents
 		data, err := io.ReadAll(src)

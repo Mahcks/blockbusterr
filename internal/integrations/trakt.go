@@ -199,7 +199,7 @@ func (t *Trakt) GetTrendingMovies(ctx context.Context, limit int) ([]TrendingMov
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -222,7 +222,7 @@ func (t *Trakt) GetTrendingShows(ctx context.Context, limit int) ([]TrendingShow
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -245,7 +245,7 @@ func (t *Trakt) GetPopularMovies(ctx context.Context, limit int) ([]Movie, error
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -268,7 +268,7 @@ func (t *Trakt) GetPopularShows(ctx context.Context, limit int) ([]Show, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -299,7 +299,7 @@ func (t *Trakt) Search(ctx context.Context, query string, searchType string, lim
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -322,7 +322,7 @@ func (t *Trakt) GetBoxOfficeMovies(ctx context.Context, limit int) ([]BoxOfficeM
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -345,7 +345,7 @@ func (t *Trakt) GetFavoritedMovies(ctx context.Context, period string, limit int
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -368,7 +368,7 @@ func (t *Trakt) GetPlayedMovies(ctx context.Context, period string, limit int) (
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -391,7 +391,7 @@ func (t *Trakt) GetWatchedMovies(ctx context.Context, period string, limit int) 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -414,7 +414,7 @@ func (t *Trakt) GetCollectedMovies(ctx context.Context, period string, limit int
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -437,7 +437,7 @@ func (t *Trakt) GetAnticipatedMovies(ctx context.Context, limit int) ([]Anticipa
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -460,7 +460,7 @@ func (t *Trakt) GetFavoritedShows(ctx context.Context, period string, limit int)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -483,7 +483,7 @@ func (t *Trakt) GetPlayedShows(ctx context.Context, period string, limit int) ([
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -506,7 +506,7 @@ func (t *Trakt) GetWatchedShows(ctx context.Context, period string, limit int) (
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -529,7 +529,7 @@ func (t *Trakt) GetCollectedShows(ctx context.Context, period string, limit int)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -552,7 +552,7 @@ func (t *Trakt) GetAnticipatedShows(ctx context.Context, limit int) ([]Anticipat
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -610,7 +610,7 @@ func (t *Trakt) GetLanguages(ctx context.Context, mediaType string) ([]Language,
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -633,7 +633,7 @@ func (t *Trakt) GetGenres(ctx context.Context, mediaType string) ([]Genre, error
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -656,7 +656,7 @@ func (t *Trakt) GetCountries(ctx context.Context, mediaType string) ([]Country, 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -679,7 +679,7 @@ func (t *Trakt) GetNetworks(ctx context.Context) ([]Network, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

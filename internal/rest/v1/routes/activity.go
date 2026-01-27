@@ -383,7 +383,8 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 
 		// Add to blocklist in config
 		cfg := gctx.Config()
-		if activityLog.MediaType == "movie" {
+		switch activityLog.MediaType {
+		case "movie":
 			if activityLog.TMDBID == 0 {
 				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 					"error": "No TMDB ID available for this movie",
@@ -403,7 +404,8 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			}
 
 			log.Infof("Blocked movie '%s' (TMDB ID: %d) - added to blocklist", activityLog.Title, activityLog.TMDBID)
-		} else if activityLog.MediaType == "show" {
+
+		case "show":
 			if activityLog.TVDBID == 0 {
 				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 					"error": "No TVDB ID available for this show",

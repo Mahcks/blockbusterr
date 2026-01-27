@@ -136,7 +136,7 @@ func (j *Jellyseerr) login() error {
 	if err != nil {
 		return fmt.Errorf("failed to execute login request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -222,7 +222,7 @@ func (j *Jellyseerr) GetStatus() (*StatusResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -256,7 +256,7 @@ func (j *Jellyseerr) RequestMovie(tmdbID int) (*RequestResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
 
@@ -296,7 +296,7 @@ func (j *Jellyseerr) RequestShow(tmdbID int) (*RequestResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
 
@@ -341,7 +341,7 @@ func (j *Jellyseerr) GetMovieInfo(tmdbID int) (*MediaInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		// Movie not found in Jellyseerr = not requested
@@ -368,7 +368,7 @@ func (j *Jellyseerr) GetShowInfo(tmdbID int) (*MediaInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		// Show not found in Jellyseerr = not requested

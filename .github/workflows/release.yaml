@@ -45,6 +45,6 @@
             ghcr.io/${{ env.repo }}:${{ steps.version.outputs.version }}
             ghcr.io/${{ env.repo }}:latest
           build-args: |
-            GOLANG_TAG=1.24-alpine
+            GOLANG_TAG=1.25.6-alpine
             VERSION=${{ steps.version.outputs.version }}
             COMMIT=${{ github.sha }}

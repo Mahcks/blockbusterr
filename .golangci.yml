@@ -1,3 +1,6 @@
-issues:
-  exclude-dirs:
-    - docs
+version: "2"
+
+linters:
+  exclusions:
+    paths:
+      - docs
