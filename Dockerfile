@@ -22,7 +22,7 @@ COPY . .
 # Build the application with version info (CGO_ENABLED=1 for SQLite)
 RUN CGO_ENABLED=1 GOOS=linux go build \
     -o blockbusterr \
-    -ldflags="-s -w -X 'main.Version=${VERSION}' -X 'main.Timestamp=${COMMIT}'" \
+    -ldflags="-s -w -X 'main.Version=${VERSION}' -X 'main.Commit=${COMMIT}'" \
     ./cmd/app/main.go
 
 # Runtime stage

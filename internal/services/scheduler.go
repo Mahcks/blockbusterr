@@ -46,11 +46,9 @@ func NewScheduler(getConfig func() *config.Config, db *database.Database, versio
 func (s *Scheduler) Start() {
 	log.Info("Starting job scheduler")
 
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
+	s.wg.Go(func() {
 		s.run()
-	}()
+	})
 }
 
 func (s *Scheduler) Stop() {

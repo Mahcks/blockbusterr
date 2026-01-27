@@ -9,8 +9,8 @@ import (
 )
 
 type Metadata struct {
-	Version   string
-	Timestamp string
+	Version string
+	Commit  string
 }
 
 type Context interface {
@@ -61,15 +61,14 @@ func New(
 	ctx context.Context,
 	cfg *config.Config,
 	db *database.Database,
-	Version string,
-	Timestamp string,
+	Version, Commit string,
 ) Context {
 	return &gCtx{
 		cfg:     cfg,
 		Context: ctx,
 		metadata: Metadata{
-			Version:   Version,
-			Timestamp: Timestamp,
+			Version: Version,
+			Commit:  Commit,
 		},
 		db: db,
 	}

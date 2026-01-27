@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	Version   = "dev"
-	Timestamp = "unknown"
+	Version = "dev"
+	Commit  = "none"
 )
 
 func main() {
@@ -31,12 +31,9 @@ func main() {
 		}
 	}
 
-	// If Timestamp wasn't set at build time via ldflags, use env var or current time
-	if Timestamp == "unknown" || Timestamp == "" {
-		if t := os.Getenv("TIMESTAMP"); t != "" {
-			Timestamp = t
-		} else {
-			Timestamp = time.Now().Format(time.RFC3339)
+	if Commit == "none" || Commit == "" {
+		if c := os.Getenv("COMMIT"); c != "" {
+			Commit = c
 		}
 	}
 
@@ -54,9 +51,9 @@ func main() {
 	slog.SetDefault(logger)
 
 	if Version == "dev" {
-		slog.Info("Starting in development mode", "version", Version, "timestamp", Timestamp)
+		slog.Info("Starting in development mode", "version", Version, "commit", Commit)
 	} else {
-		slog.Info("Starting in production mode", "version", Version, "timestamp", Timestamp)
+		slog.Info("Starting in production mode", "version", Version, "commit", Commit)
 	}
 
 	cfg, err := config.New(Version)
@@ -77,7 +74,7 @@ func main() {
 		cfg,
 		db,
 		Version,
-		Timestamp,
+		Commit,
 	))
 
 	interrupt := make(chan os.Signal, 1)
@@ -117,17 +114,14 @@ func main() {
 		close(done)
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
+	wg.Go(func() {
 		slog.Info("api", "status", "starting")
 		if err := rest.New(gctx); err != nil {
 			slog.Error("api", "status", "errored", "error", err)
 			os.Exit(1)
 		}
 		slog.Info("api", "status", "started")
-	}()
+	})
 
 	<-done
 	slog.Info("Shutdown complete")

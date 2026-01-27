@@ -1,6 +1,6 @@
 module github.com/mahcks/blockbusterr
 
-go 1.24.5
+go 1.25.6
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.10
