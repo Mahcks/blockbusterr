@@ -52,7 +52,10 @@ func New(dataDir string) (*Database, error) {
 
 	// Initialize schema
 	if err := database.initSchema(); err != nil {
-		db.Close()
+		err := db.Close()
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize schema and close db: %w", err)
+		}
 		return nil, err
 	}
 
@@ -183,7 +186,7 @@ func (d *Database) GetRecentActivity(limit int) ([]ActivityLog, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var logs []ActivityLog
 	for rows.Next() {
@@ -273,7 +276,7 @@ func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobTy
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var logs []ActivityLog
 	for rows.Next() {

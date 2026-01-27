@@ -35,7 +35,7 @@ func New(gctx global.Context) error {
 	// Check DISABLE_UI environment variable (UI enabled by default)
 	uiEnabled := true
 	if disableUI := strings.ToLower(strings.TrimSpace(os.Getenv("DISABLE_UI"))); disableUI != "" {
-		uiEnabled = !(disableUI == "true" || disableUI == "1" || disableUI == "yes")
+		uiEnabled = disableUI != "true" && disableUI != "1" && disableUI != "yes"
 	}
 
 	// Initialize template engine with custom functions

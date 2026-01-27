@@ -140,7 +140,7 @@ func (r *Radarr) GetSystemStatus(ctx context.Context) (*SystemStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -161,7 +161,7 @@ func (r *Radarr) GetQualityProfiles(ctx context.Context) ([]QualityProfile, erro
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -182,7 +182,7 @@ func (r *Radarr) GetRootFolders(ctx context.Context) ([]RootFolder, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -203,7 +203,7 @@ func (r *Radarr) AddMovie(ctx context.Context, movie RadarrMovie) (*RadarrMovie,
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -224,7 +224,7 @@ func (r *Radarr) GetMovies(ctx context.Context) ([]RadarrMovie, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -247,7 +247,7 @@ func (r *Radarr) LookupMovie(ctx context.Context, term string) ([]RadarrMovie, e
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

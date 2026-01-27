@@ -144,7 +144,7 @@ func (s *Sonarr) GetSystemStatus(ctx context.Context) (*SonarrSystemStatus, erro
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -165,7 +165,7 @@ func (s *Sonarr) GetQualityProfiles(ctx context.Context) ([]SonarrQualityProfile
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -186,7 +186,7 @@ func (s *Sonarr) GetRootFolders(ctx context.Context) ([]SonarrRootFolder, error)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -207,7 +207,7 @@ func (s *Sonarr) AddSeries(ctx context.Context, series SonarrSeries) (*SonarrSer
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -228,7 +228,7 @@ func (s *Sonarr) GetSeries(ctx context.Context) ([]SonarrSeries, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -251,7 +251,7 @@ func (s *Sonarr) LookupSeries(ctx context.Context, term string) ([]SonarrSeries,
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

@@ -16,7 +16,10 @@ func main() {
 	fmt.Println("=== Content Scoring System Demo (LIVE DATA) ===")
 
 	// Set to dev mode to load config.dev.yaml
-	os.Setenv("VERSION", "dev")
+	err := os.Setenv("VERSION", "dev")
+	if err != nil {
+		log.Fatalf("Failed to set env var: %v", err)
+	}
 
 	// Load actual configuration
 	cfg, err := config.New("dev")
