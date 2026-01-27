@@ -406,6 +406,7 @@
                   name="monitor"
                   class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 >
+                  <option value="">Use Global Default</option>
                   <option value="all">All Episodes</option>
                   <option value="future">Future Episodes</option>
                   <option value="missing">Missing Episodes</option>
@@ -471,15 +472,15 @@
               </div>
 
               <!-- Monitor (Radarr only) -->
-              <div id="modal-monitor-container" class="hidden">
+              <div id="modal-radarr-monitor-container" class="hidden">
                 <label
-                  for="modal-monitor"
+                  for="modal-radarr-monitor"
                   class="block text-sm font-medium text-slate-300 mb-2"
                 >
                   Monitor
                 </label>
                 <select
-                  id="modal-monitor"
+                  id="modal-radarr-monitor"
                   name="monitor"
                   class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 >
@@ -492,6 +493,39 @@
                   Choose how to monitor added movies: "Movie Only" monitors just
                   the movie, "Movie and Collection" monitors the movie and its
                   collection, "None" adds without monitoring
+                </p>
+              </div>
+
+              <!-- Monitor (Sonarr only) -->
+              <div id="modal-sonarr-monitor-container" class="hidden">
+                <label
+                  for="modal-sonarr-monitor"
+                  class="block text-sm font-medium text-slate-300 mb-2"
+                >
+                  Monitor
+                </label>
+                <select
+                  id="modal-sonarr-monitor"
+                  name="monitor"
+                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  <option value="">Use Global Default</option>
+                  <option value="all">All Episodes</option>
+                  <option value="future">Future Episodes</option>
+                  <option value="missing">Missing Episodes</option>
+                  <option value="existing">Existing Episodes</option>
+                  <option value="firstSeason">First Season</option>
+                  <option value="lastSeason">Last Season</option>
+                  <option value="latestSeason">Latest Season</option>
+                  <option value="pilot">Pilot Episode</option>
+                  <option value="recent">Recent Episodes</option>
+                  <option value="monitorSpecials">Monitor Specials</option>
+                  <option value="unmonitorSpecials">Unmonitor Specials</option>
+                  <option value="none">None</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">
+                  Choose which episodes Sonarr should monitor (overrides global
+                  setting for this job)
                 </p>
               </div>
             </div>
@@ -545,17 +579,28 @@
   // Load config from template
 
   const config = JSON.parse("{{json .Config.Jobs}}");
+  const globalMode = "{{.Config.Jobs.Mode}}" || "direct";
 
-  const sonarrJobs = [
-    "trending_shows",
-    "popular_shows",
-    "favorited_shows",
-    "played_shows",
-    "watched_shows",
-    "collected_shows",
-    "anticipated_shows",
-    "smart_popular_shows",
-  ];
+  // Helper to determine effective mode for a job
+  function getEffectiveMode(jobKey) {
+    const jobMode = config[jobKey]?.mode || "";
+    if (jobMode !== "") {
+      return jobMode;
+    }
+    return globalMode;
+  }
+
+  // Helper to check if mode is direct (for showing Radarr/Sonarr-specific fields)
+  function isDirectMode(jobKey) {
+    const modeSelect = document.getElementById("modal-mode");
+    const selectedMode = modeSelect ? modeSelect.value : "";
+    // If a mode is explicitly selected in the modal, use that
+    if (selectedMode !== "") {
+      return selectedMode === "direct";
+    }
+    // Otherwise use the effective mode from config
+    return getEffectiveMode(jobKey) === "direct";
+  }
 
   let currentJobKey = null;
   let previewJobKey = null;
@@ -574,11 +619,74 @@
     "smart_popular_movies",
   ];
 
+  const sonarrJobs = [
+    "trending_shows",
+    "popular_shows",
+    "favorited_shows",
+    "played_shows",
+    "watched_shows",
+    "collected_shows",
+    "anticipated_shows",
+    "smart_popular_shows",
+  ];
+
+  // Update visibility of Direct mode fields (minimum availability, monitor)
+  // These only apply when using Direct mode (Radarr/Sonarr), not Jellyseerr
+  function updateDirectModeFields(jobKey, cfg) {
+    const minAvailContainer = document.getElementById(
+      "modal-min-availability-container",
+    );
+    const radarrMonitorContainer = document.getElementById(
+      "modal-radarr-monitor-container",
+    );
+    const sonarrMonitorContainer = document.getElementById(
+      "modal-sonarr-monitor-container",
+    );
+
+    // Check if we're in direct mode
+    const directMode = isDirectMode(jobKey);
+
+    // Minimum availability - only for Radarr movie jobs in direct mode
+    if (radarrMovieJobs.includes(jobKey) && directMode) {
+      minAvailContainer.classList.remove("hidden");
+      document.getElementById("modal-min-availability").value =
+        cfg?.minimum_availability || "";
+    } else {
+      minAvailContainer.classList.add("hidden");
+    }
+
+    // Monitor - Radarr for movie jobs, Sonarr for show jobs, only in direct mode
+    if (radarrMovieJobs.includes(jobKey) && directMode) {
+      radarrMonitorContainer.classList.remove("hidden");
+      sonarrMonitorContainer.classList.add("hidden");
+      document.getElementById("modal-radarr-monitor").value =
+        cfg?.monitor || "";
+    } else if (sonarrJobs.includes(jobKey) && directMode) {
+      sonarrMonitorContainer.classList.remove("hidden");
+      radarrMonitorContainer.classList.add("hidden");
+      document.getElementById("modal-sonarr-monitor").value =
+        cfg?.monitor || "";
+    } else {
+      radarrMonitorContainer.classList.add("hidden");
+      sonarrMonitorContainer.classList.add("hidden");
+    }
+  }
+
   // Initialize
   document.addEventListener("DOMContentLoaded", function () {
     console.log("Config loaded:", config);
     console.log("Job definitions:", Object.keys(jobDefinitions));
     renderJobsList();
+
+    // Add event listener for mode dropdown to show/hide direct mode fields
+    const modeSelect = document.getElementById("modal-mode");
+    if (modeSelect) {
+      modeSelect.addEventListener("change", function () {
+        if (currentJobKey) {
+          updateDirectModeFields(currentJobKey, config[currentJobKey]);
+        }
+      });
+    }
   });
 
   function renderJobsList() {
@@ -768,32 +876,9 @@
       smartContainer.classList.add("hidden");
     }
 
-    // Show/hide minimum availability for Radarr movie jobs
-    const minAvailContainer = document.getElementById(
-      "modal-min-availability-container",
-    );
-    if (radarrMovieJobs.includes(jobKey)) {
-      minAvailContainer.classList.remove("hidden");
-      document.getElementById("modal-min-availability").value =
-        cfg.minimum_availability || "";
-    } else {
-      minAvailContainer.classList.add("hidden");
-    }
-
-    // Show/hide monitor for Radarr movie jobs and Sonarr jobs
-    const monitorContainer = document.getElementById(
-      "modal-monitor-container",
-    );
-    if (radarrMovieJobs.includes(jobKey)) {
-      monitorContainer.classList.remove("hidden");
-      document.getElementById("modal-monitor").value =
-        cfg.monitor || "";
-    } else if (sonarrJobs.includes(jobKey)) {
-      monitorContainer.classList.remove("hidden");
-      document.getElementById("modal-monitor").value = cfg.monitor || "all";
-    } else {
-      monitorContainer.classList.add("hidden");
-    }
+    // Show/hide minimum availability and monitor based on mode
+    // These only apply to Direct mode (Radarr/Sonarr), not Jellyseerr
+    updateDirectModeFields(jobKey, cfg);
 
     // Update enable/disable button based on job status
     const toggleButton = document.getElementById("toggle-job-button");
@@ -1004,10 +1089,14 @@
         ).value;
       }
 
-      // Save Monitor if applicable
+      // Save Monitor if applicable (Radarr or Sonarr)
       if (radarrMovieJobs.includes(currentJobKey)) {
         config[currentJobKey].monitor = document.getElementById(
-          "modal-monitor",
+          "modal-radarr-monitor",
+        ).value;
+      } else if (sonarrJobs.includes(currentJobKey)) {
+        config[currentJobKey].monitor = document.getElementById(
+          "modal-sonarr-monitor",
         ).value;
       }
 
