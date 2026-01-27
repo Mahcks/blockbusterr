@@ -1,5 +1,6 @@
 version: "2"
 
-run:
-  exclude-dirs:
-    - docs
+linters:
+  exclusions:
+    paths:
+      - docs
