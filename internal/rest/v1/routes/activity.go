@@ -137,11 +137,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		// Legacy support for limit param
 		if limitStr := c.Query("limit"); limitStr != "" {
 			if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
-				if parsedLimit > maxLegacyLimit {
-					pageSize = maxLegacyLimit
-				} else {
-					pageSize = parsedLimit
-				}
+				pageSize = min(parsedLimit, maxLegacyLimit)
 			}
 		}
 
@@ -175,10 +171,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		}
 
 		// Fetch more logs than needed to apply filters and calculate total
-		fetchLimit := pageSize * 100 // Fetch enough for filtering
-		if fetchLimit > maxFetchLimit {
-			fetchLimit = maxFetchLimit
-		}
+		fetchLimit := min(pageSize*100, maxFetchLimit) // Fetch enough for filtering
 		logs, err := db.GetRecentActivityFiltered(fetchLimit, status, mediaType, jobType)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

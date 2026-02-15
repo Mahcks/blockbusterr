@@ -38,23 +38,23 @@ type ActivityLog struct {
 }
 
 type JobRun struct {
-	ID           int64     `json:"id"`
-	StartedAt    time.Time `json:"started_at"`
-	FinishedAt   time.Time `json:"finished_at,omitempty"`
-	DurationMs   int64     `json:"duration_ms"`
-	JobID        string    `json:"job_id,omitempty"`
-	JobName      string    `json:"job_name"`
-	MediaType    string    `json:"media_type"` // "movie" or "show"
-	Mode         string    `json:"mode"`       // "direct" or "jellyseerr"
-	Status       string    `json:"status"`     // "running", "completed", "failed"
-	TotalFound   int       `json:"total_found"`
-	PassedFilter int       `json:"passed_filters"`
-	Added        int       `json:"added"`
-	Requested    int       `json:"requested"`
-	Skipped      int       `json:"skipped"`
-	Rejected     int       `json:"rejected"`
-	Failed       int       `json:"failed"`
-	ErrorMessage string    `json:"error_message,omitempty"`
+	ID           int64      `json:"id"`
+	StartedAt    time.Time  `json:"started_at"`
+	FinishedAt   *time.Time `json:"finished_at,omitempty"`
+	DurationMs   int64      `json:"duration_ms"`
+	JobID        string     `json:"job_id,omitempty"`
+	JobName      string     `json:"job_name"`
+	MediaType    string     `json:"media_type"` // "movie" or "show"
+	Mode         string     `json:"mode"`       // "direct" or "jellyseerr"
+	Status       string     `json:"status"`     // "running", "completed", "failed"
+	TotalFound   int        `json:"total_found"`
+	PassedFilter int        `json:"passed_filters"`
+	Added        int        `json:"added"`
+	Requested    int        `json:"requested"`
+	Skipped      int        `json:"skipped"`
+	Rejected     int        `json:"rejected"`
+	Failed       int        `json:"failed"`
+	ErrorMessage string     `json:"error_message,omitempty"`
 }
 
 type ActivityDailyCount struct {
@@ -905,9 +905,7 @@ func (d *Database) CompleteJobRun(
 	err := d.db.QueryRow("SELECT started_at FROM job_runs WHERE id = ?", runID).Scan(&startedAt)
 	if err == nil {
 		durationMs = finishedAt.Sub(startedAt).Milliseconds()
-		if durationMs < 0 {
-			durationMs = 0
-		}
+		durationMs = max(durationMs, 0)
 	}
 
 	_, err = d.db.Exec(
@@ -980,7 +978,8 @@ func (d *Database) GetRecentJobRuns(limit int, jobID string) ([]JobRun, error) {
 		}
 
 		if finishedAt.Valid {
-			run.FinishedAt = finishedAt.Time
+			t := finishedAt.Time
+			run.FinishedAt = &t
 		}
 		if jobIDVal.Valid {
 			run.JobID = jobIDVal.String

@@ -1,5 +1,7 @@
 package jobs
 
+import "slices"
+
 // JobTypeDefinition describes a job type that can be instantiated as a DynamicJob
 type JobTypeDefinition struct {
 	Type           string   `json:"type"`            // Internal type identifier
@@ -120,13 +122,13 @@ var JobTypeRegistry = map[string]JobTypeDefinition{
 
 // JobTemplate represents a pre-configured job template for quick setup
 type JobTemplate struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Type        string  `json:"type"`
-	MediaType   string  `json:"media"`
-	Limit       int     `json:"limit"`
-	Period      string  `json:"period,omitempty"`
-	Category    string  `json:"category"` // "Movies" or "TV Shows"
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Type        string `json:"type"`
+	MediaType   string `json:"media"`
+	Limit       int    `json:"limit"`
+	Period      string `json:"period,omitempty"`
+	Category    string `json:"category"` // "Movies" or "TV Shows"
 }
 
 // JobTemplates contains pre-defined job configurations for common use cases
@@ -265,12 +267,7 @@ func SupportsMediaType(jobType, mediaType string) bool {
 	if !ok {
 		return false
 	}
-	for _, m := range def.SupportedMedia {
-		if m == mediaType {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(def.SupportedMedia, mediaType)
 }
 
 // GetAllJobTypes returns all job type definitions
