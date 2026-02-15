@@ -2,6 +2,7 @@ package routes
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -345,14 +346,7 @@ func validateDynamicJob(job config.DynamicJob) error {
 	// Validate period value if provided
 	if job.Period != "" {
 		validPeriods := []string{"weekly", "monthly", "yearly", "all"}
-		isValid := false
-		for _, p := range validPeriods {
-			if job.Period == p {
-				isValid = true
-				break
-			}
-		}
-		if !isValid {
+		if !slices.Contains(validPeriods, job.Period) {
 			return fmt.Errorf("invalid period: %s (must be weekly, monthly, yearly, or all)", job.Period)
 		}
 	}
@@ -362,7 +356,7 @@ func validateDynamicJob(job config.DynamicJob) error {
 
 // previewDynamicJob returns a preview for a dynamic job
 // This routes to the appropriate existing preview function based on job type
-func previewDynamicJob(cfg *config.Config, db *database.Database, job config.DynamicJob) interface{} {
+func previewDynamicJob(cfg *config.Config, db *database.Database, job config.DynamicJob) any {
 	typeDef, ok := jobs.GetJobTypeDefinition(job.Type)
 	if !ok {
 		return fiber.Map{
