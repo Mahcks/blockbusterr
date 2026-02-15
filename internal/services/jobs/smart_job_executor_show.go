@@ -19,6 +19,7 @@ type SmartShowJobExecutor struct {
 	Database      *database.Database
 	DryRun        bool
 	lastDecisions *JobRunDecisions
+	currentRunID  int64
 }
 
 // Execute runs a smart show job with adaptive rating thresholds
@@ -33,6 +34,16 @@ func (e *SmartShowJobExecutor) Execute(
 		log.Infof("Starting %s job with adaptive ratings", jobConfig.JobName)
 	}
 
+	if e.Database != nil {
+		runID, err := e.Database.StartJobRun(jobConfig.JobID, jobConfig.JobName, jobConfig.MediaType, jobConfig.Mode, time.Now())
+		if err != nil {
+			log.Warnf("Failed to create job run for %s: %v", jobConfig.JobName, err)
+		} else {
+			e.currentRunID = runID
+			defer func() { e.currentRunID = 0 }()
+		}
+	}
+
 	// Create Trakt client
 	traktClient := integrations.NewTrakt(integrations.TraktConfig{
 		ClientID:     e.Config.Trakt.ClientID,
@@ -43,6 +54,21 @@ func (e *SmartShowJobExecutor) Execute(
 	shows, err := fetcher(ctx, traktClient, jobConfig.Limit, "")
 	if err != nil {
 		log.Errorf("Failed to fetch %s from Trakt: %v", jobConfig.JobName, err)
+		if e.Database != nil {
+			_ = e.Database.LogActivity(database.ActivityLog{
+				Timestamp: time.Now(),
+				JobID:     jobConfig.JobID,
+				RunID:     e.currentRunID,
+				JobType:   jobConfig.JobName,
+				MediaType: "show",
+				Title:     FormatJobLabel(jobConfig.JobID, jobConfig.JobName),
+				Status:    "failed",
+				Message:   fmt.Sprintf("Failed to fetch from Trakt: %v", err),
+			})
+		}
+		if e.Database != nil && e.currentRunID > 0 {
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", 0, 0, 0, 0, 0, 0, 1, err.Error())
+		}
 		return
 	}
 
@@ -71,6 +97,7 @@ func (e *SmartShowJobExecutor) Execute(
 
 	// Convert to regular JobConfig for execution
 	regularJobConfig := JobConfig{
+		JobID:     jobConfig.JobID,
 		JobName:   jobConfig.JobName,
 		MediaType: jobConfig.MediaType,
 		Mode:      jobConfig.Mode,
@@ -83,6 +110,7 @@ func (e *SmartShowJobExecutor) Execute(
 		Database:      e.Database,
 		DryRun:        e.DryRun,
 		lastDecisions: runDecisions,
+		currentRunID:  e.currentRunID,
 	}
 
 	if jobConfig.Mode == "jellyseerr" {
@@ -91,7 +119,23 @@ func (e *SmartShowJobExecutor) Execute(
 		showExecutor.executeShowsDirect(ctx, regularJobConfig, filteredShows, scoreMap)
 	}
 
+	runDecisions.Rejected = runDecisions.TotalFound - runDecisions.PassedFilters
 	runDecisions.Completed = true
+	if e.Database != nil && e.currentRunID > 0 {
+		_ = e.Database.CompleteJobRun(
+			e.currentRunID,
+			time.Now(),
+			"completed",
+			runDecisions.TotalFound,
+			runDecisions.PassedFilters,
+			runDecisions.Added,
+			runDecisions.Requested,
+			runDecisions.Skipped,
+			runDecisions.Rejected,
+			runDecisions.Failed,
+			"",
+		)
+	}
 }
 
 // evaluateShowsWithAdaptiveFilters evaluates shows with adaptive rating thresholds
@@ -199,6 +243,8 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 				posterURL := GetTMDBPosterURL(e.Config, decision.TMDBID, "tv")
 				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp:     time.Now(),
+					JobID:         jobConfig.JobID,
+					RunID:         e.currentRunID,
 					JobType:       jobConfig.JobName,
 					MediaType:     "tv",
 					Title:         decision.Title,

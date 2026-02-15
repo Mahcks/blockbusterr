@@ -5,6 +5,7 @@ import (
 	"errors"
 	"html/template"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	htmlEngine "github.com/gofiber/template/html/v2"
+	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/middleware"
 	v1 "github.com/mahcks/blockbusterr/internal/rest/v1"
@@ -75,6 +77,49 @@ func New(gctx global.Context) error {
 	})
 	engine.AddFunc("contains", func(s, substr string) bool {
 		return strings.Contains(s, substr)
+	})
+	engine.AddFunc("activityLog", func(v any) database.ActivityLog {
+		if log, ok := v.(database.ActivityLog); ok {
+			return log
+		}
+		rv := reflect.ValueOf(v)
+		if rv.IsValid() && rv.Kind() == reflect.Struct {
+			field := rv.FieldByName("Log")
+			if field.IsValid() {
+				if log, ok := field.Interface().(database.ActivityLog); ok {
+					return log
+				}
+			}
+		}
+		return database.ActivityLog{}
+	})
+	engine.AddFunc("activityCount", func(v any) int {
+		if _, ok := v.(database.ActivityLog); ok {
+			return 1
+		}
+		rv := reflect.ValueOf(v)
+		if rv.IsValid() && rv.Kind() == reflect.Struct {
+			field := rv.FieldByName("Count")
+			if field.IsValid() && field.Kind() == reflect.Int {
+				return int(field.Int())
+			}
+		}
+		return 1
+	})
+	engine.AddFunc("activityHistory", func(v any) []database.ActivityLog {
+		if log, ok := v.(database.ActivityLog); ok {
+			return []database.ActivityLog{log}
+		}
+		rv := reflect.ValueOf(v)
+		if rv.IsValid() && rv.Kind() == reflect.Struct {
+			field := rv.FieldByName("History")
+			if field.IsValid() {
+				if logs, ok := field.Interface().([]database.ActivityLog); ok {
+					return logs
+				}
+			}
+		}
+		return nil
 	})
 
 	app := fiber.New(fiber.Config{

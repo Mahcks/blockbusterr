@@ -179,6 +179,7 @@ func RunSmartPopularShows(cfg *config.Config, db *database.Database, dryRun bool
 	}
 
 	executor.Execute(ctx, SmartJobConfig{
+		JobID:            "legacy_smart_popular_shows",
 		JobName:          "smart_popular_shows",
 		MediaType:        "show",
 		Mode:             mode,

@@ -90,6 +90,11 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		}, "base")
 	})
 
+	// Legacy experimental activity route (redirect to canonical activity page)
+	app.Get("/activity-experimental", func(c *fiber.Ctx) error {
+		return c.Redirect("/activity", fiber.StatusMovedPermanently)
+	})
+
 	// Config save route
 	app.Post("/config/save", func(c *fiber.Ctx) error {
 		cfg := rg.gctx.Config()

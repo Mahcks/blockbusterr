@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -22,13 +23,11 @@ var (
 )
 
 func main() {
-	// If Version wasn't set at build time via ldflags, use env var or default
-	if Version == "dev" || Version == "" {
-		if v := os.Getenv("VERSION"); v != "" {
-			Version = v
-		} else if Version == "" {
-			Version = "dev"
-		}
+	// VERSION env var always wins; otherwise keep build-time value or default to dev.
+	if v := strings.TrimSpace(os.Getenv("VERSION")); v != "" {
+		Version = v
+	} else if Version == "" {
+		Version = "dev"
 	}
 
 	if Commit == "none" || Commit == "" {
@@ -61,21 +60,29 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
+	slog.Info("config loaded", "path", cfg.ConfigFilePath)
 
 	// Initialize database
-	db, err := database.New("./data")
+	dataDir := resolveDataDir()
+	slog.Info("database path resolved", "dir", dataDir)
+	db, err := database.New(dataDir)
 	if err != nil {
 		slog.Error("failed to initialize database", "error", err)
 		os.Exit(1)
 	}
 
-	gctx, cancel := global.WithCancel(global.New(
-		context.Background(),
+	baseCtx, cancel := context.WithCancel(context.Background())
+	gctx := global.New(
+		baseCtx,
 		cfg,
 		db,
 		Version,
 		Commit,
-	))
+	)
+	if gctx.Database() == nil {
+		slog.Error("database is nil in global context after initialization")
+		os.Exit(1)
+	}
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
@@ -126,4 +133,23 @@ func main() {
 	<-done
 	slog.Info("Shutdown complete")
 	os.Exit(0)
+}
+
+func resolveDataDir() string {
+	if dataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); dataDir != "" {
+		return dataDir
+	}
+
+	candidates := []string{
+		"./data",
+		"../data",
+		"/app/data",
+	}
+	for _, dir := range candidates {
+		if stat, err := os.Stat(dir); err == nil && stat.IsDir() {
+			return dir
+		}
+	}
+
+	return "./data"
 }

@@ -21,6 +21,9 @@ func New(gctx global.Context, router fiber.Router) {
 	// Register jobs API routes
 	routes.AddJobsRoutes(router, gctx)
 
+	// Register dynamic jobs API routes
+	routes.AddDynamicJobsRoutes(router, gctx)
+
 	// Register activity API routes
 	routes.RegisterActivityRoutes(router, gctx)
 }

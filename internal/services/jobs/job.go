@@ -10,7 +10,8 @@ import (
 
 // JobConfig contains common configuration for all jobs
 type JobConfig struct {
-	JobName             string // e.g., "trending_movies", "popular_shows"
+	JobID               string // Unique identifier for the job
+	JobName             string // e.g., "Anticipated Movies", "Popular Shows"
 	MediaType           string // "movie" or "show"
 	Mode                string // "direct" or "jellyseerr"
 	MinimumAvailability string // For direct mode only - "announced", "in_cinemas", or "released"
@@ -22,6 +23,17 @@ type JobConfig struct {
 	Monitor string
 	Limit   int
 	Period  string // For watched/collected/played jobs
+}
+
+// FormatJobLabel returns a human-readable job label for logs.
+func FormatJobLabel(jobID, jobName string) string {
+	if jobName == "" {
+		return jobID
+	}
+	if jobID == "" {
+		return jobName
+	}
+	return jobName + " (" + jobID + ")"
 }
 
 // ScoreInfo holds scoring information for a media item

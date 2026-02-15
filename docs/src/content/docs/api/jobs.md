@@ -151,6 +151,257 @@ curl http://localhost:9090/v1/jobs/status
 }
 ```
 
+## Dynamic Job Management
+
+*New in v1.4.0*
+
+### List All Jobs
+
+Get all configured jobs (both dynamic and legacy).
+
+**Endpoint:** `GET /v1/jobs/list`
+
+**Example Request:**
+
+```bash
+curl http://localhost:9090/v1/jobs/list
+```
+
+**Example Response:**
+
+```json
+[
+  {
+    "id": "my-trending-movies",
+    "name": "My Trending Movies",
+    "enabled": true,
+    "type": "trending",
+    "source": "trakt",
+    "media": "movie",
+    "limit": 50,
+    "sync_interval": "6h"
+  },
+  {
+    "id": "legacy_popular_movies",
+    "name": "Popular Movies",
+    "enabled": true,
+    "type": "popular",
+    "source": "trakt",
+    "media": "movie",
+    "limit": 20
+  }
+]
+```
+
+**Job Fields:**
+- `id` - Unique identifier (user-provided or auto-generated UUID)
+- `name` - Display name
+- `enabled` - Whether the job runs on schedule
+- `type` - Job type: `trending`, `popular`, `watched`, `collected`, `favorited`, `played`, `anticipated`, `box_office`, `smart_popular`
+- `source` - Data source (currently only `trakt`)
+- `media` - Media type: `movie` or `show`
+- `limit` - Number of items to fetch
+- `period` - Time period for watched/collected/favorited/played: `weekly`, `monthly`, `yearly`, `all`
+- `sync_interval` - Custom sync interval (e.g., `6h`, `12h`, `24h`)
+- `mode` - Execution mode: `direct` or `jellyseerr`
+- `minimum_availability` - For Radarr: `announced`, `in_cinemas`, `released`
+- `monitor` - Monitor setting for Radarr/Sonarr
+- `base_min_rating` - For smart jobs: base rating threshold
+- `adjustment_factor` - For smart jobs: popularity adjustment factor
+
+### Get Job Types
+
+Get all available job type definitions for building UI dropdowns.
+
+**Endpoint:** `GET /v1/jobs/types`
+
+**Example Response:**
+
+```json
+{
+  "trending": {
+    "type": "trending",
+    "name": "Trending",
+    "description": "Currently being watched and talked about",
+    "source": "trakt",
+    "supported_media": ["movie", "show"],
+    "requires_period": false,
+    "is_smart_job": false,
+    "default_limit": 50,
+    "max_limit": 1000
+  },
+  "box_office": {
+    "type": "box_office",
+    "name": "Box Office",
+    "description": "Top weekend box office movies (Trakt returns max 10)",
+    "source": "trakt",
+    "supported_media": ["movie"],
+    "requires_period": false,
+    "is_smart_job": false,
+    "default_limit": 10,
+    "max_limit": 10
+  }
+}
+```
+
+### Get Templates
+
+Get pre-configured job templates for quick setup.
+
+**Endpoint:** `GET /v1/jobs/templates`
+
+**Example Response:**
+
+```json
+[
+  {
+    "name": "Weekly Trending Movies",
+    "description": "Top 10 trending movies this week",
+    "type": "trending",
+    "media": "movie",
+    "limit": 10,
+    "category": "Movies"
+  },
+  {
+    "name": "Weekly Watched Shows",
+    "description": "Most watched shows this week",
+    "type": "watched",
+    "media": "show",
+    "limit": 20,
+    "period": "weekly",
+    "category": "TV Shows"
+  }
+]
+```
+
+### Create Job
+
+Create a new dynamic job.
+
+**Endpoint:** `POST /v1/jobs`
+
+**Request Body:**
+
+```json
+{
+  "id": "my-custom-job",
+  "name": "My Custom Job",
+  "type": "trending",
+  "media": "movie",
+  "enabled": true,
+  "limit": 50,
+  "sync_interval": "6h"
+}
+```
+
+**Notes:**
+- `id` is optional - a UUID will be generated if not provided
+- `type`, `media`, and `name` are required
+- `limit` defaults to the job type's `default_limit` if not specified
+
+**Example Response:**
+
+```json
+{
+  "id": "my-custom-job",
+  "name": "My Custom Job",
+  "enabled": true,
+  "type": "trending",
+  "source": "trakt",
+  "media": "movie",
+  "limit": 50,
+  "sync_interval": "6h"
+}
+```
+
+### Update Job
+
+Update an existing dynamic job.
+
+**Endpoint:** `PUT /v1/jobs/:id`
+
+**Parameters:**
+- `id` (path, required) - Job ID
+
+**Request Body:** Same fields as Create Job
+
+**Note:** Legacy jobs (IDs starting with `legacy_`) cannot be updated through this endpoint.
+
+### Delete Job
+
+Delete a dynamic job.
+
+**Endpoint:** `DELETE /v1/jobs/:id`
+
+**Parameters:**
+- `id` (path, required) - Job ID
+
+**Example Request:**
+
+```bash
+curl -X DELETE http://localhost:9090/v1/jobs/my-custom-job
+```
+
+**Note:** Legacy jobs cannot be deleted - disable them in your config instead.
+
+### Trigger Dynamic Job
+
+Run a dynamic job immediately.
+
+**Endpoint:** `POST /v1/jobs/:id/trigger`
+
+**Parameters:**
+- `id` (path, required) - Job ID
+
+**Example Response:**
+
+```json
+{
+  "message": "Job 'My Custom Job' triggered successfully"
+}
+```
+
+### Preview Dynamic Job
+
+Preview what a dynamic job would add without executing.
+
+**Endpoint:** `POST /v1/jobs/:id/preview`
+
+**Parameters:**
+- `id` (path, required) - Job ID
+
+### Migrate Legacy Jobs
+
+Convert legacy config jobs to dynamic format.
+
+**Endpoint:** `POST /v1/jobs/migrate`
+
+**Example Request:**
+
+```bash
+curl -X POST http://localhost:9090/v1/jobs/migrate
+```
+
+**Example Response:**
+
+```json
+{
+  "message": "Successfully migrated 5 legacy jobs",
+  "count": 5,
+  "jobs": [
+    {
+      "id": "trending_movies",
+      "name": "Trending Movies",
+      "enabled": true,
+      "type": "trending",
+      "source": "trakt",
+      "media": "movie",
+      "limit": 20
+    }
+  ]
+}
+```
+
 ## Advanced Examples
 
 ### Preview with jq Filtering

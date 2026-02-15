@@ -40,6 +40,25 @@ type ShowFilters struct {
 	MinVotes              int      `mapstructure:"min_votes" json:"min_votes" yaml:"min_votes"`
 }
 
+// DynamicJob represents a user-defined job instance that can be created, modified, and deleted
+type DynamicJob struct {
+	ID                  string  `mapstructure:"id" json:"id" yaml:"id"`
+	Name                string  `mapstructure:"name" json:"name" yaml:"name"`
+	Enabled             bool    `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+	Type                string  `mapstructure:"type" json:"type" yaml:"type"`                                                           // Job type: trending, popular, watched, collected, favorited, played, anticipated, box_office, smart_popular
+	Source              string  `mapstructure:"source" json:"source" yaml:"source"`                                                     // Data source: trakt (future: tmdb, letterboxd)
+	MediaType           string  `mapstructure:"media" json:"media" yaml:"media"`                                                        // Media type: movie or show
+	Limit               int     `mapstructure:"limit" json:"limit" yaml:"limit"`                                                        // Number of items to fetch
+	Period              string  `mapstructure:"period" json:"period" yaml:"period,omitempty"`                                           // Time period for watched/collected/favorited/played: weekly, monthly, yearly, all
+	SyncInterval        string  `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`                      // Custom sync interval (overrides global)
+	Mode                string  `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`                                                 // Execution mode: direct or jellyseerr (overrides global)
+	MinimumAvailability string  `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"` // For Radarr: announced, in_cinemas, released
+	Monitor             string  `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`                                        // Monitor setting for Radarr/Sonarr
+	BaseMinRating       float64 `mapstructure:"base_min_rating" json:"base_min_rating" yaml:"base_min_rating,omitempty"`                // For smart jobs: base minimum rating
+	AdjustmentFactor    float64 `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor,omitempty"`          // For smart jobs: rating adjustment factor
+	MinGlobalPicks      int     `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`             // Minimum picks for global limit
+}
+
 // Config represents the application configuration
 type Config struct {
 	Version string `mapstructure:"version" yaml:"version,omitempty"`
@@ -98,6 +117,9 @@ type Config struct {
 		GlobalLimitMovies int    `mapstructure:"global_limit_movies" json:"global_limit_movies" yaml:"global_limit_movies,omitempty"`
 		GlobalLimitShows  int    `mapstructure:"global_limit_shows" json:"global_limit_shows" yaml:"global_limit_shows,omitempty"`
 		GlobalPeriod      string `mapstructure:"global_period" json:"global_period" yaml:"global_period,omitempty"` // sync, daily, weekly, monthly
+
+		// Dynamic job list (new format - allows multiple instances of same job type)
+		List []DynamicJob `mapstructure:"list" json:"list" yaml:"list,omitempty"`
 
 		TrendingMovies struct {
 			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
@@ -295,10 +317,14 @@ func New(version string) (*Config, error) {
 
 	// Default config search paths
 	v.AddConfigPath("./config")
+	v.AddConfigPath("../config")
+	v.AddConfigPath("../../config")
 	v.AddConfigPath("/home/nonroot/config")
 	v.AddConfigPath("/app/config")
 	v.AddConfigPath("/app/data")
 	v.AddConfigPath(".")
+	v.AddConfigPath("..")
+	v.AddConfigPath("../data")
 
 	var configFileName string
 	if version == "dev" {
@@ -366,4 +392,448 @@ func (c *Config) Save() error {
 	}
 
 	return nil
+}
+
+// GetAllJobs returns a unified list of all jobs (dynamic list + legacy jobs converted to DynamicJob format)
+func (c *Config) GetAllJobs() []DynamicJob {
+	jobs := make([]DynamicJob, 0)
+
+	// First, add all dynamic jobs from the list
+	jobs = append(jobs, c.Jobs.List...)
+
+	// Then, convert legacy jobs to DynamicJob format (only if not already in dynamic list)
+	legacyJobs := c.getLegacyJobsAsDynamic()
+	jobs = append(jobs, legacyJobs...)
+
+	return jobs
+}
+
+// GetEnabledJobs returns only the enabled jobs from the unified list
+func (c *Config) GetEnabledJobs() []DynamicJob {
+	allJobs := c.GetAllJobs()
+	enabled := make([]DynamicJob, 0)
+	for _, job := range allJobs {
+		if job.Enabled {
+			enabled = append(enabled, job)
+		}
+	}
+	return enabled
+}
+
+// GetDynamicJobByID returns a dynamic job by its ID
+func (c *Config) GetDynamicJobByID(id string) *DynamicJob {
+	for i := range c.Jobs.List {
+		if c.Jobs.List[i].ID == id {
+			return &c.Jobs.List[i]
+		}
+	}
+	return nil
+}
+
+// AddDynamicJob adds a new job to the dynamic list
+func (c *Config) AddDynamicJob(job DynamicJob) error {
+	// Validate unique ID
+	for _, existing := range c.Jobs.List {
+		if existing.ID == job.ID {
+			return fmt.Errorf("job with ID '%s' already exists", job.ID)
+		}
+	}
+
+	// Set default source if not specified
+	if job.Source == "" {
+		job.Source = "trakt"
+	}
+
+	c.Jobs.List = append(c.Jobs.List, job)
+	return nil
+}
+
+// UpdateDynamicJob updates an existing job in the dynamic list
+func (c *Config) UpdateDynamicJob(job DynamicJob) error {
+	for i, existing := range c.Jobs.List {
+		if existing.ID == job.ID {
+			c.Jobs.List[i] = job
+			return nil
+		}
+	}
+	return fmt.Errorf("job with ID '%s' not found", job.ID)
+}
+
+// DeleteDynamicJob removes a job from the dynamic list
+func (c *Config) DeleteDynamicJob(id string) error {
+	for i, existing := range c.Jobs.List {
+		if existing.ID == id {
+			c.Jobs.List = append(c.Jobs.List[:i], c.Jobs.List[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("job with ID '%s' not found", id)
+}
+
+// hasDynamicJobOfType checks if a dynamic job of given type and media already exists
+func (c *Config) hasDynamicJobOfType(jobType, mediaType string) bool {
+	for _, job := range c.Jobs.List {
+		if job.Type == jobType && job.MediaType == mediaType {
+			return true
+		}
+	}
+	return false
+}
+
+// getLegacyJobsAsDynamic converts legacy fixed job structs to DynamicJob format
+// Only includes legacy jobs that don't have a corresponding dynamic job of the same type
+func (c *Config) getLegacyJobsAsDynamic() []DynamicJob {
+	jobs := make([]DynamicJob, 0)
+
+	// Trending Movies
+	if c.Jobs.TrendingMovies.Enabled && !c.hasDynamicJobOfType("trending", "movie") {
+		jobs = append(jobs, DynamicJob{
+			ID:                  "legacy_trending_movies",
+			Name:                "Trending Movies",
+			Enabled:             c.Jobs.TrendingMovies.Enabled,
+			Type:                "trending",
+			Source:              "trakt",
+			MediaType:           "movie",
+			Limit:               c.Jobs.TrendingMovies.Limit,
+			SyncInterval:        c.Jobs.TrendingMovies.SyncInterval,
+			Mode:                c.Jobs.TrendingMovies.Mode,
+			MinimumAvailability: c.Jobs.TrendingMovies.MinimumAvailability,
+			Monitor:             c.Jobs.TrendingMovies.Monitor,
+			MinGlobalPicks:      c.Jobs.TrendingMovies.MinGlobalPicks,
+		})
+	}
+
+	// Trending Shows
+	if c.Jobs.TrendingShows.Enabled && !c.hasDynamicJobOfType("trending", "show") {
+		jobs = append(jobs, DynamicJob{
+			ID:             "legacy_trending_shows",
+			Name:           "Trending Shows",
+			Enabled:        c.Jobs.TrendingShows.Enabled,
+			Type:           "trending",
+			Source:         "trakt",
+			MediaType:      "show",
+			Limit:          c.Jobs.TrendingShows.Limit,
+			SyncInterval:   c.Jobs.TrendingShows.SyncInterval,
+			Mode:           c.Jobs.TrendingShows.Mode,
+			Monitor:        c.Jobs.TrendingShows.Monitor,
+			MinGlobalPicks: c.Jobs.TrendingShows.MinGlobalPicks,
+		})
+	}
+
+	// Popular Movies
+	if c.Jobs.PopularMovies.Enabled && !c.hasDynamicJobOfType("popular", "movie") {
+		jobs = append(jobs, DynamicJob{
+			ID:                  "legacy_popular_movies",
+			Name:                "Popular Movies",
+			Enabled:             c.Jobs.PopularMovies.Enabled,
+			Type:                "popular",
+			Source:              "trakt",
+			MediaType:           "movie",
+			Limit:               c.Jobs.PopularMovies.Limit,
+			SyncInterval:        c.Jobs.PopularMovies.SyncInterval,
+			Mode:                c.Jobs.PopularMovies.Mode,
+			MinimumAvailability: c.Jobs.PopularMovies.MinimumAvailability,
+			Monitor:             c.Jobs.PopularMovies.Monitor,
+			MinGlobalPicks:      c.Jobs.PopularMovies.MinGlobalPicks,
+		})
+	}
+
+	// Popular Shows
+	if c.Jobs.PopularShows.Enabled && !c.hasDynamicJobOfType("popular", "show") {
+		jobs = append(jobs, DynamicJob{
+			ID:             "legacy_popular_shows",
+			Name:           "Popular Shows",
+			Enabled:        c.Jobs.PopularShows.Enabled,
+			Type:           "popular",
+			Source:         "trakt",
+			MediaType:      "show",
+			Limit:          c.Jobs.PopularShows.Limit,
+			SyncInterval:   c.Jobs.PopularShows.SyncInterval,
+			Mode:           c.Jobs.PopularShows.Mode,
+			Monitor:        c.Jobs.PopularShows.Monitor,
+			MinGlobalPicks: c.Jobs.PopularShows.MinGlobalPicks,
+		})
+	}
+
+	// Box Office
+	if c.Jobs.BoxOffice.Enabled && !c.hasDynamicJobOfType("box_office", "movie") {
+		jobs = append(jobs, DynamicJob{
+			ID:                  "legacy_box_office",
+			Name:                "Box Office",
+			Enabled:             c.Jobs.BoxOffice.Enabled,
+			Type:                "box_office",
+			Source:              "trakt",
+			MediaType:           "movie",
+			Limit:               c.Jobs.BoxOffice.Limit,
+			SyncInterval:        c.Jobs.BoxOffice.SyncInterval,
+			Mode:                c.Jobs.BoxOffice.Mode,
+			MinimumAvailability: c.Jobs.BoxOffice.MinimumAvailability,
+			Monitor:             c.Jobs.BoxOffice.Monitor,
+			MinGlobalPicks:      c.Jobs.BoxOffice.MinGlobalPicks,
+		})
+	}
+
+	// Favorited Movies
+	if c.Jobs.FavoritedMovies.Enabled && !c.hasDynamicJobOfType("favorited", "movie") {
+		jobs = append(jobs, DynamicJob{
+			ID:                  "legacy_favorited_movies",
+			Name:                "Favorited Movies",
+			Enabled:             c.Jobs.FavoritedMovies.Enabled,
+			Type:                "favorited",
+			Source:              "trakt",
+			MediaType:           "movie",
+			Limit:               c.Jobs.FavoritedMovies.Limit,
+			Period:              c.Jobs.FavoritedMovies.Period,
+			SyncInterval:        c.Jobs.FavoritedMovies.SyncInterval,
+			Mode:                c.Jobs.FavoritedMovies.Mode,
+			MinimumAvailability: c.Jobs.FavoritedMovies.MinimumAvailability,
+			Monitor:             c.Jobs.FavoritedMovies.Monitor,
+			MinGlobalPicks:      c.Jobs.FavoritedMovies.MinGlobalPicks,
+		})
+	}
+
+	// Played Movies
+	if c.Jobs.PlayedMovies.Enabled && !c.hasDynamicJobOfType("played", "movie") {
+		jobs = append(jobs, DynamicJob{
+			ID:                  "legacy_played_movies",
+			Name:                "Played Movies",
+			Enabled:             c.Jobs.PlayedMovies.Enabled,
+			Type:                "played",
+			Source:              "trakt",
+			MediaType:           "movie",
+			Limit:               c.Jobs.PlayedMovies.Limit,
+			Period:              c.Jobs.PlayedMovies.Period,
+			SyncInterval:        c.Jobs.PlayedMovies.SyncInterval,
+			Mode:                c.Jobs.PlayedMovies.Mode,
+			MinimumAvailability: c.Jobs.PlayedMovies.MinimumAvailability,
+			Monitor:             c.Jobs.PlayedMovies.Monitor,
+			MinGlobalPicks:      c.Jobs.PlayedMovies.MinGlobalPicks,
+		})
+	}
+
+	// Watched Movies
+	if c.Jobs.WatchedMovies.Enabled && !c.hasDynamicJobOfType("watched", "movie") {
+		jobs = append(jobs, DynamicJob{
+			ID:                  "legacy_watched_movies",
+			Name:                "Watched Movies",
+			Enabled:             c.Jobs.WatchedMovies.Enabled,
+			Type:                "watched",
+			Source:              "trakt",
+			MediaType:           "movie",
+			Limit:               c.Jobs.WatchedMovies.Limit,
+			Period:              c.Jobs.WatchedMovies.Period,
+			SyncInterval:        c.Jobs.WatchedMovies.SyncInterval,
+			Mode:                c.Jobs.WatchedMovies.Mode,
+			MinimumAvailability: c.Jobs.WatchedMovies.MinimumAvailability,
+			Monitor:             c.Jobs.WatchedMovies.Monitor,
+			MinGlobalPicks:      c.Jobs.WatchedMovies.MinGlobalPicks,
+		})
+	}
+
+	// Collected Movies
+	if c.Jobs.CollectedMovies.Enabled && !c.hasDynamicJobOfType("collected", "movie") {
+		jobs = append(jobs, DynamicJob{
+			ID:                  "legacy_collected_movies",
+			Name:                "Collected Movies",
+			Enabled:             c.Jobs.CollectedMovies.Enabled,
+			Type:                "collected",
+			Source:              "trakt",
+			MediaType:           "movie",
+			Limit:               c.Jobs.CollectedMovies.Limit,
+			Period:              c.Jobs.CollectedMovies.Period,
+			SyncInterval:        c.Jobs.CollectedMovies.SyncInterval,
+			Mode:                c.Jobs.CollectedMovies.Mode,
+			MinimumAvailability: c.Jobs.CollectedMovies.MinimumAvailability,
+			Monitor:             c.Jobs.CollectedMovies.Monitor,
+			MinGlobalPicks:      c.Jobs.CollectedMovies.MinGlobalPicks,
+		})
+	}
+
+	// Anticipated Movies
+	if c.Jobs.AnticipatedMovies.Enabled && !c.hasDynamicJobOfType("anticipated", "movie") {
+		jobs = append(jobs, DynamicJob{
+			ID:                  "legacy_anticipated_movies",
+			Name:                "Anticipated Movies",
+			Enabled:             c.Jobs.AnticipatedMovies.Enabled,
+			Type:                "anticipated",
+			Source:              "trakt",
+			MediaType:           "movie",
+			Limit:               c.Jobs.AnticipatedMovies.Limit,
+			SyncInterval:        c.Jobs.AnticipatedMovies.SyncInterval,
+			Mode:                c.Jobs.AnticipatedMovies.Mode,
+			MinimumAvailability: c.Jobs.AnticipatedMovies.MinimumAvailability,
+			Monitor:             c.Jobs.AnticipatedMovies.Monitor,
+			MinGlobalPicks:      c.Jobs.AnticipatedMovies.MinGlobalPicks,
+		})
+	}
+
+	// Favorited Shows
+	if c.Jobs.FavoritedShows.Enabled && !c.hasDynamicJobOfType("favorited", "show") {
+		jobs = append(jobs, DynamicJob{
+			ID:             "legacy_favorited_shows",
+			Name:           "Favorited Shows",
+			Enabled:        c.Jobs.FavoritedShows.Enabled,
+			Type:           "favorited",
+			Source:         "trakt",
+			MediaType:      "show",
+			Limit:          c.Jobs.FavoritedShows.Limit,
+			Period:         c.Jobs.FavoritedShows.Period,
+			SyncInterval:   c.Jobs.FavoritedShows.SyncInterval,
+			Mode:           c.Jobs.FavoritedShows.Mode,
+			Monitor:        c.Jobs.FavoritedShows.Monitor,
+			MinGlobalPicks: c.Jobs.FavoritedShows.MinGlobalPicks,
+		})
+	}
+
+	// Played Shows
+	if c.Jobs.PlayedShows.Enabled && !c.hasDynamicJobOfType("played", "show") {
+		jobs = append(jobs, DynamicJob{
+			ID:             "legacy_played_shows",
+			Name:           "Played Shows",
+			Enabled:        c.Jobs.PlayedShows.Enabled,
+			Type:           "played",
+			Source:         "trakt",
+			MediaType:      "show",
+			Limit:          c.Jobs.PlayedShows.Limit,
+			Period:         c.Jobs.PlayedShows.Period,
+			SyncInterval:   c.Jobs.PlayedShows.SyncInterval,
+			Mode:           c.Jobs.PlayedShows.Mode,
+			Monitor:        c.Jobs.PlayedShows.Monitor,
+			MinGlobalPicks: c.Jobs.PlayedShows.MinGlobalPicks,
+		})
+	}
+
+	// Watched Shows
+	if c.Jobs.WatchedShows.Enabled && !c.hasDynamicJobOfType("watched", "show") {
+		jobs = append(jobs, DynamicJob{
+			ID:             "legacy_watched_shows",
+			Name:           "Watched Shows",
+			Enabled:        c.Jobs.WatchedShows.Enabled,
+			Type:           "watched",
+			Source:         "trakt",
+			MediaType:      "show",
+			Limit:          c.Jobs.WatchedShows.Limit,
+			Period:         c.Jobs.WatchedShows.Period,
+			SyncInterval:   c.Jobs.WatchedShows.SyncInterval,
+			Mode:           c.Jobs.WatchedShows.Mode,
+			Monitor:        c.Jobs.WatchedShows.Monitor,
+			MinGlobalPicks: c.Jobs.WatchedShows.MinGlobalPicks,
+		})
+	}
+
+	// Collected Shows
+	if c.Jobs.CollectedShows.Enabled && !c.hasDynamicJobOfType("collected", "show") {
+		jobs = append(jobs, DynamicJob{
+			ID:             "legacy_collected_shows",
+			Name:           "Collected Shows",
+			Enabled:        c.Jobs.CollectedShows.Enabled,
+			Type:           "collected",
+			Source:         "trakt",
+			MediaType:      "show",
+			Limit:          c.Jobs.CollectedShows.Limit,
+			Period:         c.Jobs.CollectedShows.Period,
+			SyncInterval:   c.Jobs.CollectedShows.SyncInterval,
+			Mode:           c.Jobs.CollectedShows.Mode,
+			Monitor:        c.Jobs.CollectedShows.Monitor,
+			MinGlobalPicks: c.Jobs.CollectedShows.MinGlobalPicks,
+		})
+	}
+
+	// Anticipated Shows
+	if c.Jobs.AnticipatedShows.Enabled && !c.hasDynamicJobOfType("anticipated", "show") {
+		jobs = append(jobs, DynamicJob{
+			ID:             "legacy_anticipated_shows",
+			Name:           "Anticipated Shows",
+			Enabled:        c.Jobs.AnticipatedShows.Enabled,
+			Type:           "anticipated",
+			Source:         "trakt",
+			MediaType:      "show",
+			Limit:          c.Jobs.AnticipatedShows.Limit,
+			SyncInterval:   c.Jobs.AnticipatedShows.SyncInterval,
+			Mode:           c.Jobs.AnticipatedShows.Mode,
+			Monitor:        c.Jobs.AnticipatedShows.Monitor,
+			MinGlobalPicks: c.Jobs.AnticipatedShows.MinGlobalPicks,
+		})
+	}
+
+	// Smart Popular Movies
+	if c.Jobs.SmartPopularMovies.Enabled && !c.hasDynamicJobOfType("smart_popular", "movie") {
+		jobs = append(jobs, DynamicJob{
+			ID:                  "legacy_smart_popular_movies",
+			Name:                "Smart Popular Movies",
+			Enabled:             c.Jobs.SmartPopularMovies.Enabled,
+			Type:                "smart_popular",
+			Source:              "trakt",
+			MediaType:           "movie",
+			Limit:               c.Jobs.SmartPopularMovies.Limit,
+			SyncInterval:        c.Jobs.SmartPopularMovies.SyncInterval,
+			Mode:                c.Jobs.SmartPopularMovies.Mode,
+			MinimumAvailability: c.Jobs.SmartPopularMovies.MinimumAvailability,
+			Monitor:             c.Jobs.SmartPopularMovies.Monitor,
+			BaseMinRating:       c.Jobs.SmartPopularMovies.BaseMinRating,
+			AdjustmentFactor:    c.Jobs.SmartPopularMovies.AdjustmentFactor,
+		})
+	}
+
+	// Smart Popular Shows
+	if c.Jobs.SmartPopularShows.Enabled && !c.hasDynamicJobOfType("smart_popular", "show") {
+		jobs = append(jobs, DynamicJob{
+			ID:               "legacy_smart_popular_shows",
+			Name:             "Smart Popular Shows",
+			Enabled:          c.Jobs.SmartPopularShows.Enabled,
+			Type:             "smart_popular",
+			Source:           "trakt",
+			MediaType:        "show",
+			Limit:            c.Jobs.SmartPopularShows.Limit,
+			SyncInterval:     c.Jobs.SmartPopularShows.SyncInterval,
+			Mode:             c.Jobs.SmartPopularShows.Mode,
+			Monitor:          c.Jobs.SmartPopularShows.Monitor,
+			BaseMinRating:    c.Jobs.SmartPopularShows.BaseMinRating,
+			AdjustmentFactor: c.Jobs.SmartPopularShows.AdjustmentFactor,
+		})
+	}
+
+	return jobs
+}
+
+// MigrateLegacyJobs converts all enabled legacy jobs to dynamic jobs and disables the legacy entries
+func (c *Config) MigrateLegacyJobs() ([]DynamicJob, error) {
+	migratedJobs := make([]DynamicJob, 0)
+
+	// Get legacy jobs as dynamic format
+	legacyJobs := c.getLegacyJobsAsDynamic()
+
+	for _, legacyJob := range legacyJobs {
+		// Create a new ID without the legacy prefix
+		newID := strings.TrimPrefix(legacyJob.ID, "legacy_")
+		legacyJob.ID = newID
+
+		// Add to dynamic list
+		if err := c.AddDynamicJob(legacyJob); err != nil {
+			// Job might already exists, skip
+			continue
+		}
+		migratedJobs = append(migratedJobs, legacyJob)
+	}
+
+	// Disable all legacy jobs
+	c.Jobs.TrendingMovies.Enabled = false
+	c.Jobs.TrendingShows.Enabled = false
+	c.Jobs.PopularMovies.Enabled = false
+	c.Jobs.PopularShows.Enabled = false
+	c.Jobs.BoxOffice.Enabled = false
+	c.Jobs.FavoritedMovies.Enabled = false
+	c.Jobs.PlayedMovies.Enabled = false
+	c.Jobs.WatchedMovies.Enabled = false
+	c.Jobs.CollectedMovies.Enabled = false
+	c.Jobs.AnticipatedMovies.Enabled = false
+	c.Jobs.FavoritedShows.Enabled = false
+	c.Jobs.PlayedShows.Enabled = false
+	c.Jobs.WatchedShows.Enabled = false
+	c.Jobs.CollectedShows.Enabled = false
+	c.Jobs.AnticipatedShows.Enabled = false
+	c.Jobs.SmartPopularMovies.Enabled = false
+	c.Jobs.SmartPopularShows.Enabled = false
+
+	return migratedJobs, nil
 }

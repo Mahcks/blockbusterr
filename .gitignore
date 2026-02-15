@@ -80,3 +80,6 @@ docs/.astro/
 
 # Claude AI files
 CLAUDE.md
+AGENTS.md
+.codex
+.claude

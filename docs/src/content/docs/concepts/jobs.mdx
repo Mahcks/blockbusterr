@@ -93,50 +93,153 @@ Most **collected** in user libraries (essentials).
 </Card>
 </CardGrid>
 
+## Dynamic Job System
+
+<Badge text="New in v1.4.0" variant="success" />
+
+Create custom jobs with full control over type, media, limits, and settings - all from the UI.
+
+### Creating Jobs
+
+<Tabs>
+<TabItem label="From Template" icon="star">
+
+<Steps>
+
+1. Navigate to **Jobs** page
+2. Click **Add Job**
+3. Select **Movies** or **TV Shows** tab
+4. Click a template card (e.g., "Trending Movies")
+5. Job is created with sensible defaults
+6. Click the job card to customize settings
+
+</Steps>
+
+</TabItem>
+<TabItem label="Custom Job" icon="setting">
+
+<Steps>
+
+1. Navigate to **Jobs** page
+2. Click **Add Job**
+3. Select **Custom** tab
+4. Fill in:
+   - **Name** - Descriptive name for your job
+   - **Type** - trending, popular, watched, etc.
+   - **Media** - Movies or Shows
+   - **Limit** - How many items to fetch (up to 1000)
+   - **Period** - Required for watched/collected/favorited/played
+5. Click **Create Job**
+6. Configure advanced settings as needed
+
+</Steps>
+
+</TabItem>
+</Tabs>
+
+### Job Templates
+
+16 pre-configured templates to get you started:
+
+| Movies | TV Shows |
+|--------|----------|
+| Trending Movies | Trending Shows |
+| Popular Movies | Popular Shows |
+| Anticipated Movies | Anticipated Shows |
+| Favorited Movies | Favorited Shows |
+| Watched Movies | Watched Shows |
+| Collected Movies | Collected Shows |
+| Box Office | - |
+| Smart Popular Movies | Smart Popular Shows |
+
+### Content Limits
+
+<Aside type="tip">
+Jobs can now fetch up to **1000 items** per run (was 100). Trakt API pagination is handled automatically.
+</Aside>
+
+| Job Type | Default | Maximum |
+|----------|---------|---------|
+| Trending | 50 | 1000 |
+| Popular | 50 | 1000 |
+| Watched/Collected/etc. | 50 | 1000 |
+| Box Office | 10 | 10 |
+| Smart Popular | 50 | 1000 |
+
+### Migrating Legacy Jobs
+
+If you have jobs configured in your `config.yaml`, a migration banner appears on the Jobs page.
+
+<Steps>
+
+1. Click **Migrate Jobs** in the banner
+2. Legacy jobs are converted to dynamic format
+3. All settings (schedule, limits, filters) are preserved
+4. Legacy config remains as backup (no longer used)
+
+</Steps>
+
+<Aside type="note">
+Migration is optional. Legacy jobs continue to work - you can migrate when ready.
+</Aside>
+
 ## Job Configuration
 
 <Tabs>
-<TabItem label="Basic" icon="pencil">
+<TabItem label="Legacy Format" icon="pencil">
 
-Minimal configuration to get started:
+Jobs defined directly in config (pre-v1.4.0):
 
 ```yaml
 jobs:
+  sync_interval: "6h"     # Default interval for all jobs
+  mode: "direct"          # direct or jellyseerr
+
   trending_movies:
-    type: "movie"
-    list_type: "trakt_trending"
     enabled: true
-    schedule: "0 */6 * * *"  # Every 6 hours
-    fetch_count: 20
-    threshold_score: 65
+    limit: 20
+    sync_interval: "6h"   # Override default
+    mode: "direct"
+    minimum_availability: "released"
+    monitor: "movieOnly"
+
+  popular_shows:
+    enabled: true
+    limit: 30
+    monitor: "all"
 ```
 
 </TabItem>
-<TabItem label="Advanced" icon="setting">
+<TabItem label="Dynamic Format" icon="setting">
 
-Full configuration with filters and scoring:
+Dynamic jobs (v1.4.0+) - defined in `jobs.list`:
 
 ```yaml
 jobs:
-  curated_popular:
-    type: "movie"
-    list_type: "trakt_popular"
-    enabled: true
-    schedule: "0 0 * * *"    # Daily at midnight
-    fetch_count: 100          # Fetch 100 items
-    threshold_score: 70       # Score must be 70+
-    
-    # Optional: Override global filters for this job
-    filters:
-      min_runtime: 90
-      max_runtime: 180
-      exclude_genres:
-        - "documentary"
-    
-    # Optional: Override global scoring for this job
-    scoring:
-      imdb_rating_weight: 0.5
-      trakt_rating_weight: 0.5
+  sync_interval: "6h"
+  mode: "direct"
+
+  list:
+    - id: "my-trending-movies"
+      name: "My Trending Movies"
+      enabled: true
+      type: "trending"
+      source: "trakt"
+      media: "movie"
+      limit: 50
+      sync_interval: "6h"
+      mode: "direct"
+      minimum_availability: "released"
+      monitor: "movieOnly"
+
+    - id: "weekly-watched"
+      name: "Weekly Most Watched"
+      enabled: true
+      type: "watched"
+      source: "trakt"
+      media: "movie"
+      limit: 30
+      period: "weekly"
 ```
 
 </TabItem>
@@ -146,17 +249,16 @@ Smart job with adaptive thresholds:
 
 ```yaml
 jobs:
-  smart_popular_movies:
-    type: "movie"
-    list_type: "smart_trakt_popular"
-    enabled: true
-    schedule: "0 6 * * *"     # Daily at 6 AM
-    fetch_count: 50
-    threshold_score: 70       # Base threshold
-    
-    # Smart-specific settings
-    base_min_rating: 7.0      # Baseline rating requirement
-    adjustment_factor: 2.0    # How aggressive (0.5-3.0)
+  list:
+    - id: "smart-movies"
+      name: "Smart Popular Movies"
+      enabled: true
+      type: "smart_popular"
+      source: "trakt"
+      media: "movie"
+      limit: 50
+      base_min_rating: 6.0       # Base rating threshold
+      adjustment_factor: 0.5     # Popularity adjustment (0.1-1.0)
 ```
 
 See [Smart Jobs](/blockbusterr/concepts/smart-jobs/) for details.
@@ -168,65 +270,82 @@ See [Smart Jobs](/blockbusterr/concepts/smart-jobs/) for details.
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `type` | string | Yes | `"movie"` or `"show"` |
-| `list_type` | string | Yes | Which Trakt list to use |
+| `id` | string | No | Unique identifier (auto-generated if omitted) |
+| `name` | string | Yes | Display name for the job |
 | `enabled` | boolean | Yes | Enable or disable the job |
-| `schedule` | string | Yes | Cron schedule |
-| `fetch_count` | integer | Yes | Max items to fetch from Trakt |
-| `threshold_score` | integer | Yes | Minimum score (0-100) to add |
-| `filters` | object | No | Override global filters |
-| `scoring` | object | No | Override global scoring weights |
+| `type` | string | Yes | Job type: `trending`, `popular`, `watched`, `collected`, `favorited`, `played`, `anticipated`, `box_office`, `smart_popular` |
+| `media` | string | Yes | `"movie"` or `"show"` |
+| `limit` | integer | No | Max items to fetch (defaults to job type default) |
+| `period` | string | No | Time period for watched/collected/favorited/played: `weekly`, `monthly`, `yearly`, `all` |
+| `sync_interval` | string | No | Custom sync interval (e.g., `6h`, `12h`, `24h`) |
+| `mode` | string | No | Override global mode: `direct` or `jellyseerr` |
+| `minimum_availability` | string | No | For Radarr: `announced`, `in_cinemas`, `released` |
+| `monitor` | string | No | Monitor setting for Radarr/Sonarr |
+| `base_min_rating` | float | No | Smart jobs: base rating threshold |
+| `adjustment_factor` | float | No | Smart jobs: popularity adjustment |
 
 ## Scheduling
 
+Jobs run on a configurable interval using duration strings.
+
 <Tabs>
-<TabItem label="Cron Syntax" icon="document">
+<TabItem label="Interval Format" icon="document">
 
-Jobs use standard cron syntax:
+The `sync_interval` field uses Go duration format:
 
-```
-┌───────────── minute (0 - 59)
-│ ┌───────────── hour (0 - 23)
-│ │ ┌───────────── day of month (1 - 31)
-│ │ │ ┌───────────── month (1 - 12)
-│ │ │ │ ┌───────────── day of week (0 - 6, Sunday = 0)
-│ │ │ │ │
-* * * * *
-```
+| Value | Meaning |
+|-------|---------|
+| `1h` | Every hour |
+| `6h` | Every 6 hours |
+| `12h` | Every 12 hours |
+| `24h` | Once per day |
+| `168h` | Once per week (7 days) |
 
 </TabItem>
-<TabItem label="Common Patterns" icon="star">
+<TabItem label="Recommended Intervals" icon="star">
 
-| Pattern | Description | Use Case |
-|---------|-------------|----------|
-| `"0 */6 * * *"` | Every 6 hours | Trending content |
-| `"0 0 * * *"` | Daily at midnight | Popular/favorited |
-| `"0 12 * * 1"` | Monday at noon | Weekly updates |
-| `"*/30 * * * *"` | Every 30 minutes | Aggressive (not recommended) |
-| `"0 0 1 * *"` | 1st of month | Monthly collections |
-| `"0 6,18 * * *"` | 6 AM and 6 PM | Twice daily |
+| Job Type | Recommended Interval | Reason |
+|----------|---------------------|--------|
+| Trending | `6h` | Changes frequently |
+| Popular | `12h` - `24h` | Updates daily |
+| Watched/Collected/etc. | `24h` | Aggregated data, slower updates |
+| Box Office | `24h` - `168h` | Weekly data |
+| Anticipated | `24h` | Upcoming releases |
+| Smart Popular | `12h` - `24h` | Adaptive filtering |
 
 </TabItem>
 <TabItem label="Best Practices" icon="approve-check">
 
-**Stagger your schedules:**
+**Use different intervals per job:**
 
 ```yaml
-trending_movies:
-  schedule: "0 0 * * *"    # Midnight
+jobs:
+  list:
+    - id: "trending-movies"
+      name: "Trending Movies"
+      type: "trending"
+      media: "movie"
+      sync_interval: "6h"    # Check frequently
+      # ...
 
-popular_movies:
-  schedule: "0 6 * * *"    # 6 AM
+    - id: "popular-movies"
+      name: "Popular Movies"
+      type: "popular"
+      media: "movie"
+      sync_interval: "12h"   # Less frequent
+      # ...
 
-anticipated_movies:
-  schedule: "0 12 * * *"   # Noon
-
-favorited_shows:
-  schedule: "0 18 * * *"   # 6 PM
+    - id: "weekly-watched"
+      name: "Weekly Watched"
+      type: "watched"
+      media: "movie"
+      period: "weekly"
+      sync_interval: "24h"   # Once per day
+      # ...
 ```
 
 <Aside type="tip">
-Don't run all jobs at once - spread them throughout the day to avoid API rate limits and server load.
+Jobs with longer intervals reduce API calls and server load while still catching new content.
 </Aside>
 
 </TabItem>
@@ -237,36 +356,28 @@ Don't run all jobs at once - spread them throughout the day to avoid API rate li
 <Steps>
 
 1. **Fetch from Trakt**
-   
-   Job contacts Trakt API and retrieves the specified list (trending, popular, etc.)
+
+   Job contacts Trakt API and retrieves the specified list (trending, popular, etc.) up to the configured `limit`
 
 2. **Apply Filters**
-   
-   Content is filtered based on your criteria (ratings, genres, certifications, etc.)
+
+   Content is filtered based on your global filter criteria (ratings, genres, countries, languages, runtime, etc.)
 
 3. **Fetch Metadata**
-   
-   Retrieve IMDb/TMDB ratings and additional metadata for scoring
 
-4. **Calculate Scores**
-   
-   Weighted scoring algorithm calculates a 0-100 score for each item
+   Retrieve TMDB metadata for poster images and additional details
 
-5. **Check Threshold**
-   
-   Only items meeting `threshold_score` proceed
+4. **Check Existing**
 
-6. **Check Existing**
-   
    Skip content already in Radarr/Sonarr or Jellyseerr
 
-7. **Add Content**
-   
+5. **Add Content**
+
    Send to Radarr/Sonarr (direct mode) or create Jellyseerr request
 
-8. **Log Activity**
-   
-   Record what was added/rejected in the activity log
+6. **Log Activity**
+
+   Record what was added/filtered in the activity log
 
 </Steps>
 
@@ -411,29 +522,36 @@ Manual triggers ignore the schedule but respect all filters, scoring, and thresh
 
 ```yaml
 jobs:
-  trending_movies:
-    type: "movie"
-    list_type: "trakt_trending"
-    enabled: true
-    schedule: "0 */6 * * *"
-    fetch_count: 50
-    threshold_score: 65
-  
-  smart_popular_movies:
-    type: "movie"
-    list_type: "smart_trakt_popular"
-    enabled: true
-    schedule: "0 0 * * *"
-    fetch_count: 30
-    threshold_score: 70
-  
-  favorited_movies:
-    type: "movie"
-    list_type: "trakt_favorited"
-    enabled: true
-    schedule: "0 12 * * 0"  # Weekly
-    fetch_count: 20
-    threshold_score: 75
+  sync_interval: "6h"
+  mode: "direct"
+
+  list:
+    - id: "trending-movies"
+      name: "Trending Movies"
+      enabled: true
+      type: "trending"
+      media: "movie"
+      limit: 50
+      sync_interval: "6h"
+
+    - id: "smart-popular-movies"
+      name: "Smart Popular Movies"
+      enabled: true
+      type: "smart_popular"
+      media: "movie"
+      limit: 30
+      sync_interval: "12h"
+      base_min_rating: 6.5
+      adjustment_factor: 0.5
+
+    - id: "favorited-movies"
+      name: "Favorited Movies"
+      enabled: true
+      type: "favorited"
+      media: "movie"
+      limit: 20
+      period: "weekly"
+      sync_interval: "24h"
 ```
 
 **Result:** ~10-15 movies/week, mix of current and quality
@@ -441,25 +559,29 @@ jobs:
 </TabItem>
 <TabItem label="Quality Focus" icon="star">
 
-**Goal:** Only the best content.
+**Goal:** Only the best content with smart filtering.
 
 ```yaml
 jobs:
-  smart_popular_movies:
-    type: "movie"
-    list_type: "smart_trakt_popular"
-    enabled: true
-    schedule: "0 0 * * 0"  # Weekly
-    fetch_count: 100
-    threshold_score: 80  # High bar
-  
-  favorited_movies:
-    type: "movie"
-    list_type: "trakt_favorited"
-    enabled: true
-    schedule: "0 0 * * 0"
-    fetch_count: 50
-    threshold_score: 85  # Very high bar
+  list:
+    - id: "smart-movies"
+      name: "Smart Popular Movies"
+      enabled: true
+      type: "smart_popular"
+      media: "movie"
+      limit: 100
+      sync_interval: "24h"
+      base_min_rating: 7.0     # Higher rating bar
+      adjustment_factor: 0.3   # Less adjustment for popularity
+
+    - id: "all-time-favorites"
+      name: "All-Time Favorites"
+      enabled: true
+      type: "favorited"
+      media: "movie"
+      limit: 50
+      period: "all"
+      sync_interval: "168h"    # Weekly
 ```
 
 **Result:** ~5-8 excellent movies/week
@@ -471,24 +593,33 @@ jobs:
 
 ```yaml
 jobs:
-  trending_movies:
-    type: "movie"
-    list_type: "trakt_trending"
-    enabled: true
-    schedule: "0 */6 * * *"  # Every 6 hours
-    fetch_count: 200
-    threshold_score: 50  # Low bar
-  
-  popular_movies:
-    type: "movie"
-    list_type: "trakt_popular"
-    enabled: true
-    schedule: "0 0 * * *"
-    fetch_count: 150
-    threshold_score: 55
+  list:
+    - id: "trending-movies"
+      name: "Trending Movies"
+      enabled: true
+      type: "trending"
+      media: "movie"
+      limit: 200
+      sync_interval: "6h"
+
+    - id: "popular-movies"
+      name: "Popular Movies"
+      enabled: true
+      type: "popular"
+      media: "movie"
+      limit: 150
+      sync_interval: "12h"
+
+    - id: "trending-shows"
+      name: "Trending Shows"
+      enabled: true
+      type: "trending"
+      media: "show"
+      limit: 100
+      sync_interval: "6h"
 ```
 
-**Result:** ~50-100 movies/week (requires storage!)
+**Result:** High volume (requires storage!)
 
 </TabItem>
 </Tabs>
@@ -497,13 +628,13 @@ jobs:
 
 <CardGrid>
 <Card title="Start Conservative" icon="approve-check">
-Begin with high thresholds (75+) and strict filters, then relax as needed.
+Begin with strict global filters (min_rating, min_votes), then relax as needed.
 </Card>
 <Card title="Preview Everything" icon="magnifier">
 Always preview jobs before enabling to avoid unwanted content.
 </Card>
-<Card title="Stagger Schedules" icon="rocket">
-Spread job runs throughout the day to avoid API rate limits.
+<Card title="Use Different Intervals" icon="rocket">
+Use longer sync_intervals for slower-updating lists (collected, anticipated).
 </Card>
 <Card title="Monitor Activity" icon="laptop">
 Check the Activity log weekly to see what's being added.
@@ -512,7 +643,7 @@ Check the Activity log weekly to see what's being added.
 Smart Popular jobs automatically balance quality and popularity.
 </Card>
 <Card title="Set Reasonable Limits" icon="setting">
-Start with lower fetch_count (20-30) and increase gradually.
+Start with lower limits (20-50) and increase gradually.
 </Card>
 </CardGrid>
 
@@ -520,11 +651,11 @@ Start with lower fetch_count (20-30) and increase gradually.
 
 <Aside type="caution" title="No Content Being Added?">
 Common issues:
-- Threshold score too high (try lowering to 60-65)
-- Filters too strict (check min_rating, min_votes)
+- Global filters too strict (check min_rating, min_votes in filters section)
 - Content already in library (check activity log)
 - Job not enabled (verify `enabled: true`)
-- Schedule not running (check cron syntax)
+- Trakt API not configured (check Trakt credentials)
+- Period required but not set (for watched/collected/favorited/played jobs)
 </Aside>
 
 ## Next Steps

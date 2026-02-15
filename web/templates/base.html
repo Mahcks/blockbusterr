@@ -6,6 +6,7 @@
     <title>{{.Title}}</title>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -133,6 +134,26 @@
           setTimeout(() => notification.remove(), 300);
         }, 5000);
       };
+
+      // Render Lucide icons for initial and dynamically injected content.
+      window.renderLucideIcons = function(root) {
+        if (!window.lucide || typeof window.lucide.createIcons !== 'function') {
+          return;
+        }
+
+        if (root && root.querySelectorAll) {
+          window.lucide.createIcons({
+            nodes: root.querySelectorAll('[data-lucide]')
+          });
+          return;
+        }
+
+        window.lucide.createIcons();
+      };
+
+      document.addEventListener('DOMContentLoaded', function() {
+        window.renderLucideIcons(document);
+      });
 
       // Toggle advanced settings for jobs
       window.toggleAdvanced = function(jobName, button) {

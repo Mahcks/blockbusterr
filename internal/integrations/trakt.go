@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
 const (
-	TraktAPIBaseURL = "https://api.trakt.tv"
-	TraktAPIVersion = "2"
+	TraktAPIBaseURL     = "https://api.trakt.tv"
+	TraktAPIVersion     = "2"
+	TraktDefaultPageSize = 100 // Max items per page for most Trakt endpoints
 )
 
 // Trakt is the client for interacting with Trakt API
@@ -58,6 +60,63 @@ func (t *Trakt) doRequest(ctx context.Context, method, endpoint string, body io.
 	}
 
 	return resp, nil
+}
+
+// doRequestPaginated performs paginated HTTP requests to the Trakt API
+// It fetches multiple pages if needed to reach the requested limit
+func (t *Trakt) doRequestPaginated(ctx context.Context, endpoint string, limit int) ([][]byte, error) {
+	var allResults [][]byte
+
+	page := 1
+	remaining := limit
+	pageSize := TraktDefaultPageSize
+
+	for remaining > 0 {
+		// Calculate how many items to request this page
+		requestLimit := min(remaining, pageSize)
+
+		// Build paginated endpoint
+		separator := "?"
+		if strings.Contains(endpoint, "?") {
+			separator = "&"
+		}
+		paginatedEndpoint := fmt.Sprintf("%s%spage=%d&limit=%d", endpoint, separator, page, requestLimit)
+
+		resp, err := t.doRequest(ctx, http.MethodGet, paginatedEndpoint, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read response body: %w", err)
+		}
+
+		allResults = append(allResults, body)
+
+		// Check if we got fewer items than requested (end of results)
+		var items []json.RawMessage
+		if err := json.Unmarshal(body, &items); err != nil {
+			return nil, fmt.Errorf("failed to check response length: %w", err)
+		}
+
+		if len(items) < requestLimit {
+			// No more items available
+			break
+		}
+
+		remaining -= len(items)
+		page++
+	}
+
+	return allResults, nil
 }
 
 // TrendingMovie represents a trending movie from Trakt
@@ -191,96 +250,105 @@ type IDs struct {
 	TVDB  int    `json:"tvdb"`
 }
 
-// GetTrendingMovies returns trending movies
+// GetTrendingMovies returns trending movies with pagination support
 func (t *Trakt) GetTrendingMovies(ctx context.Context, limit int) ([]TrendingMovie, error) {
-	endpoint := fmt.Sprintf("/movies/trending?limit=%d&extended=full", limit)
+	endpoint := "/movies/trending?extended=full"
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allMovies []TrendingMovie
+	for _, page := range pages {
+		var movies []TrendingMovie
+		if err := json.Unmarshal(page, &movies); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allMovies = append(allMovies, movies...)
 	}
 
-	var movies []TrendingMovie
-	if err := json.NewDecoder(resp.Body).Decode(&movies); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	// Trim to exact limit if we got more
+	if len(allMovies) > limit {
+		allMovies = allMovies[:limit]
 	}
 
-	return movies, nil
+	return allMovies, nil
 }
 
-// GetTrendingShows returns trending TV shows
+// GetTrendingShows returns trending TV shows with pagination support
 func (t *Trakt) GetTrendingShows(ctx context.Context, limit int) ([]TrendingShow, error) {
-	endpoint := fmt.Sprintf("/shows/trending?limit=%d&extended=full", limit)
+	endpoint := "/shows/trending?extended=full"
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allShows []TrendingShow
+	for _, page := range pages {
+		var shows []TrendingShow
+		if err := json.Unmarshal(page, &shows); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allShows = append(allShows, shows...)
 	}
 
-	var shows []TrendingShow
-	if err := json.NewDecoder(resp.Body).Decode(&shows); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allShows) > limit {
+		allShows = allShows[:limit]
 	}
 
-	return shows, nil
+	return allShows, nil
 }
 
-// GetPopularMovies returns popular movies
+// GetPopularMovies returns popular movies with pagination support
 func (t *Trakt) GetPopularMovies(ctx context.Context, limit int) ([]Movie, error) {
-	endpoint := fmt.Sprintf("/movies/popular?limit=%d&extended=full", limit)
+	endpoint := "/movies/popular?extended=full"
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allMovies []Movie
+	for _, page := range pages {
+		var movies []Movie
+		if err := json.Unmarshal(page, &movies); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allMovies = append(allMovies, movies...)
 	}
 
-	var movies []Movie
-	if err := json.NewDecoder(resp.Body).Decode(&movies); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allMovies) > limit {
+		allMovies = allMovies[:limit]
 	}
 
-	return movies, nil
+	return allMovies, nil
 }
 
-// GetPopularShows returns popular TV shows
+// GetPopularShows returns popular TV shows with pagination support
 func (t *Trakt) GetPopularShows(ctx context.Context, limit int) ([]Show, error) {
-	endpoint := fmt.Sprintf("/shows/popular?limit=%d&extended=full", limit)
+	endpoint := "/shows/popular?extended=full"
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allShows []Show
+	for _, page := range pages {
+		var shows []Show
+		if err := json.Unmarshal(page, &shows); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allShows = append(allShows, shows...)
 	}
 
-	var shows []Show
-	if err := json.NewDecoder(resp.Body).Decode(&shows); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allShows) > limit {
+		allShows = allShows[:limit]
 	}
 
-	return shows, nil
+	return allShows, nil
 }
 
 // SearchResult represents a search result from Trakt
@@ -337,234 +405,254 @@ func (t *Trakt) GetBoxOfficeMovies(ctx context.Context, limit int) ([]BoxOfficeM
 	return results, nil
 }
 
-// GetFavoritedMovies returns the most favorited movies
+// GetFavoritedMovies returns the most favorited movies with pagination support
 func (t *Trakt) GetFavoritedMovies(ctx context.Context, period string, limit int) ([]FavoritedMovie, error) {
-	endpoint := fmt.Sprintf("/movies/favorited/%s?limit=%d&extended=full", period, limit)
+	endpoint := fmt.Sprintf("/movies/favorited/%s?extended=full", period)
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allResults []FavoritedMovie
+	for _, page := range pages {
+		var results []FavoritedMovie
+		if err := json.Unmarshal(page, &results); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allResults = append(allResults, results...)
 	}
 
-	var results []FavoritedMovie
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allResults) > limit {
+		allResults = allResults[:limit]
 	}
 
-	return results, nil
+	return allResults, nil
 }
 
-// GetPlayedMovies returns the most played movies
+// GetPlayedMovies returns the most played movies with pagination support
 func (t *Trakt) GetPlayedMovies(ctx context.Context, period string, limit int) ([]PlayedMovie, error) {
-	endpoint := fmt.Sprintf("/movies/played/%s?limit=%d&extended=full", period, limit)
+	endpoint := fmt.Sprintf("/movies/played/%s?extended=full", period)
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allResults []PlayedMovie
+	for _, page := range pages {
+		var results []PlayedMovie
+		if err := json.Unmarshal(page, &results); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allResults = append(allResults, results...)
 	}
 
-	var results []PlayedMovie
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allResults) > limit {
+		allResults = allResults[:limit]
 	}
 
-	return results, nil
+	return allResults, nil
 }
 
-// GetWatchedMovies returns the most watched movies
+// GetWatchedMovies returns the most watched movies with pagination support
 func (t *Trakt) GetWatchedMovies(ctx context.Context, period string, limit int) ([]WatchedMovie, error) {
-	endpoint := fmt.Sprintf("/movies/watched/%s?limit=%d&extended=full", period, limit)
+	endpoint := fmt.Sprintf("/movies/watched/%s?extended=full", period)
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allResults []WatchedMovie
+	for _, page := range pages {
+		var results []WatchedMovie
+		if err := json.Unmarshal(page, &results); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allResults = append(allResults, results...)
 	}
 
-	var results []WatchedMovie
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allResults) > limit {
+		allResults = allResults[:limit]
 	}
 
-	return results, nil
+	return allResults, nil
 }
 
-// GetCollectedMovies returns the most collected movies
+// GetCollectedMovies returns the most collected movies with pagination support
 func (t *Trakt) GetCollectedMovies(ctx context.Context, period string, limit int) ([]CollectedMovie, error) {
-	endpoint := fmt.Sprintf("/movies/collected/%s?limit=%d&extended=full", period, limit)
+	endpoint := fmt.Sprintf("/movies/collected/%s?extended=full", period)
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allResults []CollectedMovie
+	for _, page := range pages {
+		var results []CollectedMovie
+		if err := json.Unmarshal(page, &results); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allResults = append(allResults, results...)
 	}
 
-	var results []CollectedMovie
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allResults) > limit {
+		allResults = allResults[:limit]
 	}
 
-	return results, nil
+	return allResults, nil
 }
 
-// GetAnticipatedMovies returns the most anticipated movies
+// GetAnticipatedMovies returns the most anticipated movies with pagination support
 func (t *Trakt) GetAnticipatedMovies(ctx context.Context, limit int) ([]AnticipatedMovie, error) {
-	endpoint := fmt.Sprintf("/movies/anticipated?limit=%d&extended=full", limit)
+	endpoint := "/movies/anticipated?extended=full"
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allResults []AnticipatedMovie
+	for _, page := range pages {
+		var results []AnticipatedMovie
+		if err := json.Unmarshal(page, &results); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allResults = append(allResults, results...)
 	}
 
-	var results []AnticipatedMovie
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allResults) > limit {
+		allResults = allResults[:limit]
 	}
 
-	return results, nil
+	return allResults, nil
 }
 
-// GetFavoritedShows returns the most favorited TV shows
+// GetFavoritedShows returns the most favorited TV shows with pagination support
 func (t *Trakt) GetFavoritedShows(ctx context.Context, period string, limit int) ([]FavoritedShow, error) {
-	endpoint := fmt.Sprintf("/shows/favorited/%s?limit=%d&extended=full", period, limit)
+	endpoint := fmt.Sprintf("/shows/favorited/%s?extended=full", period)
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allResults []FavoritedShow
+	for _, page := range pages {
+		var results []FavoritedShow
+		if err := json.Unmarshal(page, &results); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allResults = append(allResults, results...)
 	}
 
-	var results []FavoritedShow
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allResults) > limit {
+		allResults = allResults[:limit]
 	}
 
-	return results, nil
+	return allResults, nil
 }
 
-// GetPlayedShows returns the most played TV shows
+// GetPlayedShows returns the most played TV shows with pagination support
 func (t *Trakt) GetPlayedShows(ctx context.Context, period string, limit int) ([]PlayedShow, error) {
-	endpoint := fmt.Sprintf("/shows/played/%s?limit=%d&extended=full", period, limit)
+	endpoint := fmt.Sprintf("/shows/played/%s?extended=full", period)
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allResults []PlayedShow
+	for _, page := range pages {
+		var results []PlayedShow
+		if err := json.Unmarshal(page, &results); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allResults = append(allResults, results...)
 	}
 
-	var results []PlayedShow
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allResults) > limit {
+		allResults = allResults[:limit]
 	}
 
-	return results, nil
+	return allResults, nil
 }
 
-// GetWatchedShows returns the most watched TV shows
+// GetWatchedShows returns the most watched TV shows with pagination support
 func (t *Trakt) GetWatchedShows(ctx context.Context, period string, limit int) ([]WatchedShow, error) {
-	endpoint := fmt.Sprintf("/shows/watched/%s?limit=%d&extended=full", period, limit)
+	endpoint := fmt.Sprintf("/shows/watched/%s?extended=full", period)
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allResults []WatchedShow
+	for _, page := range pages {
+		var results []WatchedShow
+		if err := json.Unmarshal(page, &results); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allResults = append(allResults, results...)
 	}
 
-	var results []WatchedShow
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allResults) > limit {
+		allResults = allResults[:limit]
 	}
 
-	return results, nil
+	return allResults, nil
 }
 
-// GetCollectedShows returns the most collected TV shows
+// GetCollectedShows returns the most collected TV shows with pagination support
 func (t *Trakt) GetCollectedShows(ctx context.Context, period string, limit int) ([]CollectedShow, error) {
-	endpoint := fmt.Sprintf("/shows/collected/%s?limit=%d&extended=full", period, limit)
+	endpoint := fmt.Sprintf("/shows/collected/%s?extended=full", period)
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allResults []CollectedShow
+	for _, page := range pages {
+		var results []CollectedShow
+		if err := json.Unmarshal(page, &results); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allResults = append(allResults, results...)
 	}
 
-	var results []CollectedShow
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allResults) > limit {
+		allResults = allResults[:limit]
 	}
 
-	return results, nil
+	return allResults, nil
 }
 
-// GetAnticipatedShows returns the most anticipated TV shows
+// GetAnticipatedShows returns the most anticipated TV shows with pagination support
 func (t *Trakt) GetAnticipatedShows(ctx context.Context, limit int) ([]AnticipatedShow, error) {
-	endpoint := fmt.Sprintf("/shows/anticipated?limit=%d&extended=full", limit)
+	endpoint := "/shows/anticipated?extended=full"
 
-	resp, err := t.doRequest(ctx, http.MethodGet, endpoint, nil)
+	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+	var allResults []AnticipatedShow
+	for _, page := range pages {
+		var results []AnticipatedShow
+		if err := json.Unmarshal(page, &results); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		allResults = append(allResults, results...)
 	}
 
-	var results []AnticipatedShow
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if len(allResults) > limit {
+		allResults = allResults[:limit]
 	}
 
-	return results, nil
+	return allResults, nil
 }
 
 // Validate checks if the Trakt client credentials are valid

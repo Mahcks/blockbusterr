@@ -13,12 +13,111 @@ import (
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/integrations"
+	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
+type activityLogGroup struct {
+	Log     database.ActivityLog
+	Count   int
+	History []database.ActivityLog
+}
+
+func activityLogGroupKey(log database.ActivityLog) string {
+	idPart := ""
+	switch log.MediaType {
+	case string(enums.MediaTypeMovie):
+		if log.TMDBID > 0 {
+			idPart = fmt.Sprintf("tmdb:%d", log.TMDBID)
+		}
+	case string(enums.MediaTypeShow):
+		if log.TVDBID > 0 {
+			idPart = fmt.Sprintf("tvdb:%d", log.TVDBID)
+		} else if log.TMDBID > 0 {
+			idPart = fmt.Sprintf("tmdb:%d", log.TMDBID)
+		}
+	}
+	if idPart == "" {
+		idPart = strings.ToLower(log.Title) + ":" + strconv.Itoa(log.Year)
+	}
+
+	parts := []string{log.MediaType, idPart, log.Status, log.JobType}
+	if log.RunID > 0 {
+		parts = append(parts, fmt.Sprintf("run:%d", log.RunID))
+	}
+	return strings.Join(parts, "|")
+}
+
+func groupActivityLogs(logs []database.ActivityLog) []activityLogGroup {
+	if len(logs) == 0 {
+		return []activityLogGroup{}
+	}
+
+	groups := make([]activityLogGroup, 0, len(logs))
+	indexByKey := make(map[string]int)
+
+	for _, log := range logs {
+		key := activityLogGroupKey(log)
+		if idx, ok := indexByKey[key]; ok {
+			groups[idx].Count++
+			groups[idx].History = append(groups[idx].History, log)
+			continue
+		}
+
+		indexByKey[key] = len(groups)
+		groups = append(groups, activityLogGroup{
+			Log:     log,
+			Count:   1,
+			History: []database.ActivityLog{log},
+		})
+	}
+
+	return groups
+}
+
 func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
+	// Debug endpoint for runtime activity/config/database diagnosis
+	router.Get("/activity/debug", func(c *fiber.Ctx) error {
+		db := gctx.Database()
+		cfg := gctx.Config()
+
+		response := fiber.Map{
+			"db_nil":       db == nil,
+			"config_path":  cfg.ConfigFilePath,
+			"app_version":  gctx.Metadata().Version,
+			"app_commit":   gctx.Metadata().Commit,
+			"runtime_time": time.Now().Format(time.RFC3339),
+		}
+
+		if db != nil {
+			debugInfo, err := db.GetActivityDebug()
+			if err != nil {
+				response["debug_error"] = err.Error()
+			} else {
+				response["db"] = debugInfo
+			}
+		}
+
+		return c.JSON(response)
+	})
+
 	// Get recent activity logs
 	router.Get("/activity/logs", func(c *fiber.Ctx) error {
+		const (
+			defaultPageSize = 50
+			maxPageSize     = 200
+			maxLegacyLimit  = 10000
+			maxFetchLimit   = 50000
+		)
+
 		db := gctx.Database()
+		if db == nil {
+			if c.Get("HX-Request") == "true" {
+				return c.Status(fiber.StatusServiceUnavailable).SendString("Database unavailable")
+			}
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+				"error": "Database unavailable",
+			})
+		}
 
 		// Get pagination params
 		page := 1
@@ -28,9 +127,9 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			}
 		}
 
-		pageSize := 50
+		pageSize := defaultPageSize
 		if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
-			if parsedSize, err := strconv.Atoi(pageSizeStr); err == nil && parsedSize > 0 && parsedSize <= 200 {
+			if parsedSize, err := strconv.Atoi(pageSizeStr); err == nil && parsedSize > 0 && parsedSize <= maxPageSize {
 				pageSize = parsedSize
 			}
 		}
@@ -38,7 +137,11 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		// Legacy support for limit param
 		if limitStr := c.Query("limit"); limitStr != "" {
 			if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
-				pageSize = parsedLimit
+				if parsedLimit > maxLegacyLimit {
+					pageSize = maxLegacyLimit
+				} else {
+					pageSize = parsedLimit
+				}
 			}
 		}
 
@@ -48,11 +151,34 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		jobType := c.Query("job")          // job type filter or empty for all
 		search := c.Query("search")        // search by title
 		dateRange := c.Query("date_range") // "today", "yesterday", "week", "month"
-		_ = c.Query("sort")                // Reserved for future use
-		_ = c.Query("order")               // Reserved for future use
+		runIDStr := c.Query("run_id")
+		_ = c.Query("sort")  // Reserved for future use
+		_ = c.Query("order") // Reserved for future use
+
+		if status != "" {
+			parsedStatus, ok := enums.ParseActivityStatus(status)
+			if !ok {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error": fmt.Sprintf("invalid status: %s", status),
+				})
+			}
+			status = string(parsedStatus)
+		}
+		if mediaType != "" {
+			parsedMediaType, ok := enums.ParseMediaType(mediaType)
+			if !ok {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error": fmt.Sprintf("invalid media type: %s", mediaType),
+				})
+			}
+			mediaType = string(parsedMediaType)
+		}
 
 		// Fetch more logs than needed to apply filters and calculate total
 		fetchLimit := pageSize * 100 // Fetch enough for filtering
+		if fetchLimit > maxFetchLimit {
+			fetchLimit = maxFetchLimit
+		}
 		logs, err := db.GetRecentActivityFiltered(fetchLimit, status, mediaType, jobType)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -76,30 +202,78 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		if dateRange != "" {
 			filtered := []database.ActivityLog{}
 			now := time.Now()
-			var cutoff time.Time
+			var cutoffStart *time.Time
+			var cutoffEnd *time.Time
 
 			switch dateRange {
 			case "today":
-				cutoff = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+				start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+				cutoffStart = &start
 			case "yesterday":
 				yesterday := now.AddDate(0, 0, -1)
-				cutoff = time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, now.Location())
+				start := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, now.Location())
+				end := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+				cutoffStart = &start
+				cutoffEnd = &end
 			case "week":
-				cutoff = now.AddDate(0, 0, -7)
+				start := now.AddDate(0, 0, -7)
+				cutoffStart = &start
 			case "month":
-				cutoff = now.AddDate(0, 0, -30)
+				start := now.AddDate(0, 0, -30)
+				cutoffStart = &start
 			}
 
 			for _, log := range logs {
-				if log.Timestamp.After(cutoff) {
+				if cutoffStart != nil && log.Timestamp.Before(*cutoffStart) {
+					continue
+				}
+				if cutoffEnd != nil && !log.Timestamp.Before(*cutoffEnd) {
+					continue
+				}
+				filtered = append(filtered, log)
+			}
+			logs = filtered
+		}
+
+		// Optional filter by run ID
+		if runIDStr != "" {
+			runID, err := strconv.ParseInt(runIDStr, 10, 64)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error": fmt.Sprintf("invalid run_id: %s", runIDStr),
+				})
+			}
+			filtered := []database.ActivityLog{}
+			for _, log := range logs {
+				if log.RunID == runID {
 					filtered = append(filtered, log)
 				}
 			}
 			logs = filtered
 		}
 
-		// Calculate pagination
-		totalRecords := len(logs)
+		// Optional grouping (dedupe) for cleaner activity views
+		dedupe := true
+		if dedupeStr := strings.ToLower(strings.TrimSpace(c.Query("dedupe"))); dedupeStr != "" {
+			dedupe = dedupeStr != "false" && dedupeStr != "0" && dedupeStr != "no"
+		}
+
+		var groupedLogs []activityLogGroup
+		if dedupe {
+			groupedLogs = groupActivityLogs(logs)
+		} else {
+			groupedLogs = make([]activityLogGroup, 0, len(logs))
+			for _, log := range logs {
+				groupedLogs = append(groupedLogs, activityLogGroup{
+					Log:     log,
+					Count:   1,
+					History: []database.ActivityLog{log},
+				})
+			}
+		}
+
+		// Calculate pagination (on grouped results)
+		totalRecords := len(groupedLogs)
 		totalPages := (totalRecords + pageSize - 1) / pageSize
 		if totalPages == 0 {
 			totalPages = 1
@@ -118,9 +292,9 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			endIdx = totalRecords
 		}
 
-		paginatedLogs := logs
+		paginatedLogs := groupedLogs
 		if totalRecords > 0 {
-			paginatedLogs = logs[startIdx:endIdx]
+			paginatedLogs = groupedLogs[startIdx:endIdx]
 		}
 
 		// Check if this is an HTMX request (wants HTML)
@@ -138,6 +312,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		// Otherwise return JSON (for API clients)
 		return c.JSON(fiber.Map{
 			"logs":          paginatedLogs,
+			"grouped":       dedupe,
 			"page":          page,
 			"page_size":     pageSize,
 			"total_records": totalRecords,
@@ -145,52 +320,74 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		})
 	})
 
+	// Get recent job runs timeline
+	router.Get("/activity/runs", func(c *fiber.Ctx) error {
+		db := gctx.Database()
+		if db == nil {
+			return c.JSON(fiber.Map{
+				"runs": []database.JobRun{},
+			})
+		}
+		limit := 100
+		if limitStr := c.Query("limit"); limitStr != "" {
+			if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 && parsedLimit <= 500 {
+				limit = parsedLimit
+			}
+		}
+
+		jobID := strings.TrimSpace(c.Query("job_id"))
+		runs, err := db.GetRecentJobRuns(limit, jobID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to retrieve job runs",
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"runs": runs,
+		})
+	})
+
 	// Get activity chart data
 	router.Get("/activity/chart", func(c *fiber.Ctx) error {
 		db := gctx.Database()
+		if db == nil {
+			return c.JSON(fiber.Map{
+				"labels":   []string{},
+				"added":    []int{},
+				"rejected": []int{},
+				"skipped":  []int{},
+			})
+		}
 
-		// Get last 7 days of activity
 		chartData := make(map[string]any)
-		labels := []string{}
-		added := []int{}
-		rejected := []int{}
-		skipped := []int{}
+		labels := make([]string, 0, 7)
+		added := make([]int, 0, 7)
+		rejected := make([]int, 0, 7)
+		skipped := make([]int, 0, 7)
+
+		countsByDay, err := db.GetActivityDailyCounts(7)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to retrieve chart data",
+			})
+		}
 
 		now := time.Now()
 		for i := 6; i >= 0; i-- {
-			date := now.AddDate(0, 0, -i)
-			dateStr := date.Format("1/2")
-			labels = append(labels, dateStr)
+			day := now.AddDate(0, 0, -i)
+			labels = append(labels, day.Format("1/2"))
 
-			// Get logs for this day
-			dayLogs, err := db.GetRecentActivityFiltered(10000, "", "", "")
-			if err != nil {
+			key := day.Format("2006-01-02")
+			if counts, ok := countsByDay[key]; ok {
+				added = append(added, counts.Added)
+				rejected = append(rejected, counts.Rejected)
+				skipped = append(skipped, counts.Skipped)
 				continue
 			}
-
-			dayAdded := 0
-			dayRejected := 0
-			daySkipped := 0
-
-			dayStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
-			dayEnd := dayStart.AddDate(0, 0, 1)
-
-			for _, log := range dayLogs {
-				if log.Timestamp.After(dayStart) && log.Timestamp.Before(dayEnd) {
-					switch log.Status {
-					case "added", "requested":
-						dayAdded++
-					case "rejected":
-						dayRejected++
-					case "skipped":
-						daySkipped++
-					}
-				}
-			}
-
-			added = append(added, dayAdded)
-			rejected = append(rejected, dayRejected)
-			skipped = append(skipped, daySkipped)
+			added = append(added, 0)
+			rejected = append(rejected, 0)
+			skipped = append(skipped, 0)
 		}
 
 		chartData["labels"] = labels
@@ -204,6 +401,17 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 	// Get activity statistics
 	router.Get("/activity/stats", func(c *fiber.Ctx) error {
 		db := gctx.Database()
+		if db == nil {
+			return c.JSON(fiber.Map{
+				"total_added":    0,
+				"total_failed":   0,
+				"total_rejected": 0,
+				"total_skipped":  0,
+				"total_movies":   0,
+				"total_shows":    0,
+				"added_last_24h": 0,
+			})
+		}
 
 		stats, err := db.GetActivityStats()
 		if err != nil {
@@ -218,6 +426,12 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 	// Get rejection reasons breakdown
 	router.Get("/activity/rejection-breakdown", func(c *fiber.Ctx) error {
 		db := gctx.Database()
+		if db == nil {
+			return c.JSON(fiber.Map{
+				"total_rejected": 0,
+				"breakdown":      map[string]int{},
+			})
+		}
 
 		// Get all rejected count for accurate total
 		stats, err := db.GetActivityStats()
@@ -229,7 +443,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		totalRejected, _ := stats["total_rejected"].(int)
 
 		// Get recent rejected items to analyze filter reasons (sample up to 1000)
-		logs, err := db.GetRecentActivityFiltered(1000, "rejected", "", "")
+		logs, err := db.GetRecentActivityFiltered(1000, string(enums.ActivityStatusRejected), "", "")
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to retrieve rejection data",
@@ -285,6 +499,11 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 	// Clear old logs (admin endpoint)
 	router.Delete("/activity/logs", func(c *fiber.Ctx) error {
 		db := gctx.Database()
+		if db == nil {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+				"error": "Database not initialized",
+			})
+		}
 
 		// Get days from query params (default 30)
 		days := 30
@@ -320,6 +539,11 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 
 		// Retrieve the activity log entry
 		db := gctx.Database()
+		if db == nil {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+				"error": "Database not initialized",
+			})
+		}
 		log, err := db.GetActivityLogByID(id)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -342,7 +566,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		}
 
 		// Update the activity log status
-		err = db.UpdateActivityLogStatus(id, "added", "Manually added by user")
+		err = db.UpdateActivityLogStatus(id, string(enums.ActivityStatusAdded), "Manually added by user")
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to update activity log",
@@ -368,6 +592,11 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 
 		// Retrieve the activity log entry
 		db := gctx.Database()
+		if db == nil {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+				"error": "Database not initialized",
+			})
+		}
 		activityLog, err := db.GetActivityLogByID(id)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -384,7 +613,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		// Add to blocklist in config
 		cfg := gctx.Config()
 		switch activityLog.MediaType {
-		case "movie":
+		case string(enums.MediaTypeMovie):
 			if activityLog.TMDBID == 0 {
 				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 					"error": "No TMDB ID available for this movie",
@@ -405,7 +634,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 
 			log.Infof("Blocked movie '%s' (TMDB ID: %d) - added to blocklist", activityLog.Title, activityLog.TMDBID)
 
-		case "show":
+		case string(enums.MediaTypeShow):
 			if activityLog.TVDBID == 0 {
 				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 					"error": "No TVDB ID available for this show",
@@ -428,7 +657,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		}
 
 		// Update the activity log
-		err = db.UpdateActivityLogStatus(id, "blocked", "Blocked by user")
+		err = db.UpdateActivityLogStatus(id, string(enums.ActivityStatusBlocked), "Blocked by user")
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to update activity log",
@@ -459,7 +688,7 @@ func addMediaManually(ctx context.Context, gctx global.Context, activityLog *dat
 		})
 
 		switch activityLog.MediaType {
-		case "movie":
+		case string(enums.MediaTypeMovie):
 			if activityLog.TMDBID == 0 {
 				return fmt.Errorf("no TMDB ID available for movie")
 			}
@@ -468,7 +697,7 @@ func addMediaManually(ctx context.Context, gctx global.Context, activityLog *dat
 				return fmt.Errorf("failed to request movie via Jellyseerr: %w", err)
 			}
 			log.Infof("Manually requested movie '%s' via Jellyseerr (TMDB ID: %d)", activityLog.Title, activityLog.TMDBID)
-		case "show":
+		case string(enums.MediaTypeShow):
 			if activityLog.TMDBID == 0 {
 				return fmt.Errorf("no TMDB ID available for show")
 			}
@@ -481,7 +710,7 @@ func addMediaManually(ctx context.Context, gctx global.Context, activityLog *dat
 	} else {
 		// Direct mode - add to *arr
 		switch activityLog.MediaType {
-		case "movie":
+		case string(enums.MediaTypeMovie):
 			// Add to Radarr
 			radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
 				BaseURL: cfg.Radarr.URL,
@@ -516,7 +745,7 @@ func addMediaManually(ctx context.Context, gctx global.Context, activityLog *dat
 				return fmt.Errorf("failed to add movie to Radarr: %w", err)
 			}
 			log.Infof("Manually added movie '%s' to Radarr (TMDB ID: %d)", activityLog.Title, activityLog.TMDBID)
-		case "show":
+		case string(enums.MediaTypeShow):
 			// Add to Sonarr
 			sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
 				BaseURL: cfg.Sonarr.URL,

@@ -15,6 +15,7 @@ import (
 
 // SmartJobConfig extends JobConfig with adaptive rating parameters
 type SmartJobConfig struct {
+	JobID               string
 	JobName             string
 	MediaType           string
 	Mode                string
@@ -31,6 +32,7 @@ type SmartMovieJobExecutor struct {
 	Database      *database.Database
 	DryRun        bool
 	lastDecisions *JobRunDecisions
+	currentRunID  int64
 }
 
 // Execute runs a smart movie job with adaptive rating thresholds
@@ -45,6 +47,16 @@ func (e *SmartMovieJobExecutor) Execute(
 		log.Infof("Starting %s job with adaptive ratings", jobConfig.JobName)
 	}
 
+	if e.Database != nil {
+		runID, err := e.Database.StartJobRun(jobConfig.JobID, jobConfig.JobName, jobConfig.MediaType, jobConfig.Mode, time.Now())
+		if err != nil {
+			log.Warnf("Failed to create job run for %s: %v", jobConfig.JobName, err)
+		} else {
+			e.currentRunID = runID
+			defer func() { e.currentRunID = 0 }()
+		}
+	}
+
 	// Create Trakt client
 	traktClient := integrations.NewTrakt(integrations.TraktConfig{
 		ClientID:     e.Config.Trakt.ClientID,
@@ -55,6 +67,21 @@ func (e *SmartMovieJobExecutor) Execute(
 	movies, err := fetcher(ctx, traktClient, jobConfig.Limit, "")
 	if err != nil {
 		log.Errorf("Failed to fetch %s from Trakt: %v", jobConfig.JobName, err)
+		if e.Database != nil {
+			_ = e.Database.LogActivity(database.ActivityLog{
+				Timestamp: time.Now(),
+				JobID:     jobConfig.JobID,
+				RunID:     e.currentRunID,
+				JobType:   jobConfig.JobName,
+				MediaType: "movie",
+				Title:     FormatJobLabel(jobConfig.JobID, jobConfig.JobName),
+				Status:    "failed",
+				Message:   fmt.Sprintf("Failed to fetch from Trakt: %v", err),
+			})
+		}
+		if e.Database != nil && e.currentRunID > 0 {
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", 0, 0, 0, 0, 0, 0, 1, err.Error())
+		}
 		return
 	}
 
@@ -83,6 +110,7 @@ func (e *SmartMovieJobExecutor) Execute(
 
 	// Convert to regular JobConfig for execution
 	regularJobConfig := JobConfig{
+		JobID:               jobConfig.JobID,
 		JobName:             jobConfig.JobName,
 		MediaType:           jobConfig.MediaType,
 		Mode:                jobConfig.Mode,
@@ -97,6 +125,7 @@ func (e *SmartMovieJobExecutor) Execute(
 		Database:      e.Database,
 		DryRun:        e.DryRun,
 		lastDecisions: runDecisions,
+		currentRunID:  e.currentRunID,
 	}
 
 	if jobConfig.Mode == "jellyseerr" {
@@ -105,7 +134,23 @@ func (e *SmartMovieJobExecutor) Execute(
 		movieExecutor.executeMoviesDirect(ctx, regularJobConfig, filteredMovies, scoreMap)
 	}
 
+	runDecisions.Rejected = runDecisions.TotalFound - runDecisions.PassedFilters
 	runDecisions.Completed = true
+	if e.Database != nil && e.currentRunID > 0 {
+		_ = e.Database.CompleteJobRun(
+			e.currentRunID,
+			time.Now(),
+			"completed",
+			runDecisions.TotalFound,
+			runDecisions.PassedFilters,
+			runDecisions.Added,
+			runDecisions.Requested,
+			runDecisions.Skipped,
+			runDecisions.Rejected,
+			runDecisions.Failed,
+			"",
+		)
+	}
 }
 
 // evaluateMoviesWithAdaptiveFilters evaluates movies with adaptive rating thresholds
@@ -212,6 +257,8 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 				posterURL := GetTMDBPosterURL(e.Config, decision.TMDBID, "movie")
 				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp:     time.Now(),
+					JobID:         jobConfig.JobID,
+					RunID:         e.currentRunID,
 					JobType:       jobConfig.JobName,
 					MediaType:     "movie",
 					Title:         decision.Title,

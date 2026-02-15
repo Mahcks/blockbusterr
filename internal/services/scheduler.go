@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 )
 
 type jobConfig struct {
+	id           string
 	name         string
 	enabled      bool
 	syncInterval string
@@ -28,6 +30,8 @@ type Scheduler struct {
 	db        *database.Database
 	version   string
 	jobStops  map[string]context.CancelFunc
+	jobSigs   map[string]string
+	jobNames  map[string]string
 	jobMutex  sync.Mutex
 }
 
@@ -40,6 +44,8 @@ func NewScheduler(getConfig func() *config.Config, db *database.Database, versio
 		db:        db,
 		version:   version,
 		jobStops:  make(map[string]context.CancelFunc),
+		jobSigs:   make(map[string]string),
+		jobNames:  make(map[string]string),
 	}
 }
 
@@ -57,8 +63,8 @@ func (s *Scheduler) Stop() {
 
 	// Stop all individual job goroutines
 	s.jobMutex.Lock()
-	for name, cancel := range s.jobStops {
-		log.Infof("Stopping job: %s", name)
+	for id, cancel := range s.jobStops {
+		log.Infof("Stopping job: %s", formatJobLabel(s.jobNames[id], id))
 		cancel()
 	}
 	s.jobMutex.Unlock()
@@ -93,169 +99,90 @@ func (s *Scheduler) scheduleJobs() {
 	cfg := s.getConfig()
 	dryRun := s.version == "dev"
 	defaultInterval := cfg.Jobs.SyncInterval
-	defaultMode := cfg.Jobs.Mode
-	if defaultMode == "" {
-		defaultMode = "direct"
-	}
 
-	// Build job configurations
-	jobConfigs := []jobConfig{
-		{
-			name:         "trending_movies",
-			enabled:      cfg.Jobs.TrendingMovies.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.TrendingMovies.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.TrendingMovies.Mode, defaultMode),
-			runFunc:      func() { jobs.RunTrendingMovies(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "trending_shows",
-			enabled:      cfg.Jobs.TrendingShows.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.TrendingShows.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.TrendingShows.Mode, defaultMode),
-			runFunc:      func() { jobs.RunTrendingShows(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "popular_movies",
-			enabled:      cfg.Jobs.PopularMovies.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.PopularMovies.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.PopularMovies.Mode, defaultMode),
-			runFunc:      func() { jobs.RunPopularMovies(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "popular_shows",
-			enabled:      cfg.Jobs.PopularShows.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.PopularShows.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.PopularShows.Mode, defaultMode),
-			runFunc:      func() { jobs.RunPopularShows(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "box_office",
-			enabled:      cfg.Jobs.BoxOffice.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.BoxOffice.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.BoxOffice.Mode, defaultMode),
-			runFunc:      func() { jobs.RunBoxOffice(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "favorited_movies",
-			enabled:      cfg.Jobs.FavoritedMovies.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.FavoritedMovies.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.FavoritedMovies.Mode, defaultMode),
-			runFunc:      func() { jobs.RunFavoritedMovies(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "played_movies",
-			enabled:      cfg.Jobs.PlayedMovies.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.PlayedMovies.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.PlayedMovies.Mode, defaultMode),
-			runFunc:      func() { jobs.RunPlayedMovies(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "watched_movies",
-			enabled:      cfg.Jobs.WatchedMovies.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.WatchedMovies.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.WatchedMovies.Mode, defaultMode),
-			runFunc:      func() { jobs.RunWatchedMovies(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "collected_movies",
-			enabled:      cfg.Jobs.CollectedMovies.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.CollectedMovies.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.CollectedMovies.Mode, defaultMode),
-			runFunc:      func() { jobs.RunCollectedMovies(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "anticipated_movies",
-			enabled:      cfg.Jobs.AnticipatedMovies.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.AnticipatedMovies.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.AnticipatedMovies.Mode, defaultMode),
-			runFunc:      func() { jobs.RunAnticipatedMovies(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "favorited_shows",
-			enabled:      cfg.Jobs.FavoritedShows.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.FavoritedShows.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.FavoritedShows.Mode, defaultMode),
-			runFunc:      func() { jobs.RunFavoritedShows(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "played_shows",
-			enabled:      cfg.Jobs.PlayedShows.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.PlayedShows.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.PlayedShows.Mode, defaultMode),
-			runFunc:      func() { jobs.RunPlayedShows(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "watched_shows",
-			enabled:      cfg.Jobs.WatchedShows.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.WatchedShows.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.WatchedShows.Mode, defaultMode),
-			runFunc:      func() { jobs.RunWatchedShows(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "collected_shows",
-			enabled:      cfg.Jobs.CollectedShows.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.CollectedShows.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.CollectedShows.Mode, defaultMode),
-			runFunc:      func() { jobs.RunCollectedShows(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "anticipated_shows",
-			enabled:      cfg.Jobs.AnticipatedShows.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.AnticipatedShows.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.AnticipatedShows.Mode, defaultMode),
-			runFunc:      func() { jobs.RunAnticipatedShows(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "smart_popular_movies",
-			enabled:      cfg.Jobs.SmartPopularMovies.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.SmartPopularMovies.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.SmartPopularMovies.Mode, defaultMode),
-			runFunc:      func() { jobs.RunSmartPopularMovies(cfg, s.db, dryRun) },
-		},
-		{
-			name:         "smart_popular_shows",
-			enabled:      cfg.Jobs.SmartPopularShows.Enabled,
-			syncInterval: getJobInterval(cfg.Jobs.SmartPopularShows.SyncInterval, defaultInterval),
-			mode:         getJobMode(cfg.Jobs.SmartPopularShows.Mode, defaultMode),
-			runFunc:      func() { jobs.RunSmartPopularShows(cfg, s.db, dryRun) },
-		},
+	// Get all enabled jobs (both dynamic and legacy)
+	enabledJobs := cfg.GetEnabledJobs()
+
+	// Track which jobs should be running
+	activeJobIDs := make(map[string]bool)
+	for _, job := range enabledJobs {
+		activeJobIDs[job.ID] = true
 	}
 
 	s.jobMutex.Lock()
 	defer s.jobMutex.Unlock()
 
-	// Schedule or reschedule each job
-	for _, jc := range jobConfigs {
-		if !jc.enabled {
-			// Stop job if it's running but now disabled
-			if cancel, exists := s.jobStops[jc.name]; exists {
-				cancel()
-				delete(s.jobStops, jc.name)
-			}
-			continue
+	// Stop jobs that are no longer enabled
+	for jobID, cancel := range s.jobStops {
+		if !activeJobIDs[jobID] {
+			log.Infof("Stopping disabled job: %s", formatJobLabel(s.jobNames[jobID], jobID))
+			cancel()
+			delete(s.jobStops, jobID)
+			delete(s.jobSigs, jobID)
+			delete(s.jobNames, jobID)
 		}
+	}
+
+	// Schedule each enabled job
+	for _, job := range enabledJobs {
+		jobSig := jobSignature(job)
 
 		// Check if job is already scheduled
-		if _, exists := s.jobStops[jc.name]; exists {
-			// Job already running, skip (we could add logic to detect config changes and restart)
-			continue
+		if _, exists := s.jobStops[job.ID]; exists {
+			// If the signature changed, restart the job to apply updates
+			if s.jobSigs[job.ID] != jobSig {
+				log.Infof("Job '%s' changed, rescheduling", formatJobLabel(job.Name, job.ID))
+				s.jobStops[job.ID]()
+				delete(s.jobStops, job.ID)
+				delete(s.jobSigs, job.ID)
+				delete(s.jobNames, job.ID)
+			} else {
+				// Job already running with same config, skip
+				continue
+			}
+		}
+
+		// Get effective sync interval
+		syncInterval := getJobInterval(job.SyncInterval, defaultInterval)
+
+		// Get effective mode
+		mode := getJobMode(job.Mode, cfg.Jobs.Mode)
+
+		// Create job config for the scheduler
+		jc := jobConfig{
+			id:           job.ID,
+			name:         job.Name,
+			enabled:      job.Enabled,
+			syncInterval: syncInterval,
+			mode:         mode,
+			runFunc: func(j config.DynamicJob) func() {
+				return func() {
+					if err := jobs.RunDynamicJob(s.getConfig(), s.db, j, dryRun); err != nil {
+						log.Errorf("Failed to run job %s: %v", formatJobLabel(j.Name, j.ID), err)
+					}
+				}
+			}(job),
 		}
 
 		// Start new job scheduler
 		s.startJobScheduler(jc)
+		s.jobSigs[job.ID] = jobSig
+		s.jobNames[job.ID] = job.Name
 	}
 }
 
 func (s *Scheduler) startJobScheduler(jc jobConfig) {
 	jobCtx, jobCancel := context.WithCancel(s.ctx)
-	s.jobStops[jc.name] = jobCancel
+	s.jobStops[jc.id] = jobCancel
 
 	s.wg.Add(1)
 	go func(jc jobConfig) {
 		defer s.wg.Done()
 		defer func() {
 			s.jobMutex.Lock()
-			delete(s.jobStops, jc.name)
+			delete(s.jobStops, jc.id)
+			delete(s.jobSigs, jc.id)
+			delete(s.jobNames, jc.id)
 			s.jobMutex.Unlock()
 		}()
 
@@ -265,13 +192,13 @@ func (s *Scheduler) startJobScheduler(jc jobConfig) {
 		if cronSchedule != nil {
 			nextRun := (*cronSchedule).Next(time.Now())
 			log.Infof("Job '%s' scheduled with cron '%s' (%s mode), next run at %s",
-				jc.name, jc.syncInterval, jc.mode, nextRun.Format(time.RFC3339))
+				formatJobLabel(jc.name, jc.id), jc.syncInterval, jc.mode, nextRun.Format(time.RFC3339))
 		} else {
 			if duration == 0 {
-				log.Warnf("Invalid sync interval '%s' for job '%s', defaulting to 1h", jc.syncInterval, jc.name)
+				log.Warnf("Invalid sync interval '%s' for job '%s', defaulting to 1h", jc.syncInterval, formatJobLabel(jc.name, jc.id))
 				duration = 1 * time.Hour
 			}
-			log.Infof("Job '%s' scheduled every %s (%s mode)", jc.name, duration, jc.mode)
+			log.Infof("Job '%s' scheduled every %s (%s mode)", formatJobLabel(jc.name, jc.id), duration, jc.mode)
 		}
 
 		// Create ticker
@@ -288,7 +215,7 @@ func (s *Scheduler) startJobScheduler(jc jobConfig) {
 		for {
 			select {
 			case <-jobCtx.Done():
-				log.Infof("Job '%s' stopped", jc.name)
+				log.Infof("Job '%s' stopped", formatJobLabel(jc.name, jc.id))
 				return
 			case <-ticker.C:
 				// Execute the job
@@ -315,65 +242,17 @@ func (s *Scheduler) executeAllJobs() {
 		log.Info("Executing initial jobs")
 	}
 
+	// Get all enabled jobs (both dynamic and legacy)
+	enabledJobs := cfg.GetEnabledJobs()
+
+	log.Infof("Found %d enabled jobs to execute", len(enabledJobs))
+
 	// Run each enabled job
-	if cfg.Jobs.TrendingMovies.Enabled {
-		jobs.RunTrendingMovies(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.TrendingShows.Enabled {
-		jobs.RunTrendingShows(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.PopularMovies.Enabled {
-		jobs.RunPopularMovies(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.PopularShows.Enabled {
-		jobs.RunPopularShows(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.BoxOffice.Enabled {
-		jobs.RunBoxOffice(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.FavoritedMovies.Enabled {
-		jobs.RunFavoritedMovies(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.PlayedMovies.Enabled {
-		jobs.RunPlayedMovies(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.WatchedMovies.Enabled {
-		jobs.RunWatchedMovies(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.CollectedMovies.Enabled {
-		jobs.RunCollectedMovies(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.AnticipatedMovies.Enabled {
-		jobs.RunAnticipatedMovies(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.FavoritedShows.Enabled {
-		jobs.RunFavoritedShows(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.PlayedShows.Enabled {
-		jobs.RunPlayedShows(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.WatchedShows.Enabled {
-		jobs.RunWatchedShows(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.CollectedShows.Enabled {
-		jobs.RunCollectedShows(cfg, s.db, dryRun)
-	}
-
-	if cfg.Jobs.AnticipatedShows.Enabled {
-		jobs.RunAnticipatedShows(cfg, s.db, dryRun)
+	for _, job := range enabledJobs {
+		log.Infof("Executing job: %s (%s %s)", formatJobLabel(job.Name, job.ID), job.Type, job.MediaType)
+		if err := jobs.RunDynamicJob(cfg, s.db, job, dryRun); err != nil {
+			log.Errorf("Failed to run job %s: %v", formatJobLabel(job.Name, job.ID), err)
+		}
 	}
 
 	log.Info("Completed initial job execution")
@@ -410,4 +289,34 @@ func parseSyncInterval(interval string) (time.Duration, *cron.Schedule, error) {
 	}
 
 	return 0, nil, nil
+}
+
+func jobSignature(job config.DynamicJob) string {
+	return fmt.Sprintf(
+		"%s|%t|%s|%s|%s|%d|%s|%s|%s|%s|%s|%f|%f|%d",
+		job.ID,
+		job.Enabled,
+		job.Type,
+		job.Source,
+		job.MediaType,
+		job.Limit,
+		job.Period,
+		job.SyncInterval,
+		job.Mode,
+		job.MinimumAvailability,
+		job.Monitor,
+		job.BaseMinRating,
+		job.AdjustmentFactor,
+		job.MinGlobalPicks,
+	)
+}
+
+func formatJobLabel(name, id string) string {
+	if name == "" {
+		return id
+	}
+	if id == "" {
+		return name
+	}
+	return fmt.Sprintf("%s (%s)", name, id)
 }
