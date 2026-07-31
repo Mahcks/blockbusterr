@@ -1,268 +1,150 @@
 ---
 title: Configuration
-description: Complete configuration reference for Blockbusterr
+description: Configuration reference for Blockbusterr
 ---
 
-Blockbusterr can be configured via a YAML configuration file or through the Web UI.
+Blockbusterr reads YAML from `config/config.yaml` in releases and `config/config.dev.yaml` for a development build. The Web UI writes the same configuration model.
 
-## Configuration File
-
-The configuration file is located at `config/config.yaml`. Here's a complete example:
+## Complete example
 
 ```yaml
-server:
-  host: "0.0.0.0"
-  port: 9090
+version: "1.5.0"
 
-database:
-  path: "data/blockbusterr.db"
-
-# Trakt Integration (Required)
+# Configure at least one discovery provider.
 trakt:
-  client_id: "your_trakt_client_id"
-  client_secret: "your_trakt_client_secret"
-  access_token: ""  # Auto-populated after OAuth
-  refresh_token: ""  # Auto-populated after OAuth
+  client_id: your_trakt_client_id
+  client_secret: your_trakt_client_secret
 
-# TMDB Integration (Optional - for poster images)
 tmdb:
-  api_key: "your_tmdb_api_key"
+  api_key: your_tmdb_api_key
 
-# Radarr Integration (Optional)
+simkl:
+  client_id: your_simkl_client_id
+
 radarr:
-  enabled: true
-  url: "http://radarr:7878"
-  api_key: "your_radarr_api_key"
-  quality_profile_id: 1
-  root_folder: "/movies"
-  search_on_add: true
-  monitored: true
-  minimum_availability: "released"  # announced, inCinemas, released, preDB
+  url: http://radarr:7878
+  api_key: your_radarr_api_key
+  quality_profile: 1
+  root_folder: /movies
+  minimum_availability: announced
+  monitor: movieOnly
 
-# Sonarr Integration (Optional)
 sonarr:
-  enabled: true
-  url: "http://sonarr:8989"
-  api_key: "your_sonarr_api_key"
-  quality_profile_id: 1
-  root_folder: "/tv"
-  search_on_add: true
-  monitored: true
-  season_folder: true
-  series_type: "standard"  # standard, daily, anime
+  url: http://sonarr:8989
+  api_key: your_sonarr_api_key
+  quality_profile: 1
+  root_folder: /tv
+  monitor: all
 
-# Jellyseerr Integration (Optional)
 jellyseerr:
-  enabled: false
-  url: "http://jellyseerr:5055"
-  api_key: "your_jellyseerr_api_key"
+  url: http://jellyseerr:5055
+  api_key: your_jellyseerr_api_key
+  user_id: ""
 
-# Integration Mode
-integration:
-  mode: "direct"  # direct or jellyseerr
-
-# Jobs Configuration
 jobs:
-  trending_movies:
-    enabled: true
-    schedule: "0 */6 * * *"  # Every 6 hours
-    limit: 20
-    filters:
-      min_rating: 6.5
-      min_votes: 1000
-      max_runtime: 180
-      exclude_genres: ["Documentary"]
-      
-  popular_shows:
-    enabled: true
-    schedule: "0 0 * * *"  # Daily at midnight
-    limit: 15
-    filters:
-      min_rating: 7.0
-      min_votes: 500
-```
+  sync_interval: 24h
+  mode: direct
+  global_limit_movies: 0
+  global_limit_shows: 0
+  global_period: sync
+  list:
+    - id: trending-movies
+      name: Trending Movies
+      enabled: true
+      type: trending
+      source: tmdb
+      media: movie
+      limit: 20
+      sync_interval: 6h
+      minimum_availability: announced
+      monitor: movieOnly
 
-## Server Configuration
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `server.host` | string | `"0.0.0.0"` | Host to bind the server to |
-| `server.port` | int | `9090` | Port to run the server on |
-
-## Database Configuration
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `database.path` | string | `"data/blockbusterr.db"` | Path to SQLite database file |
-
-## Trakt Configuration
-
-Trakt is required for fetching trending, popular, and other list-based content.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `trakt.client_id` | string | Yes | Trakt API client ID |
-| `trakt.client_secret` | string | Yes | Trakt API client secret |
-| `trakt.access_token` | string | Auto | OAuth access token (auto-populated) |
-| `trakt.refresh_token` | string | Auto | OAuth refresh token (auto-populated) |
-
-### Getting Trakt Credentials
-
-1. Go to [Trakt API Applications](https://trakt.tv/oauth/applications)
-2. Create a new application
-3. Set redirect URI to `http://localhost:9090/auth/trakt/callback`
-4. Copy the Client ID and Client Secret
-
-## TMDB Configuration (Optional)
-
-TMDB provides poster images for the preview feature.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `tmdb.api_key` | string | No | TMDB API key for poster images |
-
-See [TMDB Setup Guide](/blockbusterr/integrations/tmdb/) for details.
-
-## Radarr Configuration
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `radarr.enabled` | bool | `false` | Enable Radarr integration |
-| `radarr.url` | string | - | Radarr instance URL |
-| `radarr.api_key` | string | - | Radarr API key |
-| `radarr.quality_profile_id` | int | `1` | Quality profile ID to use |
-| `radarr.root_folder` | string | - | Root folder path |
-| `radarr.search_on_add` | bool | `true` | Automatically search for movie |
-| `radarr.monitored` | bool | `true` | Monitor the movie |
-| `radarr.minimum_availability` | string | `"released"` | Minimum availability: `announced`, `inCinemas`, `released`, `preDB` |
-
-## Sonarr Configuration
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `sonarr.enabled` | bool | `false` | Enable Sonarr integration |
-| `sonarr.url` | string | - | Sonarr instance URL |
-| `sonarr.api_key` | string | - | Sonarr API key |
-| `sonarr.quality_profile_id` | int | `1` | Quality profile ID to use |
-| `sonarr.root_folder` | string | - | Root folder path |
-| `sonarr.search_on_add` | bool | `true` | Automatically search for episodes |
-| `sonarr.monitored` | bool | `true` | Monitor the series |
-| `sonarr.season_folder` | bool | `true` | Use season folders |
-| `sonarr.series_type` | string | `"standard"` | Series type: `standard`, `daily`, `anime` |
-
-## Jellyseerr Configuration
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `jellyseerr.enabled` | bool | `false` | Enable Jellyseerr integration |
-| `jellyseerr.url` | string | - | Jellyseerr instance URL |
-| `jellyseerr.api_key` | string | - | Jellyseerr API key |
-
-## Integration Mode
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `integration.mode` | string | `"direct"` | Integration mode: `direct` (Radarr/Sonarr) or `jellyseerr` |
-
-See [Integration Modes](/blockbusterr/concepts/integration-modes/) for details.
-
-## Job Configuration
-
-Each job can have the following configuration:
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | bool | `false` | Enable or disable the job |
-| `schedule` | string | - | Cron schedule (e.g., `"0 */6 * * *"`) |
-| `limit` | int | `10` | Maximum items to fetch |
-| `filters` | object | - | Filter configuration (see below) |
-| `scoring` | object | - | Scoring configuration (see below) |
-
-### Available Jobs
-
-- `trending_movies`, `trending_shows`
-- `popular_movies`, `popular_shows`
-- `box_office`
-- `anticipated_movies`, `anticipated_shows`
-- `favorited_movies`, `favorited_shows`
-- `played_movies`, `played_shows`
-- `watched_movies`, `watched_shows`
-- `collected_movies`, `collected_shows`
-
-## Filter Configuration
-
-Filters allow you to control what content gets added. All filter fields are optional.
-
-```yaml
 filters:
-  # Rating filters
-  min_rating: 6.5        # Minimum Trakt rating (0-10)
-  max_rating: 10.0       # Maximum Trakt rating
-  
-  # Vote filters
-  min_votes: 1000        # Minimum number of votes
-  
-  # Runtime filters
-  min_runtime: 60        # Minimum runtime in minutes
-  max_runtime: 180       # Maximum runtime in minutes
-  
-  # Release date filters
-  min_year: 2020         # Minimum release year
-  max_year: 2026         # Maximum release year
-  
-  # Genre filters
-  include_genres: ["Action", "Sci-Fi"]
-  exclude_genres: ["Documentary", "Reality"]
-  
-  # Keyword filters
-  include_keywords: ["superhero"]
-  exclude_keywords: ["christmas", "hallmark"]
-  
-  # Language filters
-  include_languages: ["en", "fr"]
-  exclude_languages: ["hi"]
-  
-  # Country filters
-  include_countries: ["us", "gb"]
-  exclude_countries: ["in"]
-  
-  # Status filters (shows only)
-  allowed_statuses: ["continuing", "returning series"]
+  movies:
+    allowed_countries: []
+    allowed_languages: [en]
+    blacklisted_genres: [documentary]
+    blacklisted_keywords: []
+    blacklisted_tmdb_ids: []
+    blacklisted_min_runtime: 0
+    blacklisted_max_runtime: 180
+    blacklisted_min_year: 0
+    blacklisted_max_year: 0
+    min_rating: 6.5
+    min_votes: 1000
+  shows:
+    allowed_countries: []
+    allowed_languages: [en]
+    blacklisted_genres: []
+    blacklisted_keywords: []
+    blacklisted_networks: []
+    blacklisted_tvdb_ids: []
+    blacklisted_min_runtime: 0
+    blacklisted_max_runtime: 0
+    blacklisted_min_year: 0
+    blacklisted_max_year: 0
+    min_rating: 7.0
+    min_votes: 500
 ```
 
-See [Filters & Scoring](/blockbusterr/concepts/filters/) for detailed explanation.
+You only need credentials for providers and delivery integrations you use. Trakt is optional when all enabled jobs use TMDB or Simkl.
 
-## Cron Schedule Format
+## Discovery providers
 
-Jobs use standard cron syntax for scheduling:
+| Field | Purpose |
+|---|---|
+| `trakt.client_id` | Enables Trakt job sources |
+| `trakt.client_secret` | Optional Trakt application secret |
+| `tmdb.api_key` | Enables TMDB job sources and poster enrichment |
+| `simkl.client_id` | Enables Simkl job sources |
 
-```
-┌───────────── minute (0 - 59)
-│ ┌───────────── hour (0 - 23)
-│ │ ┌───────────── day of month (1 - 31)
-│ │ │ ┌───────────── month (1 - 12)
-│ │ │ │ ┌───────────── day of week (0 - 6) (Sunday to Saturday)
-│ │ │ │ │
-* * * * *
-```
+Each job type advertises its supported sources in the Jobs UI and `GET /v1/jobs/types`.
 
-Examples:
-- `"0 */6 * * *"` - Every 6 hours
-- `"0 0 * * *"` - Daily at midnight
-- `"0 12 * * 1"` - Every Monday at noon
-- `"*/30 * * * *"` - Every 30 minutes
+## Delivery integrations
 
-## Environment Variables
+Radarr and Sonarr are used by `direct` jobs. Jellyseerr is used by `jellyseerr` jobs. An integration is considered configured when its required URL and API key are present; there is no separate `enabled` property.
 
-Override configuration using environment variables:
+| Integration | Fields |
+|---|---|
+| Radarr | `url`, `api_key`, `quality_profile`, `root_folder`, `minimum_availability`, `monitor` |
+| Sonarr | `url`, `api_key`, `quality_profile`, `root_folder`, `monitor` |
+| Jellyseerr | `url`, `api_key`, optional `user_id`, optional `request_credentials.email` and `request_credentials.password` |
 
-```bash
-SERVER_PORT=9090
-DATABASE_PATH=/app/data/blockbusterr.db
-TRAKT_CLIENT_ID=your_client_id
-TRAKT_CLIENT_SECRET=your_client_secret
-RADARR_URL=http://radarr:7878
-RADARR_API_KEY=your_api_key
-```
+## Dynamic jobs
 
-Environment variables take precedence over configuration file values.
+Jobs created in the UI are stored under `jobs.list`.
+
+| Field | Description |
+|---|---|
+| `id` | Stable unique job identifier |
+| `name` | Display name |
+| `enabled` | Whether the scheduler may run the job |
+| `type` | `trending`, `popular`, `watched`, `collected`, `favorited`, `played`, `anticipated`, `box_office`, or `smart_popular` |
+| `source` | Discovery provider supported by the selected type |
+| `media` | `movie` or `show` |
+| `limit` | Maximum candidates fetched |
+| `period` | Required by time-based job types: `weekly`, `monthly`, `yearly`, or `all` |
+| `sync_interval` | Go duration such as `6h`, or a five-field cron expression |
+| `mode` | Optional `direct` or `jellyseerr` override |
+| `minimum_availability` | Optional Radarr override |
+| `monitor` | Optional Radarr/Sonarr override |
+| `base_min_rating` | Smart Popular baseline rating |
+| `adjustment_factor` | Smart Popular popularity adjustment |
+| `min_global_picks` | Minimum picks reserved when applying global limits |
+
+Legacy named job sections remain readable for backward compatibility. Use the Jobs UI for new configurations.
+
+## Filters and scoring
+
+Filters are global per media type; per-job filters are not supported. See [Filters & Scoring](/concepts/filters/) for the complete behavior.
+
+## Environment variables
+
+Viper maps nested keys by replacing dots with underscores. For example, `TMDB_API_KEY` overrides `tmdb.api_key` and `SIMKL_CLIENT_ID` overrides `simkl.client_id`.
+
+Application-level environment variables are:
+
+- `CONFIG_PATH`: additional directory to search for the config file
+- `DATA_DIR`: database directory
+- `DISABLE_UI`: disable UI routes when `true`, `1`, or `yes`
+- `VERSION` and `COMMIT`: displayed build metadata overrides

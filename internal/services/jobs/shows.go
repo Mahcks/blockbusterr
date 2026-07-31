@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
 )
@@ -21,13 +22,15 @@ func RunAnticipatedShows(cfg *config.Config, db *database.Database, dryRun bool)
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:   "anticipated_shows",
 		MediaType: "show",
 		Mode:      mode,
 		Monitor:   cfg.Jobs.AnticipatedShows.Monitor,
 		Limit:     cfg.Jobs.AnticipatedShows.Limit,
-	}, fetchAnticipatedShows)
+	}, fetchAnticipatedShows); err != nil {
+		log.Errorw("anticipated shows job failed", "error", err)
+	}
 }
 
 // RunCollectedShows fetches collected TV shows from Trakt and adds them to Sonarr or requests via Jellyseerr
@@ -43,14 +46,16 @@ func RunCollectedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:   "collected_shows",
 		MediaType: "show",
 		Mode:      mode,
 		Monitor:   cfg.Jobs.CollectedShows.Monitor,
 		Limit:     cfg.Jobs.CollectedShows.Limit,
 		Period:    cfg.Jobs.CollectedShows.Period,
-	}, fetchCollectedShows)
+	}, fetchCollectedShows); err != nil {
+		log.Errorw("collected shows job failed", "error", err)
+	}
 }
 
 // RunFavoritedShows fetches favorited TV shows from Trakt and adds them to Sonarr or requests via Jellyseerr
@@ -66,14 +71,16 @@ func RunFavoritedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:   "favorited_shows",
 		MediaType: "show",
 		Mode:      mode,
 		Monitor:   cfg.Jobs.FavoritedShows.Monitor,
 		Limit:     cfg.Jobs.FavoritedShows.Limit,
 		Period:    cfg.Jobs.FavoritedShows.Period,
-	}, fetchFavoritedShows)
+	}, fetchFavoritedShows); err != nil {
+		log.Errorw("favorited shows job failed", "error", err)
+	}
 }
 
 // RunPlayedShows fetches played TV shows from Trakt and adds them to Sonarr or requests via Jellyseerr
@@ -89,14 +96,16 @@ func RunPlayedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:   "played_shows",
 		MediaType: "show",
 		Mode:      mode,
 		Monitor:   cfg.Jobs.PlayedShows.Monitor,
 		Limit:     cfg.Jobs.PlayedShows.Limit,
 		Period:    cfg.Jobs.PlayedShows.Period,
-	}, fetchPlayedShows)
+	}, fetchPlayedShows); err != nil {
+		log.Errorw("played shows job failed", "error", err)
+	}
 }
 
 // RunTrendingShows fetches trending TV shows from Trakt and adds them to Sonarr or requests via Jellyseerr
@@ -112,13 +121,15 @@ func RunTrendingShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:   "trending_shows",
 		MediaType: "show",
 		Mode:      mode,
 		Monitor:   cfg.Jobs.TrendingShows.Monitor,
 		Limit:     cfg.Jobs.TrendingShows.Limit,
-	}, fetchTrendingShows)
+	}, fetchTrendingShows); err != nil {
+		log.Errorw("trending shows job failed", "error", err)
+	}
 }
 
 // RunPopularShows fetches popular TV shows from Trakt and adds them to Sonarr or requests via Jellyseerr
@@ -134,13 +145,15 @@ func RunPopularShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:   "popular_shows",
 		MediaType: "show",
 		Mode:      mode,
 		Monitor:   cfg.Jobs.PopularShows.Monitor,
 		Limit:     cfg.Jobs.PopularShows.Limit,
-	}, fetchPopularShows)
+	}, fetchPopularShows); err != nil {
+		log.Errorw("popular shows job failed", "error", err)
+	}
 }
 
 // RunWatchedShows fetches watched TV shows from Trakt and adds them to Sonarr or requests via Jellyseerr
@@ -156,13 +169,15 @@ func RunWatchedShows(cfg *config.Config, db *database.Database, dryRun bool) {
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:   "watched_shows",
 		MediaType: "show",
 		Mode:      mode,
 		Monitor:   cfg.Jobs.WatchedShows.Monitor,
 		Period:    cfg.Jobs.WatchedShows.Period,
-	}, fetchWatchedShows)
+	}, fetchWatchedShows); err != nil {
+		log.Errorw("watched shows job failed", "error", err)
+	}
 }
 
 // RunSmartPopularShows fetches popular shows and applies adaptive rating thresholds
@@ -178,7 +193,7 @@ func RunSmartPopularShows(cfg *config.Config, db *database.Database, dryRun bool
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, SmartJobConfig{
+	if err := executor.Execute(ctx, SmartJobConfig{
 		JobID:            "legacy_smart_popular_shows",
 		JobName:          "smart_popular_shows",
 		MediaType:        "show",
@@ -187,5 +202,7 @@ func RunSmartPopularShows(cfg *config.Config, db *database.Database, dryRun bool
 		Limit:            cfg.Jobs.SmartPopularShows.Limit,
 		BaseMinRating:    cfg.Jobs.SmartPopularShows.BaseMinRating,
 		AdjustmentFactor: cfg.Jobs.SmartPopularShows.AdjustmentFactor,
-	}, fetchPopularShows)
+	}, fetchPopularShows); err != nil {
+		log.Errorw("smart popular shows job failed", "error", err)
+	}
 }

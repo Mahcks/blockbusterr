@@ -8,13 +8,21 @@ trakt:
   client_id: ""
   client_secret: ""
 
+tmdb:
+  # Free key from https://www.themoviedb.org/settings/api
+  api_key: ""
+
+simkl:
+  # App client ID from https://simkl.com/settings/developer/
+  client_id: ""
+
 radarr:
   # Radarr connection settings
   url: ""  # Example: http://localhost:7878
   api_key: ""
   quality_profile: 1  # Update after connecting - check Radarr Settings > Profiles
   root_folder: ""  # Example: /movies
-  minimum_availability: "released" # Options: "announced", "inCinemas", "released"
+  minimum_availability: "released" # Options: "announced", "in_cinemas", "released"
   monitor: "movieOnly" # Options: "movieOnly", "movieAndCollection", "none"
 
 sonarr:

@@ -157,13 +157,13 @@ docker restart blockbusterr
 ## What's Next?
 
 <CardGrid>
-<Card title="Set Up Scoring" icon="star" href="/blockbusterr/core-concepts/scoring">
+<Card title="Set Up Scoring" icon="star" href="/concepts/filters">
 Configure how movies/shows are scored
 </Card>
-<Card title="Configure Filters" icon="setting" href="/blockbusterr/core-concepts/filters">
+<Card title="Configure Filters" icon="setting" href="/concepts/filters">
 Define what content to block or allow
 </Card>
-<Card title="Create Jobs" icon="rocket" href="/blockbusterr/core-concepts/jobs">
+<Card title="Create Jobs" icon="rocket" href="/concepts/jobs">
 Automate your library management
 </Card>
 </CardGrid>
@@ -207,10 +207,9 @@ Automate your library management
      <TabItem label="Basic Setup" icon="rocket">
        ```yaml
        radarr:
-         enabled: true
          url: "http://radarr:7878"  # Use container name
          api_key: "your_radarr_api_key"
-         quality_profile_id: 1
+         quality_profile: 1
          root_folder: "/movies"
        ```
      </TabItem>
@@ -218,19 +217,17 @@ Automate your library management
      <TabItem label="Advanced Options" icon="setting">
        ```yaml
        radarr:
-         enabled: true
          url: "http://radarr:7878"
          api_key: "your_radarr_api_key"
-         quality_profile_id: 4  # HD-1080p
+         quality_profile: 4  # HD-1080p
          root_folder: "/movies"
-         search_on_add: true      # Auto search
-         monitored: true          # Auto monitor
+         monitor: "movieOnly"
          minimum_availability: "released"
        ```
        
        **Availability Options:**
        - `announced` - As soon as announced
-       - `inCinemas` - When in theaters  
+       - `in_cinemas` - When in theaters
        - `released` - When available (recommended)
      </TabItem>
      
@@ -281,7 +278,7 @@ Automate your library management
      </Card>
    </CardGrid>
 
-2. **Configure with Filters**
+2. **Configure Jobs**
 
    <Tabs>
      <TabItem label="Beginner" icon="rocket">
@@ -291,11 +288,8 @@ Automate your library management
        jobs:
          trending_movies:
            enabled: true
-           schedule: "0 */6 * * *"
+           sync_interval: "6h"
            limit: 10
-           filters:
-             min_rating: 7.0
-             min_votes: 2000
        ```
        
        <Badge text="~5-8 movies per run" variant="note" />
@@ -308,13 +302,8 @@ Automate your library management
        jobs:
          trending_movies:
            enabled: true
-           schedule: "0 */6 * * *"
+           sync_interval: "6h"
            limit: 20
-           filters:
-             min_rating: 6.5
-             min_votes: 1000
-             exclude_genres: ["Documentary"]
-             include_languages: ["en"]
        ```
        
        <Badge text="~12-16 movies per run" variant="success" />
@@ -327,20 +316,10 @@ Automate your library management
        jobs:
          smart_popular_movies:
            enabled: true
-           schedule: "0 */6 * * *"
+           sync_interval: "6h"
            limit: 25
            base_min_rating: 7.0
            adjustment_factor: 2.0
-           filters:
-             min_votes: 1000
-             min_year: 2020
-             max_runtime: 180
-             exclude_genres: ["Documentary", "Reality"]
-             include_countries: ["us", "gb", "ca"]
-           scoring:
-             rating_weight: 0.5
-             popularity_weight: 0.4
-             recency_weight: 0.1
        ```
        
        <Badge text="~18-23 movies per run" variant="tip" />
@@ -385,10 +364,10 @@ Automate your library management
 
 ## What's Next?
 
-- Learn about [different job types](/blockbusterr/concepts/jobs/)
-- Configure [advanced filters and scoring](/blockbusterr/concepts/filters/)
-- Set up [smart jobs](/blockbusterr/concepts/smart-jobs/) for adaptive content discovery
-- Explore the [API reference](/blockbusterr/api/overview/)
+- Learn about [different job types](/concepts/jobs/)
+- Configure [advanced filters and scoring](/concepts/filters/)
+- Set up [smart jobs](/concepts/smart-jobs/) for adaptive content discovery
+- Explore the [API reference](/api/overview/)
 
 ## Troubleshooting
 

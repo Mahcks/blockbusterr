@@ -8,12 +8,12 @@ import (
 
 // Movie Fetchers
 
-func fetchPopularMovies(ctx context.Context, trakt *integrations.Trakt, limit int, _ string) ([]integrations.Movie, error) {
-	return trakt.GetPopularMovies(ctx, limit)
+func fetchPopularMovies(ctx context.Context, discovery *DiscoveryClient, limit int, _ string) ([]integrations.Movie, error) {
+	return discovery.GetPopularMovies(ctx, limit)
 }
 
-func fetchAnticipatedMovies(ctx context.Context, trakt *integrations.Trakt, limit int, _ string) ([]integrations.Movie, error) {
-	anticipatedMovies, err := trakt.GetAnticipatedMovies(ctx, limit)
+func fetchAnticipatedMovies(ctx context.Context, discovery *DiscoveryClient, limit int, _ string) ([]integrations.Movie, error) {
+	anticipatedMovies, err := discovery.GetAnticipatedMovies(ctx, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -24,8 +24,8 @@ func fetchAnticipatedMovies(ctx context.Context, trakt *integrations.Trakt, limi
 	return movies, nil
 }
 
-func fetchWatchedMovies(ctx context.Context, trakt *integrations.Trakt, limit int, period string) ([]integrations.Movie, error) {
-	watchedMovies, err := trakt.GetWatchedMovies(ctx, period, limit)
+func fetchWatchedMovies(ctx context.Context, discovery *DiscoveryClient, limit int, period string) ([]integrations.Movie, error) {
+	watchedMovies, err := discovery.GetWatchedMovies(ctx, period, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -36,8 +36,8 @@ func fetchWatchedMovies(ctx context.Context, trakt *integrations.Trakt, limit in
 	return movies, nil
 }
 
-func fetchCollectedMovies(ctx context.Context, trakt *integrations.Trakt, limit int, period string) ([]integrations.Movie, error) {
-	collectedMovies, err := trakt.GetCollectedMovies(ctx, period, limit)
+func fetchCollectedMovies(ctx context.Context, discovery *DiscoveryClient, limit int, period string) ([]integrations.Movie, error) {
+	collectedMovies, err := discovery.GetCollectedMovies(ctx, period, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -48,8 +48,8 @@ func fetchCollectedMovies(ctx context.Context, trakt *integrations.Trakt, limit 
 	return movies, nil
 }
 
-func fetchFavoritedMovies(ctx context.Context, trakt *integrations.Trakt, limit int, period string) ([]integrations.Movie, error) {
-	favoritedMovies, err := trakt.GetFavoritedMovies(ctx, period, limit)
+func fetchFavoritedMovies(ctx context.Context, discovery *DiscoveryClient, limit int, period string) ([]integrations.Movie, error) {
+	favoritedMovies, err := discovery.GetFavoritedMovies(ctx, period, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +60,8 @@ func fetchFavoritedMovies(ctx context.Context, trakt *integrations.Trakt, limit 
 	return movies, nil
 }
 
-func fetchPlayedMovies(ctx context.Context, trakt *integrations.Trakt, limit int, period string) ([]integrations.Movie, error) {
-	playedMovies, err := trakt.GetPlayedMovies(ctx, period, limit)
+func fetchPlayedMovies(ctx context.Context, discovery *DiscoveryClient, limit int, period string) ([]integrations.Movie, error) {
+	playedMovies, err := discovery.GetPlayedMovies(ctx, period, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +72,8 @@ func fetchPlayedMovies(ctx context.Context, trakt *integrations.Trakt, limit int
 	return movies, nil
 }
 
-func fetchBoxOfficeMovies(ctx context.Context, trakt *integrations.Trakt, limit int, _ string) ([]integrations.Movie, error) {
-	boxOfficeMovies, err := trakt.GetBoxOfficeMovies(ctx, limit)
+func fetchBoxOfficeMovies(ctx context.Context, discovery *DiscoveryClient, limit int, _ string) ([]integrations.Movie, error) {
+	boxOfficeMovies, err := discovery.GetBoxOfficeMovies(ctx, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +94,8 @@ func fetchBoxOfficeMovies(ctx context.Context, trakt *integrations.Trakt, limit 
 
 // Show Fetchers
 
-func fetchTrendingShows(ctx context.Context, trakt *integrations.Trakt, limit int, _ string) ([]integrations.Show, error) {
-	trendingShows, err := trakt.GetTrendingShows(ctx, limit)
+func fetchTrendingShows(ctx context.Context, discovery *DiscoveryClient, limit int, _ string) ([]integrations.Show, error) {
+	trendingShows, err := discovery.GetTrendingShows(ctx, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -106,12 +106,12 @@ func fetchTrendingShows(ctx context.Context, trakt *integrations.Trakt, limit in
 	return shows, nil
 }
 
-func fetchPopularShows(ctx context.Context, trakt *integrations.Trakt, limit int, _ string) ([]integrations.Show, error) {
-	return trakt.GetPopularShows(ctx, limit)
+func fetchPopularShows(ctx context.Context, discovery *DiscoveryClient, limit int, _ string) ([]integrations.Show, error) {
+	return discovery.GetPopularShows(ctx, limit)
 }
 
-func fetchAnticipatedShows(ctx context.Context, trakt *integrations.Trakt, limit int, _ string) ([]integrations.Show, error) {
-	anticipatedShows, err := trakt.GetAnticipatedShows(ctx, limit)
+func fetchAnticipatedShows(ctx context.Context, discovery *DiscoveryClient, limit int, _ string) ([]integrations.Show, error) {
+	anticipatedShows, err := discovery.GetAnticipatedShows(ctx, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -122,8 +122,8 @@ func fetchAnticipatedShows(ctx context.Context, trakt *integrations.Trakt, limit
 	return shows, nil
 }
 
-func fetchWatchedShows(ctx context.Context, trakt *integrations.Trakt, limit int, period string) ([]integrations.Show, error) {
-	watchedShows, err := trakt.GetWatchedShows(ctx, period, limit)
+func fetchWatchedShows(ctx context.Context, discovery *DiscoveryClient, limit int, period string) ([]integrations.Show, error) {
+	watchedShows, err := discovery.GetWatchedShows(ctx, period, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -134,8 +134,8 @@ func fetchWatchedShows(ctx context.Context, trakt *integrations.Trakt, limit int
 	return shows, nil
 }
 
-func fetchCollectedShows(ctx context.Context, trakt *integrations.Trakt, limit int, period string) ([]integrations.Show, error) {
-	collectedShows, err := trakt.GetCollectedShows(ctx, period, limit)
+func fetchCollectedShows(ctx context.Context, discovery *DiscoveryClient, limit int, period string) ([]integrations.Show, error) {
+	collectedShows, err := discovery.GetCollectedShows(ctx, period, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -146,8 +146,8 @@ func fetchCollectedShows(ctx context.Context, trakt *integrations.Trakt, limit i
 	return shows, nil
 }
 
-func fetchFavoritedShows(ctx context.Context, trakt *integrations.Trakt, limit int, period string) ([]integrations.Show, error) {
-	favoritedShows, err := trakt.GetFavoritedShows(ctx, period, limit)
+func fetchFavoritedShows(ctx context.Context, discovery *DiscoveryClient, limit int, period string) ([]integrations.Show, error) {
+	favoritedShows, err := discovery.GetFavoritedShows(ctx, period, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -158,8 +158,8 @@ func fetchFavoritedShows(ctx context.Context, trakt *integrations.Trakt, limit i
 	return shows, nil
 }
 
-func fetchPlayedShows(ctx context.Context, trakt *integrations.Trakt, limit int, period string) ([]integrations.Show, error) {
-	playedShows, err := trakt.GetPlayedShows(ctx, period, limit)
+func fetchPlayedShows(ctx context.Context, discovery *DiscoveryClient, limit int, period string) ([]integrations.Show, error) {
+	playedShows, err := discovery.GetPlayedShows(ctx, period, limit)
 	if err != nil {
 		return nil, err
 	}

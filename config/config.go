@@ -46,7 +46,7 @@ type DynamicJob struct {
 	Name                string  `mapstructure:"name" json:"name" yaml:"name"`
 	Enabled             bool    `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
 	Type                string  `mapstructure:"type" json:"type" yaml:"type"`                                                           // Job type: trending, popular, watched, collected, favorited, played, anticipated, box_office, smart_popular
-	Source              string  `mapstructure:"source" json:"source" yaml:"source"`                                                     // Data source: trakt (future: tmdb, letterboxd)
+	Source              string  `mapstructure:"source" json:"source" yaml:"source"`                                                     // Discovery source: trakt, tmdb, or simkl
 	MediaType           string  `mapstructure:"media" json:"media" yaml:"media"`                                                        // Media type: movie or show
 	Limit               int     `mapstructure:"limit" json:"limit" yaml:"limit"`                                                        // Number of items to fetch
 	Period              string  `mapstructure:"period" json:"period" yaml:"period,omitempty"`                                           // Time period for watched/collected/favorited/played: weekly, monthly, yearly, all
@@ -71,6 +71,10 @@ type Config struct {
 	TMDB struct {
 		APIKey string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
 	} `mapstructure:"tmdb" json:"tmdb" yaml:"tmdb"`
+
+	Simkl struct {
+		ClientID string `mapstructure:"client_id" json:"client_id" yaml:"client_id"`
+	} `mapstructure:"simkl" json:"simkl" yaml:"simkl"`
 
 	Radarr struct {
 		URL                 string `mapstructure:"url" json:"url" yaml:"url"`
@@ -450,6 +454,9 @@ func (c *Config) AddDynamicJob(job DynamicJob) error {
 
 // UpdateDynamicJob updates an existing job in the dynamic list
 func (c *Config) UpdateDynamicJob(job DynamicJob) error {
+	if job.Source == "" {
+		job.Source = "trakt"
+	}
 	for i, existing := range c.Jobs.List {
 		if existing.ID == job.ID {
 			c.Jobs.List[i] = job

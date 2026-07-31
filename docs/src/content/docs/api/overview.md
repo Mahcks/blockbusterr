@@ -43,10 +43,10 @@ All endpoints return JSON unless otherwise specified.
 
 ## Authentication
 
-Currently, no authentication is required for API access.
+Blockbusterr does not provide built-in authentication. It is designed for a trusted LAN and its API can change jobs, trigger downloads, and export configuration.
 
 :::caution
-It's recommended to run Blockbusterr behind a reverse proxy with authentication if exposing to the internet.
+Do not expose port 9090 directly to the public internet. If remote access is required, place Blockbusterr behind an authenticated reverse proxy or VPN.
 :::
 
 ## Rate Limiting
@@ -55,7 +55,7 @@ Currently, no rate limiting is enforced. Please use the API responsibly.
 
 ## API Sections
 
-### [Jobs API](/blockbusterr/api/jobs/)
+### [Jobs API](/api/jobs/)
 
 Manage and trigger jobs, preview content before adding.
 
@@ -63,7 +63,7 @@ Manage and trigger jobs, preview content before adding.
 - Trigger jobs manually
 - Get job status
 
-### [Activity API](/blockbusterr/api/activity/)
+### [Activity API](/api/activity/)
 
 View and manage activity logs.
 
@@ -71,7 +71,7 @@ View and manage activity logs.
 - Get activity statistics
 - Clear old logs
 
-### [Configuration API](/blockbusterr/api/config/)
+### [Configuration API](/api/config/)
 
 Manage integrations and test connections.
 
@@ -107,6 +107,6 @@ curl "http://localhost:9090/v1/trakt/trending/movies?limit=10"
 
 ## Next Steps
 
-- Explore [Jobs API](/blockbusterr/api/jobs/)
-- Check [Activity API](/blockbusterr/api/activity/)
-- Review [Configuration API](/blockbusterr/api/config/)
+- Explore [Jobs API](/api/jobs/)
+- Check [Activity API](/api/activity/)
+- Review [Configuration API](/api/config/)

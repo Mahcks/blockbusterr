@@ -1,11 +1,11 @@
 ---
 title: TMDB Integration
-description: Optional poster images for job previews
+description: Configure TMDB discovery and poster images
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-TMDB (The Movie Database) integration provides high-quality poster images for the job preview feature. **The TMDB API key is completely optional** - without it, you'll see a clean list view instead.
+TMDB provides trending and popular discovery jobs plus poster images. It is optional when another discovery source is configured.
 
 ## Display Modes
 
@@ -179,7 +179,7 @@ tmdb:
 ```
 
 <Aside type="note">
-  TMDB configuration only affects the preview feature. Jobs themselves don't require TMDB.
+  A TMDB key is required only for jobs whose discovery source is set to TMDB.
 </Aside>
 
 ## Privacy & Data
@@ -228,6 +228,6 @@ For more information about TMDB API:
 
 ## Next Steps
 
-- Learn about [Job Previews](/blockbusterr/concepts/jobs/#preview-before-enabling)
-- Configure your [first job](/blockbusterr/getting-started/quickstart/#step-3-configure-your-first-job)
-- Explore [other integrations](/blockbusterr/integrations/trakt/)
+- Learn about [Job Previews](/concepts/jobs/#preview-before-enabling)
+- Configure your [first job](/getting-started/quickstart/#step-3-configure-your-first-job)
+- Explore [other integrations](/integrations/trakt/)

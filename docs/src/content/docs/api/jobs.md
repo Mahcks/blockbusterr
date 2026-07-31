@@ -65,7 +65,7 @@ curl -X POST http://localhost:9090/v1/jobs/preview/trending-movies
 
 **Response Fields:**
 - `job_name` - Name of the job
-- `total_found` - Total items found from Trakt
+- `total_found` - Total items returned by the selected discovery source
 - `will_add` - Items that would be added (pass filters, not in library)
 - `already_exists` - Items already in your library
 - `filtered_out` - Items rejected by filters
@@ -81,7 +81,7 @@ curl -X POST http://localhost:9090/v1/jobs/preview/trending-movies
 - `imdb_id` - IMDB ID
 - `poster_url` - Poster image URL (if TMDB configured)
 - `overview` - Content description
-- `rating` - Trakt rating (0-10)
+- `rating` - Provider rating when the selected source supplies one
 - `votes` - Number of votes
 - `popularity` - Popularity score
 - `genres` - Array of genre names
@@ -198,7 +198,7 @@ curl http://localhost:9090/v1/jobs/list
 - `name` - Display name
 - `enabled` - Whether the job runs on schedule
 - `type` - Job type: `trending`, `popular`, `watched`, `collected`, `favorited`, `played`, `anticipated`, `box_office`, `smart_popular`
-- `source` - Data source (currently only `trakt`)
+- `source` - Discovery source. Supported values depend on the job type and configured providers.
 - `media` - Media type: `movie` or `show`
 - `limit` - Number of items to fetch
 - `period` - Time period for watched/collected/favorited/played: `weekly`, `monthly`, `yearly`, `all`
@@ -224,6 +224,7 @@ Get all available job type definitions for building UI dropdowns.
     "name": "Trending",
     "description": "Currently being watched and talked about",
     "source": "trakt",
+    "sources": ["trakt", "tmdb", "simkl"],
     "supported_media": ["movie", "show"],
     "requires_period": false,
     "is_smart_job": false,
@@ -287,6 +288,7 @@ Create a new dynamic job.
   "id": "my-custom-job",
   "name": "My Custom Job",
   "type": "trending",
+  "source": "tmdb",
   "media": "movie",
   "enabled": true,
   "limit": 50,
@@ -307,7 +309,7 @@ Create a new dynamic job.
   "name": "My Custom Job",
   "enabled": true,
   "type": "trending",
-  "source": "trakt",
+  "source": "tmdb",
   "media": "movie",
   "limit": 50,
   "sync_interval": "6h"
@@ -453,6 +455,6 @@ curl -s http://localhost:9090/v1/jobs/status | jq '.jobs[] | {name, enabled, las
 
 ## Next Steps
 
-- Explore [Activity API](/blockbusterr/api/activity/)
-- Review [Configuration API](/blockbusterr/api/config/)
-- Learn about [Jobs](/blockbusterr/concepts/jobs/)
+- Explore [Activity API](/api/activity/)
+- Review [Configuration API](/api/config/)
+- Learn about [Jobs](/concepts/jobs/)

@@ -297,7 +297,7 @@ func AddJobsRoutes(router fiber.Router, gctx global.Context) {
 		dbJobName := jobs.HyphenToUnderscore(jobName)
 
 		// Get recent logs for this job to build decision summary
-		logs, err := db.GetRecentActivityFiltered(100, "", "", dbJobName)
+		logs, err := db.GetRecentActivityFiltered(100, "", "", dbJobName, "")
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to retrieve job decisions",

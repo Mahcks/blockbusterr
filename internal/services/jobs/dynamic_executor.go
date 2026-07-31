@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/mahcks/blockbusterr/config"
@@ -29,14 +30,28 @@ func (e *DynamicJobExecutor) Execute(ctx context.Context, job config.DynamicJob)
 	if !SupportsMediaType(job.Type, job.MediaType) {
 		return fmt.Errorf("job type %s does not support media type %s", job.Type, job.MediaType)
 	}
+	if !SupportsSource(job.Type, job.Source) {
+		return fmt.Errorf("job type %s does not support source %s", job.Type, job.Source)
+	}
+	if job.Source == "simkl" && job.Type == "watched" && job.Period != "weekly" && job.Period != "monthly" {
+		return fmt.Errorf("simkl most watched jobs support weekly or monthly periods")
+	}
+	if job.Source == "simkl" && job.Limit > 500 {
+		return fmt.Errorf("simkl jobs cannot exceed 500 items")
+	}
 
 	// Determine effective mode
 	mode := DetermineMode(job.Mode, e.Config.Jobs.Mode)
 
 	// Build JobConfig from DynamicJob
+	jobName := job.Name
+	if job.Source == "simkl" && !strings.Contains(strings.ToLower(jobName), "simkl") {
+		jobName += " (Simkl)"
+	}
 	jobConfig := JobConfig{
 		JobID:               job.ID,
-		JobName:             job.Name,
+		JobName:             jobName,
+		Source:              job.Source,
 		MediaType:           job.MediaType,
 		Mode:                mode,
 		MinimumAvailability: job.MinimumAvailability,
@@ -86,6 +101,7 @@ func (e *DynamicJobExecutor) executeMovieJob(ctx context.Context, job config.Dyn
 		smartConfig := SmartJobConfig{
 			JobID:               jobConfig.JobID,
 			JobName:             jobConfig.JobName,
+			Source:              jobConfig.Source,
 			MediaType:           jobConfig.MediaType,
 			Mode:                jobConfig.Mode,
 			MinimumAvailability: jobConfig.MinimumAvailability,
@@ -103,7 +119,7 @@ func (e *DynamicJobExecutor) executeMovieJob(ctx context.Context, job config.Dyn
 			smartConfig.AdjustmentFactor = 0.5
 		}
 
-		executor.Execute(ctx, smartConfig, fetcher)
+		return executor.Execute(ctx, smartConfig, fetcher)
 	} else {
 		// Use standard MovieJobExecutor
 		executor := &MovieJobExecutor{
@@ -111,10 +127,8 @@ func (e *DynamicJobExecutor) executeMovieJob(ctx context.Context, job config.Dyn
 			Database: e.Database,
 			DryRun:   e.DryRun,
 		}
-		executor.Execute(ctx, jobConfig, fetcher)
+		return executor.Execute(ctx, jobConfig, fetcher)
 	}
-
-	return nil
 }
 
 // executeShowJob executes a show job using the appropriate executor
@@ -137,6 +151,7 @@ func (e *DynamicJobExecutor) executeShowJob(ctx context.Context, job config.Dyna
 		smartConfig := SmartJobConfig{
 			JobID:            jobConfig.JobID,
 			JobName:          jobConfig.JobName,
+			Source:           jobConfig.Source,
 			MediaType:        jobConfig.MediaType,
 			Mode:             jobConfig.Mode,
 			Monitor:          jobConfig.Monitor,
@@ -153,7 +168,7 @@ func (e *DynamicJobExecutor) executeShowJob(ctx context.Context, job config.Dyna
 			smartConfig.AdjustmentFactor = 0.5
 		}
 
-		executor.Execute(ctx, smartConfig, fetcher)
+		return executor.Execute(ctx, smartConfig, fetcher)
 	} else {
 		// Use standard ShowJobExecutor
 		executor := &ShowJobExecutor{
@@ -161,18 +176,16 @@ func (e *DynamicJobExecutor) executeShowJob(ctx context.Context, job config.Dyna
 			Database: e.Database,
 			DryRun:   e.DryRun,
 		}
-		executor.Execute(ctx, jobConfig, fetcher)
+		return executor.Execute(ctx, jobConfig, fetcher)
 	}
-
-	return nil
 }
 
 // getMovieFetcher returns the appropriate fetcher function for a movie job type
 func (e *DynamicJobExecutor) getMovieFetcher(jobType string) MovieFetcher {
 	switch jobType {
 	case "trending":
-		return func(ctx context.Context, trakt *integrations.Trakt, limit int, _ string) ([]integrations.Movie, error) {
-			trendingMovies, err := trakt.GetTrendingMovies(ctx, limit)
+		return func(ctx context.Context, discovery *DiscoveryClient, limit int, _ string) ([]integrations.Movie, error) {
+			trendingMovies, err := discovery.GetTrendingMovies(ctx, limit)
 			if err != nil {
 				return nil, err
 			}

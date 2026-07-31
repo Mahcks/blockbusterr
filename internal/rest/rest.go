@@ -124,6 +124,7 @@ func New(gctx global.Context) error {
 
 	app := fiber.New(fiber.Config{
 		Views:                 engine,
+		ReadBufferSize:        16 * 1024,
 		DisableStartupMessage: false,
 		ServerHeader:          "Blockbusterr",
 		AppName:               "Blockbusterr",

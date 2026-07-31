@@ -1,11 +1,27 @@
 package jobs
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
+
+func TestPreviewMoviesReturnsRadarrLookupError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	cfg := &config.Config{}
+	cfg.Radarr.URL = server.URL
+	response := PreviewResponse{}
+	if err := previewMovies(t.Context(), cfg, "direct", nil, &response); err == nil {
+		t.Fatal("expected Radarr lookup error")
+	}
+}
 
 func TestHasTMDBConfigured(t *testing.T) {
 	tests := []struct {

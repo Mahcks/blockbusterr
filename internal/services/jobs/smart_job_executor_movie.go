@@ -17,6 +17,7 @@ import (
 type SmartJobConfig struct {
 	JobID               string
 	JobName             string
+	Source              string
 	MediaType           string
 	Mode                string
 	MinimumAvailability string // Radarr only
@@ -40,7 +41,7 @@ func (e *SmartMovieJobExecutor) Execute(
 	ctx context.Context,
 	jobConfig SmartJobConfig,
 	fetcher MovieFetcher,
-) {
+) error {
 	if e.DryRun {
 		log.Infof("Starting %s job (DRY RUN) with adaptive ratings", jobConfig.JobName)
 	} else {
@@ -57,16 +58,16 @@ func (e *SmartMovieJobExecutor) Execute(
 		}
 	}
 
-	// Create Trakt client
-	traktClient := integrations.NewTrakt(integrations.TraktConfig{
-		ClientID:     e.Config.Trakt.ClientID,
-		ClientSecret: e.Config.Trakt.ClientSecret,
-	})
+	discoveryClient, err := NewDiscoveryClient(e.Config, jobConfig.Source)
+	if err != nil {
+		log.Errorf("Failed to configure discovery source for %s: %v", jobConfig.JobName, err)
+		return err
+	}
 
 	// Fetch movies using the provided fetcher
-	movies, err := fetcher(ctx, traktClient, jobConfig.Limit, "")
+	movies, err := fetcher(ctx, discoveryClient, jobConfig.Limit, "")
 	if err != nil {
-		log.Errorf("Failed to fetch %s from Trakt: %v", jobConfig.JobName, err)
+		log.Errorf("Failed to fetch %s from %s: %v", jobConfig.JobName, discoveryClient.Source(), err)
 		if e.Database != nil {
 			_ = e.Database.LogActivity(database.ActivityLog{
 				Timestamp: time.Now(),
@@ -76,16 +77,16 @@ func (e *SmartMovieJobExecutor) Execute(
 				MediaType: "movie",
 				Title:     FormatJobLabel(jobConfig.JobID, jobConfig.JobName),
 				Status:    "failed",
-				Message:   fmt.Sprintf("Failed to fetch from Trakt: %v", err),
+				Message:   fmt.Sprintf("Failed to fetch from %s: %v", discoveryClient.Source(), err),
 			})
 		}
 		if e.Database != nil && e.currentRunID > 0 {
 			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", 0, 0, 0, 0, 0, 0, 1, err.Error())
 		}
-		return
+		return err
 	}
 
-	log.Infof("Found %d movies from Trakt for %s", len(movies), jobConfig.JobName)
+	log.Infof("Found %d movies from %s for %s", len(movies), discoveryClient.Source(), jobConfig.JobName)
 
 	// Calculate popularity percentiles for this set
 	percentiles := filters.CalculateMoviePopularityPercentiles(movies)
@@ -112,6 +113,7 @@ func (e *SmartMovieJobExecutor) Execute(
 	regularJobConfig := JobConfig{
 		JobID:               jobConfig.JobID,
 		JobName:             jobConfig.JobName,
+		Source:              jobConfig.Source,
 		MediaType:           jobConfig.MediaType,
 		Mode:                jobConfig.Mode,
 		MinimumAvailability: jobConfig.MinimumAvailability,
@@ -128,10 +130,17 @@ func (e *SmartMovieJobExecutor) Execute(
 		currentRunID:  e.currentRunID,
 	}
 
+	var executionErr error
 	if jobConfig.Mode == "jellyseerr" {
 		movieExecutor.executeMoviesJellyseerr(ctx, regularJobConfig, filteredMovies, scoreMap)
 	} else {
-		movieExecutor.executeMoviesDirect(ctx, regularJobConfig, filteredMovies, scoreMap)
+		executionErr = movieExecutor.executeMoviesDirect(ctx, regularJobConfig, filteredMovies, scoreMap)
+	}
+	if executionErr != nil {
+		if e.Database != nil && e.currentRunID > 0 {
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", runDecisions.TotalFound, runDecisions.PassedFilters, 0, 0, 0, runDecisions.Rejected, 1, executionErr.Error())
+		}
+		return executionErr
 	}
 
 	runDecisions.Rejected = runDecisions.TotalFound - runDecisions.PassedFilters
@@ -151,6 +160,7 @@ func (e *SmartMovieJobExecutor) Execute(
 			"",
 		)
 	}
+	return nil
 }
 
 // evaluateMoviesWithAdaptiveFilters evaluates movies with adaptive rating thresholds
@@ -166,6 +176,7 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 		decision := ContentDecision{
 			Title:       movie.Title,
 			Year:        movie.Year,
+			Language:    movie.Language,
 			MediaType:   "movie",
 			TMDBID:      movie.IDs.TMDB,
 			IMDBID:      movie.IDs.IMDB,
@@ -263,6 +274,7 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 					MediaType:     "movie",
 					Title:         decision.Title,
 					Year:          decision.Year,
+					Language:      decision.Language,
 					TMDBID:        decision.TMDBID,
 					IMDBID:        decision.IMDBID,
 					PosterURL:     posterURL,

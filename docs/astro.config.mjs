@@ -97,6 +97,7 @@ export default defineConfig({
 						{ label: 'Sonarr', slug: 'integrations/sonarr' },
 						{ label: 'Jellyseerr', slug: 'integrations/jellyseerr' },
 						{ label: 'TMDB (Optional)', slug: 'integrations/tmdb' },
+						{ label: 'Simkl (Optional)', slug: 'integrations/simkl' },
 					],
 				},
 				{

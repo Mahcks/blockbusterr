@@ -25,6 +25,7 @@ type ActivityLog struct {
 	JobType       string    `json:"job_type"`
 	MediaType     string    `json:"media_type"` // "movie" or "show"
 	Title         string    `json:"title"`
+	Language      string    `json:"language,omitempty"`
 	Year          int       `json:"year"`
 	TMDBID        int       `json:"tmdb_id,omitempty"`
 	TVDBID        int       `json:"tvdb_id,omitempty"`
@@ -219,6 +220,9 @@ func (d *Database) initSchema() error {
 	if err := d.ensureActivityLogsColumn("job_id TEXT"); err != nil {
 		return err
 	}
+	if err := d.ensureActivityLogsColumn("language TEXT"); err != nil {
+		return err
+	}
 
 	// Ensure job_id index exists for filtering/grouping performance
 	_, err = d.db.Exec("CREATE INDEX IF NOT EXISTS idx_activity_job_id ON activity_logs(job_id)")
@@ -356,11 +360,11 @@ func (d *Database) LogActivity(log ActivityLog) error {
 	}
 
 	query := `
-		INSERT INTO activity_logs (timestamp, run_id, job_id, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message, filter_details)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO activity_logs (timestamp, run_id, job_id, job_type, media_type, title, language, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message, filter_details)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	_, err := d.db.Exec(query, log.Timestamp, log.RunID, log.JobID, log.JobType, log.MediaType, log.Title, log.Year,
+	_, err := d.db.Exec(query, log.Timestamp, log.RunID, log.JobID, log.JobType, log.MediaType, log.Title, log.Language, log.Year,
 		log.TMDBID, log.TVDBID, log.IMDBID, log.PosterURL, log.Score, log.Rank, log.Status, log.Message, log.FilterDetails)
 	return err
 }
@@ -452,13 +456,13 @@ func (d *Database) GetRecentActivity(limit int) ([]ActivityLog, error) {
 }
 
 // GetRecentActivityFiltered retrieves recent activity logs with optional filters
-func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobType string) ([]ActivityLog, error) {
+func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobType, language string) ([]ActivityLog, error) {
 	if err := d.ensureActivityIdentityColumns(); err != nil {
 		return nil, err
 	}
 
 	query := `
-		SELECT id, timestamp, run_id, job_id, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message, filter_details
+		SELECT id, timestamp, run_id, job_id, job_type, media_type, title, language, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message, filter_details
 		FROM activity_logs
 		WHERE 1=1
 	`
@@ -476,6 +480,10 @@ func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobTy
 		query += " AND job_type = ?"
 		args = append(args, jobType)
 	}
+	if language != "" {
+		query += " AND language = ?"
+		args = append(args, language)
+	}
 
 	query += " ORDER BY timestamp DESC LIMIT ?"
 	args = append(args, limit)
@@ -490,7 +498,7 @@ func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobTy
 	for rows.Next() {
 		var log ActivityLog
 		var runID, tmdbID, tvdbID, rank sql.NullInt64
-		var message, imdbID, jobID, posterURL, filterDetails sql.NullString
+		var message, imdbID, jobID, posterURL, filterDetails, languageValue sql.NullString
 		var score sql.NullFloat64
 
 		err := rows.Scan(
@@ -501,6 +509,7 @@ func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobTy
 			&log.JobType,
 			&log.MediaType,
 			&log.Title,
+			&languageValue,
 			&log.Year,
 			&tmdbID,
 			&tvdbID,
@@ -546,11 +555,31 @@ func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobTy
 		if filterDetails.Valid {
 			log.FilterDetails = filterDetails.String
 		}
+		if languageValue.Valid {
+			log.Language = languageValue.String
+		}
 
 		logs = append(logs, log)
 	}
 
 	return logs, rows.Err()
+}
+
+func (d *Database) GetActivityLanguages() ([]string, error) {
+	rows, err := d.db.Query("SELECT DISTINCT language FROM activity_logs WHERE language IS NOT NULL AND language != '' ORDER BY language")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	languages := []string{}
+	for rows.Next() {
+		var language string
+		if err := rows.Scan(&language); err != nil {
+			return nil, err
+		}
+		languages = append(languages, language)
+	}
+	return languages, rows.Err()
 }
 
 // GetActivityStats returns statistics about activity

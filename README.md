@@ -1,8 +1,8 @@
 # Blockbusterr
 
-**Automate your media library with smart content discovery from Trakt.**
+**Automate your media library with smart content discovery from TMDB, Simkl, or Trakt.**
 
-Blockbusterr automatically adds trending, popular, and highly-rated movies and TV shows from Trakt to your Radarr/Sonarr library. Configure once, let it run on a schedule, and never manually manage Trakt lists again.
+Blockbusterr automatically adds trending, popular, and highly-rated movies and TV shows to your Radarr/Sonarr library. Choose a discovery source per job, configure once, and let it run on a schedule.
 
 [![GitHub release](https://img.shields.io/github/v/release/Mahcks/blockbusterr)](https://github.com/Mahcks/blockbusterr/releases)
 [![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-ghcr.io-blue)](https://github.com/mahcks/blockbusterr/pkgs/container/blockbusterr)
@@ -47,6 +47,7 @@ Then open `http://localhost:9090` and configure your services.
 ## Features
 
 - **17 Job Types** - Trending, popular, anticipated, favorited, box office, and more
+- **Multiple Discovery Sources** - Use TMDB, Simkl, or Trakt per job
 - **Smart Filtering** - Genre, certification, runtime, year, language, country, keywords
 - **Weighted Scoring** - Combine IMDb, Trakt, TMDB, and Metacritic ratings
 - **Two Integration Modes** - Direct to Radarr/Sonarr or via Jellyseerr for approval
@@ -134,7 +135,7 @@ Blockbusterr can be configured via:
 ## How It Works
 
 1. **Jobs run on schedule** (cron) - e.g., "Trending Movies" every 6 hours
-2. **Fetch content from Trakt** - Trending, popular, anticipated, etc.
+2. **Fetch content from your selected source** - TMDB, Simkl, or Trakt
 3. **Apply filters** - Genre, rating, runtime, certification, language
 4. **Calculate scores** - Weighted average of IMDb/Trakt/TMDB ratings
 5. **Check threshold** - Only content scoring above threshold proceeds
@@ -179,4 +180,3 @@ If Blockbusterr saves you time, consider giving it a star!
 
 
 **Made for the *arr community** 
-

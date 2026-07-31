@@ -18,6 +18,7 @@ type ContentDecision struct {
 	// Basic Info
 	Title     string `json:"title"`
 	Year      int    `json:"year"`
+	Language  string `json:"language,omitempty"`
 	MediaType string `json:"media_type"` // "movie" or "show"
 	TMDBID    int    `json:"tmdb_id"`
 	TVDBID    int    `json:"tvdb_id,omitempty"`

@@ -28,7 +28,7 @@ func (e *MovieJobExecutor) Execute(
 	ctx context.Context,
 	jobConfig JobConfig,
 	fetcher MovieFetcher,
-) {
+) error {
 	jobLabel := FormatJobLabel(jobConfig.JobID, jobConfig.JobName)
 	if e.DryRun {
 		log.Infof("Starting %s job (DRY RUN)", jobLabel)
@@ -46,16 +46,16 @@ func (e *MovieJobExecutor) Execute(
 		}
 	}
 
-	// Create Trakt client
-	traktClient := integrations.NewTrakt(integrations.TraktConfig{
-		ClientID:     e.Config.Trakt.ClientID,
-		ClientSecret: e.Config.Trakt.ClientSecret,
-	})
+	discoveryClient, err := NewDiscoveryClient(e.Config, jobConfig.Source)
+	if err != nil {
+		log.Errorf("Failed to configure discovery source for %s: %v", jobLabel, err)
+		return err
+	}
 
 	// Fetch movies using the provided fetcher
-	movies, err := fetcher(ctx, traktClient, jobConfig.Limit, jobConfig.Period)
+	movies, err := fetcher(ctx, discoveryClient, jobConfig.Limit, jobConfig.Period)
 	if err != nil {
-		log.Errorf("Failed to fetch %s from Trakt: %v", jobLabel, err)
+		log.Errorf("Failed to fetch %s from %s: %v", jobLabel, discoveryClient.Source(), err)
 		if e.Database != nil {
 			_ = e.Database.LogActivity(database.ActivityLog{
 				Timestamp: time.Now(),
@@ -65,16 +65,16 @@ func (e *MovieJobExecutor) Execute(
 				MediaType: "movie",
 				Title:     jobLabel,
 				Status:    "failed",
-				Message:   fmt.Sprintf("Failed to fetch from Trakt: %v", err),
+				Message:   fmt.Sprintf("Failed to fetch from %s: %v", discoveryClient.Source(), err),
 			})
 		}
 		if e.Database != nil && e.currentRunID > 0 {
 			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", 0, 0, 0, 0, 0, 0, 1, err.Error())
 		}
-		return
+		return err
 	}
 
-	log.Infof("Found %d movies from Trakt for %s", len(movies), jobLabel)
+	log.Infof("Found %d movies from %s for %s", len(movies), discoveryClient.Source(), jobLabel)
 
 	// Initialize decision tracking for this run
 	runDecisions := &JobRunDecisions{
@@ -91,10 +91,17 @@ func (e *MovieJobExecutor) Execute(
 	runDecisions.PassedFilters = len(filteredMovies)
 
 	// Route to appropriate handler based on mode
+	var executionErr error
 	if jobConfig.Mode == "jellyseerr" {
 		e.executeMoviesJellyseerr(ctx, jobConfig, filteredMovies, scoreMap)
 	} else {
-		e.executeMoviesDirect(ctx, jobConfig, filteredMovies, scoreMap)
+		executionErr = e.executeMoviesDirect(ctx, jobConfig, filteredMovies, scoreMap)
+	}
+	if executionErr != nil {
+		if e.Database != nil && e.currentRunID > 0 {
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", runDecisions.TotalFound, runDecisions.PassedFilters, 0, 0, 0, runDecisions.Rejected, 1, executionErr.Error())
+		}
+		return executionErr
 	}
 
 	// Mark run as completed and update final stats
@@ -115,6 +122,7 @@ func (e *MovieJobExecutor) Execute(
 			"",
 		)
 	}
+	return nil
 }
 
 // executeMoviesDirect adds movies directly to Radarr
@@ -123,7 +131,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 	jobConfig JobConfig,
 	movies []integrations.Movie,
 	scoreMap map[int]ScoreInfo,
-) {
+) error {
 	jobLabel := FormatJobLabel(jobConfig.JobID, jobConfig.JobName)
 	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
 		BaseURL: e.Config.Radarr.URL,
@@ -134,7 +142,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 	existingMovies, err := radarrClient.GetMovies(ctx)
 	if err != nil {
 		log.Errorf("Failed to fetch existing movies from Radarr: %v", err)
-		return
+		return fmt.Errorf("failed to fetch existing movies from Radarr: %w", err)
 	}
 
 	// Create a map of existing TMDB IDs for fast lookup
@@ -165,6 +173,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 					MediaType:     "movie",
 					Title:         movie.Title,
 					Year:          movie.Year,
+					Language:      movie.Language,
 					TMDBID:        movie.IDs.TMDB,
 					IMDBID:        movie.IDs.IMDB,
 					PosterURL:     posterURL,
@@ -233,6 +242,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 					MediaType:     "movie",
 					Title:         movie.Title,
 					Year:          movie.Year,
+					Language:      movie.Language,
 					TMDBID:        movie.IDs.TMDB,
 					IMDBID:        movie.IDs.IMDB,
 					PosterURL:     posterURL,
@@ -266,6 +276,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 							MediaType:     "movie",
 							Title:         movie.Title,
 							Year:          movie.Year,
+							Language:      movie.Language,
 							TMDBID:        movie.IDs.TMDB,
 							IMDBID:        movie.IDs.IMDB,
 							PosterURL:     posterURL,
@@ -294,6 +305,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 							MediaType: "movie",
 							Title:     movie.Title,
 							Year:      movie.Year,
+							Language:  movie.Language,
 							TMDBID:    movie.IDs.TMDB,
 							IMDBID:    movie.IDs.IMDB,
 							Score:     scoreInfo.Score,
@@ -324,6 +336,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 					MediaType: "movie",
 					Title:     addedMovie.Title,
 					Year:      addedMovie.Year,
+					Language:  movie.Language,
 					TMDBID:    addedMovie.TmdbID,
 					IMDBID:    addedMovie.ImdbID,
 					PosterURL: posterURL,
@@ -342,6 +355,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 	}
 
 	log.Infof("%s job completed - Added: %d, Skipped: %d, Failed: %d", jobConfig.JobName, added, skipped, failed)
+	return nil
 }
 
 // executeMoviesJellyseerr requests movies via Jellyseerr
@@ -384,6 +398,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 					MediaType:     "movie",
 					Title:         movie.Title,
 					Year:          movie.Year,
+					Language:      movie.Language,
 					TMDBID:        movie.IDs.TMDB,
 					IMDBID:        movie.IDs.IMDB,
 					PosterURL:     posterURL,
@@ -417,6 +432,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 					MediaType:     "movie",
 					Title:         movie.Title,
 					Year:          movie.Year,
+					Language:      movie.Language,
 					TMDBID:        movie.IDs.TMDB,
 					IMDBID:        movie.IDs.IMDB,
 					PosterURL:     posterURL,
@@ -450,6 +466,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 							MediaType:     "movie",
 							Title:         movie.Title,
 							Year:          movie.Year,
+							Language:      movie.Language,
 							TMDBID:        movie.IDs.TMDB,
 							IMDBID:        movie.IDs.IMDB,
 							PosterURL:     posterURL,
@@ -480,6 +497,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 							MediaType:     "movie",
 							Title:         movie.Title,
 							Year:          movie.Year,
+							Language:      movie.Language,
 							TMDBID:        movie.IDs.TMDB,
 							IMDBID:        movie.IDs.IMDB,
 							Score:         scoreInfo.Score,
@@ -511,6 +529,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 						MediaType:     "movie",
 						Title:         movie.Title,
 						Year:          movie.Year,
+						Language:      movie.Language,
 						TMDBID:        movie.IDs.TMDB,
 						IMDBID:        movie.IDs.IMDB,
 						PosterURL:     posterURL,
@@ -543,6 +562,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 						MediaType:     "movie",
 						Title:         movie.Title,
 						Year:          movie.Year,
+						Language:      movie.Language,
 						TMDBID:        movie.IDs.TMDB,
 						IMDBID:        movie.IDs.IMDB,
 						PosterURL:     posterURL,
@@ -576,6 +596,7 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 		decision := ContentDecision{
 			Title:       movie.Title,
 			Year:        movie.Year,
+			Language:    movie.Language,
 			MediaType:   "movie",
 			TMDBID:      movie.IDs.TMDB,
 			IMDBID:      movie.IDs.IMDB,
@@ -645,6 +666,7 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 					MediaType:     "movie",
 					Title:         decision.Title,
 					Year:          decision.Year,
+					Language:      decision.Language,
 					TMDBID:        decision.TMDBID,
 					IMDBID:        decision.IMDBID,
 					PosterURL:     posterURL,

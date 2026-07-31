@@ -27,7 +27,7 @@ func (e *SmartShowJobExecutor) Execute(
 	ctx context.Context,
 	jobConfig SmartJobConfig,
 	fetcher ShowFetcher,
-) {
+) error {
 	if e.DryRun {
 		log.Infof("Starting %s job (DRY RUN) with adaptive ratings", jobConfig.JobName)
 	} else {
@@ -44,16 +44,16 @@ func (e *SmartShowJobExecutor) Execute(
 		}
 	}
 
-	// Create Trakt client
-	traktClient := integrations.NewTrakt(integrations.TraktConfig{
-		ClientID:     e.Config.Trakt.ClientID,
-		ClientSecret: e.Config.Trakt.ClientSecret,
-	})
+	discoveryClient, err := NewDiscoveryClient(e.Config, jobConfig.Source)
+	if err != nil {
+		log.Errorf("Failed to configure discovery source for %s: %v", jobConfig.JobName, err)
+		return err
+	}
 
 	// Fetch shows using the provided fetcher
-	shows, err := fetcher(ctx, traktClient, jobConfig.Limit, "")
+	shows, err := fetcher(ctx, discoveryClient, jobConfig.Limit, "")
 	if err != nil {
-		log.Errorf("Failed to fetch %s from Trakt: %v", jobConfig.JobName, err)
+		log.Errorf("Failed to fetch %s from %s: %v", jobConfig.JobName, discoveryClient.Source(), err)
 		if e.Database != nil {
 			_ = e.Database.LogActivity(database.ActivityLog{
 				Timestamp: time.Now(),
@@ -63,16 +63,16 @@ func (e *SmartShowJobExecutor) Execute(
 				MediaType: "show",
 				Title:     FormatJobLabel(jobConfig.JobID, jobConfig.JobName),
 				Status:    "failed",
-				Message:   fmt.Sprintf("Failed to fetch from Trakt: %v", err),
+				Message:   fmt.Sprintf("Failed to fetch from %s: %v", discoveryClient.Source(), err),
 			})
 		}
 		if e.Database != nil && e.currentRunID > 0 {
 			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", 0, 0, 0, 0, 0, 0, 1, err.Error())
 		}
-		return
+		return err
 	}
 
-	log.Infof("Found %d shows from Trakt for %s", len(shows), jobConfig.JobName)
+	log.Infof("Found %d shows from %s for %s", len(shows), discoveryClient.Source(), jobConfig.JobName)
 
 	// Calculate popularity percentiles for this set
 	percentiles := filters.CalculateShowPopularityPercentiles(shows)
@@ -99,6 +99,7 @@ func (e *SmartShowJobExecutor) Execute(
 	regularJobConfig := JobConfig{
 		JobID:     jobConfig.JobID,
 		JobName:   jobConfig.JobName,
+		Source:    jobConfig.Source,
 		MediaType: jobConfig.MediaType,
 		Mode:      jobConfig.Mode,
 		Limit:     jobConfig.Limit,
@@ -113,10 +114,17 @@ func (e *SmartShowJobExecutor) Execute(
 		currentRunID:  e.currentRunID,
 	}
 
+	var executionErr error
 	if jobConfig.Mode == "jellyseerr" {
 		showExecutor.executeShowsJellyseerr(ctx, regularJobConfig, filteredShows, scoreMap)
 	} else {
-		showExecutor.executeShowsDirect(ctx, regularJobConfig, filteredShows, scoreMap)
+		executionErr = showExecutor.executeShowsDirect(ctx, regularJobConfig, filteredShows, scoreMap)
+	}
+	if executionErr != nil {
+		if e.Database != nil && e.currentRunID > 0 {
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", runDecisions.TotalFound, runDecisions.PassedFilters, 0, 0, 0, runDecisions.Rejected, 1, executionErr.Error())
+		}
+		return executionErr
 	}
 
 	runDecisions.Rejected = runDecisions.TotalFound - runDecisions.PassedFilters
@@ -136,6 +144,7 @@ func (e *SmartShowJobExecutor) Execute(
 			"",
 		)
 	}
+	return nil
 }
 
 // evaluateShowsWithAdaptiveFilters evaluates shows with adaptive rating thresholds
@@ -151,6 +160,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 		decision := ContentDecision{
 			Title:       show.Title,
 			Year:        show.Year,
+			Language:    show.Language,
 			MediaType:   "tv",
 			TMDBID:      show.IDs.TMDB,
 			TVDBID:      show.IDs.TVDB,
@@ -249,6 +259,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 					MediaType:     "tv",
 					Title:         decision.Title,
 					Year:          decision.Year,
+					Language:      decision.Language,
 					TMDBID:        decision.TMDBID,
 					TVDBID:        decision.TVDBID,
 					IMDBID:        decision.IMDBID,

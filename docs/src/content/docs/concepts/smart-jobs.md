@@ -64,7 +64,7 @@ With `base_min_rating: 7.0` and `adjustment_factor: 2.0`:
 jobs:
   smart_popular_movies:
     enabled: true
-    schedule: "0 */6 * * *"
+    sync_interval: "0 */6 * * *"
     limit: 20
     base_min_rating: 7.0      # Baseline rating requirement
     adjustment_factor: 2.0     # How aggressive (default: 1.0)
@@ -77,11 +77,11 @@ jobs:
 | `base_min_rating` | float | `7.0` | Baseline rating for average popularity |
 | `adjustment_factor` | float | `1.0` | Aggressiveness (0.5 = mild, 2.0 = aggressive, 3.0 = very aggressive) |
 | `limit` | integer | `10` | Maximum items to add |
-| `schedule` | string | - | Cron schedule |
+| `sync_interval` | string | global default | Duration or cron schedule |
 
-### Additional Filters
+### Global Filters
 
-You can combine adaptive ratings with other filters:
+Smart jobs use the same global movie or show filters as every other job. Per-job filters are not supported.
 
 ```yaml
 smart_popular_movies:
@@ -89,10 +89,6 @@ smart_popular_movies:
   limit: 20
   base_min_rating: 7.0
   adjustment_factor: 2.0
-  filters:
-    min_votes: 1000            # Still require vote threshold
-    exclude_genres: ["Documentary"]
-    include_languages: ["en"]
 ```
 
 <Aside type="caution">
@@ -162,7 +158,7 @@ Adaptive thresholds for popular movies.
 ```yaml
 smart_popular_movies:
   enabled: true
-  schedule: "0 6 * * *"
+  sync_interval: "0 6 * * *"
   limit: 20
   base_min_rating: 7.0
   adjustment_factor: 2.0
@@ -175,7 +171,7 @@ Adaptive thresholds for popular TV shows.
 ```yaml
 smart_popular_shows:
   enabled: true
-  schedule: "0 12 * * *"
+  sync_interval: "0 12 * * *"
   limit: 15
   base_min_rating: 7.0
   adjustment_factor: 1.5
@@ -193,9 +189,6 @@ smart_popular_movies:
   limit: 25
   base_min_rating: 7.0
   adjustment_factor: 2.0
-  filters:
-    min_votes: 2000
-    include_genres: ["Action", "Adventure", "Sci-Fi"]
 ```
 
 **Results:**
@@ -213,9 +206,6 @@ smart_popular_movies:
   limit: 20
   base_min_rating: 6.8
   adjustment_factor: 1.0
-  filters:
-    min_votes: 1000
-    min_year: 2020
 ```
 
 **Results:** Moderate adjustment curve, good mix of mainstream and quality.
@@ -230,8 +220,6 @@ smart_popular_movies:
   limit: 15
   base_min_rating: 7.5
   adjustment_factor: 0.8
-  filters:
-    min_votes: 1500
 ```
 
 **Results:** Strict baseline with minor adjustments for popularity.
@@ -244,8 +232,6 @@ smart_popular_movies:
 popular_movies:
   enabled: true
   limit: 20
-  filters:
-    min_rating: 7.0  # Fixed threshold
 ```
 
 **Result:** Misses blockbusters rated 6.5-6.9, regardless of popularity.
@@ -288,13 +274,12 @@ adjustment_factor: 1.0
 
 ### Use min_votes
 
-Always pair with `min_votes` to ensure rating reliability:
+Set the global movie or show `min_votes` threshold to improve rating reliability:
 
 ```yaml
-base_min_rating: 7.0
-adjustment_factor: 2.0
 filters:
-  min_votes: 1000  # Critical for reliability
+  movies:
+    min_votes: 1000
 ```
 
 ### Preview Extensively
@@ -313,10 +298,6 @@ Smart rating is just one filter. Use genre, language, and keyword filters as nor
 smart_popular_movies:
   base_min_rating: 7.0
   adjustment_factor: 2.0
-  filters:
-    min_votes: 1000
-    exclude_genres: ["Documentary", "Reality"]
-    include_languages: ["en"]
 ```
 
 ## Troubleshooting
@@ -347,14 +328,15 @@ base_min_rating: 6.5  # Down from 7.0
 
 ### Too Many Obscure Items?
 
-**Increase min_votes:**
+**Increase the global movie vote threshold:**
 ```yaml
 filters:
-  min_votes: 2000  # Up from 1000
+  movies:
+    min_votes: 2000
 ```
 
 ## Next Steps
 
-- Learn about [Regular Jobs](/blockbusterr/concepts/jobs/)
-- Configure [Advanced Filters](/blockbusterr/concepts/filters/)
-- Understand [Integration Modes](/blockbusterr/concepts/integration-modes/)
+- Learn about [Regular Jobs](/concepts/jobs/)
+- Configure [Advanced Filters](/concepts/filters/)
+- Understand [Integration Modes](/concepts/integration-modes/)

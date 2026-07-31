@@ -18,12 +18,14 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path>
         </svg>
         Trakt Settings
+        <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50">Optional</span>
       </h3>
+      <p class="text-sm text-slate-300 mb-4">Only needed for Trakt-specific discovery jobs. You can use TMDB or Simkl without configuring Trakt.</p>
       
       <div class="grid md:grid-cols-2 gap-4 mb-4">
         <div>
           <label for="trakt-client-id" class="block text-sm font-medium text-slate-300 mb-2">
-            Client ID <span class="text-red-400">*</span>
+            Client ID
           </label>
           <input
             type="text"
@@ -90,7 +92,7 @@
       
       <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 mb-4">
         <p class="text-sm text-slate-300">
-          <span class="font-semibold text-blue-400">Optional:</span> Add TMDB API key to see poster images in job previews. Without it, previews will show a clean list view instead.
+		  <span class="font-semibold text-blue-400">Optional:</span> Add a TMDB API key for TMDB discovery jobs and poster images.
           Get your free API key from <a href="https://www.themoviedb.org/settings/api" target="_blank" class="text-blue-400 hover:underline">themoviedb.org</a>.
         </p>
       </div>
@@ -125,6 +127,14 @@
         </div>
       </div>
     </div>
+
+	<div class="bg-slate-900/50 rounded-lg p-6 mb-4">
+	  <h3 class="text-xl font-semibold text-blue-400 mb-4">Simkl Settings <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50">Optional</span></h3>
+	  <p class="text-sm text-slate-300 mb-4">Used for Simkl Trending and Most Watched jobs. Simkl attribution is shown with Simkl-sourced results.</p>
+	  <label for="simkl-client-id" class="block text-sm font-medium text-slate-300 mb-2">Client ID</label>
+	  <input type="text" id="simkl-client-id" name="simkl.client_id" value="{{.Config.Simkl.ClientID}}" placeholder="Enter Simkl client ID" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
+	  <p class="text-xs text-slate-400 mt-2">Create an app at <a href="https://simkl.com/settings/developer/" target="_blank" class="text-blue-400 hover:underline">Simkl Developer Settings</a>.</p>
+	</div>
 
     <!-- Radarr Settings -->
     <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">

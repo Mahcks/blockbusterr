@@ -12,10 +12,17 @@ Retrieve recent activity logs with optional filtering.
 **Endpoint:** `GET /v1/activity/logs`
 
 **Query Parameters:**
-- `limit` (optional) - Number of logs to return (default: 50, max: 500)
-- `media_type` (optional) - Filter by type: `movie` or `show`
-- `job_type` (optional) - Filter by job name (e.g., `trending_movies`)
-- `status` (optional) - Filter by status: `added`, `requested`, `failed`
+- `page` (optional) - Page number, starting at 1
+- `pageSize` (optional) - Entries per page (default: 50, max: 200)
+- `limit` (optional) - Legacy alternative to `pageSize`
+- `media` (optional) - Filter by `movie` or `show`
+- `job` (optional) - Filter by job type
+- `status` (optional) - Filter by a supported activity status
+- `language` (optional) - Filter by stored language code
+- `search` (optional) - Case-insensitive title search
+- `date_range` (optional) - `today`, `yesterday`, `week`, or `month`
+- `run_id` (optional) - Filter by Job Run ID
+- `dedupe` (optional) - Group repeated entries; defaults to `true`
 
 **Example Requests:**
 
@@ -24,10 +31,10 @@ Retrieve recent activity logs with optional filtering.
 curl "http://localhost:9090/v1/activity/logs?limit=100"
 
 # Get only movies
-curl "http://localhost:9090/v1/activity/logs?media_type=movie"
+curl "http://localhost:9090/v1/activity/logs?media=movie"
 
 # Get trending movies only
-curl "http://localhost:9090/v1/activity/logs?job_type=trending_movies"
+curl "http://localhost:9090/v1/activity/logs?job=trending"
 
 # Get failed adds
 curl "http://localhost:9090/v1/activity/logs?status=failed"
@@ -63,7 +70,11 @@ curl "http://localhost:9090/v1/activity/logs?status=failed"
       "status": "requested"
     }
   ],
-  "count": 100
+  "grouped": true,
+  "page": 1,
+  "page_size": 50,
+  "total_records": 100,
+  "total_pages": 2
 }
 ```
 
@@ -232,17 +243,10 @@ curl -s "http://localhost:9090/v1/activity/logs?limit=500" \
 
 ## Error Responses
 
-**Invalid Limit (400):**
-```json
-{
-  "error": "Limit must be between 1 and 500"
-}
-```
-
 **Invalid Media Type (400):**
 ```json
 {
-  "error": "Invalid media_type. Must be 'movie' or 'show'"
+  "error": "invalid media type: invalid"
 }
 ```
 
@@ -255,6 +259,6 @@ curl -s "http://localhost:9090/v1/activity/logs?limit=500" \
 
 ## Next Steps
 
-- Explore [Jobs API](/blockbusterr/api/jobs/)
-- Review [Configuration API](/blockbusterr/api/config/)
-- Learn about [Integration Modes](/blockbusterr/concepts/integration-modes/)
+- Explore [Jobs API](/api/jobs/)
+- Review [Configuration API](/api/config/)
+- Learn about [Integration Modes](/concepts/integration-modes/)

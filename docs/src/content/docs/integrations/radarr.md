@@ -44,11 +44,11 @@ The `minimum_availability` setting determines when Radarr considers a movie avai
 | Value | Description |
 |-------|-------------|
 | `announced` | As soon as the movie is announced |
-| `inCinemas` | When the movie is released in theaters |
+| `in_cinemas` | When the movie is released in theaters |
 | `released` | When the movie is released on physical/digital media (default, recommended) |
 
 :::caution
-Setting `announced` or `inCinemas` may result in lower quality releases or CAM rips. Use `released` for best quality.
+Setting `announced` or `in_cinemas` may result in lower quality releases or CAM rips. Use `released` for best quality.
 :::
 
 ## Getting API Key
@@ -100,6 +100,6 @@ Ensure both containers are on the same Docker network.
 
 ## Next Steps
 
-- Configure [Sonarr](/blockbusterr/integrations/sonarr/) for TV shows
-- Set up [movie jobs](/blockbusterr/concepts/jobs/)
-- Learn about [integration modes](/blockbusterr/concepts/integration-modes/)
+- Configure [Sonarr](/integrations/sonarr/) for TV shows
+- Set up [movie jobs](/concepts/jobs/)
+- Learn about [integration modes](/concepts/integration-modes/)
