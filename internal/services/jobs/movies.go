@@ -100,7 +100,7 @@ func RunPlayedMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:             "played_movies",
 		MediaType:           "movie",
 		Mode:                mode,
@@ -108,7 +108,9 @@ func RunPlayedMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 		Monitor:             cfg.Jobs.PlayedMovies.Monitor,
 		Limit:               cfg.Jobs.PlayedMovies.Limit,
 		Period:              cfg.Jobs.PlayedMovies.Period,
-	}, fetchPlayedMovies)
+	}, fetchPlayedMovies); err != nil {
+		log.Errorw("played movies job failed", "error", err)
+	}
 }
 
 // RunPopularMovies fetches popular movies from Trakt and adds them to Radarr or requests via Jellyseerr
@@ -124,14 +126,16 @@ func RunPopularMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:             "popular_movies",
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.PopularMovies.MinimumAvailability,
 		Monitor:             cfg.Jobs.PopularMovies.Monitor,
 		Limit:               cfg.Jobs.PopularMovies.Limit,
-	}, fetchPopularMovies)
+	}, fetchPopularMovies); err != nil {
+		log.Errorw("popular movies job failed", "error", err)
+	}
 }
 
 // RunTrendingMovies fetches trending movies from Trakt and adds them to Radarr or requests via Jellyseerr
@@ -164,14 +168,16 @@ func RunTrendingMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	// Execute the job
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:             "trending_movies",
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.TrendingMovies.MinimumAvailability,
 		Monitor:             cfg.Jobs.TrendingMovies.Monitor,
 		Limit:               cfg.Jobs.TrendingMovies.Limit,
-	}, fetcher)
+	}, fetcher); err != nil {
+		log.Errorw("trending movies job failed", "error", err)
+	}
 }
 
 // RunWatchedMovies fetches most watched movies from Trakt and adds them to Radarr or requests via Jellyseerr
@@ -187,7 +193,7 @@ func RunWatchedMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:             "watched_movies",
 		MediaType:           "movie",
 		Mode:                mode,
@@ -195,7 +201,9 @@ func RunWatchedMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 		Monitor:             cfg.Jobs.WatchedMovies.Monitor,
 		Limit:               cfg.Jobs.WatchedMovies.Limit,
 		Period:              cfg.Jobs.WatchedMovies.Period,
-	}, fetchWatchedMovies)
+	}, fetchWatchedMovies); err != nil {
+		log.Errorw("watched movies job failed", "error", err)
+	}
 }
 
 // RunBoxOffice fetches box office movies from Trakt and adds them to Radarr or requests via Jellyseerr
@@ -211,14 +219,16 @@ func RunBoxOffice(cfg *config.Config, db *database.Database, dryRun bool) {
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:             "box_office",
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.BoxOffice.MinimumAvailability,
 		Monitor:             cfg.Jobs.BoxOffice.Monitor,
 		Limit:               cfg.Jobs.BoxOffice.Limit,
-	}, fetchBoxOfficeMovies)
+	}, fetchBoxOfficeMovies); err != nil {
+		log.Errorw("box office job failed", "error", err)
+	}
 }
 
 // RunSmartPopularMovies fetches popular movies and applies adaptive rating thresholds
@@ -234,7 +244,7 @@ func RunSmartPopularMovies(cfg *config.Config, db *database.Database, dryRun boo
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, SmartJobConfig{
+	if err := executor.Execute(ctx, SmartJobConfig{
 		JobID:               "legacy_smart_popular_movies",
 		JobName:             "smart_popular_movies",
 		MediaType:           "movie",
@@ -244,5 +254,7 @@ func RunSmartPopularMovies(cfg *config.Config, db *database.Database, dryRun boo
 		Limit:               cfg.Jobs.SmartPopularMovies.Limit,
 		BaseMinRating:       cfg.Jobs.SmartPopularMovies.BaseMinRating,
 		AdjustmentFactor:    cfg.Jobs.SmartPopularMovies.AdjustmentFactor,
-	}, fetchPopularMovies)
+	}, fetchPopularMovies); err != nil {
+		log.Errorw("smart popular movies job failed", "error", err)
+	}
 }
