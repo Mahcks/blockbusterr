@@ -34,10 +34,10 @@ func (e *DynamicJobExecutor) Execute(ctx context.Context, job config.DynamicJob)
 		return fmt.Errorf("job type %s does not support source %s", job.Type, job.Source)
 	}
 	if job.Source == "simkl" && job.Type == "watched" && job.Period != "weekly" && job.Period != "monthly" {
-		return fmt.Errorf("Simkl most watched jobs support weekly or monthly periods")
+		return fmt.Errorf("simkl most watched jobs support weekly or monthly periods")
 	}
 	if job.Source == "simkl" && job.Limit > 500 {
-		return fmt.Errorf("Simkl jobs cannot exceed 500 items")
+		return fmt.Errorf("simkl jobs cannot exceed 500 items")
 	}
 
 	// Determine effective mode

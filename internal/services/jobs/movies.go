@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/integrations"
@@ -22,14 +23,16 @@ func RunAnticipatedMovies(cfg *config.Config, db *database.Database, dryRun bool
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:             "anticipated_movies",
 		MediaType:           "movie",
 		Mode:                mode,
 		MinimumAvailability: cfg.Jobs.AnticipatedMovies.MinimumAvailability,
 		Monitor:             cfg.Jobs.AnticipatedMovies.Monitor,
 		Limit:               cfg.Jobs.AnticipatedMovies.Limit,
-	}, fetchAnticipatedMovies)
+	}, fetchAnticipatedMovies); err != nil {
+		log.Errorw("anticipated movies job failed", "error", err)
+	}
 }
 
 // RunCollectedMovies fetches most collected movies from Trakt and adds them to Radarr or requests via Jellyseerr
@@ -45,7 +48,7 @@ func RunCollectedMovies(cfg *config.Config, db *database.Database, dryRun bool) 
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:             "collected_movies",
 		MediaType:           "movie",
 		Mode:                mode,
@@ -53,7 +56,9 @@ func RunCollectedMovies(cfg *config.Config, db *database.Database, dryRun bool) 
 		Monitor:             cfg.Jobs.CollectedMovies.Monitor,
 		Limit:               cfg.Jobs.CollectedMovies.Limit,
 		Period:              cfg.Jobs.CollectedMovies.Period,
-	}, fetchCollectedMovies)
+	}, fetchCollectedMovies); err != nil {
+		log.Errorw("collected movies job failed", "error", err)
+	}
 }
 
 // RunFavoritedMovies fetches favorited movies from Trakt and adds them to Radarr or requests via Jellyseerr
@@ -69,7 +74,7 @@ func RunFavoritedMovies(cfg *config.Config, db *database.Database, dryRun bool) 
 		DryRun:   dryRun,
 	}
 
-	executor.Execute(ctx, JobConfig{
+	if err := executor.Execute(ctx, JobConfig{
 		JobName:             "favorited_movies",
 		MediaType:           "movie",
 		Mode:                mode,
@@ -77,7 +82,9 @@ func RunFavoritedMovies(cfg *config.Config, db *database.Database, dryRun bool) 
 		Monitor:             cfg.Jobs.FavoritedMovies.Monitor,
 		Limit:               cfg.Jobs.FavoritedMovies.Limit,
 		Period:              cfg.Jobs.FavoritedMovies.Period,
-	}, fetchFavoritedMovies)
+	}, fetchFavoritedMovies); err != nil {
+		log.Errorw("favorited movies job failed", "error", err)
+	}
 }
 
 // RunPlayedMovies fetches most played movies from Trakt and adds them to Radarr or requests via Jellyseerr

@@ -364,7 +364,7 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 		return fmt.Errorf("%s is not configured", job.Source)
 	}
 	if job.Source == "simkl" && job.Limit > 500 {
-		return fmt.Errorf("Simkl jobs cannot exceed 500 items")
+		return fmt.Errorf("simkl jobs cannot exceed 500 items")
 	}
 
 	// Check period requirement
@@ -380,7 +380,7 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 		}
 	}
 	if job.Source == "simkl" && job.Type == "watched" && job.Period != "weekly" && job.Period != "monthly" {
-		return fmt.Errorf("Simkl most watched jobs support weekly or monthly periods")
+		return fmt.Errorf("simkl most watched jobs support weekly or monthly periods")
 	}
 
 	return nil
