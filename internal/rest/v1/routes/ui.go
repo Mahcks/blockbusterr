@@ -32,17 +32,17 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		alert := structures.AlertInfo{
 			ID:      "jobs-info",
 			Title:   "About Jobs",
-			Content: "Jobs automatically fetch content from Trakt and add them to Radarr/Sonarr based on the sync interval. Click on a job to configure its settings, or use the dropdown below to add new jobs to your list.",
+			Content: "Jobs fetch content from the selected discovery source and add it to Radarr/Sonarr based on the sync interval. Click a job to configure its source and settings.",
 			Class:   "mb-4",
 		}
 		cfg := rg.gctx.Config()
-		traktDisabled := (cfg.Trakt.ClientID == "" || cfg.Trakt.ClientSecret == "")
+		discoveryDisabled := cfg.Trakt.ClientID == "" && cfg.TMDB.APIKey == "" && cfg.Simkl.ClientID == ""
 		return c.Render("jobs", fiber.Map{
-			"Title":         "Blockbusterr - Jobs",
-			"Config":        cfg,
-			"Version":       rg.gctx.Metadata().Version,
-			"AlertInfo":     alert,
-			"TraktDisabled": traktDisabled,
+			"Title":             "Blockbusterr - Jobs",
+			"Config":            cfg,
+			"Version":           rg.gctx.Metadata().Version,
+			"AlertInfo":         alert,
+			"DiscoveryDisabled": discoveryDisabled,
 		}, "base")
 	})
 
@@ -51,7 +51,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		alert := structures.AlertInfo{
 			ID:      "welcome-info",
 			Title:   "Getting Started",
-			Content: "Automatically add trending, popular, and highly-rated movies and TV shows from Trakt.tv to your Radarr and Sonarr instances.<ol class='list-decimal list-inside space-y-1 mt-2'><li>Get your Trakt API credentials from <a href='https://trakt.tv/oauth/applications' target='_blank' class='text-blue-400 hover:underline'>trakt.tv/oauth/applications</a></li><li>Enter your Radarr and Sonarr connection details below</li><li>Test each connection to verify credentials</li><li>Load and select quality profiles and root folders</li><li>Save your configuration and head to the <a href='/jobs' class='text-blue-400 hover:underline'>Jobs page</a> to enable automation</li></ol>",
+			Content: "Choose TMDB, Simkl, or Trakt for discovery jobs, then connect Radarr, Sonarr, or Jellyseerr for delivery.",
 			Class:   "mb-4",
 		}
 		return c.Render("index", fiber.Map{
@@ -67,17 +67,17 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		alert := structures.AlertInfo{
 			ID:      "jobs-info",
 			Title:   "About Jobs",
-			Content: "Jobs automatically fetch content from Trakt and add them to Radarr/Sonarr based on the sync interval. Click on a job to configure its settings, or use the dropdown below to add new jobs to your list.",
+			Content: "Jobs fetch content from the selected discovery source and add it to Radarr/Sonarr based on the sync interval. Click a job to configure its source and settings.",
 			Class:   "mb-4",
 		}
 		cfg := rg.gctx.Config()
-		traktDisabled := (cfg.Trakt.ClientID == "" || cfg.Trakt.ClientSecret == "")
+		discoveryDisabled := cfg.Trakt.ClientID == "" && cfg.TMDB.APIKey == "" && cfg.Simkl.ClientID == ""
 		return c.Render("jobs", fiber.Map{
-			"Title":         "Blockbusterr - Jobs",
-			"Config":        cfg,
-			"Version":       rg.gctx.Metadata().Version,
-			"AlertInfo":     alert,
-			"TraktDisabled": traktDisabled,
+			"Title":             "Blockbusterr - Jobs",
+			"Config":            cfg,
+			"Version":           rg.gctx.Metadata().Version,
+			"AlertInfo":         alert,
+			"DiscoveryDisabled": discoveryDisabled,
 		}, "base")
 	})
 
@@ -103,6 +103,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		traktClientID := c.FormValue("trakt.client_id")
 		traktClientSecret := c.FormValue("trakt.client_secret")
 		tmdbAPIKey := c.FormValue("tmdb.api_key")
+		simklClientID := c.FormValue("simkl.client_id")
 		radarrURL := c.FormValue("radarr.url")
 		radarrAPIKey := c.FormValue("radarr.api_key")
 		radarrQualityProfile := c.FormValue("radarr.quality_profile")
@@ -138,6 +139,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Trakt.ClientID = traktClientID
 		cfg.Trakt.ClientSecret = traktClientSecret
 		cfg.TMDB.APIKey = tmdbAPIKey
+		cfg.Simkl.ClientID = simklClientID
 		cfg.Radarr.URL = radarrURL
 		cfg.Radarr.APIKey = radarrAPIKey
 		cfg.Radarr.RootFolder = radarrRootFolder

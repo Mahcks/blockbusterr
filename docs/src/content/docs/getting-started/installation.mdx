@@ -7,6 +7,10 @@ import { Tabs, TabItem, Steps, Card, CardGrid, Aside } from '@astrojs/starlight/
 
 Choose your preferred installation method to get Blockbusterr running.
 
+<Aside type="caution" title="Trusted LAN only">
+Blockbusterr has no built-in authentication and is intended for a trusted LAN. Do not expose port 9090 directly to the internet; use an authenticated reverse proxy or VPN for remote access.
+</Aside>
+
 ## Prerequisites
 
 <CardGrid>
@@ -247,10 +251,11 @@ Configure Blockbusterr behavior with environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `9090` | HTTP server port |
-| `CONFIG_PATH` | `./config/config.yaml` | Path to config file |
-| `DATA_PATH` | `./data` | Path to database directory |
-| `LOG_LEVEL` | `info` | Logging level (debug, info, warn, error) |
+| `CONFIG_PATH` | config search paths | Directory containing the config file |
+| `DATA_DIR` | `./data` | Database directory |
+| `DISABLE_UI` | `false` | Disable the web UI when set to `true`, `1`, or `yes` |
+| `VERSION` | build metadata | Override displayed version metadata |
+| `COMMIT` | build metadata | Override displayed commit metadata |
 | `TZ` | `UTC` | Timezone for scheduling |
 
 **Example with custom settings:**
@@ -258,9 +263,8 @@ Configure Blockbusterr behavior with environment variables:
 ```bash
 docker run -d \
   --name blockbusterr \
-  -p 8080:8080 \
-  -e PORT=8080 \
-  -e LOG_LEVEL=debug \
+  -p 8080:9090 \
+  -e DATA_DIR=/app/data \
   -e TZ=Europe/London \
   -v $(pwd)/data:/app/data \
   ghcr.io/mahcks/blockbusterr:latest
@@ -271,16 +275,15 @@ docker run -d \
 Verify Blockbusterr is running correctly:
 
 ```bash
-curl http://localhost:9090/api/v1/health
+curl http://localhost:9090/v1/
 ```
 
 Expected response:
 
 ```json
 {
-  "status": "healthy",
-  "version": "1.0.0",
-  "uptime": "2h34m12s"
+  "version": "1.5.0",
+  "uptime": "1785518792000"
 }
 ```
 
@@ -333,7 +336,7 @@ cp -r data data.backup
 Change the port mapping: `-p 8080:9090` (host:container)
 </Card>
 <Card title="Permission Denied" icon="error">
-Ensure the data directory is writable: `chmod -R 777 data/`
+Ensure the data directory is owned and writable by the user running Blockbusterr.
 </Card>
 <Card title="Can't Connect to *arr" icon="puzzle">
 Use container names if on same Docker network, not `localhost`
@@ -346,13 +349,13 @@ Only run one Blockbusterr instance per data directory
 ## Next Steps
 
 <CardGrid>
-<Card title="Quick Start" icon="rocket" href="/blockbusterr/getting-started/quickstart">
+<Card title="Quick Start" icon="rocket" href="/getting-started/quickstart">
 Get up and running in 5 minutes
 </Card>
-<Card title="Configuration" icon="setting" href="/blockbusterr/getting-started/configuration">
+<Card title="Configuration" icon="setting" href="/getting-started/configuration">
 Configure Trakt and your integrations
 </Card>
-<Card title="Set Up Jobs" icon="star" href="/blockbusterr/concepts/jobs">
+<Card title="Set Up Jobs" icon="star" href="/concepts/jobs">
 Create automated content discovery jobs
 </Card>
 </CardGrid>

@@ -1,11 +1,33 @@
 package jobs
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/integrations"
 )
+
+func TestMovieExecutorReturnsRadarrInitializationError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	cfg := &config.Config{}
+	cfg.Simkl.ClientID = "configured"
+	cfg.Radarr.URL = server.URL
+	executor := &MovieJobExecutor{Config: cfg, DryRun: true}
+	err := executor.Execute(t.Context(), JobConfig{Source: "simkl", MediaType: "movie", Mode: "direct", Limit: 1}, func(_ context.Context, _ *DiscoveryClient, _ int, _ string) ([]integrations.Movie, error) {
+		return []integrations.Movie{{Title: "Test", IDs: integrations.IDs{TMDB: 1}}}, nil
+	})
+	if err == nil {
+		t.Fatal("expected Radarr initialization error")
+	}
+}
 
 // TestMovieJobExecutorStructure verifies the movie executor can be created and configured
 func TestMovieJobExecutorStructure(t *testing.T) {

@@ -8,6 +8,7 @@ type JobTypeDefinition struct {
 	Name           string   `json:"name"`            // Display name
 	Description    string   `json:"description"`     // UI description
 	Source         string   `json:"source"`          // Data source: "trakt", "tmdb", etc.
+	Sources        []string `json:"sources"`         // Supported discovery sources.
 	SupportedMedia []string `json:"supported_media"` // ["movie"], ["show"], or ["movie", "show"]
 	RequiresPeriod bool     `json:"requires_period"` // Whether this job type uses period parameter
 	IsSmartJob     bool     `json:"is_smart_job"`    // Whether this is a smart job with adaptive filters
@@ -24,6 +25,7 @@ var JobTypeRegistry = map[string]JobTypeDefinition{
 		Name:           "Trending",
 		Description:    "Currently being watched and talked about",
 		Source:         "trakt",
+		Sources:        []string{"trakt", "tmdb", "simkl"},
 		SupportedMedia: []string{"movie", "show"},
 		RequiresPeriod: false,
 		IsSmartJob:     false,
@@ -33,8 +35,9 @@ var JobTypeRegistry = map[string]JobTypeDefinition{
 	"popular": {
 		Type:           "popular",
 		Name:           "Popular",
-		Description:    "Most popular content on Trakt",
+		Description:    "Most popular content from the selected source",
 		Source:         "trakt",
+		Sources:        []string{"trakt", "tmdb", "simkl"},
 		SupportedMedia: []string{"movie", "show"},
 		RequiresPeriod: false,
 		IsSmartJob:     false,
@@ -46,6 +49,7 @@ var JobTypeRegistry = map[string]JobTypeDefinition{
 		Name:           "Most Watched",
 		Description:    "Most watched content over a time period",
 		Source:         "trakt",
+		Sources:        []string{"trakt", "simkl"},
 		SupportedMedia: []string{"movie", "show"},
 		RequiresPeriod: true,
 		IsSmartJob:     false,
@@ -57,6 +61,7 @@ var JobTypeRegistry = map[string]JobTypeDefinition{
 		Name:           "Most Collected",
 		Description:    "Most collected content over a time period",
 		Source:         "trakt",
+		Sources:        []string{"trakt"},
 		SupportedMedia: []string{"movie", "show"},
 		RequiresPeriod: true,
 		IsSmartJob:     false,
@@ -68,6 +73,7 @@ var JobTypeRegistry = map[string]JobTypeDefinition{
 		Name:           "Most Favorited",
 		Description:    "Most favorited content over a time period",
 		Source:         "trakt",
+		Sources:        []string{"trakt"},
 		SupportedMedia: []string{"movie", "show"},
 		RequiresPeriod: true,
 		IsSmartJob:     false,
@@ -79,6 +85,7 @@ var JobTypeRegistry = map[string]JobTypeDefinition{
 		Name:           "Most Played",
 		Description:    "Most played content over a time period",
 		Source:         "trakt",
+		Sources:        []string{"trakt"},
 		SupportedMedia: []string{"movie", "show"},
 		RequiresPeriod: true,
 		IsSmartJob:     false,
@@ -90,6 +97,7 @@ var JobTypeRegistry = map[string]JobTypeDefinition{
 		Name:           "Anticipated",
 		Description:    "Most anticipated upcoming content",
 		Source:         "trakt",
+		Sources:        []string{"trakt"},
 		SupportedMedia: []string{"movie", "show"},
 		RequiresPeriod: false,
 		IsSmartJob:     false,
@@ -101,6 +109,7 @@ var JobTypeRegistry = map[string]JobTypeDefinition{
 		Name:           "Box Office",
 		Description:    "Top weekend box office movies (Trakt returns max 10)",
 		Source:         "trakt",
+		Sources:        []string{"trakt"},
 		SupportedMedia: []string{"movie"},
 		RequiresPeriod: false,
 		IsSmartJob:     false,
@@ -112,6 +121,7 @@ var JobTypeRegistry = map[string]JobTypeDefinition{
 		Name:           "Smart Popular",
 		Description:    "Popular content with adaptive rating thresholds",
 		Source:         "trakt",
+		Sources:        []string{"trakt", "tmdb", "simkl"},
 		SupportedMedia: []string{"movie", "show"},
 		RequiresPeriod: false,
 		IsSmartJob:     true,
@@ -261,6 +271,17 @@ func GetJobTypeDefinition(jobType string) (JobTypeDefinition, bool) {
 	return def, ok
 }
 
+func SupportsSource(jobType, source string) bool {
+	definition, ok := JobTypeRegistry[jobType]
+	if !ok {
+		return false
+	}
+	if source == "" {
+		source = definition.Source
+	}
+	return slices.Contains(definition.Sources, source)
+}
+
 // SupportsMediaType checks if a job type supports a given media type
 func SupportsMediaType(jobType, mediaType string) bool {
 	def, ok := JobTypeRegistry[jobType]
@@ -270,9 +291,17 @@ func SupportsMediaType(jobType, mediaType string) bool {
 	return slices.Contains(def.SupportedMedia, mediaType)
 }
 
-// GetAllJobTypes returns all job type definitions
-func GetAllJobTypes() map[string]JobTypeDefinition {
-	return JobTypeRegistry
+// GetAvailableJobTypes limits each definition to configured providers. Empty
+// definitions are retained so existing jobs remain understandable in the UI.
+func GetAvailableJobTypes(providers []string) map[string]JobTypeDefinition {
+	definitions := make(map[string]JobTypeDefinition, len(JobTypeRegistry))
+	for jobType, definition := range JobTypeRegistry {
+		definition.Sources = slices.DeleteFunc(slices.Clone(definition.Sources), func(source string) bool {
+			return !slices.Contains(providers, source)
+		})
+		definitions[jobType] = definition
+	}
+	return definitions
 }
 
 // GetAllTemplates returns all job templates

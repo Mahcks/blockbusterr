@@ -1,330 +1,49 @@
 ---
-title: Real-World Use Cases
-description: Practical examples of how to configure Blockbusterr for different scenarios
+title: Use Cases
+description: Supported Blockbusterr job and filter examples.
 ---
 
-import { Tabs, TabItem, Badge, Card, CardGrid } from '@astrojs/starlight/components';
+Filters are global by media type. A movie filter affects every movie job, and a show filter affects every show job.
 
-See how different users configure Blockbusterr to match their needs.
-
-## Family-Friendly Server
-
-<Badge text="Family" variant="success" /> <Badge text="Filtering" variant="note" />
-
-**Goal:** Automatically add kid-safe content while blocking mature themes.
-
-<Tabs>
-<TabItem label="Config" icon="seti:yml">
+## English-language discovery
 
 ```yaml
-scoring:
-  imdb_rating_weight: 0.6
-  trakt_rating_weight: 0.3
-  tmdb_rating_weight: 0.1
-  
-  min_imdb_votes: 1000
-  default_score: 50
-
-filters:
-  global:
-    blocking:
-      certifications:
-        - "R"
-        - "NC-17"
-        - "TV-MA"
-      genres:
-        - "horror"
-        - "thriller"
-    
-    required:
-      certifications:
-        - "G"
-        - "PG"
-        - "PG-13"
-        - "TV-Y"
-        - "TV-Y7"
-        - "TV-G"
-        - "TV-PG"
-
-jobs:
-  family_movies:
-    type: "movie"
-    list_type: "trakt_trending"
-    fetch_count: 100
-    threshold_score: 65
-    schedule: "0 8 * * *"  # Daily at 8 AM
-```
-
-</TabItem>
-<TabItem label="Result" icon="approve-check">
-
-**What this does:**
-
-- ✅ Only adds G, PG, PG-13 movies
-- ❌ Blocks all R-rated and Horror content
-- ⭐ Requires 65+ score for auto-add
-- 📺 Runs daily to catch new family content
-
-**Perfect for:** Home servers with kids
-
-</TabItem>
-</Tabs>
-
-## Quality Curator
-
-<Badge text="Quality" variant="tip" /> <Badge text="Selective" variant="caution" />
-
-**Goal:** Only add highly-rated movies and critically acclaimed shows.
-
-<Tabs>
-<TabItem label="Config" icon="seti:yml">
-
-```yaml
-scoring:
-  imdb_rating_weight: 0.4
-  trakt_rating_weight: 0.3
-  tmdb_rating_weight: 0.2
-  metacritic_weight: 0.1
-  
-  min_imdb_votes: 50000  # Require popularity
-  min_year: 1990  # No old content
-  default_score: 40
-
 filters:
   movies:
-    blocking:
-      genres:
-        - "reality"
-    required:
-      min_runtime: 75  # No shorts
-  
+    allowed_languages: ["en"]
   shows:
-    blocking:
-      genres:
-        - "reality"
-        - "game-show"
-    required:
-      min_episode_runtime: 20
-
-jobs:
-  curated_movies:
-    type: "movie"
-    list_type: "trakt_popular"
-    fetch_count: 200
-    threshold_score: 80  # Very high bar
-    schedule: "0 0 * * 0"  # Weekly
+    allowed_languages: ["en"]
 ```
 
-</TabItem>
-<TabItem label="Result" icon="approve-check">
-
-**What this does:**
-
-- ⭐ Only adds movies scoring 80+
-- 📊 Requires 50k+ IMDb votes (no obscure films)
-- 🎬 Minimum 75min runtime
-- ❌ No reality TV or game shows
-
-**Perfect for:** Cinephiles and quality-focused libraries
-
-</TabItem>
-</Tabs>
-
-## Completionist
-
-<Badge text="High Volume" variant="danger" /> <Badge text="Automation" variant="tip" />
-
-**Goal:** Add everything trending, minimal filtering.
-
-<Tabs>
-<TabItem label="Config" icon="seti:yml">
+## Recent, well-rated movies
 
 ```yaml
-scoring:
-  trakt_rating_weight: 1.0  # Only use Trakt
-  min_imdb_votes: 100  # Very low requirement
-  default_score: 60
-
-filters:
-  global:
-    blocking:
-      genres:  # Only block documentaries
-        - "documentary"
-
-jobs:
-  trending_everything:
-    type: "movie"
-    list_type: "trakt_trending"
-    fetch_count: 500
-    threshold_score: 50  # Very permissive
-    schedule: "0 */6 * * *"  # Every 6 hours
-  
-  popular_shows:
-    type: "show"
-    list_type: "trakt_popular"
-    fetch_count: 300
-    threshold_score: 55
-    schedule: "0 */8 * * *"  # Every 8 hours
-```
-
-</TabItem>
-<TabItem label="Result" icon="approve-check">
-
-**What this does:**
-
-- 🚀 Adds hundreds of items per day
-- ⚡ Runs multiple times daily
-- 📦 Minimal filtering (score 50+)
-- 💾 Requires significant storage
-
-**Perfect for:** Data hoarders with large storage
-
-</TabItem>
-</Tabs>
-
-## Genre Specialist
-
-<Badge text="Targeted" variant="note" /> <Badge text="Niche" variant="success" />
-
-**Goal:** Build a library focused on specific genres (Sci-Fi & Fantasy).
-
-<Tabs>
-<TabItem label="Config" icon="seti:yml">
-
-```yaml
-scoring:
-  imdb_rating_weight: 0.5
-  trakt_rating_weight: 0.4
-  tmdb_rating_weight: 0.1
-  
-  min_imdb_votes: 5000
-  default_score: 55
-
-filters:
-  global:
-    required:
-      genres:
-        - "science-fiction"
-        - "fantasy"
-    blocking:
-      genres:
-        - "romance"  # No romantic fantasy
-        - "comedy"   # Serious stuff only
-
-jobs:
-  scifi_movies:
-    type: "movie"
-    list_type: "trakt_popular"
-    fetch_count: 150
-    threshold_score: 70
-    schedule: "0 0 * * 1"  # Weekly on Monday
-  
-  fantasy_shows:
-    type: "show"
-    list_type: "trakt_trending"
-    fetch_count: 100
-    threshold_score: 68
-    schedule: "0 0 * * 3"  # Weekly on Wednesday
-```
-
-</TabItem>
-<TabItem label="Result" icon="approve-check">
-
-**What this does:**
-
-- 🪐 Only Sci-Fi & Fantasy content
-- 🎭 No romantic or comedy crossovers
-- ⭐ High score threshold (70+)
-- 📅 Weekly additions
-
-**Perfect for:** Genre enthusiasts and themed servers
-
-</TabItem>
-</Tabs>
-
-## Advanced: Smart Seasonal Strategy
-
-<Badge text="Advanced" variant="danger" /> <Badge text="Adaptive" variant="tip" />
-
-**Goal:** Different behavior based on time of year.
-
-<Tabs>
-<TabItem label="Summer Config" icon="sun">
-
-```yaml
-# June-August: Family content for kids home from school
-jobs:
-  summer_family_movies:
-    type: "movie"
-    list_type: "trakt_trending"
-    fetch_count: 50
-    threshold_score: 60
-    schedule: "0 10 * 6-8 *"  # June-Aug daily
-    
-filters:
-  global:
-    required:
-      certifications: ["G", "PG", "PG-13"]
-```
-
-</TabItem>
-<TabItem label="Holiday Config" icon="star">
-
-```yaml
-# November-December: Award contenders and feel-good
-jobs:
-  award_season_movies:
-    type: "movie"
-    list_type: "trakt_anticipated"
-    fetch_count: 100
-    threshold_score: 75
-    schedule: "0 0 * 11-12 *"  # Nov-Dec daily
-    
 filters:
   movies:
-    required:
-      genres: ["drama", "biography", "history"]
+    blacklisted_min_year: 2020
+    min_rating: 7.0
+    min_votes: 1000
+
+jobs:
+  popular_movies:
+    enabled: true
+    limit: 20
 ```
 
-</TabItem>
-<TabItem label="Regular Season" icon="laptop">
+## Exclude unwanted genres
 
 ```yaml
-# Rest of year: Normal curation
-jobs:
-  regular_movies:
-    type: "movie"
-    list_type: "trakt_popular"
-    fetch_count: 80
-    threshold_score: 68
-    schedule: "0 0 * 1-5,9-10 *"  # Jan-May, Sep-Oct
+filters:
+  movies:
+    blacklisted_genres: ["documentary", "reality"]
+  shows:
+    blacklisted_genres: ["reality", "talk"]
 ```
 
-</TabItem>
-</Tabs>
+Genre inclusion and per-job filters are not currently supported.
 
-## Comparison Table
+## Different discovery providers
 
-| Use Case | Items/Week | Score Threshold | Filtering | Best For |
-|----------|-----------|-----------------|-----------|----------|
-| **Family Server** | 70-85 | 65 | Strict | Households with kids |
-| **Quality Curator** | 20-30 | 80 | Very Strict | Cinephiles |
-| **Completionist** | 500+ | 50 | Minimal | Data hoarders |
-| **Genre Specialist** | 40-50 | 70 | Genre-focused | Themed libraries |
+Dynamic jobs created in the Jobs UI can select TMDB, Simkl, or Trakt when the chosen job type supports that provider. The global filters above apply after discovery, regardless of provider.
 
-## Mix & Match
-
-<CardGrid>
-<Card title="Combine Strategies" icon="puzzle">
-Run multiple jobs with different thresholds - high score for auto-add, lower score for Jellyseerr requests
-</Card>
-<Card title="Test Before Committing" icon="magnifier">
-Use preview endpoints to see what would be added before enabling jobs
-</Card>
-<Card title="Start Conservative" icon="approve-check">
-Begin with high thresholds (75+), then lower as you refine your preferences
-</Card>
-<Card title="Monitor & Adjust" icon="setting">
-Check the activity log weekly to see if filters are too strict or too loose
-</Card>
-</CardGrid>
+Preview a job before enabling it to confirm which titles pass the current filters.

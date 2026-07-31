@@ -101,7 +101,7 @@ func (s *Scheduler) scheduleJobs() {
 	defaultInterval := cfg.Jobs.SyncInterval
 
 	// Get all enabled jobs (both dynamic and legacy)
-	enabledJobs := cfg.GetEnabledJobs()
+	enabledJobs := runnableJobs(cfg)
 
 	// Track which jobs should be running
 	activeJobIDs := make(map[string]bool)
@@ -243,7 +243,7 @@ func (s *Scheduler) executeAllJobs() {
 	}
 
 	// Get all enabled jobs (both dynamic and legacy)
-	enabledJobs := cfg.GetEnabledJobs()
+	enabledJobs := runnableJobs(cfg)
 
 	log.Infof("Found %d enabled jobs to execute", len(enabledJobs))
 
@@ -256,6 +256,17 @@ func (s *Scheduler) executeAllJobs() {
 	}
 
 	log.Info("Completed initial job execution")
+}
+
+func runnableJobs(cfg *config.Config) []config.DynamicJob {
+	enabled := cfg.GetEnabledJobs()
+	runnable := make([]config.DynamicJob, 0, len(enabled))
+	for _, job := range enabled {
+		if jobs.IsProviderConfigured(cfg, job.Source) {
+			runnable = append(runnable, job)
+		}
+	}
+	return runnable
 }
 
 // Helper functions

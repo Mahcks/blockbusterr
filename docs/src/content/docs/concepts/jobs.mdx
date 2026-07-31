@@ -5,7 +5,7 @@ description: Understanding Blockbusterr's automated job system
 
 import { Tabs, TabItem, Card, CardGrid, Aside, Badge, Steps, Code } from '@astrojs/starlight/components';
 
-Jobs are automated tasks that fetch content from Trakt and add it to your media library on a schedule.
+Jobs are automated tasks that fetch content from a configured discovery provider and send accepted items to your media stack on a schedule.
 
 ## Available Job Types
 
@@ -155,7 +155,7 @@ Create custom jobs with full control over type, media, limits, and settings - al
 ### Content Limits
 
 <Aside type="tip">
-Jobs can now fetch up to **1000 items** per run (was 100). Trakt API pagination is handled automatically.
+Jobs can fetch up to **1000 items** per run when supported by the selected job type and provider.
 </Aside>
 
 | Job Type | Default | Maximum |
@@ -261,7 +261,7 @@ jobs:
       adjustment_factor: 0.5     # Popularity adjustment (0.1-1.0)
 ```
 
-See [Smart Jobs](/blockbusterr/concepts/smart-jobs/) for details.
+See [Smart Jobs](/concepts/smart-jobs/) for details.
 
 </TabItem>
 </Tabs>
@@ -355,9 +355,9 @@ Jobs with longer intervals reduce API calls and server load while still catching
 
 <Steps>
 
-1. **Fetch from Trakt**
+1. **Fetch from the discovery provider**
 
-   Job contacts Trakt API and retrieves the specified list (trending, popular, etc.) up to the configured `limit`
+   The job contacts its selected provider and retrieves the chosen list up to the configured `limit`.
 
 2. **Apply Filters**
 
@@ -654,23 +654,23 @@ Common issues:
 - Global filters too strict (check min_rating, min_votes in filters section)
 - Content already in library (check activity log)
 - Job not enabled (verify `enabled: true`)
-- Trakt API not configured (check Trakt credentials)
+- Selected discovery provider is not configured
 - Period required but not set (for watched/collected/favorited/played jobs)
 </Aside>
 
 ## Next Steps
 
 <CardGrid>
-<Card title="Filters & Scoring" icon="setting" href="/blockbusterr/concepts/filters">
+<Card title="Filters & Scoring" icon="setting" href="/concepts/filters">
 Configure filtering and scoring rules
 </Card>
-<Card title="Smart Jobs" icon="rocket" href="/blockbusterr/concepts/smart-jobs">
+<Card title="Smart Jobs" icon="rocket" href="/concepts/smart-jobs">
 Learn about adaptive smart jobs
 </Card>
-<Card title="Integration Modes" icon="puzzle" href="/blockbusterr/concepts/integration-modes">
+<Card title="Integration Modes" icon="puzzle" href="/concepts/integration-modes">
 Choose Direct or Jellyseerr mode
 </Card>
-<Card title="Use Cases" icon="star" href="/blockbusterr/examples/use-cases">
+<Card title="Use Cases" icon="star" href="/examples/use-cases">
 See real-world examples
 </Card>
 </CardGrid>

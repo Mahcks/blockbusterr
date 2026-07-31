@@ -104,6 +104,8 @@ type PreviewItem struct {
 // PreviewResponse represents the response for a job preview
 type PreviewResponse struct {
 	JobName       string        `json:"job_name"`
+	Source        string        `json:"source,omitempty"`
+	MediaType     string        `json:"media_type,omitempty"`
 	TotalFound    int           `json:"total_found"`
 	WillAdd       int           `json:"will_add"`
 	AlreadyExists int           `json:"already_exists"`

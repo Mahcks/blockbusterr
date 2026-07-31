@@ -25,7 +25,7 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid stagger>
 	<Card title="Smart Automation" icon="rocket">
-		Automatically pulls trending and popular content from Trakt. Set it and forget it.
+		Automatically pulls supported content from Trakt, TMDB, or Simkl. Set it and forget it.
 	</Card>
 	<Card title="Intelligent Filtering" icon="setting">
 		Advanced filters ensure you only get quality content. Filter by rating, votes, runtime, genres, and more.
@@ -44,15 +44,17 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 jobs:
   trending_movies:
     enabled: true
-    schedule: "0 */6 * * *"  # Every 6 hours
+    sync_interval: "6h"
     limit: 20
-    filters:
-      min_rating: 6.5
-      min_votes: 1000
-      exclude_genres: ["Documentary"]
+
+filters:
+  movies:
+    min_rating: 6.5
+    min_votes: 1000
+    blacklisted_genres: ["documentary"]
 ```
 
-This configuration automatically checks for trending movies every 6 hours, applying quality filters to ensure you only get content rated 6.5+ with at least 1,000 votes.
+This configuration checks trending movies every six hours and applies the global movie filters to every movie job.
 
 ## Features at a Glance
 

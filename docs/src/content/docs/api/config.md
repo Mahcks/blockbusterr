@@ -206,6 +206,6 @@ Fetch content directly from Trakt.
 
 ## Next Steps
 
-- Explore [Jobs API](/blockbusterr/api/jobs/)
-- Check [Activity API](/blockbusterr/api/activity/)
-- Learn about [Configuration](/blockbusterr/getting-started/configuration/)
+- Explore [Jobs API](/api/jobs/)
+- Check [Activity API](/api/activity/)
+- Learn about [Configuration](/getting-started/configuration/)

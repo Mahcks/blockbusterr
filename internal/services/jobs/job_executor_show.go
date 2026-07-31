@@ -28,7 +28,7 @@ func (e *ShowJobExecutor) Execute(
 	ctx context.Context,
 	jobConfig JobConfig,
 	fetcher ShowFetcher,
-) {
+) error {
 	jobLabel := FormatJobLabel(jobConfig.JobID, jobConfig.JobName)
 	if e.DryRun {
 		log.Infof("Starting %s job (DRY RUN)", jobLabel)
@@ -46,16 +46,16 @@ func (e *ShowJobExecutor) Execute(
 		}
 	}
 
-	// Create Trakt client
-	traktClient := integrations.NewTrakt(integrations.TraktConfig{
-		ClientID:     e.Config.Trakt.ClientID,
-		ClientSecret: e.Config.Trakt.ClientSecret,
-	})
+	discoveryClient, err := NewDiscoveryClient(e.Config, jobConfig.Source)
+	if err != nil {
+		log.Errorf("Failed to configure discovery source for %s: %v", jobLabel, err)
+		return err
+	}
 
 	// Fetch shows using the provided fetcher
-	shows, err := fetcher(ctx, traktClient, jobConfig.Limit, jobConfig.Period)
+	shows, err := fetcher(ctx, discoveryClient, jobConfig.Limit, jobConfig.Period)
 	if err != nil {
-		log.Errorf("Failed to fetch %s from Trakt: %v", jobLabel, err)
+		log.Errorf("Failed to fetch %s from %s: %v", jobLabel, discoveryClient.Source(), err)
 		if e.Database != nil {
 			_ = e.Database.LogActivity(database.ActivityLog{
 				Timestamp: time.Now(),
@@ -65,16 +65,16 @@ func (e *ShowJobExecutor) Execute(
 				MediaType: "show",
 				Title:     jobLabel,
 				Status:    "failed",
-				Message:   fmt.Sprintf("Failed to fetch from Trakt: %v", err),
+				Message:   fmt.Sprintf("Failed to fetch from %s: %v", discoveryClient.Source(), err),
 			})
 		}
 		if e.Database != nil && e.currentRunID > 0 {
 			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", 0, 0, 0, 0, 0, 0, 1, err.Error())
 		}
-		return
+		return err
 	}
 
-	log.Infof("Found %d shows from Trakt for %s", len(shows), jobLabel)
+	log.Infof("Found %d shows from %s for %s", len(shows), discoveryClient.Source(), jobLabel)
 
 	// Initialize decision tracking for this run
 	runDecisions := &JobRunDecisions{
@@ -91,10 +91,17 @@ func (e *ShowJobExecutor) Execute(
 	runDecisions.PassedFilters = len(filteredShows)
 
 	// Route to appropriate handler based on mode
+	var executionErr error
 	if jobConfig.Mode == "jellyseerr" {
 		e.executeShowsJellyseerr(ctx, jobConfig, filteredShows, scoreMap)
 	} else {
-		e.executeShowsDirect(ctx, jobConfig, filteredShows, scoreMap)
+		executionErr = e.executeShowsDirect(ctx, jobConfig, filteredShows, scoreMap)
+	}
+	if executionErr != nil {
+		if e.Database != nil && e.currentRunID > 0 {
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", runDecisions.TotalFound, runDecisions.PassedFilters, 0, 0, 0, runDecisions.Rejected, 1, executionErr.Error())
+		}
+		return executionErr
 	}
 
 	// Mark run as completed and update final stats
@@ -115,6 +122,7 @@ func (e *ShowJobExecutor) Execute(
 			"",
 		)
 	}
+	return nil
 }
 
 // executeShowsDirect adds shows directly to Sonarr
@@ -123,7 +131,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 	jobConfig JobConfig,
 	shows []integrations.Show,
 	scoreMap map[int]ScoreInfo,
-) {
+) error {
 	jobLabel := FormatJobLabel(jobConfig.JobID, jobConfig.JobName)
 	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
 		BaseURL: e.Config.Sonarr.URL,
@@ -134,7 +142,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 	existingSeries, err := sonarrClient.GetSeries(ctx)
 	if err != nil {
 		log.Errorf("Failed to fetch existing series from Sonarr: %v", err)
-		return
+		return fmt.Errorf("failed to fetch existing series from Sonarr: %w", err)
 	}
 
 	// Create a map of existing TVDB IDs for fast lookup
@@ -187,6 +195,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 					MediaType:     "show",
 					Title:         show.Title,
 					Year:          show.Year,
+					Language:      show.Language,
 					TVDBID:        show.IDs.TVDB,
 					IMDBID:        show.IDs.IMDB,
 					PosterURL:     posterURL,
@@ -220,6 +229,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 					MediaType:     "show",
 					Title:         show.Title,
 					Year:          show.Year,
+					Language:      show.Language,
 					TVDBID:        show.IDs.TVDB,
 					IMDBID:        show.IDs.IMDB,
 					PosterURL:     posterURL,
@@ -259,37 +269,38 @@ func (e *ShowJobExecutor) executeShowsDirect(
 			Monitor:                  monitor,
 		}
 
-			// Add series to Sonarr (or simulate in dry-run mode)
-			if e.DryRun {
-				log.Infof("[DRY RUN] Would add %s show '%s (%d)' to Sonarr", jobLabel, show.Title, show.Year)
-				e.updateDecisionOutcome(show.IDs.TVDB, "added", "[DRY RUN] Would be added to Sonarr")
-				if e.Database != nil {
-					posterURL := GetShowPosterURL(e.Config, show.IDs.TMDB, show.IDs.TVDB)
-					scoreInfo := scoreMap[show.IDs.TVDB]
-					filterDetails := e.getFilterDetailsForShow(show.IDs.TVDB)
-					err := e.Database.LogActivity(database.ActivityLog{
-						Timestamp:     time.Now(),
-						JobID:         jobConfig.JobID,
-						RunID:         e.currentRunID,
-						JobType:       jobConfig.JobName,
-						MediaType:     "show",
-						Title:         show.Title,
-						Year:          show.Year,
-						TVDBID:        show.IDs.TVDB,
-						IMDBID:        show.IDs.IMDB,
-						PosterURL:     posterURL,
-						Score:         scoreInfo.Score,
-						Rank:          scoreInfo.Rank,
-						Status:        "added",
-						Message:       "[DRY RUN] Would be added to Sonarr",
-						FilterDetails: filterDetails,
-					})
-					if err != nil {
-						slog.Error("Failed to log activity for show", "title", show.Title, "year", show.Year, "err", err)
-					}
+		// Add series to Sonarr (or simulate in dry-run mode)
+		if e.DryRun {
+			log.Infof("[DRY RUN] Would add %s show '%s (%d)' to Sonarr", jobLabel, show.Title, show.Year)
+			e.updateDecisionOutcome(show.IDs.TVDB, "added", "[DRY RUN] Would be added to Sonarr")
+			if e.Database != nil {
+				posterURL := GetShowPosterURL(e.Config, show.IDs.TMDB, show.IDs.TVDB)
+				scoreInfo := scoreMap[show.IDs.TVDB]
+				filterDetails := e.getFilterDetailsForShow(show.IDs.TVDB)
+				err := e.Database.LogActivity(database.ActivityLog{
+					Timestamp:     time.Now(),
+					JobID:         jobConfig.JobID,
+					RunID:         e.currentRunID,
+					JobType:       jobConfig.JobName,
+					MediaType:     "show",
+					Title:         show.Title,
+					Year:          show.Year,
+					Language:      show.Language,
+					TVDBID:        show.IDs.TVDB,
+					IMDBID:        show.IDs.IMDB,
+					PosterURL:     posterURL,
+					Score:         scoreInfo.Score,
+					Rank:          scoreInfo.Rank,
+					Status:        "added",
+					Message:       "[DRY RUN] Would be added to Sonarr",
+					FilterDetails: filterDetails,
+				})
+				if err != nil {
+					slog.Error("Failed to log activity for show", "title", show.Title, "year", show.Year, "err", err)
 				}
-				added++
-			} else {
+			}
+			added++
+		} else {
 			addedSeries, err := sonarrClient.AddSeries(ctx, series)
 			if err != nil {
 				// Check if it's a duplicate error
@@ -308,6 +319,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 							MediaType:     "show",
 							Title:         show.Title,
 							Year:          show.Year,
+							Language:      show.Language,
 							TVDBID:        show.IDs.TVDB,
 							IMDBID:        show.IDs.IMDB,
 							PosterURL:     posterURL,
@@ -336,6 +348,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 							MediaType: "show",
 							Title:     show.Title,
 							Year:      show.Year,
+							Language:  show.Language,
 							TVDBID:    series.TvdbID,
 							IMDBID:    show.IDs.IMDB,
 							Score:     scoreInfo.Score,
@@ -366,6 +379,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 					MediaType: "show",
 					Title:     addedSeries.Title,
 					Year:      addedSeries.Year,
+					Language:  show.Language,
 					TVDBID:    addedSeries.TvdbID,
 					IMDBID:    addedSeries.ImdbID,
 					PosterURL: posterURL,
@@ -384,6 +398,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 	}
 
 	log.Infof("%s job completed - Added: %d, Skipped: %d, Failed: %d", jobConfig.JobName, added, skipped, failed)
+	return nil
 }
 
 // executeShowsJellyseerr requests shows via Jellyseerr
@@ -427,6 +442,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 					MediaType:     "show",
 					Title:         show.Title,
 					Year:          show.Year,
+					Language:      show.Language,
 					TVDBID:        show.IDs.TVDB,
 					IMDBID:        show.IDs.IMDB,
 					PosterURL:     posterURL,
@@ -444,37 +460,38 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 			continue
 		}
 
-			// Request show via Jellyseerr (or simulate in dry-run mode)
-			if e.DryRun {
-				log.Infof("[DRY RUN] Would request %s show '%s (%d)' via Jellyseerr", jobConfig.JobName, show.Title, show.Year)
-				e.updateDecisionOutcome(show.IDs.TVDB, "requested", "[DRY RUN] Would be requested")
-				if e.Database != nil {
-					posterURL := GetShowPosterURL(e.Config, show.IDs.TMDB, show.IDs.TVDB)
-					scoreInfo := scoreMap[show.IDs.TVDB]
-					filterDetails := e.getFilterDetailsForShow(show.IDs.TVDB)
-					err := e.Database.LogActivity(database.ActivityLog{
-						Timestamp:     time.Now(),
-						JobID:         jobConfig.JobID,
-						RunID:         e.currentRunID,
-						JobType:       jobConfig.JobName,
-						MediaType:     "show",
-						Title:         show.Title,
-						Year:          show.Year,
-						TVDBID:        show.IDs.TVDB,
-						IMDBID:        show.IDs.IMDB,
-						PosterURL:     posterURL,
-						Score:         scoreInfo.Score,
-						Rank:          scoreInfo.Rank,
-						Status:        "requested",
-						Message:       "[DRY RUN] Would be requested via Jellyseerr",
-						FilterDetails: filterDetails,
-					})
-					if err != nil {
-						slog.Error("Failed to log activity for show", "title", show.Title, "year", show.Year, "err", err)
-					}
+		// Request show via Jellyseerr (or simulate in dry-run mode)
+		if e.DryRun {
+			log.Infof("[DRY RUN] Would request %s show '%s (%d)' via Jellyseerr", jobConfig.JobName, show.Title, show.Year)
+			e.updateDecisionOutcome(show.IDs.TVDB, "requested", "[DRY RUN] Would be requested")
+			if e.Database != nil {
+				posterURL := GetShowPosterURL(e.Config, show.IDs.TMDB, show.IDs.TVDB)
+				scoreInfo := scoreMap[show.IDs.TVDB]
+				filterDetails := e.getFilterDetailsForShow(show.IDs.TVDB)
+				err := e.Database.LogActivity(database.ActivityLog{
+					Timestamp:     time.Now(),
+					JobID:         jobConfig.JobID,
+					RunID:         e.currentRunID,
+					JobType:       jobConfig.JobName,
+					MediaType:     "show",
+					Title:         show.Title,
+					Year:          show.Year,
+					Language:      show.Language,
+					TVDBID:        show.IDs.TVDB,
+					IMDBID:        show.IDs.IMDB,
+					PosterURL:     posterURL,
+					Score:         scoreInfo.Score,
+					Rank:          scoreInfo.Rank,
+					Status:        "requested",
+					Message:       "[DRY RUN] Would be requested via Jellyseerr",
+					FilterDetails: filterDetails,
+				})
+				if err != nil {
+					slog.Error("Failed to log activity for show", "title", show.Title, "year", show.Year, "err", err)
 				}
-				requested++
-			} else {
+			}
+			requested++
+		} else {
 			result, err := jellyseerrClient.RequestShow(show.IDs.TMDB)
 			if err != nil {
 				// Check if it's a duplicate error
@@ -493,6 +510,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 							MediaType:     "show",
 							Title:         show.Title,
 							Year:          show.Year,
+							Language:      show.Language,
 							TVDBID:        show.IDs.TVDB,
 							IMDBID:        show.IDs.IMDB,
 							PosterURL:     posterURL,
@@ -523,6 +541,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 							MediaType:     "show",
 							Title:         show.Title,
 							Year:          show.Year,
+							Language:      show.Language,
 							TVDBID:        show.IDs.TVDB,
 							IMDBID:        show.IDs.IMDB,
 							Score:         scoreInfo.Score,
@@ -554,6 +573,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 						MediaType:     "show",
 						Title:         show.Title,
 						Year:          show.Year,
+						Language:      show.Language,
 						TVDBID:        show.IDs.TVDB,
 						IMDBID:        show.IDs.IMDB,
 						PosterURL:     posterURL,
@@ -586,6 +606,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 						MediaType:     "show",
 						Title:         show.Title,
 						Year:          show.Year,
+						Language:      show.Language,
 						TVDBID:        show.IDs.TVDB,
 						IMDBID:        show.IDs.IMDB,
 						PosterURL:     posterURL,
@@ -619,6 +640,7 @@ func (e *ShowJobExecutor) evaluateShowsWithDecisions(
 		decision := ContentDecision{
 			Title:       show.Title,
 			Year:        show.Year,
+			Language:    show.Language,
 			MediaType:   "show",
 			TVDBID:      show.IDs.TVDB,
 			TMDBID:      show.IDs.TMDB,
@@ -687,6 +709,7 @@ func (e *ShowJobExecutor) evaluateShowsWithDecisions(
 					MediaType:     "show",
 					Title:         decision.Title,
 					Year:          decision.Year,
+					Language:      decision.Language,
 					TMDBID:        decision.TMDBID,
 					TVDBID:        decision.TVDBID,
 					IMDBID:        decision.IMDBID,

@@ -63,6 +63,28 @@ func TestUpdateActivityLogStatusRejectsInvalidStatus(t *testing.T) {
 	}
 }
 
+func TestActivityLanguageFiltering(t *testing.T) {
+	t.Parallel()
+	db, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	for _, language := range []string{"en", "fr", ""} {
+		if err := db.LogActivity(ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "movie", Title: language, Language: language, Status: "added"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	logs, err := db.GetRecentActivityFiltered(10, "", "", "", "fr")
+	if err != nil || len(logs) != 1 || logs[0].Language != "fr" {
+		t.Fatalf("filtered logs = %#v, err = %v", logs, err)
+	}
+	languages, err := db.GetActivityLanguages()
+	if err != nil || len(languages) != 2 || languages[0] != "en" || languages[1] != "fr" {
+		t.Fatalf("languages = %v, err = %v", languages, err)
+	}
+}
+
 func TestGetActivityDailyCountsAggregatesStatuses(t *testing.T) {
 	t.Parallel()
 

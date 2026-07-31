@@ -142,9 +142,10 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		}
 
 		// Get filter params
-		status := c.Query("status")        // "added", "failed", "rejected", "requested", or empty for all
-		mediaType := c.Query("media")      // "movie", "show", or empty for all
-		jobType := c.Query("job")          // job type filter or empty for all
+		status := c.Query("status")   // "added", "failed", "rejected", "requested", or empty for all
+		mediaType := c.Query("media") // "movie", "show", or empty for all
+		jobType := c.Query("job")     // job type filter or empty for all
+		language := strings.TrimSpace(c.Query("language"))
 		search := c.Query("search")        // search by title
 		dateRange := c.Query("date_range") // "today", "yesterday", "week", "month"
 		runIDStr := c.Query("run_id")
@@ -172,7 +173,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 
 		// Fetch more logs than needed to apply filters and calculate total
 		fetchLimit := min(pageSize*100, maxFetchLimit) // Fetch enough for filtering
-		logs, err := db.GetRecentActivityFiltered(fetchLimit, status, mediaType, jobType)
+		logs, err := db.GetRecentActivityFiltered(fetchLimit, status, mediaType, jobType, language)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to retrieve activity logs",
@@ -313,6 +314,14 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		})
 	})
 
+	router.Get("/activity/languages", func(c *fiber.Ctx) error {
+		languages, err := gctx.Database().GetActivityLanguages()
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve activity languages"})
+		}
+		return c.JSON(fiber.Map{"languages": languages})
+	})
+
 	// Get recent job runs timeline
 	router.Get("/activity/runs", func(c *fiber.Ctx) error {
 		db := gctx.Database()
@@ -436,7 +445,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		totalRejected, _ := stats["total_rejected"].(int)
 
 		// Get recent rejected items to analyze filter reasons (sample up to 1000)
-		logs, err := db.GetRecentActivityFiltered(1000, string(enums.ActivityStatusRejected), "", "")
+		logs, err := db.GetRecentActivityFiltered(1000, string(enums.ActivityStatusRejected), "", "", "")
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to retrieve rejection data",

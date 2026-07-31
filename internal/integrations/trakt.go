@@ -212,44 +212,6 @@ type AnticipatedShow struct {
 	Show      Show `json:"show"`
 }
 
-// Movie represents a Trakt movie
-type Movie struct {
-	Title    string   `json:"title"`
-	Year     int      `json:"year"`
-	IDs      IDs      `json:"ids"`
-	Genres   []string `json:"genres"`
-	Language string   `json:"language"`
-	Country  string   `json:"country"`
-	Runtime  int      `json:"runtime"` // in minutes
-	Overview string   `json:"overview"`
-	Rating   float64  `json:"rating"`
-	Votes    int      `json:"votes"`
-}
-
-// Show represents a Trakt TV show
-type Show struct {
-	Title    string   `json:"title"`
-	Year     int      `json:"year"`
-	IDs      IDs      `json:"ids"`
-	Genres   []string `json:"genres"`
-	Language string   `json:"language"`
-	Country  string   `json:"country"`
-	Runtime  int      `json:"runtime"` // in minutes
-	Network  string   `json:"network"`
-	Overview string   `json:"overview"`
-	Rating   float64  `json:"rating"`
-	Votes    int      `json:"votes"`
-}
-
-// IDs contains various IDs for a media item
-type IDs struct {
-	Trakt int    `json:"trakt"`
-	Slug  string `json:"slug"`
-	IMDB  string `json:"imdb"`
-	TMDB  int    `json:"tmdb"`
-	TVDB  int    `json:"tvdb"`
-}
-
 // GetTrendingMovies returns trending movies with pagination support
 func (t *Trakt) GetTrendingMovies(ctx context.Context, limit int) ([]TrendingMovie, error) {
 	endpoint := "/movies/trending?extended=full"

@@ -69,6 +69,6 @@ sonarr:
 
 ## Next Steps
 
-- Configure [Radarr](/blockbusterr/integrations/radarr/) for movies
-- Set up [TV show jobs](/blockbusterr/concepts/jobs/)
-- Learn about [integration modes](/blockbusterr/concepts/integration-modes/)
+- Configure [Radarr](/integrations/radarr/) for movies
+- Set up [TV show jobs](/concepts/jobs/)
+- Learn about [integration modes](/concepts/integration-modes/)

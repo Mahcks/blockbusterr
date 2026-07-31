@@ -143,8 +143,8 @@ func RunTrendingMovies(cfg *config.Config, db *database.Database, dryRun bool) {
 	}
 
 	// Define fetcher function for trending movies
-	fetcher := func(ctx context.Context, trakt *integrations.Trakt, limit int, _ string) ([]integrations.Movie, error) {
-		trendingMovies, err := trakt.GetTrendingMovies(ctx, limit)
+	fetcher := func(ctx context.Context, discovery *DiscoveryClient, limit int, _ string) ([]integrations.Movie, error) {
+		trendingMovies, err := discovery.GetTrendingMovies(ctx, limit)
 		if err != nil {
 			return nil, err
 		}

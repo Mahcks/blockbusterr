@@ -3,11 +3,11 @@ title: Trakt Integration
 description: Configure Trakt for fetching trending and popular content
 ---
 
-Trakt is the primary data source for Blockbusterr, providing trending, popular, and list-based content.
+Trakt is one supported discovery source, providing trending, popular, and Trakt-specific list data.
 
 ## Overview
 
-Trakt integration is **required** for Blockbusterr to function. All jobs pull data from Trakt's API.
+Trakt is optional. Existing Trakt jobs remain supported, while dynamic jobs can use TMDB or Simkl where the selected job type supports them.
 
 ## Getting Trakt Credentials
 
@@ -94,6 +94,6 @@ You should see trending movies data.
 
 ## Next Steps
 
-- Configure [Radarr integration](/blockbusterr/integrations/radarr/)
-- Configure [Sonarr integration](/blockbusterr/integrations/sonarr/)
-- Set up your [first job](/blockbusterr/getting-started/quickstart/)
+- Configure [Radarr integration](/integrations/radarr/)
+- Configure [Sonarr integration](/integrations/sonarr/)
+- Set up your [first job](/getting-started/quickstart/)

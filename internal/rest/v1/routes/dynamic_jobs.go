@@ -8,7 +8,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/mahcks/blockbusterr/config"
-	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/services/jobs"
 )
@@ -17,7 +16,18 @@ import (
 func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 	// Get all available job type definitions (for UI dropdowns)
 	router.Get("/jobs/types", func(c *fiber.Ctx) error {
-		return c.JSON(jobs.GetAllJobTypes())
+		cfg := gctx.Config()
+		providers := make([]string, 0, 3)
+		if cfg.Trakt.ClientID != "" {
+			providers = append(providers, "trakt")
+		}
+		if cfg.TMDB.APIKey != "" {
+			providers = append(providers, "tmdb")
+		}
+		if cfg.Simkl.ClientID != "" {
+			providers = append(providers, "simkl")
+		}
+		return c.JSON(jobs.GetAvailableJobTypes(providers))
 	})
 
 	// Get all pre-configured job templates
@@ -72,13 +82,13 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 		}
 
 		// Validate the job
-		if err := validateDynamicJob(job); err != nil {
+		cfg := gctx.Config()
+		if err := validateDynamicJob(cfg, job); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": err.Error(),
 			})
 		}
 
-		cfg := gctx.Config()
 		if err := cfg.AddDynamicJob(job); err != nil {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 				"error": err.Error(),
@@ -129,13 +139,13 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 		job.ID = jobID
 
 		// Validate the job
-		if err := validateDynamicJob(job); err != nil {
+		cfg := gctx.Config()
+		if err := validateDynamicJob(cfg, job); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": err.Error(),
 			})
 		}
 
-		cfg := gctx.Config()
 		if err := cfg.UpdateDynamicJob(job); err != nil {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"error": err.Error(),
@@ -223,6 +233,11 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 				"error": "Job is disabled",
 			})
 		}
+		if !jobs.IsProviderConfigured(cfg, targetJob.Source) {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+				"error": fmt.Sprintf("%s is not configured", targetJob.Source),
+			})
+		}
 
 		// Execute job asynchronously
 		go func() {
@@ -230,8 +245,8 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			_ = jobs.RunDynamicJob(cfg, gctx.Database(), *targetJob, dryRun)
 		}()
 
-		return c.JSON(fiber.Map{
-			"message": fmt.Sprintf("Job '%s' triggered successfully", targetJob.Name),
+		return c.Status(fiber.StatusAccepted).JSON(fiber.Map{
+			"message": fmt.Sprintf("Job '%s' queued", targetJob.Name),
 		})
 	})
 
@@ -257,8 +272,10 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			})
 		}
 
-		// Use existing preview functions based on job type
-		preview := previewDynamicJob(cfg, gctx.Database(), *targetJob)
+		preview, err := jobs.PreviewDynamicJob(cfg, gctx.Database(), *targetJob)
+		if err != nil {
+			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+		}
 		return c.JSON(preview)
 	})
 
@@ -303,7 +320,7 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 }
 
 // validateDynamicJob validates a DynamicJob configuration
-func validateDynamicJob(job config.DynamicJob) error {
+func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 	if job.Type == "" {
 		return fmt.Errorf("job type is required")
 	}
@@ -315,6 +332,9 @@ func validateDynamicJob(job config.DynamicJob) error {
 	}
 	if job.Name == "" {
 		return fmt.Errorf("job name is required")
+	}
+	if job.Source == "" {
+		job.Source = "trakt"
 	}
 
 	// Validate against registry
@@ -337,6 +357,15 @@ func validateDynamicJob(job config.DynamicJob) error {
 	if !jobs.SupportsMediaType(job.Type, job.MediaType) {
 		return fmt.Errorf("%s jobs do not support media type '%s'", job.Type, job.MediaType)
 	}
+	if !jobs.SupportsSource(job.Type, job.Source) {
+		return fmt.Errorf("%s jobs do not support the %s source", job.Type, job.Source)
+	}
+	if !jobs.IsProviderConfigured(cfg, job.Source) {
+		return fmt.Errorf("%s is not configured", job.Source)
+	}
+	if job.Source == "simkl" && job.Limit > 500 {
+		return fmt.Errorf("Simkl jobs cannot exceed 500 items")
+	}
 
 	// Check period requirement
 	if typeDef.RequiresPeriod && job.Period == "" {
@@ -350,131 +379,9 @@ func validateDynamicJob(job config.DynamicJob) error {
 			return fmt.Errorf("invalid period: %s (must be weekly, monthly, yearly, or all)", job.Period)
 		}
 	}
+	if job.Source == "simkl" && job.Type == "watched" && job.Period != "weekly" && job.Period != "monthly" {
+		return fmt.Errorf("Simkl most watched jobs support weekly or monthly periods")
+	}
 
 	return nil
-}
-
-// previewDynamicJob returns a preview for a dynamic job
-// This routes to the appropriate existing preview function based on job type
-func previewDynamicJob(cfg *config.Config, db *database.Database, job config.DynamicJob) any {
-	typeDef, ok := jobs.GetJobTypeDefinition(job.Type)
-	if !ok {
-		return fiber.Map{
-			"error": "Unknown job type: " + job.Type,
-		}
-	}
-
-	effectiveLimit := job.Limit
-	if effectiveLimit <= 0 {
-		effectiveLimit = typeDef.DefaultLimit
-	}
-	if effectiveLimit > typeDef.MaxLimit {
-		effectiveLimit = typeDef.MaxLimit
-	}
-
-	cfgCopy := *cfg
-
-	switch job.Type {
-	case "trending":
-		if job.MediaType == "movie" {
-			cfgCopy.Jobs.TrendingMovies.Limit = effectiveLimit
-			cfgCopy.Jobs.TrendingMovies.Mode = job.Mode
-			return jobs.PreviewTrendingMovies(&cfgCopy, db)
-		}
-		cfgCopy.Jobs.TrendingShows.Limit = effectiveLimit
-		cfgCopy.Jobs.TrendingShows.Mode = job.Mode
-		return jobs.PreviewTrendingShows(&cfgCopy, db)
-	case "popular":
-		if job.MediaType == "movie" {
-			cfgCopy.Jobs.PopularMovies.Limit = effectiveLimit
-			cfgCopy.Jobs.PopularMovies.Mode = job.Mode
-			return jobs.PreviewPopularMovies(&cfgCopy, db)
-		}
-		cfgCopy.Jobs.PopularShows.Limit = effectiveLimit
-		cfgCopy.Jobs.PopularShows.Mode = job.Mode
-		return jobs.PreviewPopularShows(&cfgCopy, db)
-	case "watched":
-		if job.MediaType == "movie" {
-			cfgCopy.Jobs.WatchedMovies.Limit = effectiveLimit
-			cfgCopy.Jobs.WatchedMovies.Period = job.Period
-			cfgCopy.Jobs.WatchedMovies.Mode = job.Mode
-			return jobs.PreviewWatchedMovies(&cfgCopy, db)
-		}
-		cfgCopy.Jobs.WatchedShows.Limit = effectiveLimit
-		cfgCopy.Jobs.WatchedShows.Period = job.Period
-		cfgCopy.Jobs.WatchedShows.Mode = job.Mode
-		return jobs.PreviewWatchedShows(&cfgCopy, db)
-	case "collected":
-		if job.MediaType == "movie" {
-			cfgCopy.Jobs.CollectedMovies.Limit = effectiveLimit
-			cfgCopy.Jobs.CollectedMovies.Period = job.Period
-			cfgCopy.Jobs.CollectedMovies.Mode = job.Mode
-			return jobs.PreviewCollectedMovies(&cfgCopy, db)
-		}
-		cfgCopy.Jobs.CollectedShows.Limit = effectiveLimit
-		cfgCopy.Jobs.CollectedShows.Period = job.Period
-		cfgCopy.Jobs.CollectedShows.Mode = job.Mode
-		return jobs.PreviewCollectedShows(&cfgCopy, db)
-	case "favorited":
-		if job.MediaType == "movie" {
-			cfgCopy.Jobs.FavoritedMovies.Limit = effectiveLimit
-			cfgCopy.Jobs.FavoritedMovies.Period = job.Period
-			cfgCopy.Jobs.FavoritedMovies.Mode = job.Mode
-			return jobs.PreviewFavoritedMovies(&cfgCopy, db)
-		}
-		cfgCopy.Jobs.FavoritedShows.Limit = effectiveLimit
-		cfgCopy.Jobs.FavoritedShows.Period = job.Period
-		cfgCopy.Jobs.FavoritedShows.Mode = job.Mode
-		return jobs.PreviewFavoritedShows(&cfgCopy, db)
-	case "played":
-		if job.MediaType == "movie" {
-			cfgCopy.Jobs.PlayedMovies.Limit = effectiveLimit
-			cfgCopy.Jobs.PlayedMovies.Period = job.Period
-			cfgCopy.Jobs.PlayedMovies.Mode = job.Mode
-			return jobs.PreviewPlayedMovies(&cfgCopy, db)
-		}
-		cfgCopy.Jobs.PlayedShows.Limit = effectiveLimit
-		cfgCopy.Jobs.PlayedShows.Period = job.Period
-		cfgCopy.Jobs.PlayedShows.Mode = job.Mode
-		return jobs.PreviewPlayedShows(&cfgCopy, db)
-	case "anticipated":
-		if job.MediaType == "movie" {
-			cfgCopy.Jobs.AnticipatedMovies.Limit = effectiveLimit
-			cfgCopy.Jobs.AnticipatedMovies.Mode = job.Mode
-			return jobs.PreviewAnticipatedMovies(&cfgCopy, db)
-		}
-		cfgCopy.Jobs.AnticipatedShows.Limit = effectiveLimit
-		cfgCopy.Jobs.AnticipatedShows.Mode = job.Mode
-		return jobs.PreviewAnticipatedShows(&cfgCopy, db)
-	case "box_office":
-		cfgCopy.Jobs.BoxOffice.Limit = effectiveLimit
-		cfgCopy.Jobs.BoxOffice.Mode = job.Mode
-		return jobs.PreviewBoxOffice(&cfgCopy, db)
-	case "smart_popular":
-		baseMinRating := job.BaseMinRating
-		if baseMinRating == 0 {
-			baseMinRating = 6.0
-		}
-		adjustmentFactor := job.AdjustmentFactor
-		if adjustmentFactor == 0 {
-			adjustmentFactor = 0.5
-		}
-
-		if job.MediaType == "movie" {
-			cfgCopy.Jobs.SmartPopularMovies.Limit = effectiveLimit
-			cfgCopy.Jobs.SmartPopularMovies.Mode = job.Mode
-			cfgCopy.Jobs.SmartPopularMovies.BaseMinRating = baseMinRating
-			cfgCopy.Jobs.SmartPopularMovies.AdjustmentFactor = adjustmentFactor
-			return jobs.PreviewSmartPopularMovies(&cfgCopy, db)
-		}
-		cfgCopy.Jobs.SmartPopularShows.Limit = effectiveLimit
-		cfgCopy.Jobs.SmartPopularShows.Mode = job.Mode
-		cfgCopy.Jobs.SmartPopularShows.BaseMinRating = baseMinRating
-		cfgCopy.Jobs.SmartPopularShows.AdjustmentFactor = adjustmentFactor
-		return jobs.PreviewSmartPopularShows(&cfgCopy, db)
-	default:
-		return fiber.Map{
-			"error": "Preview not supported for job type: " + job.Type,
-		}
-	}
 }
