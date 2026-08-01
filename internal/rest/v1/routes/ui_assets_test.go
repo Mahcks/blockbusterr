@@ -35,6 +35,7 @@ func TestUIRuntimeAssetsAreLocal(t *testing.T) {
 	for _, path := range []string{
 		"web/static/css/app.css",
 		"web/static/js/app.js",
+		"web/static/js/jobs.js",
 		"web/static/js/vendor/htmx.min.js",
 		"web/static/js/vendor/lucide.min.js",
 		"web/static/js/vendor/chart.umd.min.js",
@@ -58,6 +59,30 @@ func TestSharedUIFunctionsAndDynamicStylesAreCompiled(t *testing.T) {
 	for _, class := range []string{".bg-green-500", ".bg-red-500", ".bg-yellow-500", ".from-yellow-900\\/50", ".to-slate-800\\/50"} {
 		if !strings.Contains(css, class) {
 			t.Errorf("compiled CSS is missing dynamic class %s", class)
+		}
+	}
+}
+
+func TestJobsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..")
+	jobs := readUIFile(t, filepath.Join(root, "web", "templates", "jobs.html"))
+	script := readUIFile(t, filepath.Join(root, "web", "static", "js", "jobs.js"))
+
+	for _, expected := range []string{
+		`id="jobs-page"`,
+		`data-global-mode="{{.Config.Jobs.Mode}}"`,
+		`defer src="/static/js/jobs.js"`,
+	} {
+		if !strings.Contains(jobs, expected) {
+			t.Errorf("jobs.html is missing %s", expected)
+		}
+	}
+	if strings.Contains(jobs, "const globalMode") {
+		t.Error("jobs.html still contains inline page state")
+	}
+	for _, expected := range []string{"const globalMode", "async function loadData", "function renderJobsList", "function escapeHTML"} {
+		if !strings.Contains(script, expected) {
+			t.Errorf("jobs.js is missing %s", expected)
 		}
 	}
 }
