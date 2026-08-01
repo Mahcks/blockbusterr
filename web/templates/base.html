@@ -9,15 +9,15 @@
     <script defer src="/static/js/vendor/lucide.min.js"></script>
     <script defer src="/static/js/app.js"></script>
   </head>
-  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
-    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-blue-600 focus:px-4 focus:py-2 focus:text-white">
+  <body class="min-h-screen antialiased">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-red-600 focus:px-4 focus:py-2 focus:text-white">
       Skip to content
     </a>
 
-    <header class="border-b border-slate-800 bg-slate-900">
+    <header class="app-header border-b">
       <div class="mx-auto flex max-w-7xl items-center gap-5 px-4 sm:px-6 lg:px-8">
         <a href="/jobs" class="flex shrink-0 items-center gap-2 py-3 font-semibold tracking-tight text-slate-50" aria-label="Blockbusterr jobs">
-          <svg class="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg class="app-brand-mark h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <rect x="3" y="5" width="18" height="14" rx="2" stroke-width="2"></rect>
             <path d="M7 5v14M17 5v14M3 9h4M17 9h4M3 15h4M17 15h4" stroke-width="2"></path>
           </svg>
@@ -26,10 +26,10 @@
 
         <nav class="min-w-0 flex-1 overflow-x-auto" aria-label="Primary navigation">
           <div class="flex min-w-max items-stretch">
-            <a href="/jobs" {{if eq .Title "Blockbusterr - Jobs"}}aria-current="page"{{end}} class="border-b-2 px-3 py-4 text-sm font-medium transition-colors {{if eq .Title "Blockbusterr - Jobs"}}border-blue-400 text-blue-300{{else}}border-transparent text-slate-300 hover:border-slate-600 hover:text-slate-50{{end}}">Jobs</a>
-            <a href="/filters" {{if eq .Title "Blockbusterr - Filters"}}aria-current="page"{{end}} class="border-b-2 px-3 py-4 text-sm font-medium transition-colors {{if eq .Title "Blockbusterr - Filters"}}border-blue-400 text-blue-300{{else}}border-transparent text-slate-300 hover:border-slate-600 hover:text-slate-50{{end}}">Filters</a>
-            <a href="/activity" {{if eq .Title "Blockbusterr - Activity Log"}}aria-current="page"{{end}} class="border-b-2 px-3 py-4 text-sm font-medium transition-colors {{if eq .Title "Blockbusterr - Activity Log"}}border-blue-400 text-blue-300{{else}}border-transparent text-slate-300 hover:border-slate-600 hover:text-slate-50{{end}}">Activity</a>
-            <a href="/config" {{if or (eq .Title "Blockbusterr - Configuration") (eq .Title "Blockbusterr - Settings")}}aria-current="page"{{end}} class="border-b-2 px-3 py-4 text-sm font-medium transition-colors {{if or (eq .Title "Blockbusterr - Configuration") (eq .Title "Blockbusterr - Settings")}}border-blue-400 text-blue-300{{else}}border-transparent text-slate-300 hover:border-slate-600 hover:text-slate-50{{end}}">Settings</a>
+            <a href="/jobs" {{if eq .Title "Blockbusterr - Jobs"}}aria-current="page"{{end}} class="border-b-2 px-3 py-4 text-sm font-medium transition-colors {{if eq .Title "Blockbusterr - Jobs"}}app-nav-current{{else}}border-transparent text-slate-400 hover:border-zinc-600 hover:text-slate-100{{end}}">Jobs</a>
+            <a href="/filters" {{if eq .Title "Blockbusterr - Filters"}}aria-current="page"{{end}} class="border-b-2 px-3 py-4 text-sm font-medium transition-colors {{if eq .Title "Blockbusterr - Filters"}}app-nav-current{{else}}border-transparent text-slate-400 hover:border-zinc-600 hover:text-slate-100{{end}}">Filters</a>
+            <a href="/activity" {{if eq .Title "Blockbusterr - Activity Log"}}aria-current="page"{{end}} class="border-b-2 px-3 py-4 text-sm font-medium transition-colors {{if eq .Title "Blockbusterr - Activity Log"}}app-nav-current{{else}}border-transparent text-slate-400 hover:border-zinc-600 hover:text-slate-100{{end}}">Activity</a>
+            <a href="/config" {{if or (eq .Title "Blockbusterr - Configuration") (eq .Title "Blockbusterr - Settings")}}aria-current="page"{{end}} class="border-b-2 px-3 py-4 text-sm font-medium transition-colors {{if or (eq .Title "Blockbusterr - Configuration") (eq .Title "Blockbusterr - Settings")}}app-nav-current{{else}}border-transparent text-slate-400 hover:border-zinc-600 hover:text-slate-100{{end}}">Settings</a>
           </div>
         </nav>
 
@@ -42,7 +42,7 @@
       </div>
     </header>
 
-    <main id="main-content" tabindex="-1" class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{{embed}}</main>
+    <main id="main-content" tabindex="-1" class="mx-auto flex min-h-[calc(100vh-57px)] w-full max-w-7xl flex-col px-4 pt-5 sm:px-6 lg:px-8">{{embed}}</main>
     <div id="notification-container" class="fixed right-4 top-4 z-50 max-w-[calc(100vw-2rem)] space-y-2" aria-live="polite"></div>
   </body>
 </html>

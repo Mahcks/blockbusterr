@@ -113,7 +113,34 @@
 
   function initialize(root) {
     window.renderLucideIcons(root);
+    root.querySelectorAll('[id^="info-alert-"]').forEach((alert) => {
+      const id = alert.id.replace('info-alert-', '');
+      if (!localStorage.getItem(`infoAlertDismissed_${id}`)) alert.style.display = '';
+    });
+
+    const latestVersion = root.querySelector('#latest-version');
+    if (latestVersion && latestVersion.dataset.loaded !== 'true') {
+      latestVersion.dataset.loaded = 'true';
+      fetch('https://api.github.com/repos/mahcks/blockbusterr/releases/latest')
+        .then((response) => response.json())
+        .then((release) => {
+          latestVersion.textContent = release.tag_name || 'unavailable';
+          if (release.html_url) latestVersion.href = release.html_url;
+        })
+        .catch(() => {
+          latestVersion.textContent = 'unavailable';
+        });
+    }
+
   }
+
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-dismiss-info-alert]');
+    if (!button) return;
+    const id = button.dataset.dismissInfoAlert;
+    localStorage.setItem(`infoAlertDismissed_${id}`, 'true');
+    document.getElementById(`info-alert-${id}`)?.remove();
+  });
 
   // HTMX swaps do not rerun DOMContentLoaded, so initialize each injected subtree.
   document.addEventListener("DOMContentLoaded", () => initialize(document));

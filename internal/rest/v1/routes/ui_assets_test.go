@@ -66,6 +66,7 @@ func TestSharedUIFunctionsAndDynamicStylesAreCompiled(t *testing.T) {
 func TestJobsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 	root := filepath.Join("..", "..", "..", "..")
 	jobs := readUIFile(t, filepath.Join(root, "web", "templates", "jobs.html"))
+	alerts := readUIFile(t, filepath.Join(root, "web", "templates", "components", "alert.html"))
 	script := readUIFile(t, filepath.Join(root, "web", "static", "js", "jobs.js"))
 
 	for _, expected := range []string{
@@ -80,7 +81,21 @@ func TestJobsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 	if strings.Contains(jobs, "const globalMode") {
 		t.Error("jobs.html still contains inline page state")
 	}
+	if strings.Contains(jobs, "onclick=") || strings.Contains(jobs, "onchange=") {
+		t.Error("jobs.html still contains inline event handlers")
+	}
+	if strings.Contains(alerts, "onclick=") || strings.Contains(alerts, "<script>") {
+		t.Error("shared alerts still contain inline behavior")
+	}
+	if got := strings.Count(jobs, `role="dialog"`); got != 3 {
+		t.Errorf("jobs.html has %d accessible dialogs, want 3", got)
+	}
 	for _, expected := range []string{"const globalMode", "async function loadData", "function renderJobsList", "function escapeHTML"} {
+		if !strings.Contains(script, expected) {
+			t.Errorf("jobs.js is missing %s", expected)
+		}
+	}
+	for _, expected := range []string{"function openDialog", "function closeDialog", "function handleDialogKeyboard", "function handleJobsAction"} {
 		if !strings.Contains(script, expected) {
 			t.Errorf("jobs.js is missing %s", expected)
 		}

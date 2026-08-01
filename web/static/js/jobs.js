@@ -8,7 +8,52 @@
   let templateSearchQuery = '';
   let previewData = null;
   let currentFilter = 'all';
+  const dialogTriggers = [];
   const globalMode = document.getElementById("jobs-page")?.dataset.globalMode || "direct";
+
+  const dialogIds = ['preview-modal', 'job-modal', 'add-job-modal'];
+  const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
+
+  function openDialog(id, trigger = document.activeElement) {
+    const dialog = document.getElementById(id);
+    if (!dialog) return;
+    dialogTriggers.push(trigger);
+    dialog.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => dialog.querySelector(focusableSelector)?.focus());
+  }
+
+  function closeDialog(id) {
+    document.getElementById(id)?.classList.add('hidden');
+    if (!dialogIds.some(dialogId => !document.getElementById(dialogId)?.classList.contains('hidden'))) {
+      document.body.style.overflow = '';
+    }
+    dialogTriggers.pop()?.focus();
+  }
+
+  function handleDialogKeyboard(event) {
+    const dialog = dialogIds.map(id => document.getElementById(id)).find(element => element && !element.classList.contains('hidden'));
+    if (!dialog) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      if (dialog.id === 'add-job-modal') closeAddJobModal();
+      if (dialog.id === 'job-modal') closeJobModal();
+      if (dialog.id === 'preview-modal') closePreviewModal();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = [...dialog.querySelectorAll(focusableSelector)].filter(element => element.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   // Job type icons and colors
   function getTypeIcon(type, className) {
@@ -54,6 +99,13 @@
       });
     }
 
+    document.getElementById('custom-type')?.addEventListener('change', updateCustomFormFields);
+    document.getElementById('custom-source')?.addEventListener('change', updateCustomFormFields);
+    document.getElementById('modal-type')?.addEventListener('change', onJobTypeChange);
+    document.getElementById('modal-source')?.addEventListener('change', updateModalTypeFields);
+    document.addEventListener('keydown', handleDialogKeyboard);
+    document.addEventListener('click', handleJobsAction);
+
     // Add event listener for mode dropdown to show/hide direct mode fields
     const modeSelect = document.getElementById('modal-mode');
     if (modeSelect) {
@@ -86,6 +138,37 @@
       });
     }
   });
+
+  function handleJobsAction(event) {
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+    const actions = {
+      'migrate-jobs': () => migrateJobs(),
+      'dismiss-migration': () => dismissMigrationBanner(),
+      'open-add-job': () => openAddJobModal(target),
+      'close-add-job': () => closeAddJobModal(),
+      'filter-templates': () => filterTemplates(target.dataset.category),
+      'show-custom-job': () => showCustomJobForm(),
+      'open-job': () => openJobModal(target.dataset.jobId, target),
+      'trigger-job': () => triggerJob(target.dataset.jobId),
+      'delete-job': () => deleteJob(target.dataset.jobId),
+      'create-from-template': () => {
+        const template = jobTemplates[Number(target.dataset.templateIndex)];
+        if (template) createJobFromTemplate(template.type, template.media, template.name, template.limit, template.period || '');
+      },
+      'close-preview': () => closePreviewModal(),
+      'filter-preview': () => filterPreview(target.dataset.filter),
+      'close-job': () => closeJobModal(),
+      'toggle-advanced': () => toggleModalAdvanced(),
+      'preview-job': () => previewJob(),
+      'run-job': () => runJobNow(),
+      'toggle-job': () => toggleJobEnabled(),
+      'delete-current-job': () => deleteCurrentJob()
+    };
+    if (!actions[target.dataset.action]) return;
+    event.preventDefault();
+    actions[target.dataset.action]();
+  }
 
   async function loadData() {
     try {
@@ -158,24 +241,26 @@
 		const sourceLabel = source === 'tmdb' ? 'TMDB' : capitalize(source);
 
         return `
-		  <article class="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <button type="button" class="flex min-w-0 flex-1 items-start gap-3 text-left" onclick="openJobModal('${job.id}')">
-              <span class="mt-0.5 ${style.color}" aria-hidden="true">${getTypeIcon(job.type, 'w-5 h-5')}</span>
+		  <article class="job-row">
+            <button type="button" class="job-row-main" data-action="open-job" data-job-id="${escapeHTML(job.id)}">
+              <span class="job-row-icon ${style.color}" aria-hidden="true">${getTypeIcon(job.type, 'w-4 h-4')}</span>
               <span class="min-w-0">
-                <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span class="truncate font-semibold text-slate-100">${escapeHTML(job.name)}</span>
-                  ${isLegacy ? '<span class="text-xs text-slate-500">Legacy configuration</span>' : ''}
-                  ${unavailable ? '<span class="text-xs font-medium text-amber-300">Provider required</span>' : ''}
+                <span class="flex min-w-0 items-center gap-2">
+                  <span class="truncate text-sm font-medium text-slate-100">${escapeHTML(job.name)}</span>
+                  ${isLegacy ? '<span class="text-xs text-slate-500">Legacy</span>' : ''}
+                  ${unavailable ? '<span class="text-xs font-medium text-amber-300">Setup required</span>' : ''}
                 </span>
-                <span class="mt-1 block text-sm text-slate-400">
-                  ${escapeHTML(capitalize(job.type))} · ${job.media === 'movie' ? 'Movie' : 'TV show'} · ${escapeHTML(sourceLabel)}${job.period ? ` · ${escapeHTML(capitalize(job.period))}` : ''} · ${job.limit} items
-                </span>
+                <span class="mt-0.5 block truncate text-xs text-slate-500">${escapeHTML(capitalize(job.type))} · ${job.limit} items</span>
               </span>
             </button>
-            <div class="flex items-center gap-1 self-end sm:self-auto">
+            <span class="job-row-value">${escapeHTML(sourceLabel)}</span>
+            <span class="job-row-value">${job.media === 'movie' ? 'Movie' : 'TV show'}</span>
+            <span class="job-row-value">${job.period ? escapeHTML(capitalize(job.period)) : 'Default'}</span>
+            <div class="job-row-actions">
 				  ${unavailable ? '' : `<button
-                    onclick="event.stopPropagation(); triggerJob('${job.id}')"
-                    class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-green-300"
+                    data-action="trigger-job"
+                    data-job-id="${escapeHTML(job.id)}"
+                    class="icon-button hover:text-green-300"
                     title="Run now"
                     aria-label="Run job now"
                   >
@@ -186,8 +271,9 @@
 				  </button>`}
                   ${!isLegacy ? `
                   <button
-                    onclick="event.stopPropagation(); deleteJob('${job.id}')"
-                    class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-red-300"
+                    data-action="delete-job"
+                    data-job-id="${escapeHTML(job.id)}"
+                    class="icon-button hover:text-red-300"
                     title="Delete job"
                     aria-label="Delete job"
                   >
@@ -274,20 +360,18 @@
   }
 
   // Add Job Modal
-  function openAddJobModal() {
+  function openAddJobModal(trigger) {
     // Reset to templates view
     templateSearchQuery = '';
     const templateSearch = document.getElementById('template-search');
     if (templateSearch) templateSearch.value = '';
     showTemplatesView();
     filterTemplates('Movies');
-    document.getElementById('add-job-modal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    openDialog('add-job-modal', trigger);
   }
 
   function closeAddJobModal() {
-    document.getElementById('add-job-modal').classList.add('hidden');
-    document.body.style.overflow = 'auto';
+    closeDialog('add-job-modal');
     // Reset custom form
     document.getElementById('custom-job-form').reset();
   }
@@ -296,11 +380,7 @@
     const tabs = ['tab-movies', 'tab-shows', 'tab-custom'];
     tabs.forEach(tabId => {
       const tab = document.getElementById(tabId);
-      if (tabId === activeTab) {
-        tab.className = 'px-4 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white';
-      } else {
-        tab.className = 'px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600';
-      }
+      tab.setAttribute('aria-selected', String(tabId === activeTab));
     });
   }
 
@@ -489,7 +569,7 @@
 
     if (!filtered.length) {
       grid.innerHTML = `
-        <div class="md:col-span-2 rounded-lg border border-slate-700 bg-slate-900/40 p-6 text-center">
+        <div class="p-6 text-center">
           <p class="text-sm font-medium text-slate-200">No templates found</p>
           <p class="mt-1 text-xs text-slate-400">Try a different search, or use Custom Job.</p>
         </div>
@@ -506,18 +586,18 @@
       return `
         <button
           type="button"
-          onclick="createJobFromTemplate('${template.type}', '${template.media}', '${template.name}', ${template.limit}, '${template.period || ''}')"
-          class="w-full text-left bg-slate-900/50 rounded-lg border border-slate-700 p-4 cursor-pointer hover:border-purple-500 hover:bg-slate-900/80 transition-all"
+          data-action="create-from-template"
+          data-template-index="${jobTemplates.indexOf(template)}"
+          class="template-row"
         >
-          <div class="flex items-start gap-3">
-            <span class="${style.color}">${getTypeIcon(template.type)}</span>
+          <div class="flex items-center gap-3">
+            <span class="job-row-icon ${style.color}">${getTypeIcon(template.type, 'w-4 h-4')}</span>
             <div class="flex-1">
-              <h3 class="text-lg font-semibold text-slate-100">${escapeHTML(template.name)}</h3>
-              <p class="text-sm text-slate-400 mt-1">${escapeHTML(template.description)}</p>
-              <div class="flex items-center gap-2 mt-3">
-                <span class="px-2 py-0.5 text-xs rounded bg-slate-700 text-slate-300">${template.limit} items</span>
-                ${template.period ? `<span class="px-2 py-0.5 text-xs rounded bg-slate-700 text-slate-400">${capitalize(template.period)}</span>` : ''}
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="text-sm font-medium text-slate-100">${escapeHTML(template.name)}</h3>
+                <span class="shrink-0 text-xs text-slate-500">${template.limit} items${template.period ? ` · ${escapeHTML(capitalize(template.period))}` : ''}</span>
               </div>
+              <p class="mt-0.5 text-xs text-slate-500">${escapeHTML(template.description)}</p>
             </div>
           </div>
         </button>
@@ -575,7 +655,7 @@
   }
 
   // Job Configuration Modal
-  function openJobModal(jobId) {
+  function openJobModal(jobId, trigger) {
     const job = allJobs.find(j => j.id === jobId);
     if (!job) {
       showNotification('Job not found', 'error');
@@ -668,8 +748,7 @@
       deleteButton.classList.remove('hidden');
     }
 
-    document.getElementById('job-modal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    openDialog('job-modal', trigger);
   }
 
   // Handle job type change in edit modal
@@ -774,8 +853,7 @@
   }
 
   function closeJobModal() {
-    document.getElementById('job-modal').classList.add('hidden');
-    document.body.style.overflow = 'auto';
+    closeDialog('job-modal');
     document.getElementById('modal-advanced').classList.add('hidden');
     document.getElementById('advanced-chevron').style.transform = '';
     currentJob = null;
@@ -1036,12 +1114,11 @@
       currentFilter = 'all';
 
       document.getElementById('preview-title').textContent = job.name;
-      document.getElementById('preview-modal').classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
+      openDialog('preview-modal');
 
       document.getElementById('preview-content').innerHTML = `
         <div class="flex items-center justify-center py-12">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"></div>
+          <div class="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-400"></div>
         </div>
       `;
 
@@ -1059,7 +1136,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
             <p class="text-slate-300 text-lg font-medium">Failed to load preview</p>
-            <p class="text-slate-400 text-sm mt-2">${error.message}</p>
+            <p class="text-slate-400 text-sm mt-2">${escapeHTML(error.message)}</p>
           </div>
         `;
       }
@@ -1072,9 +1149,9 @@
     ['all', 'will_add', 'already_exists', 'filtered_out'].forEach(f => {
       const btn = document.getElementById(`filter-${f}`);
       if (f === filter) {
-        btn.className = 'px-4 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white';
+        btn.className = 'rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white';
       } else {
-        btn.className = 'px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600';
+        btn.className = 'rounded-md bg-transparent px-3 py-1.5 text-sm font-medium text-slate-400 hover:bg-zinc-800 hover:text-slate-100';
       }
     });
 
@@ -1084,8 +1161,7 @@
   }
 
   function closePreviewModal() {
-    document.getElementById('preview-modal').classList.add('hidden');
-    document.body.style.overflow = 'auto';
+    closeDialog('preview-modal');
   }
 
   function renderPreview(data, filter) {
@@ -1097,21 +1173,21 @@
 	  : `Preview of what this job will fetch from ${sourceLabel}`;
     const willAdd = data.total_found - data.already_exists - data.filtered_out;
     document.getElementById('preview-stats').innerHTML = `
-      <div class="bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg p-4 shadow-lg ring-1 ring-slate-600/50">
-        <div class="text-2xl font-bold text-white">${data.total_found}</div>
-        <div class="text-xs text-slate-200 mt-1">Total Found</div>
+      <div class="rounded-lg border border-slate-700 bg-slate-800 p-3">
+        <div class="text-xl font-semibold text-white">${data.total_found}</div>
+        <div class="mt-1 text-xs text-slate-400">Found</div>
       </div>
-      <div class="bg-gradient-to-br from-green-700 to-green-800 rounded-lg p-4 shadow-lg ring-1 ring-green-600/40">
-        <div class="text-2xl font-bold text-white">${willAdd}</div>
-        <div class="text-xs text-green-100 mt-1">Will Add</div>
+      <div class="rounded-lg border border-green-800 bg-green-950/40 p-3">
+        <div class="text-xl font-semibold text-green-200">${willAdd}</div>
+        <div class="mt-1 text-xs text-green-300">Will add</div>
       </div>
-      <div class="bg-gradient-to-br from-blue-700 to-blue-800 rounded-lg p-4 shadow-lg ring-1 ring-blue-600/40">
-        <div class="text-2xl font-bold text-white">${data.already_exists}</div>
-        <div class="text-xs text-blue-100 mt-1">Already Exists</div>
+      <div class="rounded-lg border border-slate-700 bg-slate-800 p-3">
+        <div class="text-xl font-semibold text-slate-200">${data.already_exists}</div>
+        <div class="mt-1 text-xs text-slate-400">Already exists</div>
       </div>
-      <div class="bg-gradient-to-br from-red-700 to-red-800 rounded-lg p-4 shadow-lg ring-1 ring-red-600/40">
-        <div class="text-2xl font-bold text-white">${data.filtered_out}</div>
-        <div class="text-xs text-red-100 mt-1">Filtered Out</div>
+      <div class="rounded-lg border border-red-900 bg-red-950/30 p-3">
+        <div class="text-xl font-semibold text-red-200">${data.filtered_out}</div>
+        <div class="mt-1 text-xs text-red-300">Filtered out</div>
       </div>
     `;
 
@@ -1161,13 +1237,12 @@
         : `<div class="flex items-center justify-center h-full bg-slate-700"><svg class="w-8 h-8 text-slate-500" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4z" /></svg></div>`;
 
       return `
-        <div class="rounded-lg border border-slate-700/80 overflow-hidden hover:border-slate-600 transition-all ${statusClass}">
-          <div class="relative flex gap-4 p-4">
-            <div class="absolute inset-0 bg-gradient-to-r from-slate-900/70 via-slate-900/40 to-slate-800/60"></div>
-            <div class="relative z-10 flex-shrink-0 w-24 h-36 rounded-lg overflow-hidden bg-slate-700 shadow-xl ring-1 ring-white/10">
+        <div class="overflow-hidden rounded-lg border border-slate-700/80 bg-slate-900 transition-colors hover:border-slate-600 ${statusClass}">
+          <div class="flex gap-4 p-4">
+            <div class="h-36 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-slate-700 ring-1 ring-slate-600">
               ${posterHtml}
             </div>
-            <div class="relative z-10 flex-1 min-w-0 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div class="flex min-w-0 flex-1 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div class="min-w-0">
                 <h3 class="text-lg font-semibold text-white truncate">${escapeHTML(item.title)}</h3>
                 <div class="flex items-center gap-2 mt-1 text-sm text-slate-300 flex-wrap">

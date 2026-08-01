@@ -3,9 +3,28 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: dark;
+    --canvas: oklch(0.145 0.008 25);
+    --surface: oklch(0.18 0.008 25);
+    --surface-raised: oklch(0.215 0.009 25);
+    --border: oklch(0.29 0.01 25);
+    --border-strong: oklch(0.39 0.012 25);
+    --text: oklch(0.94 0.006 25);
+    --muted: oklch(0.66 0.012 25);
+    --accent: oklch(0.62 0.19 25);
+    --accent-hover: oklch(0.68 0.18 25);
+  }
+
+  body {
+    background: var(--canvas);
+    color: var(--text);
+    font-feature-settings: "ss01", "cv02", "cv03", "cv04";
+  }
+
   :focus-visible {
-    outline: 2px solid rgb(96 165 250);
-    outline-offset: 3px;
+    outline: 2px solid var(--accent-hover);
+    outline-offset: 2px;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -14,6 +33,187 @@
       transition-duration: 0.01ms !important;
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
+    }
+  }
+}
+
+@layer components {
+  .app-header {
+    background: var(--surface);
+    border-color: var(--border);
+  }
+
+  .app-footer {
+    position: relative;
+    left: 50%;
+    width: 100vw;
+    margin-left: -50vw;
+    background: var(--surface);
+    border-color: var(--border);
+  }
+
+  .app-brand-mark,
+  .app-nav-current {
+    color: var(--accent-hover);
+  }
+
+  .app-nav-current {
+    border-color: var(--accent);
+  }
+
+  .app-primary-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    background: var(--accent);
+  }
+
+  .app-primary-button:hover {
+    background: var(--accent-hover);
+  }
+
+  .jobs-toolbar {
+    @apply mb-5 flex flex-col gap-3 border-b pb-5 sm:flex-row sm:items-center sm:justify-between;
+    border-color: var(--border);
+  }
+
+  .jobs-panel {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .jobs-panel-header {
+    @apply flex min-h-11 items-center justify-between px-4;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .jobs-column-head,
+  .job-row {
+    display: grid;
+    grid-template-columns: minmax(15rem, 2fr) minmax(7rem, .8fr) minmax(7rem, .8fr) minmax(8rem, .9fr) 5rem;
+    align-items: center;
+  }
+
+  .jobs-column-head {
+    min-height: 32px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .job-row {
+    min-height: 58px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    transition: background-color 120ms ease;
+  }
+
+  .job-row:last-child {
+    border-bottom: 0;
+  }
+
+  .job-row:hover {
+    background: var(--surface-raised);
+  }
+
+  .job-row-main {
+    @apply flex min-w-0 items-center gap-3 text-left;
+  }
+
+  .job-row-icon {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-md;
+    background: var(--canvas);
+    border: 1px solid var(--border);
+  }
+
+  .job-row-value {
+    @apply truncate text-sm text-slate-300;
+  }
+
+  .job-row-actions {
+    @apply flex items-center justify-end gap-0.5;
+  }
+
+  .icon-button {
+    @apply rounded-md p-1.5 text-slate-500 transition-colors hover:bg-zinc-700 hover:text-slate-100;
+  }
+
+  .job-dialog {
+    background: color-mix(in oklch, var(--canvas) 86%, transparent);
+  }
+
+  .job-dialog > div {
+    background: var(--surface);
+    border-color: var(--border-strong);
+    border-radius: 8px;
+    box-shadow: 0 16px 40px rgb(0 0 0 / 35%);
+  }
+
+  .job-dialog > div > .sticky {
+    background: var(--surface);
+    border-color: var(--border);
+    padding: 16px 20px;
+  }
+
+  .job-dialog input,
+  .job-dialog select {
+    background: var(--canvas);
+    border-color: var(--border-strong);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+
+  .job-dialog input:focus,
+  .job-dialog select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+    outline: 0;
+  }
+
+  .job-dialog label {
+    margin-bottom: 6px;
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  .job-tabs {
+    @apply flex gap-5 border-b;
+    border-color: var(--border);
+  }
+
+  .job-tabs button {
+    @apply rounded-none border-b-2 border-transparent bg-transparent px-0 py-2 text-sm text-slate-400;
+  }
+
+  .job-tabs button[aria-selected="true"] {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  .template-row {
+    @apply w-full px-3 py-3 text-left transition-colors;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .template-row:hover {
+    background: var(--surface-raised);
+  }
+
+  @media (max-width: 767px) {
+    .jobs-column-head {
+      display: none;
+    }
+
+    .job-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+    }
+
+    .job-row-value {
+      display: none;
     }
   }
 }
