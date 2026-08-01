@@ -12,6 +12,26 @@ Blockbusterr automatically adds trending, popular, and highly-rated movies and T
 
 ---
 
+## Where Blockbusterr Fits
+
+Blockbusterr is the discovery and decision layer in your media stack. It watches TMDB, Simkl, or Trakt for content that matches your scheduled jobs, applies your filters, scoring rules, and limits, then sends qualifying movies and shows into the tools you already use.
+
+```mermaid
+flowchart LR
+    A[TMDB / Simkl / Trakt] --> B[Blockbusterr<br/>Discover · Filter · Score]
+    B --> C[Radarr / Sonarr]
+    B --> D[Seerr / Jellyseerr<br/>Optional approval]
+    D --> C
+    C --> E[Download client]
+    E --> F[Plex / Jellyfin / Emby]
+```
+
+Blockbusterr does not replace your request manager, `*arr` apps, download client, or media server. It connects them with automated, explainable discovery—helping your library find its next additions without relying on manual requests or unfiltered lists.
+
+> **Build a fully automated library loop:** Pair Blockbusterr with [Maintainerr](https://github.com/Maintainerr/Maintainerr). Blockbusterr discovers and adds content you'll want to watch; Maintainerr can identify stale or unwatched media and remove or unmonitor it using your cleanup rules. The projects operate independently, so coordinate their rules and Blockbusterr exclusions to avoid repeatedly rediscovering removed titles.
+
+---
+
 ## Documentation
 
 **Full documentation available at [blockbusterr.dev](https://blockbusterr.dev/)**

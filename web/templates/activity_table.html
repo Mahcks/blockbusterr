@@ -1,296 +1,109 @@
-<!-- Activity Table: Uses jobDefinitions for color/icon, clickable job badge for filtering -->
-<script src="/static/jobDefinitions.js"></script>
 {{if .Logs}}
-<div class="space-y-4">
-	{{range $index, $group := .Logs}}
-	{{$log := $group.Log}}
-	{{$count := $group.Count}}
-	{{$history := $group.History}}
-		<div class="rounded-lg p-0 mb-4 overflow-hidden" id="activity-card-{{$index}}" data-job-type="{{$log.JobType}}">
-			<div class="relative flex gap-4" id="activity-gradient-{{$index}}">
-			<!-- Gradient background covers the whole card -->
-			<div class="absolute inset-0 z-0 pointer-events-none job-gradient-bg" id="job-gradient-{{$index}}" data-job-type="{{$log.JobType}}"></div>
-			<!-- Poster Section -->
-			<div class="flex-shrink-0 z-10 p-3 pl-4">
-				{{if $log.PosterURL}}
-				<img src="{{$log.PosterURL}}" alt="{{$log.Title}}" class="w-24 h-36 object-cover rounded-lg shadow-xl ring-1 ring-white/10" loading="lazy">
-				{{else}}
-				<div class="w-24 h-36 bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center shadow-xl ring-1 ring-white/10">
-					<svg class="w-12 h-12 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
-						<path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
-					</svg>
-				</div>
-				{{end}}
-			</div>
-			<!-- Content Section -->
-				<div class="flex-1 min-w-0 z-10 pt-3 pb-3">
-					<div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-						<div class="flex-1 min-w-0 flex flex-col h-full">
-							<div class="mb-1 min-w-0">
-								<h3 class="text-xl font-bold text-white leading-tight break-words">
-									{{$log.Title}}{{if $log.Year}} <span class="text-slate-200 text-base font-medium whitespace-nowrap">({{$log.Year}})</span>{{end}}{{if $log.Language}} <span class="text-xs uppercase text-slate-400">{{$log.Language}}</span>{{end}}
-								</h3>
-							</div>
-						<!-- Job Badge under title -->
-						<div class="flex items-center gap-2 mt-1">
-							<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ring-1 cursor-pointer group"
-										id="job-badge-{{$index}}"
-										data-job-type="{{$log.JobType}}"
-										onclick="quickFilterJob('{{$log.JobType}}')"
-										title="Job ID: {{$log.JobType}} (click to filter)">
-								<span id="job-badge-label-{{$index}}">{{$log.JobType}}</span>
-							</span>
-							{{if gt $count 1}}
-							<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-700/70 text-slate-200 ring-1 ring-slate-600/50">
-								x{{$count}}
-							</span>
-							{{end}}
-						</div>
-						<div class="flex flex-wrap items-center gap-2 mt-2">
-							{{if eq $log.Status "added"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-300 rounded-lg text-sm font-semibold ring-1 ring-green-500/30">✓ Added</div>
-							{{else if eq $log.Status "requested"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-blue-300 rounded-lg text-sm font-semibold ring-1 ring-blue-500/30">📋 Requested</div>
-							{{else if eq $log.Status "rejected"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-300 rounded-lg text-sm font-semibold ring-1 ring-red-500/30">✗ Rejected</div>
-							{{else if eq $log.Status "blocked"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-500/20 text-gray-300 rounded-lg text-sm font-semibold ring-1 ring-gray-500/30">🚫 Blocked</div>
-							{{else if eq $log.Status "skipped"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/20 text-yellow-300 rounded-lg text-sm font-semibold ring-1 ring-yellow-500/30">⊘ Skipped</div>
-							{{else if eq $log.Status "failed"}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 text-red-300 rounded-lg text-sm font-semibold ring-1 ring-red-600/30">⚠ Failed</div>
-							{{else}}<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-500/20 text-slate-300 rounded-lg text-sm font-semibold ring-1 ring-slate-500/30">{{$log.Status}}</div>{{end}}
-						</div>
-								<div class="mt-auto pt-6 flex items-center gap-3 text-xs text-slate-200">
-								<span class="inline-flex items-center gap-1.5">
-									<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
-									{{$log.Timestamp.Format "Jan 2, 3:04 PM"}}
-								</span>
-								{{if $log.RunID}}
-								<span class="text-slate-400">•</span>
-								<span class="text-slate-300">Run #{{$log.RunID}}</span>
-								{{end}}
-								{{if $log.Message}}
-								<span class="text-slate-400">•</span>
-								<span class="text-slate-300 italic">{{$log.Message}}</span>
-								{{end}}
-							</div>
-					</div>
-						<div class="flex flex-wrap lg:flex-col items-start lg:items-end gap-3 lg:self-stretch lg:justify-between">
-						{{if $log.Score}}
-						<div class="text-center">
-							{{$scorePercent := printf "%.0f" (mul $log.Score 100)}}
-							{{if ge $log.Score 0.8}}<div class="inline-flex flex-col items-center px-3 py-2 bg-green-500/20 rounded-lg ring-1 ring-green-500/30"><div class="text-green-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-green-400/70">Score</div>{{if $log.Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{$log.Rank}}</div>{{end}}</div>
-							{{else if ge $log.Score 0.6}}<div class="inline-flex flex-col items-center px-3 py-2 bg-blue-500/20 rounded-lg ring-1 ring-blue-500/30"><div class="text-blue-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-blue-400/70">Score</div>{{if $log.Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{$log.Rank}}</div>{{end}}</div>
-							{{else if ge $log.Score 0.4}}<div class="inline-flex flex-col items-center px-3 py-2 bg-yellow-500/20 rounded-lg ring-1 ring-yellow-500/30"><div class="text-yellow-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-yellow-400/70">Score</div>{{if $log.Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{$log.Rank}}</div>{{end}}</div>
-							{{else}}<div class="inline-flex flex-col items-center px-3 py-2 bg-slate-500/20 rounded-lg ring-1 ring-slate-500/30"><div class="text-slate-300 font-bold text-lg">{{$scorePercent}}%</div><div class="text-xs text-slate-400/70">Score</div>{{if $log.Rank}}<div class="text-xs text-slate-400 mt-0.5">Rank #{{$log.Rank}}</div>{{end}}</div>{{end}}
-						</div>
-						{{end}}
-						<div class="flex items-center gap-3">
-							{{if $log.TMDBID}}
-							<a href="https://www.themoviedb.org/{{if eq $log.MediaType "movie"}}movie{{else}}tv{{end}}/{{$log.TMDBID}}" target="_blank" class="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
-								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
-								TMDB
-							</a>
-							{{end}}
-							{{if $log.TVDBID}}
-							<a href="https://www.thetvdb.com/dereferrer/series/{{$log.TVDBID}}" target="_blank" class="inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors">
-								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
-								TVDB
-							</a>
-							{{end}}
-						</div>
-						<div class="flex items-center gap-2">
-							{{if eq $log.Status "rejected"}}
-						<button 
-							hx-post="/v1/activity/{{$log.ID}}/add-anyway"
-							hx-swap="none"
-							hx-confirm="Are you sure you want to add '{{$log.Title}}' anyway? This will bypass all filters."
-							hx-on="htmx:afterRequest: if (event.detail.successful && typeof refreshActivityData === 'function') { refreshActivityData(); }"
-							data-card-id="{{$log.ID}}"
-							class="add-anyway-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-xs font-semibold text-white transition-all duration-200 ring-1 ring-green-500/50 hover:ring-green-400/50 shadow-lg hover:shadow-green-500/20">
-								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path>
-								</svg>
-								Add Anyway
-							</button>
-							{{end}}
-							{{if or (eq $log.Status "added") (eq $log.Status "requested") (eq $log.Status "rejected")}}
-							<button 
-								hx-post="/v1/activity/{{$log.ID}}/block"
-								hx-swap="none"
-								hx-confirm="Are you sure you want to block '{{$log.Title}}'? It will be added to your blocklist and never added again."
-								hx-on="htmx:afterRequest: if (event.detail.successful && typeof refreshActivityData === 'function') { refreshActivityData(); }"
-								data-card-id="{{$log.ID}}"
-								class="block-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-lg text-xs font-semibold text-white transition-all duration-200 ring-1 ring-red-500/50 hover:ring-red-400/50 shadow-lg hover:shadow-red-500/20">
-								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"></path>
-								</svg>
-								Block
-							</button>
-							{{end}}
-							{{if $log.FilterDetails}}
-							<button onclick='toggleDetails(this, {{$index}})' class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-xs font-medium text-slate-300 transition-all duration-200 ring-1 ring-slate-600/50 hover:ring-slate-500/50">
-								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-									<path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
-									<path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
-								</svg>
-								View Filter Details
-							</button>
-							{{end}}
-							{{if gt $count 1}}
-							<button onclick='toggleHistory(this, {{$index}})' class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-xs font-medium text-slate-300 transition-all duration-200 ring-1 ring-slate-600/50 hover:ring-slate-500/50">
-								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
-								</svg>
-								View History
-							</button>
-							{{end}}
-						</div>
-					</div>
-				</div>
-				<!-- Filter Details Panel (Hidden by Default) -->
-				{{if $log.FilterDetails}}
-				<div id="details-{{$index}}" class="hidden bg-slate-900/50 rounded-lg p-4 mt-4">
-					<div class="flex items-center gap-2 mb-3">
-						<svg class="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
-							<path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"></path>
-						</svg>
-						<h4 class="font-semibold text-slate-200">Filter Evaluation Details</h4>
-					</div>
-					<div class="filter-details-content grid gap-2" data-filter-details="{{$log.FilterDetails}}"></div>
-				</div>
-				{{end}}
-				{{if gt $count 1}}
-				<div id="history-{{$index}}" class="hidden bg-slate-900/50 rounded-lg p-4 mt-4">
-					<div class="flex items-center gap-2 mb-3">
-						<svg class="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
-							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
-						</svg>
-						<h4 class="font-semibold text-slate-200">Previous Occurrences</h4>
-					</div>
-					<div class="space-y-2 text-sm text-slate-300">
-						{{range $hIndex, $h := $history}}
-						{{if gt $hIndex 0}}
-						<div class="flex items-center gap-2">
-							<span class="text-slate-400">{{$h.Timestamp.Format "Jan 2, 3:04 PM"}}</span>
-							{{if $h.Message}}<span class="text-slate-500">•</span><span class="text-slate-300">{{$h.Message}}</span>{{end}}
-						</div>
-						{{end}}
-						{{end}}
-					</div>
-				</div>
-				{{end}}
-			</div>
-		</div>
-	</div>
-	{{end}}
+<div class="activity-ledger">
+  <div class="activity-ledger-head" aria-hidden="true">
+    <span></span>
+    <span>Media</span>
+    <span>Outcome</span>
+    <span>Score</span>
+    <span>When</span>
+    <span></span>
+  </div>
+  {{range $index, $group := .Logs}}
+  {{$log := $group.Log}}
+  {{$count := $group.Count}}
+  {{$history := $group.History}}
+  <article class="activity-ledger-row" id="activity-card-{{$index}}" data-job-type="{{$log.JobType}}" data-status="{{$log.Status}}">
+    <div class="activity-poster">
+      {{if $log.PosterURL}}
+      <img src="{{$log.PosterURL}}" alt="" loading="lazy">
+      {{else}}
+      <svg aria-hidden="true" viewBox="0 0 20 20"><path fill="currentColor" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"></path></svg>
+      {{end}}
+    </div>
+
+    <div class="min-w-0">
+      <div class="flex min-w-0 items-baseline gap-1.5">
+        <h3 class="truncate text-sm font-medium text-slate-100">{{$log.Title}}</h3>
+        {{if $log.Year}}<span class="shrink-0 text-xs text-slate-500">{{$log.Year}}</span>{{end}}
+        {{if $log.Language}}<span class="shrink-0 text-xs uppercase text-slate-600">{{$log.Language}}</span>{{end}}
+      </div>
+      <button type="button" data-action="filter-job" data-job-type="{{$log.JobType}}" class="mt-1 truncate text-left text-xs text-slate-500 hover:text-slate-200">
+        {{$log.JobType}}{{if gt $count 1}} · {{$count}} occurrences{{end}}
+      </button>
+      {{if $log.Message}}<p class="activity-reason activity-reason-{{$log.Status}}" title="{{$log.Message}}">{{if or (eq $log.Status "rejected") (eq $log.Status "failed")}}<i data-lucide="alert-triangle" class="h-3 w-3 shrink-0" aria-hidden="true"></i>{{end}}<span class="truncate">{{$log.Message}}</span></p>{{end}}
+    </div>
+
+    <div>
+      <span class="activity-status activity-status-{{$log.Status}}"><i class="activity-status-dot" aria-hidden="true"></i>{{$log.Status}}</span>
+    </div>
+
+    <div class="text-sm tabular-nums text-slate-300">
+      {{if $log.Score}}
+      <span>{{printf "%.0f" (mul $log.Score 100)}}%</span>
+      {{if $log.Rank}}<span class="ml-1 text-xs text-slate-600">#{{$log.Rank}}</span>{{end}}
+      {{else}}<span class="text-slate-600">—</span>{{end}}
+    </div>
+
+    <div class="text-xs text-slate-500">
+      <time>{{$log.Timestamp.Format "Jan 2, 3:04 PM"}}</time>
+      {{if $log.RunID}}<div class="mt-0.5">Run #{{$log.RunID}}</div>{{end}}
+    </div>
+
+    <div class="activity-row-actions">
+      {{if $log.TMDBID}}<a href="https://www.themoviedb.org/{{if eq $log.MediaType "movie"}}movie{{else}}tv{{end}}/{{$log.TMDBID}}" target="_blank" rel="noopener" title="Open in TMDB" aria-label="Open {{$log.Title}} in TMDB"><i data-lucide="external-link" class="h-4 w-4"></i></a>{{end}}
+      {{if $log.TVDBID}}<a href="https://www.thetvdb.com/dereferrer/series/{{$log.TVDBID}}" target="_blank" rel="noopener" title="Open in TVDB" aria-label="Open {{$log.Title}} in TVDB"><i data-lucide="external-link" class="h-4 w-4"></i></a>{{end}}
+      {{if eq $log.Status "rejected"}}
+      <button type="button" hx-post="/v1/activity/{{$log.ID}}/add-anyway" hx-swap="none" hx-confirm="Add '{{$log.Title}}' and bypass its filters?" class="add-anyway-btn" title="Add anyway">Add</button>
+      {{end}}
+      {{if or (eq $log.Status "added") (eq $log.Status "requested") (eq $log.Status "rejected")}}
+      <button type="button" hx-post="/v1/activity/{{$log.ID}}/block" hx-swap="none" hx-confirm="Block '{{$log.Title}}' from future discovery?" class="block-btn" title="Block title">Block</button>
+      {{end}}
+      {{if $log.FilterDetails}}
+      <button type="button" data-action="toggle-details" data-index="{{$index}}" class="activity-details-btn" aria-expanded="false" aria-controls="details-{{$index}}" title="View filter evaluation">
+        <i data-lucide="list-checks" class="h-3.5 w-3.5" aria-hidden="true"></i>
+        <span>{{if eq $log.Status "rejected"}}Why{{else}}Details{{end}}</span>
+      </button>
+      {{end}}
+      {{if gt $count 1}}<button type="button" data-action="toggle-history" data-index="{{$index}}">History</button>{{end}}
+    </div>
+
+    {{if $log.FilterDetails}}
+    <div id="details-{{$index}}" class="activity-row-detail hidden">
+      <h4>Filter evaluation</h4>
+      <div class="filter-details-content grid gap-2" data-filter-details="{{$log.FilterDetails}}"></div>
+    </div>
+    {{end}}
+
+    {{if gt $count 1}}
+    <div id="history-{{$index}}" class="activity-row-detail hidden">
+      <h4>Previous occurrences</h4>
+      <div class="space-y-1.5 text-xs text-slate-400">
+        {{range $hIndex, $h := $history}}{{if gt $hIndex 0}}
+        <div><time>{{$h.Timestamp.Format "Jan 2, 3:04 PM"}}</time>{{if $h.Message}} · {{$h.Message}}{{end}}</div>
+        {{end}}{{end}}
+      </div>
+    </div>
+    {{end}}
+  </article>
+  {{end}}
 </div>
+
 {{if gt .TotalPages 1}}
-<div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-	<div class="text-sm text-slate-400">
-		Page {{.Page}} of {{.TotalPages}} • {{.TotalRecords}} total
-	</div>
-	<div class="flex items-center gap-2">
-		<button
-			onclick="goToPage({{if gt .Page 1}}{{sub .Page 1}}{{else}}1{{end}})"
-			class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors {{if eq .Page 1}}opacity-50 cursor-not-allowed{{end}}"
-			{{if eq .Page 1}}disabled{{end}}>
-			Prev
-		</button>
-		{{if gt .Page 2}}
-		<button onclick="goToPage(1)" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors">
-			1
-		</button>
-		{{end}}
-		{{if gt .Page 3}}
-		<span class="text-slate-500 px-1">…</span>
-		{{end}}
-		{{if gt .Page 1}}
-		<button onclick="goToPage({{sub .Page 1}})" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors">
-			{{sub .Page 1}}
-		</button>
-		{{end}}
-		<button class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-blue-600 text-white">
-			{{.Page}}
-		</button>
-		{{if lt .Page .TotalPages}}
-		<button onclick="goToPage({{add .Page 1}})" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors">
-			{{add .Page 1}}
-		</button>
-		{{end}}
-		{{if lt .Page (sub .TotalPages 2)}}
-		<span class="text-slate-500 px-1">…</span>
-		{{end}}
-		{{if lt .Page (sub .TotalPages 1)}}
-		<button onclick="goToPage({{.TotalPages}})" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors">
-			{{.TotalPages}}
-		</button>
-		{{end}}
-		<button
-			onclick="goToPage({{if lt .Page .TotalPages}}{{add .Page 1}}{{else}}{{.TotalPages}}{{end}})"
-			class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors {{if eq .Page .TotalPages}}opacity-50 cursor-not-allowed{{end}}"
-			{{if eq .Page .TotalPages}}disabled{{end}}>
-			Next
-		</button>
-	</div>
-</div>
+<nav class="mt-4 flex flex-wrap items-center justify-between gap-3" aria-label="Activity pagination">
+  <span class="text-xs text-slate-500">Page {{.Page}} of {{.TotalPages}} · {{.TotalRecords}} entries</span>
+  <div class="flex items-center gap-1">
+    <button data-action="go-to-page" data-page="{{if gt .Page 1}}{{sub .Page 1}}{{else}}1{{end}}" class="activity-page-button" {{if eq .Page 1}}disabled{{end}}>Previous</button>
+    {{if gt .Page 2}}<button data-action="go-to-page" data-page="1" class="activity-page-button">1</button>{{end}}
+    {{if gt .Page 3}}<span class="px-1 text-slate-600">…</span>{{end}}
+    {{if gt .Page 1}}<button data-action="go-to-page" data-page="{{sub .Page 1}}" class="activity-page-button">{{sub .Page 1}}</button>{{end}}
+    <span class="activity-page-current">{{.Page}}</span>
+    {{if lt .Page .TotalPages}}<button data-action="go-to-page" data-page="{{add .Page 1}}" class="activity-page-button">{{add .Page 1}}</button>{{end}}
+    {{if lt .Page (sub .TotalPages 2)}}<span class="px-1 text-slate-600">…</span>{{end}}
+    {{if lt .Page (sub .TotalPages 1)}}<button data-action="go-to-page" data-page="{{.TotalPages}}" class="activity-page-button">{{.TotalPages}}</button>{{end}}
+    <button data-action="go-to-page" data-page="{{if lt .Page .TotalPages}}{{add .Page 1}}{{else}}{{.TotalPages}}{{end}}" class="activity-page-button" {{if eq .Page .TotalPages}}disabled{{end}}>Next</button>
+  </div>
+</nav>
 {{end}}
 {{else}}
-<div class="text-center text-slate-400 py-12">No activity logs found.</div>
+<div class="py-12 text-center text-sm text-slate-500">No Activity Entries match these filters.</div>
 {{end}}
-<script>
-// Set job gradients and icons for activity table using data-job-type attributes
-function setJobVisualsForActivityTable() {
-	// For each card, use the .job-gradient-bg class to find the gradient background
-	document.querySelectorAll('.job-gradient-bg').forEach(function(banner) {
-		var jobType = banner.getAttribute('data-job-type');
-		var def = window.jobDefinitions && jobType && window.jobDefinitions[jobType];
-		console.debug('[ActivityTable] Card', banner, 'jobType:', jobType, 'def:', def);
-		// Set full className for banner (gradient background, absolute)
-		if (def && def.gradient) {
-			banner.className = 'absolute inset-0 z-0 pointer-events-none job-gradient-bg bg-gradient-to-r ' + def.gradient;
-		} else {
-			banner.className = 'absolute inset-0 z-0 pointer-events-none job-gradient-bg bg-slate-800';
-		}
-		// Find the index from the id (job-gradient-#)
-		var id = banner.id || '';
-		var idx = id.startsWith('job-gradient-') ? id.replace('job-gradient-', '') : null;
-		// Set icon for under-title icon
-		var iconSpan = document.getElementById('job-icon-' + idx);
-		if (iconSpan) {
-			if (def && def.icon) {
-				iconSpan.innerHTML = def.icon;
-				iconSpan.className = def.iconColor || '';
-				if (window.renderLucideIcons) {
-					window.renderLucideIcons(iconSpan);
-				}
-			} else {
-				iconSpan.innerHTML = '<svg class="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" /></svg>';
-				iconSpan.className = 'text-slate-400';
-			}
-		}
-		// Badge label
-		var badgeLabel = document.getElementById('job-badge-label-' + idx);
-		if (badgeLabel) {
-			if (def && def.name) {
-				badgeLabel.textContent = def.name;
-			} else if (jobType) {
-				badgeLabel.textContent = jobType;
-			} else {
-				badgeLabel.textContent = 'Unknown';
-			}
-		}
-		// Set full className for badge (gradient background)
-		var badge = document.getElementById('job-badge-' + idx);
-		if (badge) {
-			if (def && def.gradient) {
-				badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ring-1 cursor-pointer group bg-gradient-to-r ' + def.gradient;
-			} else {
-				badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ring-1 cursor-pointer group bg-slate-700';
-			}
-		}
-	});
-}
-// Run on DOMContentLoaded and after htmx swaps
-document.addEventListener('DOMContentLoaded', setJobVisualsForActivityTable);
-function runJobVisualsAfterHTMX() {
-	setTimeout(setJobVisualsForActivityTable, 0);
-}
-document.body.addEventListener('htmx:afterSwap', runJobVisualsAfterHTMX);
-document.body.addEventListener('htmx:afterSettle', runJobVisualsAfterHTMX);
-</script>

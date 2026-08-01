@@ -35,6 +35,7 @@ func TestUIRuntimeAssetsAreLocal(t *testing.T) {
 	for _, path := range []string{
 		"web/static/css/app.css",
 		"web/static/js/app.js",
+		"web/static/js/activity.js",
 		"web/static/js/jobs.js",
 		"web/static/js/vendor/htmx.min.js",
 		"web/static/js/vendor/lucide.min.js",
@@ -42,6 +43,27 @@ func TestUIRuntimeAssetsAreLocal(t *testing.T) {
 	} {
 		if info, err := os.Stat(filepath.Join(root, filepath.FromSlash(path))); err != nil || info.Size() == 0 {
 			t.Errorf("required local asset %s is missing or empty", path)
+		}
+	}
+}
+
+func TestActivityUsesExternalScriptAndDelegatedActions(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..")
+	activity := readUIFile(t, filepath.Join(root, "web", "templates", "activity.html"))
+	table := readUIFile(t, filepath.Join(root, "web", "templates", "activity_table.html"))
+	script := readUIFile(t, filepath.Join(root, "web", "static", "js", "activity.js"))
+
+	if !strings.Contains(activity, `defer src="/static/js/activity.js"`) {
+		t.Error("activity.html is missing its external script")
+	}
+	for name, content := range map[string]string{"activity.html": activity, "activity_table.html": table} {
+		if strings.Contains(content, "onclick=") || strings.Contains(content, "onchange=") || strings.Contains(content, "onkeyup=") || strings.Contains(content, "<script>") {
+			t.Errorf("%s still contains inline behavior", name)
+		}
+	}
+	for _, expected := range []string{"function escapeHTML", "function applyFilters", "function renderActivityTimeline", "[data-action]"} {
+		if !strings.Contains(script, expected) {
+			t.Errorf("activity.js is missing %s", expected)
 		}
 	}
 }
