@@ -15,6 +15,7 @@ Thank you for your interest in contributing to Blockbusterr! This guide will hel
 ### Prerequisites
 
 - Go 1.21 or higher
+- Node.js 20 or higher (only when changing frontend assets)
 - Docker (optional, for testing)
 - Git
 
@@ -55,7 +56,11 @@ make test-verbose   # Run tests with verbose output
 make lint           # Run linter
 make fmt            # Format code
 make check          # Run fmt, vet, and lint
+make assets         # Rebuild committed CSS and browser libraries
+make assets-check   # Verify committed assets match their pinned sources
 ```
+
+The application serves compiled files from `web/static` and does not run Node.js in production. Ordinary Go development uses the committed assets. When templates, shared frontend JavaScript, Tailwind configuration, or frontend dependencies change, run `make assets` and commit the generated files.
 
 ## Pull Request Process
 

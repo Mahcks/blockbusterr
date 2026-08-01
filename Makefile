@@ -1,4 +1,4 @@
-.PHONY: help build run dev test test-verbose clean install stop start restart lint fmt vet
+.PHONY: help build run dev test test-verbose clean install stop start restart lint fmt vet assets assets-check
 
 # Default target
 help:
@@ -10,6 +10,8 @@ help:
 	@echo "  build           Build the application binary"
 	@echo "  install         Install dependencies"
 	@echo "  clean           Remove build artifacts"
+	@echo "  assets          Compile and vendor frontend assets"
+	@echo "  assets-check    Verify committed frontend assets are current"
 	@echo ""
 	@echo "Run Commands:"
 	@echo "  run             Build and run the application"
@@ -49,6 +51,15 @@ install:
 	@go mod download
 	@go mod tidy
 	@echo "✓ Dependencies installed"
+
+# Node is build-only; the compiled assets remain available to ordinary Go builds.
+assets:
+	@npm ci
+	@npm run build:assets
+
+assets-check:
+	@npm ci
+	@npm run check:assets
 
 # Clean build artifacts
 clean:

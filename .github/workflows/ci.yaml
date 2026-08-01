@@ -39,6 +39,15 @@ jobs:
         with:
           go-version: "1.25.6"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Verify frontend assets
+        run: npm ci && npm run check:assets
+
       - name: Download dependencies
         run: go mod download
 

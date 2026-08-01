@@ -4,259 +4,45 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{.Title}}</title>
-    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              primary: "#3b82f6",
-              secondary: "#1e293b",
-            },
-            animation: {
-              'slide-in': 'slide-in 0.3s ease-out',
-              'fade-in': 'fade-in 0.2s ease-out',
-            },
-            keyframes: {
-              'slide-in': {
-                '0%': { transform: 'translateX(100%)', opacity: '0' },
-                '100%': { transform: 'translateX(0)', opacity: '1' },
-              },
-              'fade-in': {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-            },
-          },
-        },
-      };
-    </script>
-    <style>
-      /* Custom scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #1e293b;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #475569;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #64748b;
-      }
-    </style>
+    <link rel="stylesheet" href="/static/css/app.css" />
+    <script defer src="/static/js/vendor/htmx.min.js"></script>
+    <script defer src="/static/js/vendor/lucide.min.js"></script>
+    <script defer src="/static/js/app.js"></script>
   </head>
-  <body class="bg-slate-900 text-slate-100 min-h-screen">
-    <header class="bg-slate-800 border-b border-slate-700">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="py-6">
-          <h1 class="text-3xl font-bold text-blue-400">Blockbusterr</h1>
-        </div>
-        <!-- Navigation -->
-        <nav class="flex space-x-1 pb-0 -mb-px">
-          <a href="/jobs" class="px-4 py-3 text-slate-300 hover:text-blue-400 hover:border-b-2 hover:border-blue-400 transition-colors {{if eq .Title "Blockbusterr - Jobs"}}text-blue-400 border-b-2 border-blue-400{{end}}">
-            Jobs
-          </a>
-          <a href="/filters" class="px-4 py-3 text-slate-300 hover:text-blue-400 hover:border-b-2 hover:border-blue-400 transition-colors {{if eq .Title "Blockbusterr - Filters"}}text-blue-400 border-b-2 border-blue-400{{end}}">
-            Filters
-          </a>
-          <a href="/activity" class="px-4 py-3 text-slate-300 hover:text-blue-400 hover:border-b-2 hover:border-blue-400 transition-colors {{if eq .Title "Blockbusterr - Activity Log"}}text-blue-400 border-b-2 border-blue-400{{end}}">
-            Activity
-          </a>
-          <a href="/config" class="px-4 py-3 text-slate-300 hover:text-blue-400 hover:border-b-2 hover:border-blue-400 transition-colors {{if or (eq .Title "Blockbusterr - Configuration") (eq .Title "Blockbusterr - Settings")}}text-blue-400 border-b-2 border-blue-400{{end}}">
-            Settings
-          </a>
-          <div class="flex-1"></div>
-          <a href="https://blockbusterr.dev/getting-started/quickstart/" target="_blank" rel="noopener noreferrer" class="px-4 py-3 text-slate-300 hover:text-blue-400 hover:border-b-2 hover:border-blue-400 transition-colors flex items-center gap-1">
-            Documentation
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-            </svg>
-          </a>
+  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-blue-600 focus:px-4 focus:py-2 focus:text-white">
+      Skip to content
+    </a>
+
+    <header class="border-b border-slate-800 bg-slate-900">
+      <div class="mx-auto flex max-w-7xl items-center gap-5 px-4 sm:px-6 lg:px-8">
+        <a href="/jobs" class="flex shrink-0 items-center gap-2 py-3 font-semibold tracking-tight text-slate-50" aria-label="Blockbusterr jobs">
+          <svg class="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2" stroke-width="2"></rect>
+            <path d="M7 5v14M17 5v14M3 9h4M17 9h4M3 15h4M17 15h4" stroke-width="2"></path>
+          </svg>
+          Blockbusterr
+        </a>
+
+        <nav class="min-w-0 flex-1 overflow-x-auto" aria-label="Primary navigation">
+          <div class="flex min-w-max items-stretch">
+            <a href="/jobs" {{if eq .Title "Blockbusterr - Jobs"}}aria-current="page"{{end}} class="border-b-2 px-3 py-4 text-sm font-medium transition-colors {{if eq .Title "Blockbusterr - Jobs"}}border-blue-400 text-blue-300{{else}}border-transparent text-slate-300 hover:border-slate-600 hover:text-slate-50{{end}}">Jobs</a>
+            <a href="/filters" {{if eq .Title "Blockbusterr - Filters"}}aria-current="page"{{end}} class="border-b-2 px-3 py-4 text-sm font-medium transition-colors {{if eq .Title "Blockbusterr - Filters"}}border-blue-400 text-blue-300{{else}}border-transparent text-slate-300 hover:border-slate-600 hover:text-slate-50{{end}}">Filters</a>
+            <a href="/activity" {{if eq .Title "Blockbusterr - Activity Log"}}aria-current="page"{{end}} class="border-b-2 px-3 py-4 text-sm font-medium transition-colors {{if eq .Title "Blockbusterr - Activity Log"}}border-blue-400 text-blue-300{{else}}border-transparent text-slate-300 hover:border-slate-600 hover:text-slate-50{{end}}">Activity</a>
+            <a href="/config" {{if or (eq .Title "Blockbusterr - Configuration") (eq .Title "Blockbusterr - Settings")}}aria-current="page"{{end}} class="border-b-2 px-3 py-4 text-sm font-medium transition-colors {{if or (eq .Title "Blockbusterr - Configuration") (eq .Title "Blockbusterr - Settings")}}border-blue-400 text-blue-300{{else}}border-transparent text-slate-300 hover:border-slate-600 hover:text-slate-50{{end}}">Settings</a>
+          </div>
         </nav>
+
+        <a href="https://blockbusterr.dev/getting-started/quickstart/" target="_blank" rel="noopener noreferrer" class="hidden shrink-0 items-center gap-1.5 py-3 text-sm text-slate-300 transition-colors hover:text-slate-50 sm:flex">
+          Docs
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+          </svg>
+        </a>
       </div>
     </header>
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{{embed}}</main>
-    
-    <!-- Notification Container -->
-    <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
-    <script>
-      // Reusable password toggle component
-      window.togglePassword = function (inputId, button) {
-        const input = document.getElementById(inputId);
-        const eyeOpen = button.querySelector(".eye-open");
-        const eyeClosed = button.querySelector(".eye-closed");
-
-        if (input.type === "password") {
-          input.type = "text";
-          eyeOpen.classList.add("hidden");
-          eyeClosed.classList.remove("hidden");
-        } else {
-          input.type = "password";
-          eyeOpen.classList.remove("hidden");
-          eyeClosed.classList.add("hidden");
-        }
-      };
-
-      // Notification system
-      window.showNotification = function(message, type = 'success') {
-        const container = document.getElementById('notification-container');
-        const notification = document.createElement('div');
-        
-        const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-yellow-500';
-        const icon = type === 'success' ? 
-          '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' :
-          '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
-        
-        notification.className = `${bgColor} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] transform transition-all duration-300 translate-x-full`;
-        notification.innerHTML = `
-          ${icon}
-          <span class="flex-1">${message}</span>
-          <button onclick="this.parentElement.remove()" class="hover:bg-white/20 rounded p-1">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
-        `;
-        
-        container.appendChild(notification);
-        
-        // Animate in
-        setTimeout(() => notification.classList.remove('translate-x-full'), 10);
-        
-        // Auto remove after 5 seconds
-        setTimeout(() => {
-          notification.classList.add('translate-x-full');
-          setTimeout(() => notification.remove(), 300);
-        }, 5000);
-      };
-
-      // Render Lucide icons for initial and dynamically injected content.
-      window.renderLucideIcons = function(root) {
-        if (!window.lucide || typeof window.lucide.createIcons !== 'function') {
-          return;
-        }
-
-        if (root && root.querySelectorAll) {
-          window.lucide.createIcons({
-            nodes: root.querySelectorAll('[data-lucide]')
-          });
-          return;
-        }
-
-        window.lucide.createIcons();
-      };
-
-      document.addEventListener('DOMContentLoaded', function() {
-        window.renderLucideIcons(document);
-      });
-
-      // Toggle advanced settings for jobs
-      window.toggleAdvanced = function(jobName, button) {
-        const advancedDiv = document.getElementById(`${jobName}-advanced`);
-        const icon = button.querySelector('svg');
-        
-        if (advancedDiv.classList.contains('hidden')) {
-          advancedDiv.classList.remove('hidden');
-          icon.style.transform = 'rotate(180deg)';
-        } else {
-          advancedDiv.classList.add('hidden');
-          icon.style.transform = 'rotate(0deg)';
-        }
-      };
-
-      // Test connection with current form values
-      window.testConnection = function(service, button) {
-        const form = document.querySelector('form');
-        const formData = new FormData(form);
-        
-        let url, params = {};
-        
-        if (service === 'trakt') {
-          url = '/v1/trakt/validate';
-          const clientId = formData.get('trakt.client_id') || '';
-          const clientSecret = formData.get('trakt.client_secret') || '';
-          
-          if (!clientId.trim()) {
-            showNotification('Trakt Client ID is required', 'error');
-            return;
-          }
-          
-          params.client_id = clientId;
-          params.client_secret = clientSecret;
-          // Force test mode by adding a flag
-          params.test = 'true';
-        } else if (service === 'radarr') {
-          url = '/v1/radarr/validate';
-          const radarrUrl = formData.get('radarr.url') || '';
-          const apiKey = formData.get('radarr.api_key') || '';
-          
-          if (!radarrUrl.trim() || !apiKey.trim()) {
-            showNotification('Radarr URL and API Key are required', 'error');
-            return;
-          }
-          
-          params.url = radarrUrl;
-          params.api_key = apiKey;
-          params.test = 'true';
-        } else if (service === 'sonarr') {
-          url = '/v1/sonarr/validate';
-          const sonarrUrl = formData.get('sonarr.url') || '';
-          const apiKey = formData.get('sonarr.api_key') || '';
-          
-          if (!sonarrUrl.trim() || !apiKey.trim()) {
-            showNotification('Sonarr URL and API Key are required', 'error');
-            return;
-          }
-          
-          params.url = sonarrUrl;
-          params.api_key = apiKey;
-          params.test = 'true';
-        } else if (service === 'jellyseerr') {
-          url = '/v1/jellyseerr/validate';
-          const jellyseerrUrl = formData.get('jellyseerr.url') || '';
-          const apiKey = formData.get('jellyseerr.api_key') || '';
-          
-          if (!jellyseerrUrl.trim() || !apiKey.trim()) {
-            showNotification('Jellyseerr URL and API Key are required', 'error');
-            return;
-          }
-          
-          params.url = jellyseerrUrl;
-          params.api_key = apiKey;
-          params.test = 'true';
-        }
-        
-        // Add query params
-        const queryString = new URLSearchParams(params).toString();
-        const fullUrl = `${url}?${queryString}`;
-        
-        // Disable button and show loading
-        button.disabled = true;
-        const originalText = button.innerHTML;
-        button.innerHTML = '<svg class="animate-spin h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-        
-        fetch(fullUrl)
-          .then(res => res.json())
-          .then(data => {
-            if (data.connected || data.message) {
-              showNotification(data.message || `${service.charAt(0).toUpperCase() + service.slice(1)} connection successful!`, 'success');
-            } else if (data.error) {
-              showNotification(data.error, 'error');
-            }
-          })
-          .catch(err => {
-            showNotification(`Failed to connect to ${service}: ` + err.message, 'error');
-          })
-          .finally(() => {
-            button.disabled = false;
-            button.innerHTML = originalText;
-          });
-      };
-    </script>
+    <main id="main-content" tabindex="-1" class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{{embed}}</main>
+    <div id="notification-container" class="fixed right-4 top-4 z-50 max-w-[calc(100vw-2rem)] space-y-2" aria-live="polite"></div>
   </body>
 </html>
