@@ -33,6 +33,8 @@ var allowedHeaders = []string{
 	"X-CSRF-Token",
 }
 
+const shutdownTimeout = 5 * time.Second
+
 func New(gctx global.Context) error {
 	// Check DISABLE_UI environment variable (UI enabled by default)
 	uiEnabled := true
@@ -211,7 +213,7 @@ func New(gctx global.Context) error {
 	case <-gctx.Done():
 		// A shutdown signal was received before the server started,
 		// so try to stop the server.
-		if err := app.Shutdown(); err != nil {
+		if err := app.ShutdownWithTimeout(shutdownTimeout); err != nil {
 			log.Error("error while shutting down server", "error", err)
 		}
 		return nil
@@ -227,7 +229,7 @@ func New(gctx global.Context) error {
 	<-gctx.Done()
 
 	// Shutdown the server
-	if err := app.Shutdown(); err != nil {
+	if err := app.ShutdownWithTimeout(shutdownTimeout); err != nil {
 		log.Error("error while shutting down server", "error", err)
 		return err
 	}

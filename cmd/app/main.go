@@ -101,9 +101,11 @@ func main() {
 		go func() {
 			select {
 			case <-time.After(time.Minute):
+				slog.Warn("Force shutdown - timed out")
 			case <-interrupt:
+				slog.Warn("Force shutdown - second signal received")
 			}
-			slog.Warn("Force shutdown - timed out")
+			os.Exit(1)
 		}()
 
 		slog.Warn("Shutting down...")
