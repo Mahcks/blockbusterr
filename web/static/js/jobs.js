@@ -333,9 +333,11 @@
     const legacyJobs = allJobs.filter(job => job.id.startsWith('legacy_'));
     const banner = document.getElementById('migration-banner');
     const countEl = document.getElementById('legacy-count');
+    const action = banner.querySelector('[data-action="migrate-jobs"]');
 
     if (legacyJobs.length > 0) {
       countEl.textContent = legacyJobs.length;
+      action.textContent = `Upgrade ${legacyJobs.length} ${legacyJobs.length === 1 ? 'job' : 'jobs'}`;
       banner.classList.remove('hidden');
     } else {
       banner.classList.add('hidden');
@@ -348,16 +350,25 @@
   }
 
   async function migrateJobs() {
-    if (!confirm('This will convert all legacy jobs to the new dynamic format. Your job settings will be preserved. Continue?')) {
+    const banner = document.getElementById('migration-banner');
+    const action = banner.querySelector('[data-action="migrate-jobs"]');
+    const status = document.getElementById('migration-status');
+    const count = Number(document.getElementById('legacy-count').textContent) || 0;
+    if (!confirm(`Upgrade ${count} legacy ${count === 1 ? 'job' : 'jobs'}? Existing settings are preserved and the v1 entries are disabled after the new configuration is saved.`)) {
       return;
     }
+
+    action.disabled = true;
+    action.setAttribute('aria-busy', 'true');
+    action.textContent = 'Upgrading…';
+    status.classList.add('hidden');
 
     try {
       const response = await fetch('/v1/jobs/migrate', {
         method: 'POST'
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(data.error || 'Migration failed');
@@ -365,17 +376,22 @@
 
       if (data.count === 0) {
         showNotification('No legacy jobs to migrate', 'info');
+        banner.classList.add('hidden');
       } else {
-        showNotification(`Successfully migrated ${data.count} jobs!`, 'success');
-        // Reload jobs data
+        showNotification(`${data.count} ${data.count === 1 ? 'job' : 'jobs'} upgraded`, 'success');
         await loadData();
         renderJobsList();
       }
-
-      // Hide the banner
-      document.getElementById('migration-banner').classList.add('hidden');
     } catch (error) {
+      status.textContent = error.message || 'Migration failed. Your existing jobs were not changed.';
+      status.classList.remove('hidden');
       showNotification(error.message, 'error');
+    } finally {
+      action.disabled = false;
+      action.removeAttribute('aria-busy');
+      if (!banner.classList.contains('hidden')) {
+        action.textContent = `Upgrade ${count} ${count === 1 ? 'job' : 'jobs'}`;
+      }
     }
   }
 

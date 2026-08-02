@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -94,5 +95,46 @@ func TestCustomizeRulesCreatesAndAssignsJobSpecificCopy(t *testing.T) {
 	}
 	if result.RuleSet.Name != "Trending Simkl Rules" || result.RuleSet.Movies == nil || result.RuleSet.Movies.MinRating != 7 {
 		t.Fatalf("unexpected cloned rule set: %+v", result.RuleSet)
+	}
+}
+
+func TestMigrateLegacyJobsPersistsUpgrade(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	cfg := &config.Config{ConfigFilePath: configPath}
+	cfg.Jobs.TrendingMovies.Enabled = true
+	cfg.Jobs.TrendingMovies.Limit = 75
+	app := fiber.New()
+	AddDynamicJobsRoutes(app.Group("/v1"), dynamicJobsTestContext{Context: context.Background(), cfg: cfg})
+
+	response, err := app.Test(httptest.NewRequest("POST", "/v1/jobs/migrate", nil), -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != fiber.StatusOK {
+		t.Fatalf("status = %d, want %d", response.StatusCode, fiber.StatusOK)
+	}
+	if info, err := os.Stat(configPath); err != nil || info.Size() == 0 {
+		t.Fatalf("saved config missing or empty: %v", err)
+	}
+	if cfg.Jobs.TrendingMovies.Enabled || len(cfg.Jobs.List) != 1 || cfg.Jobs.List[0].Limit != 75 {
+		t.Fatalf("unexpected migrated config: %+v", cfg.Jobs)
+	}
+}
+
+func TestMigrateLegacyJobsRestoresStateWhenSaveFails(t *testing.T) {
+	cfg := &config.Config{ConfigFilePath: filepath.Join(t.TempDir(), "missing", "config.yaml")}
+	cfg.Jobs.TrendingMovies.Enabled = true
+	app := fiber.New()
+	AddDynamicJobsRoutes(app.Group("/v1"), dynamicJobsTestContext{Context: context.Background(), cfg: cfg})
+
+	response, err := app.Test(httptest.NewRequest("POST", "/v1/jobs/migrate", nil), -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != fiber.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", response.StatusCode, fiber.StatusInternalServerError)
+	}
+	if !cfg.Jobs.TrendingMovies.Enabled || len(cfg.Jobs.List) != 0 {
+		t.Fatalf("failed migration changed config: %+v", cfg.Jobs)
 	}
 }

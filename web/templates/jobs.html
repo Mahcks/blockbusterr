@@ -10,48 +10,21 @@
 </aside>
 {{end}}
 
-<!-- Legacy Jobs Migration Banner (hidden by default, shown via JS when legacy jobs detected) -->
-<div
-  id="migration-banner"
-  class="hidden bg-blue-900/30 border border-blue-500/50 text-blue-100 p-4 mb-6 rounded-lg"
->
-  <div class="flex items-start gap-3">
-    <svg
-      class="w-6 h-6 text-blue-400 flex-shrink-0 mt-0.5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-      />
-    </svg>
-    <div class="flex-1">
-      <h3 class="font-semibold text-blue-200">Legacy Jobs Detected</h3>
-      <p class="text-sm text-blue-300 mt-1">
-        You have <span id="legacy-count" class="font-medium">0</span> jobs using the old configuration format.
-        Migrate them to the new dynamic job system for full editing capabilities (rename, delete, duplicate).
-      </p>
-      <div class="mt-3 flex gap-3">
-        <button
-          data-action="migrate-jobs"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          Migrate Jobs
-        </button>
-        <button
-          data-action="dismiss-migration"
-          class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium rounded-lg transition-colors"
-        >
-          Dismiss
-        </button>
-      </div>
-    </div>
+<section id="migration-banner" class="upgrade-notice hidden" aria-labelledby="migration-title">
+  <i data-lucide="replace" aria-hidden="true"></i>
+  <div class="upgrade-notice-copy">
+    <h2 id="migration-title">Upgrade legacy jobs</h2>
+    <p><span id="legacy-count">0</span> jobs use the v1 format. Upgrade them to assign Rule Sets and use the complete job editor.</p>
+    <p class="upgrade-notice-detail">Schedules, limits, delivery settings, and enabled state are preserved. The old entries are disabled only after the new configuration is saved.</p>
+    <p id="migration-status" class="upgrade-notice-status hidden" role="status"></p>
   </div>
-</div>
+  <div class="upgrade-notice-actions">
+    <button type="button" data-action="migrate-jobs" class="job-secondary-button">Upgrade jobs</button>
+    <button type="button" data-action="dismiss-migration" class="icon-button" aria-label="Dismiss upgrade notice">
+      <i data-lucide="x" aria-hidden="true"></i>
+    </button>
+  </div>
+</section>
 
 <div id="jobs-page" data-global-mode="{{.Config.Jobs.Mode}}">
   <!-- Add Job Section -->

@@ -295,6 +295,35 @@
   .readiness-inline a { flex: none; color: rgb(253 230 138); font-weight: 600; }
   .readiness-inline a:hover { text-decoration: underline; }
 
+  .upgrade-notice {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 11px;
+    margin-bottom: 14px;
+    border: 1px solid rgb(113 63 18);
+    border-radius: 6px;
+    background: rgb(113 63 18 / 0.12);
+    padding: 12px;
+  }
+
+  .upgrade-notice.hidden { display: none; }
+  .upgrade-notice > svg { width: 17px; height: 17px; margin-top: 1px; color: rgb(250 204 21); }
+  .upgrade-notice-copy { min-width: 0; }
+  .upgrade-notice-copy h2 { color: rgb(244 244 245); font-size: 13px; font-weight: 650; }
+  .upgrade-notice-copy p { margin-top: 2px; color: rgb(212 212 216); font-size: 12px; line-height: 1.45; }
+  .upgrade-notice-copy p span { color: rgb(253 230 138); font-weight: 650; }
+  .upgrade-notice-copy .upgrade-notice-detail { color: rgb(161 161 170); }
+  .upgrade-notice-copy .upgrade-notice-status { color: rgb(252 165 165); font-weight: 600; }
+  .upgrade-notice-actions { display: flex; align-items: center; gap: 6px; }
+  .upgrade-notice-actions .icon-button { width: 32px; height: 32px; }
+  .upgrade-notice-actions .icon-button svg { width: 15px; height: 15px; }
+
+  @media (max-width: 640px) {
+    .upgrade-notice { grid-template-columns: 18px minmax(0, 1fr); }
+    .upgrade-notice-actions { grid-column: 2; justify-content: space-between; }
+  }
+
   .settings-page {
     padding-bottom: 96px;
   }

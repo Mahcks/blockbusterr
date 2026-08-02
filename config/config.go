@@ -1029,6 +1029,7 @@ func (c *Config) getLegacyJobsAsDynamic() []DynamicJob {
 // MigrateLegacyJobs converts all enabled legacy jobs to dynamic jobs and disables the legacy entries
 func (c *Config) MigrateLegacyJobs() ([]DynamicJob, error) {
 	migratedJobs := make([]DynamicJob, 0)
+	originalJobs := append([]DynamicJob(nil), c.Jobs.List...)
 
 	// Get legacy jobs as dynamic format
 	legacyJobs := c.getLegacyJobsAsDynamic()
@@ -1037,11 +1038,12 @@ func (c *Config) MigrateLegacyJobs() ([]DynamicJob, error) {
 		// Create a new ID without the legacy prefix
 		newID := strings.TrimPrefix(legacyJob.ID, "legacy_")
 		legacyJob.ID = newID
+		legacyJob.RuleSetID = defaultRuleSetID(legacyJob.MediaType)
 
 		// Add to dynamic list
 		if err := c.AddDynamicJob(legacyJob); err != nil {
-			// Job might already exists, skip
-			continue
+			c.Jobs.List = originalJobs
+			return nil, fmt.Errorf("failed to migrate %q: %w", legacyJob.Name, err)
 		}
 		migratedJobs = append(migratedJobs, legacyJob)
 	}

@@ -439,6 +439,8 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 	// Migrate legacy jobs to dynamic list
 	router.Post("/jobs/migrate", func(c *fiber.Ctx) error {
 		cfg := gctx.Config()
+		jobsBefore := cfg.Jobs
+		jobsBefore.List = append([]config.DynamicJob(nil), cfg.Jobs.List...)
 
 		migratedJobs, err := cfg.MigrateLegacyJobs()
 		if err != nil {
@@ -447,15 +449,9 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			})
 		}
 
-		if len(migratedJobs) == 0 {
-			return c.JSON(fiber.Map{
-				"message": "No legacy jobs to migrate",
-				"count":   0,
-			})
-		}
-
 		// Save config to persist changes
 		if err := cfg.Save(); err != nil {
+			cfg.Jobs = jobsBefore
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to save config: " + err.Error(),
 			})
@@ -468,8 +464,12 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			})
 		}
 
+		message := "No legacy jobs to migrate"
+		if len(migratedJobs) > 0 {
+			message = fmt.Sprintf("Successfully migrated %d legacy jobs", len(migratedJobs))
+		}
 		return c.JSON(fiber.Map{
-			"message": fmt.Sprintf("Successfully migrated %d legacy jobs", len(migratedJobs)),
+			"message": message,
 			"count":   len(migratedJobs),
 			"jobs":    migratedJobs,
 		})
