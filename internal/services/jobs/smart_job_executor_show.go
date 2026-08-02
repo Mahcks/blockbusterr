@@ -88,6 +88,7 @@ func (e *SmartShowJobExecutor) Execute(
 
 	// Apply adaptive filters with decision tracking
 	filteredShows, scoreMap, showDecisions := e.evaluateShowsWithAdaptiveFilters(
+		ctx,
 		shows,
 		percentiles,
 		jobConfig,
@@ -115,8 +116,11 @@ func (e *SmartShowJobExecutor) Execute(
 	}
 
 	var executionErr error
-	if jobConfig.Mode == "jellyseerr" {
+	if ctx.Err() != nil {
+		executionErr = ctx.Err()
+	} else if jobConfig.Mode == "jellyseerr" {
 		showExecutor.executeShowsJellyseerr(ctx, regularJobConfig, filteredShows, scoreMap)
+		executionErr = ctx.Err()
 	} else {
 		executionErr = showExecutor.executeShowsDirect(ctx, regularJobConfig, filteredShows, scoreMap)
 	}
@@ -149,6 +153,7 @@ func (e *SmartShowJobExecutor) Execute(
 
 // evaluateShowsWithAdaptiveFilters evaluates shows with adaptive rating thresholds
 func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
+	ctx context.Context,
 	shows []integrations.Show,
 	percentiles map[int]float64,
 	jobConfig SmartJobConfig,
@@ -157,6 +162,9 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 	passedShows := make([]integrations.Show, 0)
 
 	for _, show := range shows {
+		if ctx.Err() != nil {
+			break
+		}
 		decision := ContentDecision{
 			Title:       show.Title,
 			Year:        show.Year,

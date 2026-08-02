@@ -1,33 +1,13 @@
 {{define "jobs"}}
 
 <!-- Info Alert -->
-{{template "alert-info" .AlertInfo}} {{if .DiscoveryDisabled}}
-<div
-  class="bg-yellow-200 border-l-4 border-yellow-500 text-yellow-900 p-4 mb-6 rounded-lg shadow"
->
-  <div class="flex items-center">
-    <svg
-      class="w-6 h-6 mr-2 text-yellow-600"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M12 9v2m0 4h.01M10.29 3.86l-7.09 12.26A2 2 0 005.18 19h13.64a2 2 0 001.98-2.88l-7.09-12.26a2 2 0 00-3.42 0z"
-      />
-    </svg>
-    <span class="font-semibold">Warning:</span>
-    <span class="ml-2"
-      >No discovery source is configured. Add TMDB, Simkl, or Trakt
-      credentials on the
-      <a href="/config" class="underline text-blue-700">settings</a> page to
-      enable discovery jobs.</span
-    >
-  </div>
-</div>
+{{template "alert-info" .AlertInfo}}
+{{if not .Readiness.Complete}}
+<aside class="readiness-inline" aria-label="Setup status">
+  <i data-lucide="circle-alert" aria-hidden="true"></i>
+  <span><strong>{{.Readiness.Automation.Title}}</strong> {{.Readiness.Automation.Message}}</span>
+  <a href="{{if ne .Readiness.Discovery.State "ready"}}{{.Readiness.Discovery.Href}}{{else if ne .Readiness.Delivery.State "ready"}}{{.Readiness.Delivery.Href}}{{else}}{{.Readiness.Automation.Href}}{{end}}">{{if eq .Readiness.Automation.State "not_started"}}Create job{{else}}Review setup{{end}}</a>
+</aside>
 {{end}}
 
 <!-- Legacy Jobs Migration Banner (hidden by default, shown via JS when legacy jobs detected) -->
@@ -157,10 +137,9 @@
           d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
         ></path>
       </svg>
-      <p class="text-lg font-medium">No active jobs</p>
-      <p class="text-sm mt-1">
-        Create a job to start discovering content.
-      </p>
+      <p class="text-base font-medium text-slate-200">Create your first discovery job</p>
+      <p class="mx-auto mt-1 max-w-md text-sm">Choose a provider, assign a Rule Set, preview the results, then enable automation.</p>
+      <button type="button" data-action="open-add-job" class="job-secondary-button mt-4">Create job</button>
     </div>
 
 	<div id="unavailable-jobs-section" class="hidden border-t border-zinc-700">

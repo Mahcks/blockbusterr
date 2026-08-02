@@ -86,14 +86,17 @@ func (e *MovieJobExecutor) Execute(
 	e.lastDecisions = runDecisions
 
 	// Apply filters with detailed decision tracking
-	filteredMovies, scoreMap, movieDecisions := e.evaluateMoviesWithDecisions(movies, jobConfig)
+	filteredMovies, scoreMap, movieDecisions := e.evaluateMoviesWithDecisions(ctx, movies, jobConfig)
 	runDecisions.Decisions = movieDecisions
 	runDecisions.PassedFilters = len(filteredMovies)
 
 	// Route to appropriate handler based on mode
 	var executionErr error
-	if jobConfig.Mode == "jellyseerr" {
+	if ctx.Err() != nil {
+		executionErr = ctx.Err()
+	} else if jobConfig.Mode == "jellyseerr" {
 		e.executeMoviesJellyseerr(ctx, jobConfig, filteredMovies, scoreMap)
+		executionErr = ctx.Err()
 	} else {
 		executionErr = e.executeMoviesDirect(ctx, jobConfig, filteredMovies, scoreMap)
 	}
@@ -360,7 +363,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 
 // executeMoviesJellyseerr requests movies via Jellyseerr
 func (e *MovieJobExecutor) executeMoviesJellyseerr(
-	_ context.Context,
+	ctx context.Context,
 	jobConfig JobConfig,
 	movies []integrations.Movie,
 	scoreMap map[int]ScoreInfo,
@@ -379,8 +382,11 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 	failed := 0
 
 	for _, movie := range movies {
+		if ctx.Err() != nil {
+			return
+		}
 		// Check if movie already exists in Jellyseerr
-		mediaInfo, err := jellyseerrClient.GetMovieInfo(movie.IDs.TMDB)
+		mediaInfo, err := jellyseerrClient.GetMovieInfoContext(ctx, movie.IDs.TMDB)
 		if err != nil {
 			log.Debugf("Failed to check Jellyseerr status for '%s (%d)': %v", movie.Title, movie.Year, err)
 		} else if mediaInfo.HasMediaInfo() {
@@ -448,7 +454,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 			}
 			requested++
 		} else {
-			result, err := jellyseerrClient.RequestMovie(movie.IDs.TMDB)
+			result, err := jellyseerrClient.RequestMovieContext(ctx, movie.IDs.TMDB)
 			if err != nil {
 				// Check if it's a duplicate error
 				if strings.Contains(err.Error(), "already") || strings.Contains(err.Error(), "exists") || strings.Contains(err.Error(), "requested") {
@@ -585,6 +591,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 
 // evaluateMoviesWithDecisions evaluates all movies through filters and scoring, tracking detailed decisions
 func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
+	ctx context.Context,
 	movies []integrations.Movie,
 	jobConfig JobConfig,
 ) ([]integrations.Movie, map[int]ScoreInfo, []ContentDecision) {
@@ -593,6 +600,9 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 
 	// Evaluate each movie through filters
 	for _, movie := range movies {
+		if ctx.Err() != nil {
+			break
+		}
 		decision := ContentDecision{
 			Title:       movie.Title,
 			Year:        movie.Year,

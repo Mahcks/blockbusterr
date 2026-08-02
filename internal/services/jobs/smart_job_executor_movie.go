@@ -102,6 +102,7 @@ func (e *SmartMovieJobExecutor) Execute(
 
 	// Apply adaptive filters with decision tracking
 	filteredMovies, scoreMap, movieDecisions := e.evaluateMoviesWithAdaptiveFilters(
+		ctx,
 		movies,
 		percentiles,
 		jobConfig,
@@ -131,8 +132,11 @@ func (e *SmartMovieJobExecutor) Execute(
 	}
 
 	var executionErr error
-	if jobConfig.Mode == "jellyseerr" {
+	if ctx.Err() != nil {
+		executionErr = ctx.Err()
+	} else if jobConfig.Mode == "jellyseerr" {
 		movieExecutor.executeMoviesJellyseerr(ctx, regularJobConfig, filteredMovies, scoreMap)
+		executionErr = ctx.Err()
 	} else {
 		executionErr = movieExecutor.executeMoviesDirect(ctx, regularJobConfig, filteredMovies, scoreMap)
 	}
@@ -165,6 +169,7 @@ func (e *SmartMovieJobExecutor) Execute(
 
 // evaluateMoviesWithAdaptiveFilters evaluates movies with adaptive rating thresholds
 func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
+	ctx context.Context,
 	movies []integrations.Movie,
 	percentiles map[int]float64,
 	jobConfig SmartJobConfig,
@@ -173,6 +178,9 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 	passedMovies := make([]integrations.Movie, 0)
 
 	for _, movie := range movies {
+		if ctx.Err() != nil {
+			break
+		}
 		decision := ContentDecision{
 			Title:       movie.Title,
 			Year:        movie.Year,

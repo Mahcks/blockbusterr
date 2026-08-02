@@ -399,7 +399,7 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 		// Execute job asynchronously
 		go func() {
 			dryRun := gctx.Metadata().Version == "dev"
-			_ = jobs.RunDynamicJob(cfg, gctx.Database(), *targetJob, dryRun)
+			_ = jobs.RunDynamicJob(gctx, cfg, gctx.Database(), *targetJob, dryRun)
 		}()
 
 		return c.Status(fiber.StatusAccepted).JSON(fiber.Map{

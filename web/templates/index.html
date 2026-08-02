@@ -7,6 +7,27 @@
   <p>Connect discovery providers, choose delivery targets, and set automation defaults.</p>
 </header>
 
+<section class="readiness" aria-labelledby="readiness-heading">
+  <div class="readiness-heading">
+    <h2 id="readiness-heading">System readiness</h2>
+    {{if .Readiness.Complete}}<span>Ready to automate</span>{{else}}<span>Finish setup</span>{{end}}
+  </div>
+  <div class="readiness-list">
+    <a href="{{.Readiness.Discovery.Href}}" class="readiness-item readiness-{{.Readiness.Discovery.State}}">
+      <i data-lucide="{{if eq .Readiness.Discovery.State "ready"}}check-circle-2{{else}}circle-alert{{end}}" aria-hidden="true"></i>
+      <span><strong>{{.Readiness.Discovery.Title}}</strong><small>{{.Readiness.Discovery.Message}}</small></span><i data-lucide="chevron-right" aria-hidden="true"></i>
+    </a>
+    <a href="{{.Readiness.Delivery.Href}}" class="readiness-item readiness-{{.Readiness.Delivery.State}}">
+      <i data-lucide="{{if eq .Readiness.Delivery.State "ready"}}check-circle-2{{else}}circle-alert{{end}}" aria-hidden="true"></i>
+      <span><strong>{{.Readiness.Delivery.Title}}</strong><small>{{.Readiness.Delivery.Message}}</small></span><i data-lucide="chevron-right" aria-hidden="true"></i>
+    </a>
+    <a href="{{.Readiness.Automation.Href}}" class="readiness-item readiness-{{.Readiness.Automation.State}}">
+      <i data-lucide="{{if eq .Readiness.Automation.State "ready"}}check-circle-2{{else}}circle-alert{{end}}" aria-hidden="true"></i>
+      <span><strong>{{.Readiness.Automation.Title}}</strong><small>{{.Readiness.Automation.Message}}</small></span><i data-lucide="chevron-right" aria-hidden="true"></i>
+    </a>
+  </div>
+</section>
+
 <div class="settings-layout">
   <nav class="settings-nav" aria-label="Settings sections">
     <a href="#connections"><i data-lucide="plug-zap" aria-hidden="true"></i>Connections</a>

@@ -257,11 +257,11 @@ func (e *DynamicJobExecutor) getShowFetcher(jobType string) ShowFetcher {
 }
 
 // RunDynamicJob is a convenience function to run a dynamic job
-func RunDynamicJob(cfg *config.Config, db *database.Database, job config.DynamicJob, dryRun bool) error {
+func RunDynamicJob(ctx context.Context, cfg *config.Config, db *database.Database, job config.DynamicJob, dryRun bool) error {
 	executor := &DynamicJobExecutor{
 		Config:   cfg,
 		Database: db,
 		DryRun:   dryRun,
 	}
-	return executor.Execute(context.Background(), job)
+	return executor.Execute(ctx, job)
 }

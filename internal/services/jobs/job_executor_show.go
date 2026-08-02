@@ -86,14 +86,17 @@ func (e *ShowJobExecutor) Execute(
 	e.lastDecisions = runDecisions
 
 	// Apply filters with detailed decision tracking
-	filteredShows, scoreMap, showDecisions := e.evaluateShowsWithDecisions(shows, jobConfig)
+	filteredShows, scoreMap, showDecisions := e.evaluateShowsWithDecisions(ctx, shows, jobConfig)
 	runDecisions.Decisions = showDecisions
 	runDecisions.PassedFilters = len(filteredShows)
 
 	// Route to appropriate handler based on mode
 	var executionErr error
-	if jobConfig.Mode == "jellyseerr" {
+	if ctx.Err() != nil {
+		executionErr = ctx.Err()
+	} else if jobConfig.Mode == "jellyseerr" {
 		e.executeShowsJellyseerr(ctx, jobConfig, filteredShows, scoreMap)
+		executionErr = ctx.Err()
 	} else {
 		executionErr = e.executeShowsDirect(ctx, jobConfig, filteredShows, scoreMap)
 	}
@@ -403,7 +406,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 
 // executeShowsJellyseerr requests shows via Jellyseerr
 func (e *ShowJobExecutor) executeShowsJellyseerr(
-	_ context.Context,
+	ctx context.Context,
 	jobConfig JobConfig,
 	shows []integrations.Show,
 	scoreMap map[int]ScoreInfo,
@@ -422,9 +425,12 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 	failed := 0
 
 	for _, show := range shows {
+		if ctx.Err() != nil {
+			return
+		}
 		// Jellyseerr uses TMDB IDs for TV shows, not TVDB
 		// Check if show already exists in Jellyseerr
-		mediaInfo, err := jellyseerrClient.GetShowInfo(show.IDs.TMDB)
+		mediaInfo, err := jellyseerrClient.GetShowInfoContext(ctx, show.IDs.TMDB)
 		if err != nil {
 			log.Debugf("Failed to check Jellyseerr status for '%s (%d)': %v", show.Title, show.Year, err)
 		} else if mediaInfo.HasMediaInfo() {
@@ -492,7 +498,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 			}
 			requested++
 		} else {
-			result, err := jellyseerrClient.RequestShow(show.IDs.TMDB)
+			result, err := jellyseerrClient.RequestShowContext(ctx, show.IDs.TMDB)
 			if err != nil {
 				// Check if it's a duplicate error
 				if strings.Contains(err.Error(), "already") || strings.Contains(err.Error(), "exists") || strings.Contains(err.Error(), "requested") {
@@ -629,6 +635,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 
 // evaluateShowsWithDecisions evaluates all shows through filters and scoring, tracking detailed decisions
 func (e *ShowJobExecutor) evaluateShowsWithDecisions(
+	ctx context.Context,
 	shows []integrations.Show,
 	jobConfig JobConfig,
 ) ([]integrations.Show, map[int]ScoreInfo, []ContentDecision) {
@@ -637,6 +644,9 @@ func (e *ShowJobExecutor) evaluateShowsWithDecisions(
 
 	// Evaluate each show through filters
 	for _, show := range shows {
+		if ctx.Err() != nil {
+			break
+		}
 		decision := ContentDecision{
 			Title:       show.Title,
 			Year:        show.Year,

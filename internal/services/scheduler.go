@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -19,7 +20,7 @@ type jobConfig struct {
 	enabled      bool
 	syncInterval string
 	mode         string
-	runFunc      func()
+	runFunc      func(context.Context)
 }
 
 type Scheduler struct {
@@ -155,9 +156,9 @@ func (s *Scheduler) scheduleJobs() {
 			enabled:      job.Enabled,
 			syncInterval: syncInterval,
 			mode:         mode,
-			runFunc: func(j config.DynamicJob) func() {
-				return func() {
-					if err := jobs.RunDynamicJob(s.getConfig(), s.db, j, dryRun); err != nil {
+			runFunc: func(j config.DynamicJob) func(context.Context) {
+				return func(ctx context.Context) {
+					if err := jobs.RunDynamicJob(ctx, s.getConfig(), s.db, j, dryRun); err != nil && !errors.Is(err, context.Canceled) {
 						log.Errorf("Failed to run job %s: %v", formatJobLabel(j.Name, j.ID), err)
 					}
 				}
@@ -219,7 +220,7 @@ func (s *Scheduler) startJobScheduler(jc jobConfig) {
 				return
 			case <-ticker.C:
 				// Execute the job
-				jc.runFunc()
+				jc.runFunc(jobCtx)
 
 				// If using cron, calculate next run time
 				if cronSchedule != nil {
@@ -250,7 +251,7 @@ func (s *Scheduler) executeAllJobs() {
 	// Run each enabled job
 	for _, job := range enabledJobs {
 		log.Infof("Executing job: %s (%s %s)", formatJobLabel(job.Name, job.ID), job.Type, job.MediaType)
-		if err := jobs.RunDynamicJob(cfg, s.db, job, dryRun); err != nil {
+		if err := jobs.RunDynamicJob(s.ctx, cfg, s.db, job, dryRun); err != nil && !errors.Is(err, context.Canceled) {
 			log.Errorf("Failed to run job %s: %v", formatJobLabel(job.Name, job.ID), err)
 		}
 	}

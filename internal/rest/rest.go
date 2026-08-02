@@ -181,6 +181,9 @@ func New(gctx global.Context) error {
 
 	// Serve static files
 	app.Static("/static", "./web/static")
+	app.Get("/favicon.ico", func(c *fiber.Ctx) error {
+		return c.Redirect("/static/favicon.svg", fiber.StatusPermanentRedirect)
+	})
 
 	// Conditionally enable UI routes
 	if uiEnabled {

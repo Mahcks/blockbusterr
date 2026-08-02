@@ -7,8 +7,102 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/mahcks/blockbusterr/config"
+	"github.com/mahcks/blockbusterr/internal/services/jobs"
 	"github.com/mahcks/blockbusterr/pkg/structures"
 )
+
+type readinessState string
+
+const (
+	readinessReady      readinessState = "ready"
+	readinessAttention  readinessState = "attention"
+	readinessNotStarted readinessState = "not_started"
+)
+
+type readinessItem struct {
+	State   readinessState
+	Title   string
+	Message string
+	Href    string
+}
+
+type systemReadiness struct {
+	Discovery  readinessItem
+	Delivery   readinessItem
+	Automation readinessItem
+	Complete   bool
+}
+
+func plural(count int) string {
+	if count == 1 {
+		return ""
+	}
+	return "s"
+}
+
+func assessReadiness(cfg *config.Config) systemReadiness {
+	discoveryCount := 0
+	for _, configured := range []bool{cfg.TMDB.APIKey != "", cfg.Simkl.ClientID != "", cfg.Trakt.ClientID != ""} {
+		if configured {
+			discoveryCount++
+		}
+	}
+	discovery := readinessItem{State: readinessReady, Title: "Discovery ready", Message: fmt.Sprintf("%d provider%s configured", discoveryCount, plural(discoveryCount)), Href: "/config#connections"}
+	if discoveryCount == 0 {
+		discovery = readinessItem{State: readinessNotStarted, Title: "Connect discovery", Message: "Add TMDB, Simkl, or Trakt", Href: "/config#connections"}
+	}
+
+	radarrReady := cfg.Radarr.URL != "" && cfg.Radarr.APIKey != ""
+	sonarrReady := cfg.Sonarr.URL != "" && cfg.Sonarr.APIKey != ""
+	jellyseerrReady := cfg.Jellyseerr.URL != "" && cfg.Jellyseerr.APIKey != ""
+	delivery := readinessItem{State: readinessReady, Title: "Delivery ready", Href: "/config#connections"}
+	if cfg.Jobs.Mode == "jellyseerr" {
+		delivery.Message = "Requests go through Jellyseerr / Seerr"
+		if !jellyseerrReady {
+			delivery.State, delivery.Title, delivery.Message = readinessAttention, "Finish delivery setup", "Jellyseerr / Seerr needs a URL and API key"
+		}
+	} else {
+		switch {
+		case radarrReady && sonarrReady:
+			delivery.Message = "Movies use Radarr; shows use Sonarr"
+		case radarrReady:
+			delivery.State, delivery.Title, delivery.Message = readinessAttention, "Shows need a destination", "Radarr is ready; connect Sonarr for shows"
+		case sonarrReady:
+			delivery.State, delivery.Title, delivery.Message = readinessAttention, "Movies need a destination", "Sonarr is ready; connect Radarr for movies"
+		default:
+			delivery.State, delivery.Title, delivery.Message = readinessNotStarted, "Connect delivery", "Add Radarr, Sonarr, or use Jellyseerr / Seerr"
+		}
+	}
+
+	enabled, invalid := 0, 0
+	for _, job := range cfg.Jobs.List {
+		if !job.Enabled {
+			continue
+		}
+		enabled++
+		if !jobs.IsProviderConfigured(cfg, job.Source) {
+			invalid++
+			continue
+		}
+		if _, _, err := cfg.ResolveRuleSet(job); err != nil {
+			invalid++
+			continue
+		}
+		mode := jobs.DetermineMode(job.Mode, cfg.Jobs.Mode)
+		if mode == "jellyseerr" && !jellyseerrReady || mode == "direct" && job.MediaType == "movie" && !radarrReady || mode == "direct" && job.MediaType == "show" && !sonarrReady {
+			invalid++
+		}
+	}
+	automation := readinessItem{State: readinessReady, Title: "Automation ready", Message: fmt.Sprintf("%d enabled job%s", enabled, plural(enabled)), Href: "/jobs"}
+	if enabled == 0 {
+		automation = readinessItem{State: readinessNotStarted, Title: "Create your first job", Message: "Choose a source, rules, and delivery target", Href: "/jobs"}
+	} else if invalid > 0 {
+		automation = readinessItem{State: readinessAttention, Title: "Automation needs attention", Message: fmt.Sprintf("%d enabled job%s cannot run", invalid, plural(invalid)), Href: "/jobs"}
+	}
+
+	return systemReadiness{Discovery: discovery, Delivery: delivery, Automation: automation, Complete: discovery.State == readinessReady && delivery.State == readinessReady && automation.State == readinessReady}
+}
 
 // determineConfigPath finds the best location to save config file
 // Prioritizes Docker data directory, falls back to local directory
@@ -45,6 +139,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			"Version":           rg.gctx.Metadata().Version,
 			"AlertInfo":         alert,
 			"DiscoveryDisabled": discoveryDisabled,
+			"Readiness":         assessReadiness(cfg),
 		}, "base")
 	})
 
@@ -56,11 +151,13 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			Content: "Choose TMDB, Simkl, or Trakt for discovery jobs, then connect Radarr, Sonarr, or Jellyseerr for delivery.",
 			Class:   "mb-4",
 		}
+		cfg := rg.gctx.Config()
 		return c.Render("index", fiber.Map{
 			"Title":     "Blockbusterr - Configuration",
-			"Config":    rg.gctx.Config(),
+			"Config":    cfg,
 			"Version":   rg.gctx.Metadata().Version,
 			"AlertInfo": alert,
+			"Readiness": assessReadiness(cfg),
 		}, "base")
 	})
 
@@ -80,15 +177,18 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			"Version":           rg.gctx.Metadata().Version,
 			"AlertInfo":         alert,
 			"DiscoveryDisabled": discoveryDisabled,
+			"Readiness":         assessReadiness(cfg),
 		}, "base")
 	})
 
 	// Activity log page route
 	app.Get("/activity", func(c *fiber.Ctx) error {
+		cfg := rg.gctx.Config()
 		return c.Render("activity", fiber.Map{
-			"Title":   "Blockbusterr - Activity Log",
-			"Config":  rg.gctx.Config(),
-			"Version": rg.gctx.Metadata().Version,
+			"Title":     "Blockbusterr - Activity Log",
+			"Config":    cfg,
+			"Version":   rg.gctx.Metadata().Version,
+			"Readiness": assessReadiness(cfg),
 		}, "base")
 	})
 
