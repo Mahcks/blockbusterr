@@ -68,8 +68,8 @@
 
         <section class="filter-section">
           <div class="filter-section-heading">
-            <div><i data-lucide="check-circle" aria-hidden="true"></i><h2>Allowed content</h2></div>
-            <p>When a list is populated, content must match one of its values to pass. Empty allows anything.</p>
+            <div><i data-lucide="check-circle" aria-hidden="true"></i><h2>Required matches</h2></div>
+            <p>Each populated category must match. Empty categories add no requirement.</p>
           </div>
           <div class="filter-rule-grid">
             <div class="filter-rule-copy">
@@ -88,6 +88,21 @@
               </div>
               <div class="filter-token-list filter-token-list-allow" data-chip-list="languages"></div>
             </div>
+            <div class="filter-rule-copy">
+              <label id="rule-required-genres-label">Genres</label>
+              <div class="filter-value-entry" data-chip-field="requiredGenres"><input type="text" placeholder="e.g. Family" autocomplete="off" aria-labelledby="rule-required-genres-label"><button type="button">Add</button></div>
+              <div class="filter-token-list filter-token-list-allow" data-chip-list="requiredGenres"></div>
+            </div>
+            <div class="filter-rule-copy">
+              <label id="rule-required-keywords-label">Title keywords</label>
+              <div class="filter-value-entry" data-chip-field="requiredKeywords"><input type="text" placeholder="e.g. Star Trek" autocomplete="off" aria-labelledby="rule-required-keywords-label"><button type="button">Add</button></div>
+              <div class="filter-token-list filter-token-list-allow" data-chip-list="requiredKeywords"></div>
+            </div>
+            <div class="filter-rule-copy filter-rule-wide hidden" id="rule-required-networks-field">
+              <label id="rule-required-networks-label">Networks</label>
+              <div class="filter-value-entry" data-chip-field="requiredNetworks"><input type="text" placeholder="e.g. Disney+" autocomplete="off" aria-labelledby="rule-required-networks-label"><button type="button">Add</button></div>
+              <div class="filter-token-list filter-token-list-allow" data-chip-list="requiredNetworks"></div>
+            </div>
           </div>
         </section>
 
@@ -97,6 +112,16 @@
             <p>Any match rejects the title. Keywords match partial title text; IDs match one exact title.</p>
           </div>
           <div class="filter-rule-grid">
+            <div class="filter-rule-copy">
+              <label id="rule-blocked-countries-label">Countries</label>
+              <div class="filter-value-entry" data-chip-field="blockedCountries"><input type="text" placeholder="e.g. IN" autocomplete="off" aria-labelledby="rule-blocked-countries-label"><button type="button">Add</button></div>
+              <div class="filter-token-list filter-token-list-block" data-chip-list="blockedCountries"></div>
+            </div>
+            <div class="filter-rule-copy">
+              <label id="rule-blocked-languages-label">Languages</label>
+              <div class="filter-value-entry" data-chip-field="blockedLanguages"><input type="text" placeholder="e.g. hi" autocomplete="off" aria-labelledby="rule-blocked-languages-label"><button type="button">Add</button></div>
+              <div class="filter-token-list filter-token-list-block" data-chip-list="blockedLanguages"></div>
+            </div>
             <div class="filter-rule-copy">
               <label id="rule-genres-label">Genres</label>
               <div class="filter-value-entry" data-chip-field="genres">
@@ -113,7 +138,7 @@
               </div>
               <div class="filter-token-list filter-token-list-block" data-chip-list="keywords"></div>
             </div>
-            <div class="filter-rule-copy hidden" id="rule-networks-field">
+            <div class="filter-rule-copy filter-rule-wide hidden" id="rule-networks-field">
               <label id="rule-networks-label">Networks</label>
               <div class="filter-value-entry" data-chip-field="networks">
                 <input type="text" placeholder="e.g. Hallmark" autocomplete="off" aria-labelledby="rule-networks-label">
@@ -121,7 +146,7 @@
               </div>
               <div class="filter-token-list filter-token-list-block" data-chip-list="networks"></div>
             </div>
-            <div class="filter-rule-copy">
+            <div class="filter-rule-copy filter-rule-wide">
               <label id="rule-blocked-ids-label">Blocked TMDB IDs</label>
               <div class="filter-value-entry" data-chip-field="blockedIds">
                 <input type="text" inputmode="numeric" placeholder="e.g. 123" autocomplete="off" aria-labelledby="rule-blocked-ids-label">
@@ -129,6 +154,21 @@
               </div>
               <div class="filter-token-list filter-token-list-block" data-chip-list="blockedIds"></div>
             </div>
+          </div>
+        </section>
+
+        <section class="filter-section filter-section-override">
+          <div class="filter-section-heading">
+            <div><i data-lucide="shield-check" aria-hidden="true"></i><h2>Allow overrides</h2></div>
+            <p>Any match accepts the title after block rules, bypassing required matches and boundaries. Preview before enabling automation.</p>
+          </div>
+          <div class="filter-rule-grid">
+            <div class="filter-rule-copy"><label id="rule-allow-countries-label">Countries</label><div class="filter-value-entry" data-chip-field="allowCountries"><input type="text" placeholder="e.g. US" autocomplete="off" aria-labelledby="rule-allow-countries-label"><button type="button">Add</button></div><div class="filter-token-list filter-token-list-override" data-chip-list="allowCountries"></div></div>
+            <div class="filter-rule-copy"><label id="rule-allow-languages-label">Languages</label><div class="filter-value-entry" data-chip-field="allowLanguages"><input type="text" placeholder="e.g. en" autocomplete="off" aria-labelledby="rule-allow-languages-label"><button type="button">Add</button></div><div class="filter-token-list filter-token-list-override" data-chip-list="allowLanguages"></div></div>
+            <div class="filter-rule-copy"><label id="rule-allow-genres-label">Genres</label><div class="filter-value-entry" data-chip-field="allowGenres"><input type="text" placeholder="e.g. Family" autocomplete="off" aria-labelledby="rule-allow-genres-label"><button type="button">Add</button></div><div class="filter-token-list filter-token-list-override" data-chip-list="allowGenres"></div></div>
+            <div class="filter-rule-copy"><label id="rule-allow-keywords-label">Title keywords</label><div class="filter-value-entry" data-chip-field="allowKeywords"><input type="text" placeholder="e.g. Star Trek" autocomplete="off" aria-labelledby="rule-allow-keywords-label"><button type="button">Add</button></div><div class="filter-token-list filter-token-list-override" data-chip-list="allowKeywords"></div></div>
+            <div class="filter-rule-copy filter-rule-wide hidden" id="rule-allow-networks-field"><label id="rule-allow-networks-label">Networks</label><div class="filter-value-entry" data-chip-field="allowNetworks"><input type="text" placeholder="e.g. Disney+" autocomplete="off" aria-labelledby="rule-allow-networks-label"><button type="button">Add</button></div><div class="filter-token-list filter-token-list-override" data-chip-list="allowNetworks"></div></div>
+            <label class="filter-single-range filter-single-range-wide">Rating at least<input type="number" min="0" max="10" step="0.1" id="rule-allow-min-rating" placeholder="Disabled"><span>/ 10</span></label>
           </div>
         </section>
 

@@ -65,6 +65,16 @@
   font-weight: 600;
 }
 
+.filter-section-override {
+  background: rgb(120 53 15 / 0.05);
+}
+
+.filter-token-list-override .filter-token {
+  border-color: rgb(161 98 7 / 0.65);
+  background: rgb(113 63 18 / 0.22);
+  color: rgb(253 230 138);
+}
+
 .preview-decision-accepted { color: rgb(74 222 128); }
 .preview-decision-skipped { color: rgb(250 204 21); }
 .preview-decision-rejected { color: rgb(248 113 113); }
@@ -1965,12 +1975,11 @@
 
   .filter-boundary-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
   }
 
   .filter-boundary-grid label {
-    position: relative;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -1978,7 +1987,7 @@
     font-size: 11px;
   }
 
-  .filter-boundary-grid label > span {
+  .filter-single-range > span {
     position: absolute;
     right: 9px;
     bottom: 9px;
@@ -2310,6 +2319,15 @@
   }
 
   .filter-single-range input { padding-right: 34px; }
+
+  .filter-single-range-wide {
+    grid-column: 1 / -1;
+    max-width: 220px;
+  }
+
+  @media (max-width: 767px) {
+    .filter-single-range-wide { grid-column: auto; max-width: none; }
+  }
 
   .rule-set-save-bar {
     display: flex;

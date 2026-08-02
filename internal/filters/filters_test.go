@@ -85,6 +85,51 @@ func TestExplainUsesDecisionCheck(t *testing.T) {
 	}
 }
 
+func TestRuleModePrecedence(t *testing.T) {
+	movie := integrations.Movie{Title: "Star Trek Documentary", Year: 1990, Country: "us", Language: "en", Genres: []string{"Documentary"}, Rating: 9.5}
+
+	t.Run("hard block beats allow override", func(t *testing.T) {
+		rules := config.MovieFilters{BlacklistedGenres: []string{"Documentary"}, AllowKeywords: []string{"Star Trek"}}
+		result := MoviePassesRules(movie, rules, config.TitleExceptions{})
+		if result.Passed || Explain(result) != "Rejected: Blocked genre matched: Documentary" {
+			t.Fatalf("unexpected result: %#v", result)
+		}
+	})
+
+	t.Run("allow override bypasses required rules and boundaries", func(t *testing.T) {
+		rules := config.MovieFilters{AllowKeywords: []string{"Star Trek"}, RequiredGenres: []string{"Science Fiction"}, BlacklistedMinYear: 2020}
+		result := MoviePassesRules(movie, rules, config.TitleExceptions{})
+		if !result.Passed || Explain(result) != "Accepted: Allow override matched title keyword: Star Trek" {
+			t.Fatalf("unexpected result: %#v", result)
+		}
+	})
+
+	t.Run("required category rejects a missing match", func(t *testing.T) {
+		rules := config.MovieFilters{RequiredGenres: []string{"Science Fiction"}}
+		result := MoviePassesRules(movie, rules, config.TitleExceptions{})
+		if result.Passed || Explain(result) != "Rejected: Required genre not matched: Science Fiction" {
+			t.Fatalf("unexpected result: %#v", result)
+		}
+	})
+
+	t.Run("blocked country rejects", func(t *testing.T) {
+		rules := config.MovieFilters{BlacklistedCountries: []string{"US"}}
+		result := MoviePassesRules(movie, rules, config.TitleExceptions{})
+		if result.Passed || Explain(result) != "Rejected: Blocked country matched: us" {
+			t.Fatalf("unexpected result: %#v", result)
+		}
+	})
+}
+
+func TestShowRuleModesSupportNetworks(t *testing.T) {
+	show := integrations.Show{Title: "Family Series", Network: "Disney+", Country: "us", Language: "en"}
+	rules := config.ShowFilters{AllowNetworks: []string{"Disney+"}, RequiredGenres: []string{"Family"}}
+	result := ShowPassesRules(show, rules, config.TitleExceptions{})
+	if !result.Passed || Explain(result) != "Accepted: Allow override matched network: Disney+" {
+		t.Fatalf("unexpected result: %#v", result)
+	}
+}
+
 func TestMoviePassesFilters_BlacklistedGenres(t *testing.T) {
 	tests := []struct {
 		name              string

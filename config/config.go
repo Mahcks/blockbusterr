@@ -14,8 +14,17 @@ import (
 type MovieFilters struct {
 	AllowedCountries      []string `mapstructure:"allowed_countries" json:"allowed_countries" yaml:"allowed_countries"`
 	AllowedLanguages      []string `mapstructure:"allowed_languages" json:"allowed_languages" yaml:"allowed_languages"`
+	BlacklistedCountries  []string `mapstructure:"blacklisted_countries" json:"blacklisted_countries" yaml:"blacklisted_countries,omitempty"`
+	BlacklistedLanguages  []string `mapstructure:"blacklisted_languages" json:"blacklisted_languages" yaml:"blacklisted_languages,omitempty"`
 	BlacklistedGenres     []string `mapstructure:"blacklisted_genres" json:"blacklisted_genres" yaml:"blacklisted_genres"`
 	BlacklistedKeywords   []string `mapstructure:"blacklisted_keywords" json:"blacklisted_keywords" yaml:"blacklisted_keywords"`
+	RequiredGenres        []string `mapstructure:"required_genres" json:"required_genres" yaml:"required_genres,omitempty"`
+	RequiredKeywords      []string `mapstructure:"required_keywords" json:"required_keywords" yaml:"required_keywords,omitempty"`
+	AllowCountries        []string `mapstructure:"allow_countries" json:"allow_countries" yaml:"allow_countries,omitempty"`
+	AllowLanguages        []string `mapstructure:"allow_languages" json:"allow_languages" yaml:"allow_languages,omitempty"`
+	AllowGenres           []string `mapstructure:"allow_genres" json:"allow_genres" yaml:"allow_genres,omitempty"`
+	AllowKeywords         []string `mapstructure:"allow_keywords" json:"allow_keywords" yaml:"allow_keywords,omitempty"`
+	AllowMinRating        float64  `mapstructure:"allow_min_rating" json:"allow_min_rating" yaml:"allow_min_rating,omitempty"`
 	BlacklistedTMDBIds    []int    `mapstructure:"blacklisted_tmdb_ids" json:"blacklisted_tmdb_ids" yaml:"blacklisted_tmdb_ids"`
 	BlacklistedMinRuntime int      `mapstructure:"blacklisted_min_runtime" json:"blacklisted_min_runtime" yaml:"blacklisted_min_runtime"`
 	BlacklistedMaxRuntime int      `mapstructure:"blacklisted_max_runtime" json:"blacklisted_max_runtime" yaml:"blacklisted_max_runtime"`
@@ -29,9 +38,20 @@ type MovieFilters struct {
 type ShowFilters struct {
 	AllowedCountries      []string `mapstructure:"allowed_countries" json:"allowed_countries" yaml:"allowed_countries"`
 	AllowedLanguages      []string `mapstructure:"allowed_languages" json:"allowed_languages" yaml:"allowed_languages"`
+	BlacklistedCountries  []string `mapstructure:"blacklisted_countries" json:"blacklisted_countries" yaml:"blacklisted_countries,omitempty"`
+	BlacklistedLanguages  []string `mapstructure:"blacklisted_languages" json:"blacklisted_languages" yaml:"blacklisted_languages,omitempty"`
 	BlacklistedGenres     []string `mapstructure:"blacklisted_genres" json:"blacklisted_genres" yaml:"blacklisted_genres"`
 	BlacklistedKeywords   []string `mapstructure:"blacklisted_keywords" json:"blacklisted_keywords" yaml:"blacklisted_keywords"`
 	BlacklistedNetworks   []string `mapstructure:"blacklisted_networks" json:"blacklisted_networks" yaml:"blacklisted_networks"`
+	RequiredGenres        []string `mapstructure:"required_genres" json:"required_genres" yaml:"required_genres,omitempty"`
+	RequiredKeywords      []string `mapstructure:"required_keywords" json:"required_keywords" yaml:"required_keywords,omitempty"`
+	RequiredNetworks      []string `mapstructure:"required_networks" json:"required_networks" yaml:"required_networks,omitempty"`
+	AllowCountries        []string `mapstructure:"allow_countries" json:"allow_countries" yaml:"allow_countries,omitempty"`
+	AllowLanguages        []string `mapstructure:"allow_languages" json:"allow_languages" yaml:"allow_languages,omitempty"`
+	AllowGenres           []string `mapstructure:"allow_genres" json:"allow_genres" yaml:"allow_genres,omitempty"`
+	AllowKeywords         []string `mapstructure:"allow_keywords" json:"allow_keywords" yaml:"allow_keywords,omitempty"`
+	AllowNetworks         []string `mapstructure:"allow_networks" json:"allow_networks" yaml:"allow_networks,omitempty"`
+	AllowMinRating        float64  `mapstructure:"allow_min_rating" json:"allow_min_rating" yaml:"allow_min_rating,omitempty"`
 	BlacklistedTVDBIds    []int    `mapstructure:"blacklisted_tvdb_ids" json:"blacklisted_tvdb_ids" yaml:"blacklisted_tvdb_ids"`
 	BlacklistedMinRuntime int      `mapstructure:"blacklisted_min_runtime" json:"blacklisted_min_runtime" yaml:"blacklisted_min_runtime"`
 	BlacklistedMaxRuntime int      `mapstructure:"blacklisted_max_runtime" json:"blacklisted_max_runtime" yaml:"blacklisted_max_runtime"`
@@ -510,17 +530,22 @@ func (c *Config) ValidateRuleSet(candidate RuleSet, exceptID string) error {
 		return fmt.Errorf("show rule sets require only a show filter payload")
 	}
 	var minYear, maxYear, minRuntime, maxRuntime, minVotes int
-	var minRating float64
+	var minRating, allowMinRating float64
 	if candidate.Media == "movie" {
 		minYear, maxYear, minRuntime, maxRuntime, minRating, minVotes = candidate.Movies.BlacklistedMinYear, candidate.Movies.BlacklistedMaxYear, candidate.Movies.BlacklistedMinRuntime, candidate.Movies.BlacklistedMaxRuntime, candidate.Movies.MinRating, candidate.Movies.MinVotes
+		allowMinRating = candidate.Movies.AllowMinRating
 	} else {
 		minYear, maxYear, minRuntime, maxRuntime, minRating, minVotes = candidate.Shows.BlacklistedMinYear, candidate.Shows.BlacklistedMaxYear, candidate.Shows.BlacklistedMinRuntime, candidate.Shows.BlacklistedMaxRuntime, candidate.Shows.MinRating, candidate.Shows.MinVotes
+		allowMinRating = candidate.Shows.AllowMinRating
 	}
 	if minYear < 0 || maxYear < 0 || minRuntime < 0 || maxRuntime < 0 || minVotes < 0 {
 		return fmt.Errorf("numeric rule values cannot be negative")
 	}
 	if minRating < 0 || minRating > 10 {
 		return fmt.Errorf("minimum rating must be between 0 and 10")
+	}
+	if allowMinRating < 0 || allowMinRating > 10 {
+		return fmt.Errorf("allow override rating must be between 0 and 10")
 	}
 	if minYear > 0 && maxYear > 0 && minYear > maxYear {
 		return fmt.Errorf("minimum year cannot exceed maximum year")

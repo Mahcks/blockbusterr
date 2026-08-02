@@ -164,12 +164,24 @@ function writeRule(rule) {
 
   chips.get('countries').setValues(values.allowed_countries || []);
   chips.get('languages').setValues(values.allowed_languages || []);
+  chips.get('blockedCountries').setValues(values.blacklisted_countries || []);
+  chips.get('blockedLanguages').setValues(values.blacklisted_languages || []);
   chips.get('genres').setValues(values.blacklisted_genres || []);
   chips.get('keywords').setValues(values.blacklisted_keywords || []);
   chips.get('networks').setValues(values.blacklisted_networks || []);
+  chips.get('requiredGenres').setValues(values.required_genres || []);
+  chips.get('requiredKeywords').setValues(values.required_keywords || []);
+  chips.get('requiredNetworks').setValues(values.required_networks || []);
+  chips.get('allowCountries').setValues(values.allow_countries || []);
+  chips.get('allowLanguages').setValues(values.allow_languages || []);
+  chips.get('allowGenres').setValues(values.allow_genres || []);
+  chips.get('allowKeywords').setValues(values.allow_keywords || []);
+  chips.get('allowNetworks').setValues(values.allow_networks || []);
   chips.get('blockedIds').setValues((rule.media === 'show' ? values.blacklisted_tvdb_ids : values.blacklisted_tmdb_ids) || []);
 
   document.getElementById('rule-networks-field').classList.toggle('hidden', rule.media !== 'show');
+  document.getElementById('rule-required-networks-field').classList.toggle('hidden', rule.media !== 'show');
+  document.getElementById('rule-allow-networks-field').classList.toggle('hidden', rule.media !== 'show');
   document.getElementById('rule-blocked-ids-label').textContent = rule.media === 'show' ? 'Blocked TVDB IDs' : 'Blocked TMDB IDs';
 
   set('rule-min-year', values.blacklisted_min_year);
@@ -178,6 +190,7 @@ function writeRule(rule) {
   set('rule-max-runtime', values.blacklisted_max_runtime);
   set('rule-min-rating', values.min_rating);
   set('rule-min-votes', values.min_votes);
+  set('rule-allow-min-rating', values.allow_min_rating);
 
   const usage = jobsUsing(rule.id);
   document.getElementById('rule-usage-text').textContent = describeUsage(rule, usage.length);
@@ -239,8 +252,17 @@ function readRuleForm() {
   const values = {
     allowed_countries: chips.get('countries').getValues(),
     allowed_languages: chips.get('languages').getValues(),
+    blacklisted_countries: chips.get('blockedCountries').getValues(),
+    blacklisted_languages: chips.get('blockedLanguages').getValues(),
     blacklisted_genres: chips.get('genres').getValues(),
     blacklisted_keywords: chips.get('keywords').getValues(),
+    required_genres: chips.get('requiredGenres').getValues(),
+    required_keywords: chips.get('requiredKeywords').getValues(),
+    allow_countries: chips.get('allowCountries').getValues(),
+    allow_languages: chips.get('allowLanguages').getValues(),
+    allow_genres: chips.get('allowGenres').getValues(),
+    allow_keywords: chips.get('allowKeywords').getValues(),
+    allow_min_rating: Number(document.getElementById('rule-allow-min-rating').value) || 0,
     blacklisted_min_year: num('rule-min-year'),
     blacklisted_max_year: num('rule-max-year'),
     blacklisted_min_runtime: num('rule-min-runtime'),
@@ -251,6 +273,8 @@ function readRuleForm() {
   const blockedIds = chips.get('blockedIds').getValues();
   if (media === 'show') {
     values.blacklisted_networks = chips.get('networks').getValues();
+    values.required_networks = chips.get('requiredNetworks').getValues();
+    values.allow_networks = chips.get('allowNetworks').getValues();
     values.blacklisted_tvdb_ids = blockedIds;
   } else {
     values.blacklisted_tmdb_ids = blockedIds;
@@ -480,14 +504,24 @@ async function saveExceptions() {
 function buildChipFields() {
   registerChipField('countries', { normalize: (v) => v.trim().toUpperCase(), emptyText: 'Any country' });
   registerChipField('languages', { normalize: (v) => v.trim().toLowerCase(), emptyText: 'Any language' });
+  registerChipField('blockedCountries', { normalize: (v) => v.trim().toUpperCase(), emptyText: 'None blocked' });
+  registerChipField('blockedLanguages', { normalize: (v) => v.trim().toLowerCase(), emptyText: 'None blocked' });
   registerChipField('genres', { normalize: (v) => v.trim(), emptyText: 'None blocked' });
   registerChipField('keywords', { normalize: (v) => v.trim(), emptyText: 'None blocked' });
   registerChipField('networks', { normalize: (v) => v.trim(), emptyText: 'None blocked' });
+  registerChipField('requiredGenres', { normalize: (v) => v.trim(), emptyText: 'Any genre' });
+  registerChipField('requiredKeywords', { normalize: (v) => v.trim(), emptyText: 'Any title keyword' });
+  registerChipField('requiredNetworks', { normalize: (v) => v.trim(), emptyText: 'Any network' });
+  registerChipField('allowCountries', { normalize: (v) => v.trim().toUpperCase(), emptyText: 'No overrides' });
+  registerChipField('allowLanguages', { normalize: (v) => v.trim().toLowerCase(), emptyText: 'No overrides' });
+  registerChipField('allowGenres', { normalize: (v) => v.trim(), emptyText: 'No overrides' });
+  registerChipField('allowKeywords', { normalize: (v) => v.trim(), emptyText: 'No overrides' });
+  registerChipField('allowNetworks', { normalize: (v) => v.trim(), emptyText: 'No overrides' });
   registerChipField('blockedIds', { normalize: normalizeID, validate: validateID, emptyText: 'None blocked', numeric: true });
   registerChipField('exceptionsAllow', { normalize: normalizeID, validate: validateID, emptyText: 'No allowed titles', numeric: true });
   registerChipField('exceptionsBlock', { normalize: normalizeID, validate: validateID, emptyText: 'No blocked titles', numeric: true });
 
-  ['countries', 'languages', 'genres', 'keywords', 'networks', 'blockedIds'].forEach((key) => chips.get(key)?.onChange(() => updateRuleDirtyState()));
+  ['countries', 'languages', 'blockedCountries', 'blockedLanguages', 'genres', 'keywords', 'networks', 'requiredGenres', 'requiredKeywords', 'requiredNetworks', 'allowCountries', 'allowLanguages', 'allowGenres', 'allowKeywords', 'allowNetworks', 'blockedIds'].forEach((key) => chips.get(key)?.onChange(() => updateRuleDirtyState()));
   ['exceptionsAllow', 'exceptionsBlock'].forEach((key) => chips.get(key)?.onChange(() => updateExceptionsDirtyState()));
 
   document.getElementById('rule-name')?.addEventListener('input', () => clearFieldError('rule-name-error'));

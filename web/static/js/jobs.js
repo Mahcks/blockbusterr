@@ -928,6 +928,10 @@
     if (values.min_rating) parts.push(`rating ${values.min_rating}+`);
     if (values.allowed_languages?.length) parts.push(values.allowed_languages.join(', '));
     if (values.blacklisted_genres?.length) parts.push(`blocks ${values.blacklisted_genres.slice(0, 2).join(', ')}${values.blacklisted_genres.length > 2 ? ` +${values.blacklisted_genres.length - 2}` : ''}`);
+    const required = ['allowed_countries', 'allowed_languages', 'required_genres', 'required_keywords', 'required_networks'].reduce((count, key) => count + (values[key]?.length || 0), 0);
+    const overrides = ['allow_countries', 'allow_languages', 'allow_genres', 'allow_keywords', 'allow_networks'].reduce((count, key) => count + (values[key]?.length || 0), 0) + (values.allow_min_rating ? 1 : 0);
+    if (required) parts.push(`${required} required`);
+    if (overrides) parts.push(`${overrides} override${overrides === 1 ? '' : 's'}`);
     return parts.length ? parts.join(' · ') + '.' : 'No filtering criteria.';
   }
 
