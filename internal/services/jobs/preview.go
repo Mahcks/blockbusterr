@@ -84,21 +84,23 @@ func createShowPreviewItem(cfg *config.Config, show integrations.Show, popularit
 
 // PreviewItem represents a single item in the preview
 type PreviewItem struct {
-	Title         string   `json:"title"`
-	Year          int      `json:"year"`
-	TMDBID        int      `json:"tmdb_id,omitempty"`
-	TVDBID        int      `json:"tvdb_id,omitempty"`
-	IMDBID        string   `json:"imdb_id,omitempty"`
-	PosterURL     string   `json:"poster_url,omitempty"`
-	Overview      string   `json:"overview,omitempty"`
-	Rating        float64  `json:"rating,omitempty"`
-	Votes         int      `json:"votes,omitempty"`
-	Popularity    int      `json:"popularity,omitempty"`
-	Genres        []string `json:"genres,omitempty"`
-	Runtime       int      `json:"runtime,omitempty"`
-	AlreadyExists bool     `json:"already_exists"`
-	FilteredOut   bool     `json:"filtered_out,omitempty"`
-	FilterReason  string   `json:"filter_reason,omitempty"`
+	Title          string                `json:"title"`
+	Year           int                   `json:"year"`
+	TMDBID         int                   `json:"tmdb_id,omitempty"`
+	TVDBID         int                   `json:"tvdb_id,omitempty"`
+	IMDBID         string                `json:"imdb_id,omitempty"`
+	PosterURL      string                `json:"poster_url,omitempty"`
+	Overview       string                `json:"overview,omitempty"`
+	Rating         float64               `json:"rating,omitempty"`
+	Votes          int                   `json:"votes,omitempty"`
+	Popularity     int                   `json:"popularity,omitempty"`
+	Genres         []string              `json:"genres,omitempty"`
+	Runtime        int                   `json:"runtime,omitempty"`
+	AlreadyExists  bool                  `json:"already_exists"`
+	FilteredOut    bool                  `json:"filtered_out,omitempty"`
+	FilterReason   string                `json:"filter_reason,omitempty"`
+	DecisionReason string                `json:"decision_reason,omitempty"`
+	FilterChecks   []filters.FilterCheck `json:"filter_checks,omitempty"`
 }
 
 // PreviewResponse represents the response for a job preview

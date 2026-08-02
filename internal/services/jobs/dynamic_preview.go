@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/mahcks/blockbusterr/config"
@@ -84,11 +85,15 @@ func previewMovies(ctx context.Context, cfg *config.Config, mode string, movies 
 	}
 	for index, movie := range movies {
 		item := createMoviePreviewItem(cfg, movie, len(movies)-index)
-		if result := filters.MoviePassesRules(movie, cfg.Filters.Movies, cfg.TitleExceptions); !result.Passed {
-			item.FilteredOut, item.FilterReason = true, result.Reason
+		result := filters.MoviePassesRules(movie, cfg.Filters.Movies, cfg.TitleExceptions)
+		item.FilterChecks = result.Checks
+		item.DecisionReason = filters.Explain(result)
+		if !result.Passed {
+			item.FilteredOut, item.FilterReason = true, item.DecisionReason
 			response.FilteredOut++
 		} else if mode == "direct" && existing[movie.IDs.TMDB] {
 			item.AlreadyExists = true
+			item.DecisionReason = "Skipped: Already in Radarr"
 			response.AlreadyExists++
 		} else if jellyseerr != nil && movie.IDs.TMDB > 0 {
 			info, err := jellyseerr.GetMovieInfo(movie.IDs.TMDB)
@@ -97,11 +102,13 @@ func previewMovies(ctx context.Context, cfg *config.Config, mode string, movies 
 			}
 			if info.HasMediaInfo() {
 				item.AlreadyExists = true
+				item.DecisionReason = "Skipped: Already in Jellyseerr / Seerr"
 				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}
 		} else {
+			item.DecisionReason = "Will add: " + strings.TrimPrefix(filters.Explain(result), "Accepted: ")
 			response.WillAdd++
 		}
 		response.Items = append(response.Items, item)
@@ -128,11 +135,15 @@ func previewShows(ctx context.Context, cfg *config.Config, mode string, shows []
 	}
 	for index, show := range shows {
 		item := createShowPreviewItem(cfg, show, len(shows)-index)
-		if result := filters.ShowPassesRules(show, cfg.Filters.Shows, cfg.TitleExceptions); !result.Passed {
-			item.FilteredOut, item.FilterReason = true, result.Reason
+		result := filters.ShowPassesRules(show, cfg.Filters.Shows, cfg.TitleExceptions)
+		item.FilterChecks = result.Checks
+		item.DecisionReason = filters.Explain(result)
+		if !result.Passed {
+			item.FilteredOut, item.FilterReason = true, item.DecisionReason
 			response.FilteredOut++
 		} else if mode == "direct" && ((show.IDs.TVDB > 0 && existingTVDB[show.IDs.TVDB]) || (show.IDs.TMDB > 0 && existingTMDB[show.IDs.TMDB])) {
 			item.AlreadyExists = true
+			item.DecisionReason = "Skipped: Already in Sonarr"
 			response.AlreadyExists++
 		} else if jellyseerr != nil && show.IDs.TMDB > 0 {
 			info, err := jellyseerr.GetShowInfo(show.IDs.TMDB)
@@ -141,11 +152,13 @@ func previewShows(ctx context.Context, cfg *config.Config, mode string, shows []
 			}
 			if info.HasMediaInfo() {
 				item.AlreadyExists = true
+				item.DecisionReason = "Skipped: Already in Jellyseerr / Seerr"
 				response.AlreadyExists++
 			} else {
 				response.WillAdd++
 			}
 		} else {
+			item.DecisionReason = "Will add: " + strings.TrimPrefix(filters.Explain(result), "Accepted: ")
 			response.WillAdd++
 		}
 		response.Items = append(response.Items, item)

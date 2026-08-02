@@ -66,6 +66,25 @@ func TestTitleExceptionPrecedence(t *testing.T) {
 	}
 }
 
+func TestExplainUsesDecisionCheck(t *testing.T) {
+	tests := []struct {
+		name   string
+		result FilterResult
+		want   string
+	}{
+		{name: "ordinary pass", result: FilterResult{Passed: true}, want: "Accepted: Passed all configured rules"},
+		{name: "title exception", result: FilterResult{Passed: true, Checks: []FilterCheck{{Name: "Title exceptions", Passed: true}}}, want: "Accepted: Universal title exception"},
+		{name: "failed check", result: FilterResult{Checks: []FilterCheck{{Name: "Minimum Rating", Message: "Rating 5.0 below minimum 7.0"}}}, want: "Rejected: Rating 5.0 below minimum 7.0"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Explain(tt.result); got != tt.want {
+				t.Fatalf("Explain() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestMoviePassesFilters_BlacklistedGenres(t *testing.T) {
 	tests := []struct {
 		name              string

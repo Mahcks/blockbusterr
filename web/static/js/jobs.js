@@ -114,6 +114,8 @@
     document.getElementById('modal-rule-set')?.addEventListener('change', updateRuleSetSummary);
     document.addEventListener('keydown', handleDialogKeyboard);
     document.addEventListener('click', handleJobsAction);
+    // 'error' doesn't bubble for <img>, so this must be a capture-phase listener.
+    document.getElementById('preview-content')?.addEventListener('error', handlePreviewPosterError, true);
 
     // Add event listener for mode dropdown to show/hide direct mode fields
     const modeSelect = document.getElementById('modal-mode');
@@ -1248,16 +1250,21 @@
     }, 150);
   }
 
+  function handlePreviewPosterError(event) {
+    const img = event.target;
+    if (!(img instanceof HTMLImageElement) || !img.closest('.preview-row-poster')) return;
+    const icon = document.createElement('i');
+    icon.setAttribute('data-lucide', 'film');
+    icon.setAttribute('aria-hidden', 'true');
+    img.replaceWith(icon);
+    window.renderLucideIcons?.(icon.parentElement);
+  }
+
   function filterPreview(filter) {
     currentFilter = filter;
 
     ['all', 'will_add', 'already_exists', 'filtered_out'].forEach(f => {
-      const btn = document.getElementById(`filter-${f}`);
-      if (f === filter) {
-        btn.className = 'rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white';
-      } else {
-        btn.className = 'rounded-md bg-transparent px-3 py-1.5 text-sm font-medium text-slate-400 hover:bg-zinc-800 hover:text-slate-100';
-      }
+      document.getElementById(`filter-${f}`)?.setAttribute('aria-selected', String(f === filter));
     });
 
     if (previewData) {
@@ -1278,22 +1285,10 @@
 	  : `Preview of what this job will fetch from ${sourceLabel}`;
     const willAdd = data.total_found - data.already_exists - data.filtered_out;
     document.getElementById('preview-stats').innerHTML = `
-      <div class="rounded-lg border border-slate-700 bg-slate-800 p-3">
-        <div class="text-xl font-semibold text-white">${data.total_found}</div>
-        <div class="mt-1 text-xs text-slate-400">Found</div>
-      </div>
-      <div class="rounded-lg border border-green-800 bg-green-950/40 p-3">
-        <div class="text-xl font-semibold text-green-200">${willAdd}</div>
-        <div class="mt-1 text-xs text-green-300">Will add</div>
-      </div>
-      <div class="rounded-lg border border-slate-700 bg-slate-800 p-3">
-        <div class="text-xl font-semibold text-slate-200">${data.already_exists}</div>
-        <div class="mt-1 text-xs text-slate-400">Already exists</div>
-      </div>
-      <div class="rounded-lg border border-red-900 bg-red-950/30 p-3">
-        <div class="text-xl font-semibold text-red-200">${data.filtered_out}</div>
-        <div class="mt-1 text-xs text-red-300">Filtered out</div>
-      </div>
+      <div><b>${data.total_found}</b><span>Found</span></div>
+      <div class="preview-stat-add"><b>${willAdd}</b><span>Will add</span></div>
+      <div><b>${data.already_exists}</b><span>Already exists</span></div>
+      <div class="preview-stat-filtered"><b>${data.filtered_out}</b><span>Filtered out</span></div>
     `;
 
     let filteredItems;
@@ -1313,85 +1308,73 @@
     if (!filteredItems || filteredItems.length === 0) {
       document.getElementById('preview-content').innerHTML = `
         <div class="flex flex-col items-center justify-center py-12" style="min-height: 300px;">
-          <svg class="w-16 h-16 mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-12 h-12 mb-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
           </svg>
-          <p class="text-slate-400 text-lg font-semibold">No items found for this filter.</p>
-          <p class="text-slate-500 text-sm mt-2">Try another filter or adjust your job settings.</p>
+          <p class="text-slate-300 text-sm font-medium">No items found for this filter.</p>
+          <p class="text-slate-500 text-xs mt-1">Try another filter or adjust your job settings.</p>
         </div>
       `;
       return;
     }
 
-    const itemsHtml = filteredItems.map(item => {
-      let statusBadge = '';
-      let statusClass = '';
-
+    const rowsHtml = filteredItems.map(item => {
+      let badge;
+      let rowClass = '';
       if (item.filtered_out) {
-        statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-300 rounded-lg text-xs font-semibold ring-1 ring-red-500/30"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>Filtered</span>`;
-        statusClass = 'opacity-60';
+        badge = '<span class="preview-badge preview-badge-filtered"><i data-lucide="x" aria-hidden="true"></i>Filtered</span>';
+        rowClass = 'preview-row-muted';
       } else if (item.already_exists) {
-        statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-blue-300 rounded-lg text-xs font-semibold ring-1 ring-blue-500/30"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Exists</span>`;
-        statusClass = 'opacity-85';
+        badge = '<span class="preview-badge preview-badge-exists"><i data-lucide="check" aria-hidden="true"></i>Exists</span>';
       } else {
-        statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-300 rounded-lg text-xs font-semibold ring-1 ring-green-500/30"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m-7-7h14"></path></svg>Will Add</span>`;
+        badge = '<span class="preview-badge preview-badge-add"><i data-lucide="plus" aria-hidden="true"></i>Will add</span>';
       }
 
       const posterHtml = data.has_posters && item.poster_url
-        ? `<img src="${escapeHTML(item.poster_url)}" alt="${escapeHTML(item.title)}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full bg-slate-700\\'><svg class=\\'w-8 h-8 text-slate-500\\' fill=\\'currentColor\\' viewBox=\\'0 0 20 20\\'><path d=\\'M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4z\\' /></svg></div>'">`
-        : `<div class="flex items-center justify-center h-full bg-slate-700"><svg class="w-8 h-8 text-slate-500" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4z" /></svg></div>`;
+        ? `<img src="${escapeHTML(item.poster_url)}" alt="" loading="lazy">`
+        : '<i data-lucide="film" aria-hidden="true"></i>';
+
+      const metaParts = [];
+      if (item.rating) metaParts.push(`<span><i data-lucide="star" class="inline h-3 w-3 text-yellow-400" aria-hidden="true"></i> ${item.rating.toFixed(1)}${item.votes ? ` (${item.votes.toLocaleString()})` : ''}</span>`);
+      if (item.tmdb_id) metaParts.push(`<a href="https://www.themoviedb.org/${item.tvdb_id ? 'tv' : 'movie'}/${item.tmdb_id}" target="_blank" rel="noopener">TMDB</a>`);
+      if (item.tvdb_id) metaParts.push(`<a href="https://www.thetvdb.com/dereferrer/series/${item.tvdb_id}" target="_blank" rel="noopener">TVDB</a>`);
+
+      const decisionTone = item.filtered_out ? 'rejected' : item.already_exists ? 'skipped' : 'accepted';
 
       return `
-        <div class="overflow-hidden rounded-lg border border-slate-700/80 bg-slate-900 transition-colors hover:border-slate-600 ${statusClass}">
-          <div class="flex gap-4 p-4">
-            <div class="h-36 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-slate-700 ring-1 ring-slate-600">
-              ${posterHtml}
+        <div class="preview-row ${rowClass}">
+          <div class="preview-row-poster">${posterHtml}</div>
+          <div class="preview-row-main">
+            <div class="preview-row-title">
+              <h3>${escapeHTML(item.title)}</h3>
+              ${item.year ? `<span>${item.year}</span>` : ''}
             </div>
-            <div class="flex min-w-0 flex-1 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div class="min-w-0">
-                <h3 class="text-lg font-semibold text-white truncate">${escapeHTML(item.title)}</h3>
-                <div class="flex items-center gap-2 mt-1 text-sm text-slate-300 flex-wrap">
-                  ${item.year ? `<span>${item.year}</span>` : ''}
-                  ${item.rating ? `<span class="flex items-center gap-1 text-slate-200">
-                    <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-                    ${item.rating.toFixed(1)}
-                  </span>` : ''}
-                  ${item.votes ? `<span class="text-slate-400">(${item.votes.toLocaleString()} votes)</span>` : ''}
-                  ${item.tmdb_id ? `<a href="https://www.themoviedb.org/${item.tvdb_id ? 'tv' : 'movie'}/${item.tmdb_id}" target="_blank" class="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
-                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
-                    TMDB
-                  </a>` : ''}
-                  ${item.tvdb_id ? `<a href="https://www.thetvdb.com/dereferrer/series/${item.tvdb_id}" target="_blank" class="inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors">
-                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
-                    TVDB
-                  </a>` : ''}
+            ${metaParts.length ? `<div class="preview-row-meta">${metaParts.join('')}</div>` : ''}
+            ${item.genres && item.genres.length ? `<div class="preview-row-genres">${item.genres.slice(0, 4).map(genre => `<span>${escapeHTML(genre)}</span>`).join('')}</div>` : ''}
+            ${item.decision_reason ? `<p class="preview-decision preview-decision-${decisionTone}">${escapeHTML(item.decision_reason)}</p>` : item.overview ? `<p class="preview-row-overview">${escapeHTML(item.overview)}</p>` : ''}
+            ${item.filter_checks && item.filter_checks.length ? `
+              <details class="preview-checks">
+                <summary>Rule evaluation · ${item.filter_checks.filter(check => check.passed).length}/${item.filter_checks.length} checks passed</summary>
+                <div>
+                  ${item.filter_checks.map(check => `
+                    <p class="${check.passed ? 'preview-check-passed' : 'preview-check-failed'}">
+                      <i data-lucide="${check.passed ? 'check' : 'x'}" aria-hidden="true"></i>
+                      <span><strong>${escapeHTML(check.name)}</strong> ${escapeHTML(check.message)}</span>
+                    </p>
+                  `).join('')}
                 </div>
-                ${item.genres && item.genres.length > 0 ? `
-                  <div class="flex flex-wrap gap-1 mt-2">
-                    ${item.genres.slice(0, 4).map(genre => `<span class="px-2 py-0.5 text-xs rounded bg-slate-700/60 text-slate-200 ring-1 ring-slate-600/40">${escapeHTML(genre)}</span>`).join('')}
-                  </div>
-                ` : ''}
-                ${item.overview ? `<p class="text-sm text-slate-300/90 mt-3 line-clamp-2">${escapeHTML(item.overview)}</p>` : ''}
-                ${item.filter_reason && item.filtered_out ? `<p class="text-xs text-red-300/90 mt-2">Reason: ${escapeHTML(item.filter_reason)}</p>` : ''}
-              </div>
-              <div class="flex flex-col items-start lg:items-end gap-2">
-                ${statusBadge}
-                ${item.popularity ? `
-                  <div class="text-xs text-slate-300/80">Popularity: ${item.popularity}</div>
-                ` : ''}
-                ${item.runtime ? `
-                  <div class="text-xs text-slate-300/80">Runtime: ${item.runtime}m</div>
-                ` : ''}
-              </div>
-            </div>
+              </details>
+            ` : ''}
+          </div>
+          <div class="preview-row-aside">
+            ${badge}
+            ${item.popularity ? `<div>Popularity ${item.popularity}</div>` : ''}
+            ${item.runtime ? `<div>${item.runtime}m</div>` : ''}
           </div>
         </div>
       `;
     }).join('');
 
-    document.getElementById('preview-content').innerHTML = `
-      <div class="space-y-3">
-        ${itemsHtml}
-      </div>
-    `;
+    document.getElementById('preview-content').innerHTML = `<div class="preview-list">${rowsHtml}</div>`;
+    window.renderLucideIcons?.(document.getElementById('preview-content'));
   }

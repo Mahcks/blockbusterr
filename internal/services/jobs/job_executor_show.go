@@ -670,12 +670,12 @@ func (e *ShowJobExecutor) evaluateShowsWithDecisions(
 		if filterResult.Passed {
 			passedShows = append(passedShows, show)
 			decision.Action = "passed_filters"
-			decision.ActionReason = "Passed all filter checks"
+			decision.ActionReason = filters.Explain(filterResult)
 
 			log.Debugf("'%s (%d)' - PASS all filters (rating: %.1f)", show.Title, show.Year, show.Rating)
 		} else {
 			decision.Action = "rejected"
-			decision.ActionReason = filterResult.Reason
+			decision.ActionReason = filters.Explain(filterResult)
 
 			log.Debugf("'%s (%d)' - FAIL: %s", show.Title, show.Year, filterResult.Reason)
 		}

@@ -627,12 +627,12 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 		if filterResult.Passed {
 			passedMovies = append(passedMovies, movie)
 			decision.Action = "passed_filters"
-			decision.ActionReason = "Passed all filter checks"
+			decision.ActionReason = filters.Explain(filterResult)
 
 			log.Debugf("'%s (%d)' - PASS all filters (rating: %.1f)", movie.Title, movie.Year, movie.Rating)
 		} else {
 			decision.Action = "rejected"
-			decision.ActionReason = filterResult.Reason
+			decision.ActionReason = filters.Explain(filterResult)
 
 			log.Debugf("'%s (%d)' - FAIL: %s", movie.Title, movie.Year, filterResult.Reason)
 		}

@@ -23,6 +23,28 @@ type FilterResult struct {
 	Checks []FilterCheck `json:"checks"`
 }
 
+// Explain turns an evaluation into the same concise, user-facing decision
+// sentence used by previews and persisted Activity Entries.
+func Explain(result FilterResult) string {
+	if result.Passed {
+		for _, check := range result.Checks {
+			if check.Name == "Title exceptions" && check.Passed {
+				return "Accepted: Universal title exception"
+			}
+		}
+		return "Accepted: Passed all configured rules"
+	}
+	for i := len(result.Checks) - 1; i >= 0; i-- {
+		if !result.Checks[i].Passed && result.Checks[i].Message != "" {
+			return "Rejected: " + result.Checks[i].Message
+		}
+	}
+	if result.Reason != "" {
+		return "Rejected: " + result.Reason
+	}
+	return "Rejected: Did not pass the configured rules"
+}
+
 func MoviePassesRules(movie integrations.Movie, rules config.MovieFilters, exceptions config.TitleExceptions) FilterResult {
 	if slices.Contains(exceptions.BlockedMovieTMDBIDs, movie.IDs.TMDB) {
 		return FilterResult{Passed: false, Reason: "blocked title", Checks: []FilterCheck{{Name: "Title exceptions", Passed: false, Message: "Title is globally blocked"}}}

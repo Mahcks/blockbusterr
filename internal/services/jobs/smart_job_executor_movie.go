@@ -236,7 +236,7 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 			decision.Action = "rejected"
 			decision.ActionReason = fmt.Sprintf(
 				"%s (percentile: %.0f%%, threshold: %.1f)",
-				filterResult.Reason,
+				filters.Explain(filterResult),
 				percentile*100,
 				adaptiveMinRating,
 			)

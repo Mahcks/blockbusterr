@@ -416,8 +416,8 @@ function parseFilterDetailsIn(container) {
         const icon = check.passed
           ? '<svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-7.25 7.25a1 1 0 01-1.414 0l-3.25-3.25a1 1 0 011.414-1.414l2.543 2.543 6.543-6.543a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>'
           : '<svg class="w-3.5 h-3.5 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414L11.414 10l1.293 1.293a1 1 0 01-1.414 1.414L10 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L8.586 10 7.293 8.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>';
-        const bgColor = check.passed ? 'bg-green-900/30' : 'bg-red-900/30';
-        html += `<div class="${bgColor} rounded px-2 py-1.5"><span class="inline-flex align-middle mr-1">${icon}</span><span class="font-medium text-slate-300">${escapeHTML(check.name)}</span>: <span class="text-slate-400">${escapeHTML(check.message)}</span></div>`;
+        const state = check.passed ? 'filter-check-passed' : 'filter-check-failed';
+        html += `<div class="filter-check ${state}"><span class="filter-check-icon">${icon}</span><span><strong>${escapeHTML(check.name)}</strong> ${escapeHTML(check.message)}</span></div>`;
       });
       el.innerHTML = html;
     } catch (_err) {

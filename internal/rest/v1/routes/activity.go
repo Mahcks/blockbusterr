@@ -456,35 +456,25 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		reasonCounts := make(map[string]int)
 		for _, log := range logs {
 			if log.Message != "" {
-				// Parse the reason from message
-				reason := log.Message
+				reason := strings.ToLower(log.Message)
 				// Categorize common reasons
-				if contains := func(s, substr string) bool {
-					return len(s) >= len(substr) && (s[:len(substr)] == substr || len(s) > len(substr) && s[len(s)-len(substr):] == substr || func() bool {
-						for i := 0; i <= len(s)-len(substr); i++ {
-							if s[i:i+len(substr)] == substr {
-								return true
-							}
-						}
-						return false
-					}())
-				}; contains(reason, "rating") {
+				if strings.Contains(reason, "rating") {
 					reasonCounts["Low Rating"]++
-				} else if contains(reason, "country") {
+				} else if strings.Contains(reason, "country") {
 					reasonCounts["Wrong Country"]++
-				} else if contains(reason, "language") {
+				} else if strings.Contains(reason, "language") {
 					reasonCounts["Wrong Language"]++
-				} else if contains(reason, "genre") {
+				} else if strings.Contains(reason, "genre") {
 					reasonCounts["Blacklisted Genre"]++
-				} else if contains(reason, "keyword") {
+				} else if strings.Contains(reason, "keyword") {
 					reasonCounts["Blacklisted Keyword"]++
-				} else if contains(reason, "runtime") {
+				} else if strings.Contains(reason, "runtime") {
 					reasonCounts["Runtime Out of Range"]++
-				} else if contains(reason, "year") {
+				} else if strings.Contains(reason, "year") {
 					reasonCounts["Year Out of Range"]++
-				} else if contains(reason, "votes") {
+				} else if strings.Contains(reason, "votes") {
 					reasonCounts["Insufficient Votes"]++
-				} else if contains(reason, "network") {
+				} else if strings.Contains(reason, "network") {
 					reasonCounts["Blacklisted Network"]++
 				} else {
 					reasonCounts["Other"]++
