@@ -1,8 +1,10 @@
 package routes
 
 import (
+	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/mahcks/blockbusterr/pkg/structures"
@@ -95,179 +97,133 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		return c.Redirect("/activity", fiber.StatusMovedPermanently)
 	})
 
-	// Config save route
+	// Config save route. Validates every value before mutating the live
+	// config, so a bad submission never leaves partially-applied state in
+	// memory even though the save itself failed.
 	app.Post("/config/save", func(c *fiber.Ctx) error {
 		cfg := rg.gctx.Config()
 
-		// Parse form data
-		traktClientID := c.FormValue("trakt.client_id")
-		traktClientSecret := c.FormValue("trakt.client_secret")
-		tmdbAPIKey := c.FormValue("tmdb.api_key")
-		simklClientID := c.FormValue("simkl.client_id")
-		radarrURL := c.FormValue("radarr.url")
-		radarrAPIKey := c.FormValue("radarr.api_key")
-		radarrQualityProfile := c.FormValue("radarr.quality_profile")
-		radarrRootFolder := c.FormValue("radarr.root_folder")
-		radarrMinimumAvailability := c.FormValue("radarr.minimum_availability")
-		radarrMonitor := c.FormValue("radarr.monitor")
-		sonarrURL := c.FormValue("sonarr.url")
-		sonarrAPIKey := c.FormValue("sonarr.api_key")
-		sonarrQualityProfile := c.FormValue("sonarr.quality_profile")
-		sonarrRootFolder := c.FormValue("sonarr.root_folder")
-		sonarrMonitor := c.FormValue("sonarr.monitor")
-		jellyseerrURL := c.FormValue("jellyseerr.url")
-		jellyseerrAPIKey := c.FormValue("jellyseerr.api_key")
-		jellyseerrUserID := c.FormValue("jellyseerr.user_id")
-		jellyseerrRequestEmail := c.FormValue("jellyseerr.request_credentials.email")
-		jellyseerrRequestPassword := c.FormValue("jellyseerr.request_credentials.password")
-		jobsMode := c.FormValue("jobs.mode")
-		jobsSyncInterval := c.FormValue("jobs.sync_interval")
-		globalLimitMovies := c.FormValue("jobs.global_limit_movies")
-		globalLimitShows := c.FormValue("jobs.global_limit_shows")
-		globalPeriod := c.FormValue("jobs.global_period")
+		var fieldErrors []string
+		parseInt := func(field, formKey string, fallback int) int {
+			raw := c.FormValue(formKey)
+			if raw == "" {
+				return fallback
+			}
+			val, err := strconv.Atoi(raw)
+			if err != nil {
+				fieldErrors = append(fieldErrors, field+" must be a whole number")
+				return fallback
+			}
+			return val
+		}
+		parseNonNegativeInt := func(field, formKey string, fallback int) int {
+			val := parseInt(field, formKey, fallback)
+			if val < 0 {
+				fieldErrors = append(fieldErrors, field+" cannot be negative")
+			}
+			return val
+		}
+		parseFloat := func(field, formKey string, fallback float64) float64 {
+			raw := c.FormValue(formKey)
+			if raw == "" {
+				return fallback
+			}
+			val, err := strconv.ParseFloat(raw, 64)
+			if err != nil {
+				fieldErrors = append(fieldErrors, field+" must be a number")
+				return fallback
+			}
+			return val
+		}
 
-		// Parse scoring configuration
+		radarrQualityProfile := parseInt("Radarr quality profile", "radarr.quality_profile", cfg.Radarr.QualityProfile)
+		sonarrQualityProfile := parseInt("Sonarr quality profile", "sonarr.quality_profile", cfg.Sonarr.QualityProfile)
+		globalLimitMovies := parseNonNegativeInt("Max movies per period", "jobs.global_limit_movies", cfg.Jobs.GlobalLimitMovies)
+		globalLimitShows := parseNonNegativeInt("Max shows per period", "jobs.global_limit_shows", cfg.Jobs.GlobalLimitShows)
+
 		scoringEnabled := c.FormValue("scoring.enabled") == "true"
-		scoringRatingWeight := c.FormValue("scoring.rating_weight")
-		scoringPopularityWeight := c.FormValue("scoring.popularity_weight")
-		scoringRecencyWeight := c.FormValue("scoring.recency_weight")
-		scoringRatingScale := c.FormValue("scoring.rating_scale")
-		scoringPopularityMetric := c.FormValue("scoring.popularity_metric")
-		scoringRecencyDays := c.FormValue("scoring.recency_days")
+		ratingWeight := parseFloat("Rating weight", "scoring.rating_weight", 0.6)
+		popularityWeight := parseFloat("Popularity weight", "scoring.popularity_weight", 0.3)
+		recencyWeight := parseFloat("Recency weight", "scoring.recency_weight", 0.1)
+		ratingScale := parseFloat("Rating scale", "scoring.rating_scale", 10)
+		recencyDays := parseNonNegativeInt("Recency window", "scoring.recency_days", 365)
 
-		// Update config
-		cfg.Trakt.ClientID = traktClientID
-		cfg.Trakt.ClientSecret = traktClientSecret
-		cfg.TMDB.APIKey = tmdbAPIKey
-		cfg.Simkl.ClientID = simklClientID
-		cfg.Radarr.URL = radarrURL
-		cfg.Radarr.APIKey = radarrAPIKey
-		cfg.Radarr.RootFolder = radarrRootFolder
-		cfg.Radarr.MinimumAvailability = radarrMinimumAvailability
-		cfg.Radarr.Monitor = radarrMonitor
-		cfg.Sonarr.URL = sonarrURL
-		cfg.Sonarr.APIKey = sonarrAPIKey
-		cfg.Sonarr.RootFolder = sonarrRootFolder
-		cfg.Sonarr.Monitor = sonarrMonitor
-		cfg.Jellyseerr.URL = jellyseerrURL
-		cfg.Jellyseerr.APIKey = jellyseerrAPIKey
-		cfg.Jellyseerr.UserID = jellyseerrUserID
-		cfg.Jellyseerr.RequestCredentials.Email = jellyseerrRequestEmail
-		cfg.Jellyseerr.RequestCredentials.Password = jellyseerrRequestPassword
-		// Only set jobs.mode if present (for radio group)
-		if jobsMode != "" {
-			cfg.Jobs.Mode = jobsMode
-		}
-		if jobsSyncInterval != "" {
-			cfg.Jobs.SyncInterval = jobsSyncInterval
-		}
-		if globalPeriod != "" {
-			cfg.Jobs.GlobalPeriod = globalPeriod
-		}
-
-		// Parse quality profile IDs
-		if radarrQualityProfile != "" {
-			if qp, err := strconv.Atoi(radarrQualityProfile); err == nil {
-				cfg.Radarr.QualityProfile = qp
-			}
-		}
-		if sonarrQualityProfile != "" {
-			if qp, err := strconv.Atoi(sonarrQualityProfile); err == nil {
-				cfg.Sonarr.QualityProfile = qp
+		if scoringEnabled {
+			total := ratingWeight + popularityWeight + recencyWeight
+			if total < 0.999 || total > 1.001 {
+				fieldErrors = append(fieldErrors, fmt.Sprintf("Scoring weights must total 1.0 (currently %.2f)", total))
 			}
 		}
 
-		// Parse global limits
-		if globalLimitMovies != "" {
-			if limit, err := strconv.Atoi(globalLimitMovies); err == nil {
-				cfg.Jobs.GlobalLimitMovies = limit
-			}
-		}
-		if globalLimitShows != "" {
-			if limit, err := strconv.Atoi(globalLimitShows); err == nil {
-				cfg.Jobs.GlobalLimitShows = limit
-			}
+		if len(fieldErrors) > 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error":  strings.Join(fieldErrors, "; "),
+				"fields": fieldErrors,
+			})
 		}
 
-		// Parse scoring configuration
+		// All values validated — safe to apply to the live config now.
+		cfg.Trakt.ClientID = c.FormValue("trakt.client_id")
+		cfg.Trakt.ClientSecret = c.FormValue("trakt.client_secret")
+		cfg.TMDB.APIKey = c.FormValue("tmdb.api_key")
+		cfg.Simkl.ClientID = c.FormValue("simkl.client_id")
+		cfg.Radarr.URL = c.FormValue("radarr.url")
+		cfg.Radarr.APIKey = c.FormValue("radarr.api_key")
+		cfg.Radarr.RootFolder = c.FormValue("radarr.root_folder")
+		cfg.Radarr.MinimumAvailability = c.FormValue("radarr.minimum_availability")
+		cfg.Radarr.Monitor = c.FormValue("radarr.monitor")
+		cfg.Radarr.QualityProfile = radarrQualityProfile
+		cfg.Sonarr.URL = c.FormValue("sonarr.url")
+		cfg.Sonarr.APIKey = c.FormValue("sonarr.api_key")
+		cfg.Sonarr.RootFolder = c.FormValue("sonarr.root_folder")
+		cfg.Sonarr.Monitor = c.FormValue("sonarr.monitor")
+		cfg.Sonarr.QualityProfile = sonarrQualityProfile
+		cfg.Jellyseerr.URL = c.FormValue("jellyseerr.url")
+		cfg.Jellyseerr.APIKey = c.FormValue("jellyseerr.api_key")
+		cfg.Jellyseerr.UserID = c.FormValue("jellyseerr.user_id")
+		cfg.Jellyseerr.RequestCredentials.Email = c.FormValue("jellyseerr.request_credentials.email")
+		cfg.Jellyseerr.RequestCredentials.Password = c.FormValue("jellyseerr.request_credentials.password")
+		if mode := c.FormValue("jobs.mode"); mode != "" {
+			cfg.Jobs.Mode = mode
+		}
+		if syncInterval := c.FormValue("jobs.sync_interval"); syncInterval != "" {
+			cfg.Jobs.SyncInterval = syncInterval
+		}
+		if period := c.FormValue("jobs.global_period"); period != "" {
+			cfg.Jobs.GlobalPeriod = period
+		}
+		cfg.Jobs.GlobalLimitMovies = globalLimitMovies
+		cfg.Jobs.GlobalLimitShows = globalLimitShows
+
 		cfg.Scoring.Enabled = scoringEnabled
-
-		// Set scoring weights with defaults
-		if scoringRatingWeight != "" {
-			if weight, err := strconv.ParseFloat(scoringRatingWeight, 64); err == nil {
-				cfg.Scoring.RatingWeight = weight
-			}
-		} else if cfg.Scoring.RatingWeight == 0 {
-			cfg.Scoring.RatingWeight = 0.6 // Default
-		}
-
-		if scoringPopularityWeight != "" {
-			if weight, err := strconv.ParseFloat(scoringPopularityWeight, 64); err == nil {
-				cfg.Scoring.PopularityWeight = weight
-			}
-		} else if cfg.Scoring.PopularityWeight == 0 {
-			cfg.Scoring.PopularityWeight = 0.3 // Default
-		}
-
-		if scoringRecencyWeight != "" {
-			if weight, err := strconv.ParseFloat(scoringRecencyWeight, 64); err == nil {
-				cfg.Scoring.RecencyWeight = weight
-			}
-		} else if cfg.Scoring.RecencyWeight == 0 {
-			cfg.Scoring.RecencyWeight = 0.1 // Default
-		}
-
-		// Set normalization settings with defaults
-		if scoringRatingScale != "" {
-			if scale, err := strconv.ParseFloat(scoringRatingScale, 64); err == nil {
-				cfg.Scoring.RatingScale = scale
-			}
-		} else if cfg.Scoring.RatingScale == 0 {
-			cfg.Scoring.RatingScale = 10 // Default
-		}
-
-		if scoringPopularityMetric != "" {
-			cfg.Scoring.PopularityMetric = scoringPopularityMetric
+		cfg.Scoring.RatingWeight = ratingWeight
+		cfg.Scoring.PopularityWeight = popularityWeight
+		cfg.Scoring.RecencyWeight = recencyWeight
+		cfg.Scoring.RatingScale = ratingScale
+		cfg.Scoring.RecencyDays = recencyDays
+		if metric := c.FormValue("scoring.popularity_metric"); metric != "" {
+			cfg.Scoring.PopularityMetric = metric
 		} else if cfg.Scoring.PopularityMetric == "" {
-			cfg.Scoring.PopularityMetric = "votes" // Default
+			cfg.Scoring.PopularityMetric = "votes"
 		}
 
-		if scoringRecencyDays != "" {
-			if days, err := strconv.Atoi(scoringRecencyDays); err == nil {
-				cfg.Scoring.RecencyDays = days
-			}
-		} else if cfg.Scoring.RecencyDays == 0 {
-			cfg.Scoring.RecencyDays = 365 // Default
-		}
-
-		// Save config to file (create if doesn't exist)
+		// Save config to file (create it if this is the first save).
 		if err := cfg.Save(); err != nil {
-			// If config file doesn't exist, try creating it in the right location
 			if cfg.ConfigFilePath == "" {
-				// Try Docker data directory first, then fall back to current directory
 				cfg.ConfigFilePath = determineConfigPath()
 				if err := cfg.Save(); err != nil {
-					return c.Status(500).SendString(`
-				<script>showNotification('Failed to create configuration file: ` + err.Error() + `', 'error');</script>
-			`)
+					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create configuration file: " + err.Error()})
 				}
 			} else {
-				return c.Status(500).SendString(`
-				<script>showNotification('Failed to save configuration: ` + err.Error() + `', 'error');</script>
-			`)
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save configuration: " + err.Error()})
 			}
 		}
 
-		// Automatically reload the configuration
 		if err := rg.gctx.ReloadConfig(); err != nil {
-			return c.Status(500).SendString(`
-				<script>showNotification('Configuration saved but failed to reload: ` + err.Error() + `', 'error');</script>
-			`)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Configuration saved but failed to reload: " + err.Error()})
 		}
 
-		return c.SendString(`
-			<script>showNotification('Configuration saved and reloaded successfully!', 'success');</script>
-		`)
+		return c.JSON(fiber.Map{"success": true, "message": "Configuration saved."})
 	})
 
 	// Jobs config save route

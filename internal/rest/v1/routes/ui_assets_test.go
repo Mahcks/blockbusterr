@@ -94,7 +94,9 @@ func TestSharedUIFunctionsAndDynamicStylesAreCompiled(t *testing.T) {
 	app := readUIFile(t, filepath.Join(root, "web", "static", "js", "app.js"))
 	css := readUIFile(t, filepath.Join(root, "web", "static", "css", "app.css"))
 
-	for _, function := range []string{"togglePassword", "showNotification", "renderLucideIcons", "toggleAdvanced", "testConnection"} {
+	// testConnection and toggleAdvanced moved to settings.js (the former became
+	// Settings-specific inline results; the latter had no remaining callers).
+	for _, function := range []string{"togglePassword", "showNotification", "renderLucideIcons"} {
 		if !strings.Contains(app, "window."+function) {
 			t.Errorf("shared app.js is missing window.%s", function)
 		}
@@ -102,6 +104,52 @@ func TestSharedUIFunctionsAndDynamicStylesAreCompiled(t *testing.T) {
 	for _, class := range []string{".bg-green-500", ".bg-red-500", ".bg-yellow-500", ".from-yellow-900\\/50", ".to-slate-800\\/50"} {
 		if !strings.Contains(css, class) {
 			t.Errorf("compiled CSS is missing dynamic class %s", class)
+		}
+	}
+}
+
+func TestSettingsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..")
+	index := readUIFile(t, filepath.Join(root, "web", "templates", "index.html"))
+	script := readUIFile(t, filepath.Join(root, "web", "static", "js", "settings.js"))
+
+	if strings.Contains(index, "onclick=") || strings.Contains(index, "onchange=") || strings.Contains(index, "onkeyup=") || strings.Contains(index, "<script>") {
+		t.Error("index.html still contains inline behavior")
+	}
+	for _, expected := range []string{
+		`id="settings-page"`,
+		`id="settings-form"`,
+		`id="save-bar"`,
+		`defer src="/static/js/settings.js"`,
+	} {
+		if !strings.Contains(index, expected) {
+			t.Errorf("index.html is missing %s", expected)
+		}
+	}
+	for _, expected := range []string{
+		"function saveSettings",
+		"function discardChanges",
+		"function testConnection",
+		"function renderServiceStatuses",
+		"function updateWeightTotal",
+		"[data-action]",
+	} {
+		if !strings.Contains(script, expected) {
+			t.Errorf("settings.js is missing %s", expected)
+		}
+	}
+	// Every form field name the /config/save handler parses must still be
+	// present so the redesign never silently drops a setting.
+	for _, field := range []string{
+		"trakt.client_id", "trakt.client_secret", "tmdb.api_key", "simkl.client_id",
+		"radarr.url", "radarr.api_key", "radarr.quality_profile", "radarr.root_folder", "radarr.minimum_availability", "radarr.monitor",
+		"sonarr.url", "sonarr.api_key", "sonarr.quality_profile", "sonarr.root_folder", "sonarr.monitor",
+		"jellyseerr.url", "jellyseerr.api_key", "jellyseerr.user_id", "jellyseerr.request_credentials.email", "jellyseerr.request_credentials.password",
+		"jobs.mode", "jobs.sync_interval", "jobs.global_limit_movies", "jobs.global_limit_shows", "jobs.global_period",
+		"scoring.enabled", "scoring.rating_weight", "scoring.popularity_weight", "scoring.recency_weight", "scoring.rating_scale", "scoring.popularity_metric", "scoring.recency_days",
+	} {
+		if !strings.Contains(index, `name="`+field+`"`) {
+			t.Errorf("index.html is missing form field %s", field)
 		}
 	}
 }

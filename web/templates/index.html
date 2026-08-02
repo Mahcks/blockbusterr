@@ -1,1360 +1,531 @@
 {{define "index"}}
-  
+<div class="settings-page" id="settings-page">
 {{template "alert-info" .AlertInfo}}
 
-<div class="bg-slate-800 rounded-lg p-6 mb-6" id="config-form">
-  <h2 class="text-2xl font-bold text-blue-400 mb-8">Configuration</h2>
+<header class="settings-header">
+  <h1>Settings</h1>
+  <p>Connect discovery providers, choose delivery targets, and set automation defaults.</p>
+</header>
 
-  <form
-    hx-post="/config/save"
-    hx-target="#message-container"
-    hx-swap="innerHTML"
-    class="space-y-8"
-  >
-    <!-- Trakt Settings -->
-    <div class="bg-slate-900/50 rounded-lg p-6 mb-4">
-      <h3 class="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path>
-        </svg>
-        Trakt Settings
-        <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50">Optional</span>
-      </h3>
-      <p class="text-sm text-slate-300 mb-4">Only needed for Trakt-specific discovery jobs. You can use TMDB or Simkl without configuring Trakt.</p>
-      
-      <div class="grid md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label for="trakt-client-id" class="block text-sm font-medium text-slate-300 mb-2">
-            Client ID
-          </label>
-          <input
-            type="text"
-            id="trakt-client-id"
-            name="trakt.client_id"
-            value="{{.Config.Trakt.ClientID}}"
-            placeholder="Enter Trakt client ID"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          />
+<div class="settings-layout">
+  <nav class="settings-nav" aria-label="Settings sections">
+    <a href="#connections"><i data-lucide="plug-zap" aria-hidden="true"></i>Connections</a>
+    <a href="#automation"><i data-lucide="timer" aria-hidden="true"></i>Automation</a>
+    <a href="#data"><i data-lucide="archive" aria-hidden="true"></i>Data and recovery</a>
+    <a href="#about"><i data-lucide="info" aria-hidden="true"></i>About</a>
+  </nav>
+
+  <main class="settings-content">
+    <form id="settings-form">
+      <input type="hidden" id="jobs-mode-field" value="{{if eq .Config.Jobs.Mode "jellyseerr"}}jellyseerr{{else}}direct{{end}}">
+
+      <!-- Connections -->
+      <section class="settings-group" id="connections">
+        <div class="settings-section-heading">
+          <h2>Connections</h2>
+          <p>Discovery providers find content. Delivery targets receive it.</p>
         </div>
 
-        <div>
-          <label for="trakt-client-secret" class="block text-sm font-medium text-slate-300 mb-2">
-            Client Secret
-          </label>
-          <div class="relative">
-            <input
-              type="password"
-              id="trakt-client-secret"
-              name="trakt.client_secret"
-              value="{{.Config.Trakt.ClientSecret}}"
-              placeholder="Enter Trakt client secret"
-              autocomplete="off"
-              class="w-full px-4 py-2.5 pr-12 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-            />
-            <button
-              type="button"
-              onclick="togglePassword('trakt-client-secret', this)"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
-            >
-              <svg class="eye-open w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-              </svg>
-              <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
+        <div class="settings-subheading">Discovery</div>
+        <div class="svc-list">
 
-      <button
-        type="button"
-        onclick="testConnection('trakt', this)"
-        class="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        Test Connection
-      </button>
-    </div>
-
-    <!-- TMDB Settings -->
-    <div class="bg-slate-900/50 rounded-lg p-6 mb-4">
-      <h3 class="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-        </svg>
-        TMDB Settings
-        <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50">Optional</span>
-      </h3>
-      
-      <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 mb-4">
-        <p class="text-sm text-slate-300">
-		  <span class="font-semibold text-blue-400">Optional:</span> Add a TMDB API key for TMDB discovery jobs and poster images.
-          Get your free API key from <a href="https://www.themoviedb.org/settings/api" target="_blank" class="text-blue-400 hover:underline">themoviedb.org</a>.
-        </p>
-      </div>
-
-      <div>
-        <label for="tmdb-api-key" class="block text-sm font-medium text-slate-300 mb-2">
-          API Key
-        </label>
-        <div class="relative">
-          <input
-            type="password"
-            id="tmdb-api-key"
-            name="tmdb.api_key"
-            value="{{.Config.TMDB.APIKey}}"
-            placeholder="Enter TMDB API key (optional)"
-            autocomplete="off"
-            class="w-full px-4 py-2.5 pr-12 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          />
-          <button
-            type="button"
-            onclick="togglePassword('tmdb-api-key', this)"
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
-          >
-            <svg class="eye-open w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-            </svg>
-            <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-
-	<div class="bg-slate-900/50 rounded-lg p-6 mb-4">
-	  <h3 class="text-xl font-semibold text-blue-400 mb-4">Simkl Settings <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50">Optional</span></h3>
-	  <p class="text-sm text-slate-300 mb-4">Used for Simkl Trending and Most Watched jobs. Simkl attribution is shown with Simkl-sourced results.</p>
-	  <label for="simkl-client-id" class="block text-sm font-medium text-slate-300 mb-2">Client ID</label>
-	  <input type="text" id="simkl-client-id" name="simkl.client_id" value="{{.Config.Simkl.ClientID}}" placeholder="Enter Simkl client ID" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
-	  <p class="text-xs text-slate-400 mt-2">Create an app at <a href="https://simkl.com/settings/developer/" target="_blank" class="text-blue-400 hover:underline">Simkl Developer Settings</a>.</p>
-	</div>
-
-    <!-- Radarr Settings -->
-    <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
-      <h3 class="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path>
-        </svg>
-        Radarr Settings
-      </h3>
-      
-      <div class="grid md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label for="radarr-url" class="block text-sm font-medium text-slate-300 mb-2">
-            Server URL <span class="text-red-400">*</span>
-          </label>
-          <input
-            type="text"
-            id="radarr-url"
-            name="radarr.url"
-            value="{{.Config.Radarr.URL}}"
-            placeholder="http://localhost:7878"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          />
-        </div>
-
-        <div>
-          <label for="radarr-api-key" class="block text-sm font-medium text-slate-300 mb-2">
-            API Key <span class="text-red-400">*</span>
-          </label>
-          <div class="relative">
-            <input
-              type="password"
-              id="radarr-api-key"
-              name="radarr.api_key"
-              value="{{.Config.Radarr.APIKey}}"
-              placeholder="Enter Radarr API key"
-              autocomplete="off"
-              class="w-full px-4 py-2.5 pr-12 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-            />
-            <button
-              type="button"
-              onclick="togglePassword('radarr-api-key', this)"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
-            >
-              <svg class="eye-open w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-              </svg>
-              <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
-            </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onclick="testConnection('radarr', this)"
-        class="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2 mb-6"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        Test Connection
-      </button>
-
-      <div class="grid md:grid-cols-2 gap-4 pt-4 border-t border-slate-700">
-        <div>
-          <label for="radarr-quality-profile" class="block text-sm font-medium text-slate-300 mb-2">
-            Quality Profile
-          </label>
-          <select
-            id="radarr-quality-profile"
-            name="radarr.quality_profile"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          >
-            <option value="">Select a quality profile...</option>
-          </select>
-          <button
-            type="button"
-            onclick="loadRadarrProfiles()"
-            class="mt-2 text-sm text-blue-400 hover:text-blue-300 transition"
-          >
-            ↻ Load Quality Profiles
-          </button>
-        </div>
-
-        <div>
-          <label for="radarr-root-folder" class="block text-sm font-medium text-slate-300 mb-2">
-            Root Folder
-          </label>
-          <select
-            id="radarr-root-folder"
-            name="radarr.root_folder"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          >
-            <option value="">Select a root folder...</option>
-          </select>
-          <button
-            type="button"
-            onclick="loadRadarrRootFolders()"
-            class="mt-2 text-sm text-blue-400 hover:text-blue-300 transition"
-          >
-            ↻ Load Root Folders
-          </button>
-        </div>
-
-        <div>
-          <label for="radarr-minimum-availability" class="block text-sm font-medium text-slate-300 mb-2">
-            Minimum Availability
-          </label>
-          <select
-            id="radarr-minimum-availability"
-            name="radarr.minimum_availability"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          >
-            <option value="announced" {{if eq .Config.Radarr.MinimumAvailability "announced"}}selected{{end}}>Announced</option>
-            <option value="inCinemas" {{if eq .Config.Radarr.MinimumAvailability "inCinemas"}}selected{{end}}>In Cinemas</option>
-            <option value="released" {{if eq .Config.Radarr.MinimumAvailability "released"}}selected{{end}}>Released</option>
-          </select>
-          <p class="mt-1 text-xs text-slate-400">Default minimum availability for new movies added to Radarr.</p>
-        </div>
-
-        <div>
-          <label for="radarr-monitor" class="block text-sm font-medium text-slate-300 mb-2">
-            Monitor
-          </label>
-          <select
-            id="radarr-monitor"
-            name="radarr.monitor"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          >
-            <option value="movieOnly" {{if eq .Config.Radarr.Monitor "movieOnly"}}selected{{end}}>Movie Only</option>
-            <option value="movieAndCollection" {{if eq .Config.Radarr.Monitor "movieAndCollection"}}selected{{end}}>Movie and Collection</option>
-            <option value="none" {{if eq .Config.Radarr.Monitor "none"}}selected{{end}}>None</option>
-          </select>
-          <p class="mt-1 text-xs text-slate-400">Choose how to monitor added movies: "Movie Only" monitors just the movie, "Movie and Collection" monitors the movie and its collection, "None" adds without monitoring</p>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Sonarr Settings -->
-    <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
-      <h3 class="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-        </svg>
-        Sonarr Settings
-      </h3>
-      
-      <div class="grid md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label for="sonarr-url" class="block text-sm font-medium text-slate-300 mb-2">
-            Server URL <span class="text-red-400">*</span>
-          </label>
-          <input
-            type="text"
-            id="sonarr-url"
-            name="sonarr.url"
-            value="{{.Config.Sonarr.URL}}"
-            placeholder="http://localhost:8989"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          />
-        </div>
-
-        <div>
-          <label for="sonarr-api-key" class="block text-sm font-medium text-slate-300 mb-2">
-            API Key <span class="text-red-400">*</span>
-          </label>
-          <div class="relative">
-            <input
-              type="password"
-              id="sonarr-api-key"
-              name="sonarr.api_key"
-              value="{{.Config.Sonarr.APIKey}}"
-              placeholder="Enter Sonarr API key"
-              autocomplete="off"
-              class="w-full px-4 py-2.5 pr-12 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-            />
-            <button
-              type="button"
-              onclick="togglePassword('sonarr-api-key', this)"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
-            >
-              <svg class="eye-open w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-              </svg>
-              <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
-            </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onclick="testConnection('sonarr', this)"
-        class="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2 mb-6"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        Test Connection
-      </button>
-
-      <div class="grid md:grid-cols-2 gap-4 pt-4 border-t border-slate-700">
-        <div>
-          <label for="sonarr-quality-profile" class="block text-sm font-medium text-slate-300 mb-2">
-            Quality Profile
-          </label>
-          <select
-            id="sonarr-quality-profile"
-            name="sonarr.quality_profile"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          >
-            <option value="">Select a quality profile...</option>
-          </select>
-          <button
-            type="button"
-            onclick="loadSonarrProfiles()"
-            class="mt-2 text-sm text-blue-400 hover:text-blue-300 transition"
-          >
-            ↻ Load Quality Profiles
-          </button>
-        </div>
-
-        <div>
-          <label for="sonarr-root-folder" class="block text-sm font-medium text-slate-300 mb-2">
-            Root Folder
-          </label>
-          <select
-            id="sonarr-root-folder"
-            name="sonarr.root_folder"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          >
-            <option value="">Select a root folder...</option>
-          </select>
-          <button
-            type="button"
-            onclick="loadSonarrRootFolders()"
-            class="mt-2 text-sm text-blue-400 hover:text-blue-300 transition"
-          >
-            ↻ Load Root Folders
-          </button>
-        </div>
-
-        <div>
-          <label for="sonarr-monitor" class="block text-sm font-medium text-slate-300 mb-2">
-            Monitor
-          </label>
-          <select
-            id="sonarr-monitor"
-            name="sonarr.monitor"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          >
-            <option value="all" {{if eq .Config.Sonarr.Monitor "all"}}selected{{end}}>All Episodes</option>
-            <option value="future" {{if eq .Config.Sonarr.Monitor "future"}}selected{{end}}>Future Episodes</option>
-            <option value="missing" {{if eq .Config.Sonarr.Monitor "missing"}}selected{{end}}>Missing Episodes</option>
-            <option value="existing" {{if eq .Config.Sonarr.Monitor "existing"}}selected{{end}}>Existing Episodes</option>
-            <option value="firstSeason" {{if eq .Config.Sonarr.Monitor "firstSeason"}}selected{{end}}>First Season</option>
-            <option value="lastSeason" {{if eq .Config.Sonarr.Monitor "lastSeason"}}selected{{end}}>Last Season</option>
-            <option value="latestSeason" {{if eq .Config.Sonarr.Monitor "latestSeason"}}selected{{end}}>Latest Season</option>
-            <option value="pilot" {{if eq .Config.Sonarr.Monitor "pilot"}}selected{{end}}>Pilot Episode</option>
-            <option value="recent" {{if eq .Config.Sonarr.Monitor "recent"}}selected{{end}}>Recent Episodes</option>
-            <option value="monitorSpecials" {{if eq .Config.Sonarr.Monitor "monitorSpecials"}}selected{{end}}>Monitor Specials</option>
-            <option value="unmonitorSpecials" {{if eq .Config.Sonarr.Monitor "unmonitorSpecials"}}selected{{end}}>Unmonitor Specials</option>
-            <option value="none" {{if eq .Config.Sonarr.Monitor "none"}}selected{{end}}>None</option>
-          </select>
-          <p class="mt-1 text-xs text-slate-400">Choose which episodes Sonarr should monitor and download when adding a new series. For example, select "First Season" to only download the first season, or "Future Episodes" to only monitor upcoming episodes.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Jellyseerr Settings (Optional) -->
-    <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
-      <h3 class="text-xl font-semibold text-purple-400 mb-6 flex items-center gap-2">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l-2 2 4-4"></path>
-        </svg>
-        Jellyseerr Settings <span class="text-sm font-normal text-slate-400">(Optional)</span>
-      </h3>
-
-      <div class="bg-purple-900/20 border border-purple-700/50 rounded-lg p-4 mb-4">
-        <p class="text-sm text-slate-300">
-          <strong class="text-purple-300">Alternative Mode:</strong> Use Jellyseerr to request content instead of adding directly to Radarr/Sonarr. 
-          Jellyseerr will handle approvals and forward to your *arr instances.
-        </p>
-      </div>
-      
-      <div class="grid md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label for="jellyseerr-url" class="block text-sm font-medium text-slate-300 mb-2">
-            Server URL
-          </label>
-          <input
-            type="text"
-            id="jellyseerr-url"
-            name="jellyseerr.url"
-            value="{{.Config.Jellyseerr.URL}}"
-            placeholder="http://localhost:5055"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-          />
-        </div>
-
-        <div>
-          <label for="jellyseerr-api-key" class="block text-sm font-medium text-slate-300 mb-2">
-            API Key
-          </label>
-          <div class="relative">
-            <input
-              type="password"
-              id="jellyseerr-api-key"
-              name="jellyseerr.api_key"
-              value="{{.Config.Jellyseerr.APIKey}}"
-              placeholder="Enter Jellyseerr API key"
-              autocomplete="off"
-              class="w-full px-4 py-2.5 pr-12 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-            />
-            <button
-              type="button"
-              onclick="togglePassword('jellyseerr-api-key', this)"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
-            >
-              <svg class="eye-open w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-              </svg>
-              <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
-            </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="mb-4">
-        <label for="jellyseerr-user-id" class="block text-sm font-medium text-slate-300 mb-2">
-          User ID <span class="text-slate-500">(Optional)</span>
-        </label>
-        <input
-          type="text"
-          id="jellyseerr-user-id"
-          name="jellyseerr.user_id"
-          value="{{.Config.Jellyseerr.UserID}}"
-          placeholder="Leave empty for default user"
-          class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-        />
-        <p class="mt-1 text-xs text-slate-400">Leave empty to request as the API key owner</p>
-      </div>
-
-      <button
-        type="button"
-        onclick="testConnection('jellyseerr', this)"
-        class="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2 mb-6"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        Test Connection
-      </button>
-
-      <!-- Request Credentials (Advanced) -->
-      <div class="pt-4 border-t border-slate-700">
-        <div class="bg-purple-900/20 border border-purple-700/50 rounded-lg p-4 mb-4">
-          <div class="flex items-start gap-3">
-            <svg class="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <div class="text-sm text-slate-300">
-              <p class="font-semibold text-purple-300 mb-1">Advanced: Request Credentials (Optional)</p>
-              <p class="text-xs">API keys auto-approve requests (admin). Username/password respects user permissions (no auto-approve). Leave empty to use API key only.</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid md:grid-cols-2 gap-4">
-          <div>
-            <label for="jellyseerr-request-email" class="block text-sm font-medium text-slate-300 mb-2">
-              Request Email <span class="text-slate-500">(Optional)</span>
-            </label>
-            <input
-              type="text"
-              id="jellyseerr-request-email"
-              name="jellyseerr.request_credentials.email"
-              value="{{.Config.Jellyseerr.RequestCredentials.Email}}"
-              placeholder="blockbusterr-bot@example.com"
-              autocomplete="off"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-            />
-          </div>
-
-          <div>
-            <label for="jellyseerr-request-password" class="block text-sm font-medium text-slate-300 mb-2">
-              Request Password <span class="text-slate-500">(Optional)</span>
-            </label>
-            <div class="relative">
-              <input
-                type="password"
-                id="jellyseerr-request-password"
-                name="jellyseerr.request_credentials.password"
-                value="{{.Config.Jellyseerr.RequestCredentials.Password}}"
-                placeholder="Enter password"
-                autocomplete="off"
-                class="w-full px-4 py-2.5 pr-12 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-              />
-              <button
-                type="button"
-                onclick="togglePassword('jellyseerr-request-password', this)"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
-              >
-                <svg class="eye-open w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                </svg>
-                <svg class="eye-closed w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Content Scoring -->
-    <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
-      <h3 class="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
-        </svg>
-        Content Scoring
-        <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50">Recommended</span>
-      </h3>
-      
-      <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 mb-4">
-        <p class="text-sm text-slate-300">
-          <span class="font-semibold text-blue-400">Content scoring</span> ranks content based on rating, popularity, and recency.
-          Used by global limits to select the highest-quality content.
-        </p>
-      </div>
-
-      <div class="mb-6">
-        <label class="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            name="scoring.enabled"
-            value="true"
-            {{if .Config.Scoring.Enabled}}checked{{end}}
-            class="w-5 h-5 text-blue-600 bg-slate-900 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
-          />
-          <span class="ml-3 text-sm font-medium text-slate-300">Enable Content Scoring</span>
-        </label>
-      </div>
-
-      <div class="space-y-6">
-        <!-- Scoring Weights -->
-        <div>
-          <h4 class="text-sm font-semibold text-slate-300 mb-3">Scoring Weights (must sum to 1.0)</h4>
-          <div class="grid md:grid-cols-3 gap-4">
-            <div>
-              <label for="rating-weight" class="block text-sm font-medium text-slate-300 mb-2">
-                Rating Weight
-              </label>
-              <input
-                type="number"
-                id="rating-weight"
-                name="scoring.rating_weight"
-                value="{{.Config.Scoring.RatingWeight}}"
-                step="0.1"
-                min="0"
-                max="1"
-                placeholder="0.6"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              />
-              <p class="mt-1 text-xs text-slate-400">Default: 0.6 (60%)</p>
-            </div>
-
-            <div>
-              <label for="popularity-weight" class="block text-sm font-medium text-slate-300 mb-2">
-                Popularity Weight
-              </label>
-              <input
-                type="number"
-                id="popularity-weight"
-                name="scoring.popularity_weight"
-                value="{{.Config.Scoring.PopularityWeight}}"
-                step="0.1"
-                min="0"
-                max="1"
-                placeholder="0.3"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              />
-              <p class="mt-1 text-xs text-slate-400">Default: 0.3 (30%)</p>
-            </div>
-
-            <div>
-              <label for="recency-weight" class="block text-sm font-medium text-slate-300 mb-2">
-                Recency Weight
-              </label>
-              <input
-                type="number"
-                id="recency-weight"
-                name="scoring.recency_weight"
-                value="{{.Config.Scoring.RecencyWeight}}"
-                step="0.1"
-                min="0"
-                max="1"
-                placeholder="0.1"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              />
-              <p class="mt-1 text-xs text-slate-400">Default: 0.1 (10%)</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Normalization Settings -->
-        <div>
-          <h4 class="text-sm font-semibold text-slate-300 mb-3">Normalization Settings</h4>
-          <div class="grid md:grid-cols-3 gap-4">
-            <div>
-              <label for="rating-scale" class="block text-sm font-medium text-slate-300 mb-2">
-                Rating Scale
-              </label>
-              <input
-                type="number"
-                id="rating-scale"
-                name="scoring.rating_scale"
-                value="{{if .Config.Scoring.RatingScale}}{{.Config.Scoring.RatingScale}}{{end}}"
-                min="1"
-                placeholder="10"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              />
-              <p class="mt-1 text-xs text-slate-400">Max rating value (default: 10)</p>
-            </div>
-
-            <div>
-              <label for="popularity-metric" class="block text-sm font-medium text-slate-300 mb-2">
-                Popularity Metric
-              </label>
-              <select
-                id="popularity-metric"
-                name="scoring.popularity_metric"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              >
-                <option value="votes" {{if eq .Config.Scoring.PopularityMetric "votes"}}selected{{end}}>Votes</option>
-                <option value="views" {{if eq .Config.Scoring.PopularityMetric "views"}}selected{{end}}>Views</option>
-                <option value="watchers" {{if eq .Config.Scoring.PopularityMetric "watchers"}}selected{{end}}>Watchers</option>
-              </select>
-              <p class="mt-1 text-xs text-slate-400">Data source for popularity</p>
-            </div>
-
-            <div>
-              <label for="recency-days" class="block text-sm font-medium text-slate-300 mb-2">
-                Recency Window (days)
-              </label>
-              <input
-                type="number"
-                id="recency-days"
-                name="scoring.recency_days"
-                value="{{if .Config.Scoring.RecencyDays}}{{.Config.Scoring.RecencyDays}}{{end}}"
-                min="1"
-                placeholder="365"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              />
-              <p class="mt-1 text-xs text-slate-400">Full score within this period</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Presets -->
-        <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
-          <div class="flex items-start">
-            <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-            </svg>
-            <div class="text-xs text-slate-300">
-              <p class="font-semibold mb-2">Preset Configurations:</p>
-              <div class="space-y-2">
-                <div>
-                  <span class="font-medium text-green-400">Quality-Focused:</span> rating: 0.8, popularity: 0.1, recency: 0.1
-                  <p class="text-slate-400 ml-2">Prioritizes highly-rated content</p>
-                </div>
-                <div>
-                  <span class="font-medium text-yellow-400">Trending-Focused:</span> rating: 0.3, popularity: 0.6, recency: 0.1
-                  <p class="text-slate-400 ml-2">Prioritizes popular/viral content</p>
-                </div>
-                <div>
-                  <span class="font-medium text-blue-400">Balanced (default):</span> rating: 0.6, popularity: 0.3, recency: 0.1
-                  <p class="text-slate-400 ml-2">Balance between quality and popularity</p>
-                </div>
-                <div>
-                  <span class="font-medium text-purple-400">New Releases:</span> rating: 0.4, popularity: 0.2, recency: 0.4
-                  <p class="text-slate-400 ml-2">Prioritizes recent content</p>
+          <details class="svc-row" id="svc-tmdb" data-service="tmdb">
+            <summary>
+              <span class="svc-icon"><i data-lucide="clapperboard" aria-hidden="true"></i></span>
+              <span class="svc-name-block">
+                <span class="svc-name">TMDB</span>
+                <span class="svc-role">Discovery &middot; posters</span>
+              </span>
+              <span class="svc-status" data-service-status="tmdb"></span>
+              <i data-lucide="chevron-down" class="svc-chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="svc-body">
+              <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener" class="svc-doc-link">Get a free API key at themoviedb.org &rarr;</a>
+              <div class="svc-fields">
+                <div class="svc-field svc-field-wide">
+                  <label for="tmdb-api-key">API key<span class="optional">(optional)</span></label>
+                  <div class="svc-password-field">
+                    <input type="password" id="tmdb-api-key" name="tmdb.api_key" value="{{.Config.TMDB.APIKey}}" placeholder="Enter TMDB API key" autocomplete="off">
+                    <button type="button" class="svc-password-toggle" data-action="toggle-password" data-target="tmdb-api-key" aria-label="Show API key" aria-pressed="false">
+                      <svg class="eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                      <svg class="eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
+          </details>
+
+          <details class="svc-row" id="svc-simkl" data-service="simkl">
+            <summary>
+              <span class="svc-icon"><i data-lucide="tv-minimal-play" aria-hidden="true"></i></span>
+              <span class="svc-name-block">
+                <span class="svc-name">Simkl</span>
+                <span class="svc-role">Discovery</span>
+              </span>
+              <span class="svc-status" data-service-status="simkl"></span>
+              <i data-lucide="chevron-down" class="svc-chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="svc-body">
+              <a href="https://simkl.com/settings/developer/" target="_blank" rel="noopener" class="svc-doc-link">Create an app at Simkl Developer Settings &rarr;</a>
+              <div class="svc-fields">
+                <div class="svc-field svc-field-wide">
+                  <label for="simkl-client-id">Client ID<span class="optional">(optional)</span></label>
+                  <input type="text" id="simkl-client-id" name="simkl.client_id" value="{{.Config.Simkl.ClientID}}" placeholder="Enter Simkl client ID">
+                  <p class="svc-help">Used for Simkl Trending and Most Watched jobs.</p>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="svc-row" id="svc-trakt" data-service="trakt">
+            <summary>
+              <span class="svc-icon"><i data-lucide="chart-line" aria-hidden="true"></i></span>
+              <span class="svc-name-block">
+                <span class="svc-name">Trakt</span>
+                <span class="svc-role">Discovery</span>
+              </span>
+              <span class="svc-status" data-service-status="trakt"></span>
+              <i data-lucide="chevron-down" class="svc-chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="svc-body">
+              <p class="svc-help" style="margin-bottom:12px;">Only needed for Trakt-specific discovery jobs.</p>
+              <div class="svc-fields">
+                <div class="svc-field">
+                  <label for="trakt-client-id">Client ID<span class="optional">(optional)</span></label>
+                  <input type="text" id="trakt-client-id" name="trakt.client_id" value="{{.Config.Trakt.ClientID}}" placeholder="Enter Trakt client ID">
+                </div>
+                <div class="svc-field">
+                  <label for="trakt-client-secret">Client secret<span class="optional">(optional)</span></label>
+                  <div class="svc-password-field">
+                    <input type="password" id="trakt-client-secret" name="trakt.client_secret" value="{{.Config.Trakt.ClientSecret}}" placeholder="Enter Trakt client secret" autocomplete="off">
+                    <button type="button" class="svc-password-toggle" data-action="toggle-password" data-target="trakt-client-secret" aria-label="Show client secret" aria-pressed="false">
+                      <svg class="eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                      <svg class="eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="svc-test-row">
+                <button type="button" class="job-secondary-button" data-action="test-connection" data-service="trakt">Test connection</button>
+                <span class="svc-test-result" data-test-result="trakt"></span>
+              </div>
+            </div>
+          </details>
+
+        </div>
+
+        <div class="settings-subheading">Delivery</div>
+        <div class="svc-list">
+
+          <details class="svc-row" id="svc-radarr" data-service="radarr" {{if and (eq .Config.Jobs.Mode "direct") (eq .Config.Radarr.URL "")}}open{{end}}>
+            <summary>
+              <span class="svc-icon"><i data-lucide="film" aria-hidden="true"></i></span>
+              <span class="svc-name-block">
+                <span class="svc-name">Radarr</span>
+                <span class="svc-role">Movies</span>
+              </span>
+              <span class="svc-status" data-service-status="radarr"></span>
+              <i data-lucide="chevron-down" class="svc-chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="svc-body">
+              <div class="svc-fields">
+                <div class="svc-field">
+                  <label for="radarr-url">Server URL<span class="required">*</span></label>
+                  <input type="text" id="radarr-url" name="radarr.url" value="{{.Config.Radarr.URL}}" placeholder="http://localhost:7878">
+                </div>
+                <div class="svc-field">
+                  <label for="radarr-api-key">API key<span class="required">*</span></label>
+                  <div class="svc-password-field">
+                    <input type="password" id="radarr-api-key" name="radarr.api_key" value="{{.Config.Radarr.APIKey}}" placeholder="Enter Radarr API key" autocomplete="off">
+                    <button type="button" class="svc-password-toggle" data-action="toggle-password" data-target="radarr-api-key" aria-label="Show API key" aria-pressed="false">
+                      <svg class="eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                      <svg class="eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="svc-test-row">
+                <button type="button" class="job-secondary-button" data-action="test-connection" data-service="radarr">Test connection</button>
+                <span class="svc-test-result" data-test-result="radarr"></span>
+              </div>
+
+              <div class="svc-defaults-heading">Defaults</div>
+              <div class="svc-fields">
+                <div class="svc-field">
+                  <label for="radarr-quality-profile">Quality profile</label>
+                  <select id="radarr-quality-profile" name="radarr.quality_profile" data-selected="{{.Config.Radarr.QualityProfile}}">
+                    <option value="">Select a quality profile&hellip;</option>
+                  </select>
+                  <button type="button" class="svc-reload-link" data-action="reload-options" data-service="radarr" data-kind="profiles">Reload profiles</button>
+                </div>
+                <div class="svc-field">
+                  <label for="radarr-root-folder">Root folder</label>
+                  <select id="radarr-root-folder" name="radarr.root_folder" data-selected="{{.Config.Radarr.RootFolder}}">
+                    <option value="">Select a root folder&hellip;</option>
+                  </select>
+                  <button type="button" class="svc-reload-link" data-action="reload-options" data-service="radarr" data-kind="folders">Reload root folders</button>
+                </div>
+                <div class="svc-field">
+                  <label for="radarr-minimum-availability">Minimum availability</label>
+                  <select id="radarr-minimum-availability" name="radarr.minimum_availability">
+                    <option value="announced" {{if eq .Config.Radarr.MinimumAvailability "announced"}}selected{{end}}>Announced</option>
+                    <option value="inCinemas" {{if eq .Config.Radarr.MinimumAvailability "inCinemas"}}selected{{end}}>In cinemas</option>
+                    <option value="released" {{if eq .Config.Radarr.MinimumAvailability "released"}}selected{{end}}>Released</option>
+                  </select>
+                </div>
+                <div class="svc-field">
+                  <label for="radarr-monitor">Monitor</label>
+                  <select id="radarr-monitor" name="radarr.monitor">
+                    <option value="movieOnly" {{if eq .Config.Radarr.Monitor "movieOnly"}}selected{{end}}>Movie only</option>
+                    <option value="movieAndCollection" {{if eq .Config.Radarr.Monitor "movieAndCollection"}}selected{{end}}>Movie and collection</option>
+                    <option value="none" {{if eq .Config.Radarr.Monitor "none"}}selected{{end}}>None</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="svc-row" id="svc-sonarr" data-service="sonarr" {{if and (eq .Config.Jobs.Mode "direct") (eq .Config.Sonarr.URL "")}}open{{end}}>
+            <summary>
+              <span class="svc-icon"><i data-lucide="tv" aria-hidden="true"></i></span>
+              <span class="svc-name-block">
+                <span class="svc-name">Sonarr</span>
+                <span class="svc-role">Shows</span>
+              </span>
+              <span class="svc-status" data-service-status="sonarr"></span>
+              <i data-lucide="chevron-down" class="svc-chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="svc-body">
+              <div class="svc-fields">
+                <div class="svc-field">
+                  <label for="sonarr-url">Server URL<span class="required">*</span></label>
+                  <input type="text" id="sonarr-url" name="sonarr.url" value="{{.Config.Sonarr.URL}}" placeholder="http://localhost:8989">
+                </div>
+                <div class="svc-field">
+                  <label for="sonarr-api-key">API key<span class="required">*</span></label>
+                  <div class="svc-password-field">
+                    <input type="password" id="sonarr-api-key" name="sonarr.api_key" value="{{.Config.Sonarr.APIKey}}" placeholder="Enter Sonarr API key" autocomplete="off">
+                    <button type="button" class="svc-password-toggle" data-action="toggle-password" data-target="sonarr-api-key" aria-label="Show API key" aria-pressed="false">
+                      <svg class="eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                      <svg class="eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="svc-test-row">
+                <button type="button" class="job-secondary-button" data-action="test-connection" data-service="sonarr">Test connection</button>
+                <span class="svc-test-result" data-test-result="sonarr"></span>
+              </div>
+
+              <div class="svc-defaults-heading">Defaults</div>
+              <div class="svc-fields">
+                <div class="svc-field">
+                  <label for="sonarr-quality-profile">Quality profile</label>
+                  <select id="sonarr-quality-profile" name="sonarr.quality_profile" data-selected="{{.Config.Sonarr.QualityProfile}}">
+                    <option value="">Select a quality profile&hellip;</option>
+                  </select>
+                  <button type="button" class="svc-reload-link" data-action="reload-options" data-service="sonarr" data-kind="profiles">Reload profiles</button>
+                </div>
+                <div class="svc-field">
+                  <label for="sonarr-root-folder">Root folder</label>
+                  <select id="sonarr-root-folder" name="sonarr.root_folder" data-selected="{{.Config.Sonarr.RootFolder}}">
+                    <option value="">Select a root folder&hellip;</option>
+                  </select>
+                  <button type="button" class="svc-reload-link" data-action="reload-options" data-service="sonarr" data-kind="folders">Reload root folders</button>
+                </div>
+                <div class="svc-field svc-field-wide">
+                  <label for="sonarr-monitor">Monitor</label>
+                  <select id="sonarr-monitor" name="sonarr.monitor">
+                    <option value="all" {{if eq .Config.Sonarr.Monitor "all"}}selected{{end}}>All episodes</option>
+                    <option value="future" {{if eq .Config.Sonarr.Monitor "future"}}selected{{end}}>Future episodes</option>
+                    <option value="missing" {{if eq .Config.Sonarr.Monitor "missing"}}selected{{end}}>Missing episodes</option>
+                    <option value="existing" {{if eq .Config.Sonarr.Monitor "existing"}}selected{{end}}>Existing episodes</option>
+                    <option value="firstSeason" {{if eq .Config.Sonarr.Monitor "firstSeason"}}selected{{end}}>First season</option>
+                    <option value="lastSeason" {{if eq .Config.Sonarr.Monitor "lastSeason"}}selected{{end}}>Last season</option>
+                    <option value="latestSeason" {{if eq .Config.Sonarr.Monitor "latestSeason"}}selected{{end}}>Latest season</option>
+                    <option value="pilot" {{if eq .Config.Sonarr.Monitor "pilot"}}selected{{end}}>Pilot episode</option>
+                    <option value="recent" {{if eq .Config.Sonarr.Monitor "recent"}}selected{{end}}>Recent episodes</option>
+                    <option value="monitorSpecials" {{if eq .Config.Sonarr.Monitor "monitorSpecials"}}selected{{end}}>Monitor specials</option>
+                    <option value="unmonitorSpecials" {{if eq .Config.Sonarr.Monitor "unmonitorSpecials"}}selected{{end}}>Unmonitor specials</option>
+                    <option value="none" {{if eq .Config.Sonarr.Monitor "none"}}selected{{end}}>None</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="svc-row" id="svc-jellyseerr" data-service="jellyseerr" {{if and (eq .Config.Jobs.Mode "jellyseerr") (eq .Config.Jellyseerr.URL "")}}open{{end}}>
+            <summary>
+              <span class="svc-icon"><i data-lucide="send" aria-hidden="true"></i></span>
+              <span class="svc-name-block">
+                <span class="svc-name">Jellyseerr / Seerr</span>
+                <span class="svc-role">Request delivery</span>
+              </span>
+              <span class="svc-status" data-service-status="jellyseerr"></span>
+              <i data-lucide="chevron-down" class="svc-chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="svc-body">
+              <div class="svc-fields">
+                <div class="svc-field">
+                  <label for="jellyseerr-url">Server URL<span class="optional">(optional)</span></label>
+                  <input type="text" id="jellyseerr-url" name="jellyseerr.url" value="{{.Config.Jellyseerr.URL}}" placeholder="http://localhost:5055">
+                </div>
+                <div class="svc-field">
+                  <label for="jellyseerr-api-key">API key<span class="optional">(optional)</span></label>
+                  <div class="svc-password-field">
+                    <input type="password" id="jellyseerr-api-key" name="jellyseerr.api_key" value="{{.Config.Jellyseerr.APIKey}}" placeholder="Enter Jellyseerr API key" autocomplete="off">
+                    <button type="button" class="svc-password-toggle" data-action="toggle-password" data-target="jellyseerr-api-key" aria-label="Show API key" aria-pressed="false">
+                      <svg class="eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                      <svg class="eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="svc-field svc-field-wide">
+                  <label for="jellyseerr-user-id">User ID<span class="optional">(optional)</span></label>
+                  <input type="text" id="jellyseerr-user-id" name="jellyseerr.user_id" value="{{.Config.Jellyseerr.UserID}}" placeholder="Leave empty for the API key owner">
+                </div>
+              </div>
+              <div class="svc-test-row">
+                <button type="button" class="job-secondary-button" data-action="test-connection" data-service="jellyseerr">Test connection</button>
+                <span class="svc-test-result" data-test-result="jellyseerr"></span>
+              </div>
+
+              <details class="svc-disclosure">
+                <summary><i data-lucide="chevron-right" aria-hidden="true"></i>Request as a specific user</summary>
+                <p class="svc-help">API-key requests use administrative behavior and auto-approve. User credentials respect that user's own permissions instead. Leave both empty to use the API key only.</p>
+                <div class="svc-fields">
+                  <div class="svc-field">
+                    <label for="jellyseerr-request-email">Request email<span class="optional">(optional)</span></label>
+                    <input type="text" id="jellyseerr-request-email" name="jellyseerr.request_credentials.email" value="{{.Config.Jellyseerr.RequestCredentials.Email}}" placeholder="blockbusterr-bot@example.com" autocomplete="off">
+                  </div>
+                  <div class="svc-field">
+                    <label for="jellyseerr-request-password">Request password<span class="optional">(optional)</span></label>
+                    <div class="svc-password-field">
+                      <input type="password" id="jellyseerr-request-password" name="jellyseerr.request_credentials.password" value="{{.Config.Jellyseerr.RequestCredentials.Password}}" placeholder="Enter password" autocomplete="off">
+                      <button type="button" class="svc-password-toggle" data-action="toggle-password" data-target="jellyseerr-request-password" aria-label="Show request password" aria-pressed="false">
+                        <svg class="eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        <svg class="eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </details>
+
+        </div>
+
+        <div class="settings-subheading">Default delivery path</div>
+        <div class="mode-choices">
+          <label class="mode-choice">
+            <input type="radio" name="jobs.mode" value="direct" data-action="mode-choice" {{if or (eq .Config.Jobs.Mode "direct") (eq .Config.Jobs.Mode "")}}checked{{end}}>
+            <span>
+              <span class="mode-choice-name">Direct to Radarr and Sonarr</span>
+              <span class="mode-choice-readiness" data-mode-readiness="direct"></span>
+            </span>
+          </label>
+          <label class="mode-choice">
+            <input type="radio" name="jobs.mode" value="jellyseerr" data-action="mode-choice" {{if eq .Config.Jobs.Mode "jellyseerr"}}checked{{end}}>
+            <span>
+              <span class="mode-choice-name">Request through Jellyseerr / Seerr</span>
+              <span class="mode-choice-readiness" data-mode-readiness="jellyseerr"></span>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Automation -->
+      <section class="settings-group" id="automation">
+        <div class="settings-section-heading">
+          <h2>Automation</h2>
+          <p>Defaults apply to jobs unless a job overrides them.</p>
+        </div>
+
+        <div class="settings-subsection">
+          <h3>Job defaults</h3>
+          <div class="svc-fields">
+            <div class="svc-field">
+              <label for="sync_interval">Default sync interval<span class="required">*</span></label>
+              <input type="text" id="sync_interval" name="jobs.sync_interval" value="{{.Config.Jobs.SyncInterval}}" placeholder="1h" required>
+              <p class="svc-help">How often jobs run by default, e.g. 1h, 30m, or a cron expression.</p>
+            </div>
+          </div>
+        </div>
+
+        <details class="settings-disclosure" {{if .Config.Scoring.Enabled}}open{{end}}>
+          <summary>
+            <span class="settings-disclosure-title"><i data-lucide="star" aria-hidden="true"></i>Selection and ranking</span>
+            <span class="settings-disclosure-summary" data-scoring-summary></span>
+          </summary>
+          <div class="settings-disclosure-body">
+            <label class="mode-choice" style="margin-bottom:16px;">
+              <input type="checkbox" name="scoring.enabled" value="true" id="scoring-enabled" {{if .Config.Scoring.Enabled}}checked{{end}}>
+              <span>
+                <span class="mode-choice-name">Enable content scoring</span>
+                <span class="svc-help" style="margin-top:2px;display:block;">Ranks content by rating, popularity, and recency. Required for global limits to pick the best items.</span>
+              </span>
+            </label>
+
+            <div class="weight-heading">
+              <h4>Scoring weights</h4>
+              <span class="weight-total" data-weight-total>sum 1.00</span>
+            </div>
+            <div class="weight-fields">
+              <div class="svc-field">
+                <label for="rating-weight">Rating</label>
+                <input type="number" id="rating-weight" name="scoring.rating_weight" value="{{.Config.Scoring.RatingWeight}}" step="0.1" min="0" max="1" placeholder="0.6" data-weight-input>
+              </div>
+              <div class="svc-field">
+                <label for="popularity-weight">Popularity</label>
+                <input type="number" id="popularity-weight" name="scoring.popularity_weight" value="{{.Config.Scoring.PopularityWeight}}" step="0.1" min="0" max="1" placeholder="0.3" data-weight-input>
+              </div>
+              <div class="svc-field">
+                <label for="recency-weight">Recency</label>
+                <input type="number" id="recency-weight" name="scoring.recency_weight" value="{{.Config.Scoring.RecencyWeight}}" step="0.1" min="0" max="1" placeholder="0.1" data-weight-input>
+              </div>
+            </div>
+            <p id="scoring-weight-error" class="field-error hidden"></p>
+
+            <div class="preset-row">
+              <label for="scoring-preset">Apply preset</label>
+              <select id="scoring-preset">
+                <option value="">Choose a preset&hellip;</option>
+                <option value="balanced">Balanced</option>
+                <option value="quality">Quality focused</option>
+                <option value="trending">Trending focused</option>
+                <option value="new">New releases</option>
+              </select>
+            </div>
+
+            <div class="weight-fields" style="margin-top:16px;">
+              <div class="svc-field">
+                <label for="rating-scale">Rating scale</label>
+                <input type="number" id="rating-scale" name="scoring.rating_scale" value="{{if .Config.Scoring.RatingScale}}{{.Config.Scoring.RatingScale}}{{end}}" min="1" placeholder="10">
+              </div>
+              <div class="svc-field">
+                <label for="popularity-metric">Popularity metric</label>
+                <select id="popularity-metric" name="scoring.popularity_metric">
+                  <option value="votes" {{if eq .Config.Scoring.PopularityMetric "votes"}}selected{{end}}>Votes</option>
+                  <option value="views" {{if eq .Config.Scoring.PopularityMetric "views"}}selected{{end}}>Views</option>
+                  <option value="watchers" {{if eq .Config.Scoring.PopularityMetric "watchers"}}selected{{end}}>Watchers</option>
+                </select>
+              </div>
+              <div class="svc-field">
+                <label for="recency-days">Recency window (days)</label>
+                <input type="number" id="recency-days" name="scoring.recency_days" value="{{if .Config.Scoring.RecencyDays}}{{.Config.Scoring.RecencyDays}}{{end}}" min="1" placeholder="365">
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="settings-disclosure" {{if or (gt .Config.Jobs.GlobalLimitMovies 0) (gt .Config.Jobs.GlobalLimitShows 0)}}open{{end}}>
+          <summary>
+            <span class="settings-disclosure-title"><i data-lucide="gauge" aria-hidden="true"></i>Global limits</span>
+            <span class="settings-disclosure-summary" data-limits-summary></span>
+          </summary>
+          <div class="settings-disclosure-body">
+            <p class="settings-inline-help">Combine candidates from all jobs and deliver only the highest-scoring items within each period. Zero means unlimited.</p>
+            <p class="settings-inline-help" data-limits-dependency></p>
+            <div class="limit-fields">
+              <div class="svc-field">
+                <label for="global-limit-movies">Max movies</label>
+                <input type="number" id="global-limit-movies" name="jobs.global_limit_movies" value="{{.Config.Jobs.GlobalLimitMovies}}" placeholder="0" min="0">
+              </div>
+              <div class="svc-field">
+                <label for="global-limit-shows">Max shows</label>
+                <input type="number" id="global-limit-shows" name="jobs.global_limit_shows" value="{{.Config.Jobs.GlobalLimitShows}}" placeholder="0" min="0">
+              </div>
+              <div class="svc-field">
+                <label for="global-period">Reset period</label>
+                <select id="global-period" name="jobs.global_period">
+                  <option value="sync" {{if eq .Config.Jobs.GlobalPeriod "sync"}}selected{{end}}>Per sync</option>
+                  <option value="daily" {{if eq .Config.Jobs.GlobalPeriod "daily"}}selected{{end}}>Daily</option>
+                  <option value="weekly" {{if eq .Config.Jobs.GlobalPeriod "weekly"}}selected{{end}}>Weekly</option>
+                  <option value="monthly" {{if eq .Config.Jobs.GlobalPeriod "monthly"}}selected{{end}}>Monthly</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </details>
+      </section>
+    </form>
+
+    <!-- Data and recovery -->
+    <section class="settings-group" id="data">
+      <div class="settings-section-heading">
+        <h2>Data and recovery</h2>
+        <p>Share portable settings or protect the complete installation.</p>
+      </div>
+
+      <div class="data-rows">
+        <div class="data-row">
+          <div class="data-row-text">
+            <h3>Portable configuration</h3>
+            <p>Rules, jobs, and scoring only. <strong>Credentials are never included</strong> — safe to share publicly. Importing leaves your saved credentials unchanged.</p>
+          </div>
+          <div class="data-row-actions">
+            <a href="/config/export" class="job-secondary-button">Export</a>
+            <form id="import-form" enctype="multipart/form-data">
+              <input type="file" id="config-file" name="config" accept=".yaml,.yml" class="data-file-input" required>
+              <button type="submit" class="job-secondary-button">Import</button>
+            </form>
+          </div>
+        </div>
+        <div class="data-row">
+          <div class="data-row-text">
+            <h3>Full backup</h3>
+            <p>Everything, including <strong>API keys and credentials</strong>. Keep this file secure.</p>
+          </div>
+          <div class="data-row-actions">
+            <a href="/config/backup" class="job-secondary-button">Download backup</a>
+            <form id="restore-form" enctype="multipart/form-data">
+              <input type="file" id="restore-file" name="config" accept=".yaml,.yml" class="data-file-input" required>
+              <button type="submit" class="job-delete-button">Restore&hellip;</button>
+            </form>
           </div>
         </div>
       </div>
-    </div>
+      <p id="import-message" class="field-error hidden" style="margin:12px 0 0;"></p>
+      <p id="restore-message" class="field-error hidden" style="margin:12px 0 0;"></p>
+    </section>
 
-    <!-- Global Limits -->
-    <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
-      <h3 class="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-        </svg>
-        Global Limits
-        <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50">Optional</span>
-      </h3>
-      
-      <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 mb-4">
-        <p class="text-sm text-slate-300">
-          <span class="font-semibold text-blue-400">Global limits</span> aggregate results from all enabled jobs, rank them by score, and only add the top N items per period.
-          Leave at 0 to disable (jobs will add items independently).
-        </p>
-      </div>
-
-      <div class="grid md:grid-cols-3 gap-4">
-        <div>
-          <label for="global-limit-movies" class="block text-sm font-medium text-slate-300 mb-2">
-            Max Movies per Period
-          </label>
-          <input
-            type="number"
-            id="global-limit-movies"
-            name="jobs.global_limit_movies"
-            value="{{.Config.Jobs.GlobalLimitMovies}}"
-            placeholder="0 = unlimited"
-            min="0"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          />
-          <p class="mt-1 text-xs text-slate-400">0 = no limit</p>
-        </div>
-
-        <div>
-          <label for="global-limit-shows" class="block text-sm font-medium text-slate-300 mb-2">
-            Max Shows per Period
-          </label>
-          <input
-            type="number"
-            id="global-limit-shows"
-            name="jobs.global_limit_shows"
-            value="{{.Config.Jobs.GlobalLimitShows}}"
-            placeholder="0 = unlimited"
-            min="0"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          />
-          <p class="mt-1 text-xs text-slate-400">0 = no limit</p>
-        </div>
-
-        <div>
-          <label for="global-period" class="block text-sm font-medium text-slate-300 mb-2">
-            Limit Period
-          </label>
-          <select
-            id="global-period"
-            name="jobs.global_period"
-            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          >
-            <option value="sync" {{if eq .Config.Jobs.GlobalPeriod "sync"}}selected{{end}}>Per Sync</option>
-            <option value="daily" {{if eq .Config.Jobs.GlobalPeriod "daily"}}selected{{end}}>Daily</option>
-            <option value="weekly" {{if eq .Config.Jobs.GlobalPeriod "weekly"}}selected{{end}}>Weekly</option>
-            <option value="monthly" {{if eq .Config.Jobs.GlobalPeriod "monthly"}}selected{{end}}>Monthly</option>
-          </select>
-          <p class="mt-1 text-xs text-slate-400">When limits reset</p>
-        </div>
-      </div>
-
-      <div class="mt-4 bg-slate-800/50 rounded-lg p-4 border border-slate-600">
-        <div class="flex items-start">
-          <svg class="w-5 h-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-          </svg>
-          <div class="text-xs text-slate-300">
-            <p class="font-semibold mb-1">How it works:</p>
-            <ul class="list-disc list-inside space-y-1 ml-2">
-              <li>All enabled jobs run and collect candidate content</li>
-              <li>Items are scored based on rating, popularity, and recency</li>
-              <li>Only the top N highest-scored items are added</li>
-              <li>Example: "Top 10 movies per week" across ALL movie jobs combined</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-
-
-
-<!-- Integration Settings Group -->
-<div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700 mb-4 mt-6">
-  <h3 class="text-xl font-semibold text-blue-400 mb-6">Integration Settings</h3>
-  <div class="grid md:grid-cols-2 gap-4 mb-6">
-    <div>
-      <label for="sync_interval" class="block text-sm font-medium text-slate-300 mb-2">
-        Default Job Sync Interval <span class="text-red-400">*</span>
-      </label>
-      <input
-        type="text"
-        id="sync_interval"
-        name="jobs.sync_interval"
-        value="{{.Config.Jobs.SyncInterval}}"
-        placeholder="1h"
-        required
-        class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-      />
-      <p class="text-xs text-slate-400 mt-1">How often jobs run by default (e.g., 1h, 30m, 0 */2 * * *)</p>
-    </div>
-  </div>
-  <div class="space-y-3">
-    <label class="flex items-start p-4 bg-slate-800/50 border-2 border-slate-600 rounded-lg cursor-pointer hover:bg-slate-800 transition">
-      <input
-        type="radio"
-        name="jobs.mode"
-        value="direct"
-        {{if or (eq .Config.Jobs.Mode "direct") (eq .Config.Jobs.Mode "")}}checked{{end}}
-        class="mt-1 w-4 h-4 text-blue-500 focus:ring-blue-500"
-      />
-      <div class="ml-3">
-        <span class="block text-slate-100 font-semibold">Direct Mode</span>
-        <span class="block text-sm text-slate-400 mt-1">Add content directly to Radarr and Sonarr (requires Radarr/Sonarr configured above)</span>
-      </div>
-    </label>
-    <label class="flex items-start p-4 bg-slate-800/50 border-2 border-slate-600 rounded-lg cursor-pointer hover:bg-slate-800 transition">
-      <input
-        type="radio"
-        name="jobs.mode"
-        value="jellyseerr"
-        {{if eq .Config.Jobs.Mode "jellyseerr"}}checked{{end}}
-        class="mt-1 w-4 h-4 text-purple-500 focus:ring-purple-500"
-      />
-      <div class="ml-3">
-        <span class="block text-slate-100 font-semibold">Jellyseerr Mode</span>
-        <span class="block text-sm text-slate-400 mt-1">Request content via Jellyseerr (requires Jellyseerr configured above)</span>
-      </div>
-    </label>
-  </div>
+    <!-- About -->
+    <section class="settings-group" id="about">
+      <div class="settings-section-heading"><h2>About</h2></div>
+      <dl class="about-list">
+        <div><dt>Version</dt><dd>{{.Version}}{{if or (contains .Version "beta") (contains .Version "alpha")}} <span style="color:rgb(250 204 21);">(pre-release)</span>{{end}}</dd></div>
+        <div><dt>Latest</dt><dd><a id="latest-version" href="https://github.com/mahcks/blockbusterr/releases/latest" target="_blank" rel="noopener">checking&hellip;</a></dd></div>
+        <div><dt>Config file</dt><dd>{{if .Config.ConfigFilePath}}{{.Config.ConfigFilePath}}{{else}}Not using a config file{{end}}</dd></div>
+        <div><dt>Docs</dt><dd><a href="https://github.com/mahcks/blockbusterr" target="_blank" rel="noopener">github.com/mahcks/blockbusterr</a></dd></div>
+      </dl>
+    </section>
+  </main>
 </div>
 
-    <button
-      type="submit"
-      id="save-button"
-      class="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center gap-2"
-    >
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-      </svg>
-      Save Configuration
-    </button>
-  </form>
-</div>
-
-<div id="message-container" class="hidden"></div>
-
-<!-- Shareable Configuration (Export/Import) -->
-<div class="bg-slate-800 rounded-lg border border-slate-700 p-6 mb-6">
-  <h2 class="text-2xl font-bold text-blue-400 mb-4">Share Configuration</h2>
-  <p class="text-slate-300 mb-6">
-    Export or import just your filters, jobs, and scoring settings (no credentials). Perfect for sharing configurations with others.
-  </p>
-  
-  <div class="grid md:grid-cols-2 gap-6">
-    <!-- Export Shareable Section -->
-    <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
-      <h3 class="text-lg font-semibold text-blue-300 mb-3 flex items-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
-        </svg>
-        Export Shareable Config
-      </h3>
-      <p class="text-sm text-slate-400 mb-4">
-        Download filters, jobs, and scoring settings only. Safe to share publicly - no API keys or credentials included.
-      </p>
-      <a
-        href="/config/export"
-        class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-colors"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-        </svg>
-        Download Shareable
-      </a>
-    </div>
-
-    <!-- Import Shareable Section -->
-    <div class="bg-slate-900/50 rounded-lg p-6 border border-slate-700">
-      <h3 class="text-lg font-semibold text-blue-300 mb-3 flex items-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-        </svg>
-        Import Shareable Config
-      </h3>
-      <p class="text-sm text-slate-400 mb-4">
-        Upload a shareable config to update your filters, jobs, and scoring. Your credentials will remain unchanged.
-      </p>
-      <form id="import-form" enctype="multipart/form-data" class="space-y-3">
-        <div>
-          <input
-            type="file"
-            id="config-file"
-            name="config"
-            accept=".yaml,.yml"
-            class="block w-full text-sm text-slate-400
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-lg file:border-0
-              file:text-sm file:font-semibold
-              file:bg-blue-600 file:text-white
-              hover:file:bg-blue-700
-              cursor-pointer"
-            required
-          />
-        </div>
-        <button
-          type="submit"
-          class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-          </svg>
-          Upload & Apply
-        </button>
-      </form>
-      <div id="import-message" class="mt-4 hidden"></div>
+<div id="restore-confirm" class="job-dialog hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="restore-confirm-title">
+  <div class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg">
+    <div class="p-5">
+      <h2 id="restore-confirm-title" class="text-base font-semibold text-slate-100">Restore full backup?</h2>
+      <p class="mt-2 text-sm text-slate-400">This replaces your <strong class="text-slate-200">entire configuration</strong>, including every credential, with the contents of <strong id="restore-confirm-filename" class="text-slate-200"></strong>. A backup of the current configuration is created first.</p>
+      <div class="mt-5 flex justify-end gap-2">
+        <button type="button" class="job-secondary-button" data-action="cancel-restore">Cancel</button>
+        <button type="button" class="job-delete-button" data-action="confirm-restore">Restore and replace</button>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Backup & Restore (Full Configuration) -->
-<div class="bg-slate-800 rounded-lg border border-slate-700 p-6 mb-6">
-  <h2 class="text-2xl font-bold text-amber-400 mb-4">Backup & Restore</h2>
-  <p class="text-slate-300 mb-6">
-    Full configuration backup including all credentials and API keys. Keep these files secure!
-  </p>
-  
-  <div class="grid md:grid-cols-2 gap-6">
-    <!-- Backup Section -->
-    <div class="bg-slate-900/50 rounded-lg p-6 border border-amber-700/30">
-      <h3 class="text-lg font-semibold text-amber-300 mb-3 flex items-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
-        </svg>
-        Backup Full Config
-      </h3>
-      <p class="text-sm text-slate-400 mb-4">
-        Download complete configuration including all API keys and credentials. <strong class="text-amber-400">Keep this file secure!</strong>
-      </p>
-      <a
-        href="/config/backup"
-        class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-medium px-4 py-2 rounded-lg transition-colors"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
-        </svg>
-        Download Backup
-      </a>
-    </div>
-
-    <!-- Restore Section -->
-    <div class="bg-slate-900/50 rounded-lg p-6 border border-amber-700/30">
-      <h3 class="text-lg font-semibold text-amber-300 mb-3 flex items-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-        </svg>
-        Restore from Backup
-      </h3>
-      <p class="text-sm text-slate-400 mb-4">
-        Restore a full backup. <strong class="text-red-400">This will replace your entire configuration!</strong> A backup will be created first.
-      </p>
-      <form id="restore-form" enctype="multipart/form-data" class="space-y-3">
-        <div>
-          <input
-            type="file"
-            id="restore-file"
-            name="config"
-            accept=".yaml,.yml"
-            class="block w-full text-sm text-slate-400
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-lg file:border-0
-              file:text-sm file:font-semibold
-              file:bg-amber-600 file:text-white
-              hover:file:bg-amber-700
-              cursor-pointer"
-            required
-          />
-        </div>
-        <button
-          type="submit"
-          class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-          </svg>
-          Restore Backup
-        </button>
-      </form>
-      <div id="restore-message" class="mt-4 hidden"></div>
-    </div>
+<div id="save-bar" class="save-bar" data-visible="false">
+  <div class="save-bar-inner">
+    <span class="save-bar-message"><i data-lucide="circle" aria-hidden="true"></i>Unsaved changes</span>
+    <span class="save-bar-status" data-save-status></span>
+    <button type="button" class="job-secondary-button" data-action="discard">Discard</button>
+    <button type="button" class="job-save-button" data-action="save" id="save-button">Save changes</button>
   </div>
 </div>
 
-<div class="bg-slate-800 rounded-lg border border-slate-700 p-6">
-  <h2 class="text-2xl font-bold text-blue-400 mb-4">About</h2>
-  <div class="space-y-2 text-slate-300">
-    <p>
-      <strong class="text-slate-100">Version:</strong> {{.Version}}
-      {{- if or (contains .Version "beta") (contains .Version "alpha")}}
-        <span class="ml-2 text-sm text-yellow-400">💛 Thanks for testing!</span>
-      {{- end}}
-    </p>
-    <p>
-      <strong class="text-slate-100">Config File:</strong> {{if
-      .Config.ConfigFilePath}}{{.Config.ConfigFilePath}}{{else}}Not using config
-      file{{end}}
-    </p>
-  </div>
 </div>
-
-<style>
-  .htmx-request #save-button {
-    opacity: 0.7;
-    cursor: wait;
-  }
-  
-  .htmx-request #save-button svg {
-    animation: spin 1s linear infinite;
-  }
-  
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-</style>
-
-<script>
-  // Format bytes to human readable size
-  function formatBytes(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-  }
-
-  // Ensure password field values are properly set on page load
-  document.addEventListener("DOMContentLoaded", function () {
-    const secretInput = document.getElementById("trakt-client-secret");
-    if (secretInput && secretInput.value) {
-      // Force the input to recognize its value attribute
-      secretInput.setAttribute("value", secretInput.value);
-    }
-
-    // Set saved values for dropdowns
-    const radarrQP = "{{.Config.Radarr.QualityProfile}}";
-    const radarrRF = "{{.Config.Radarr.RootFolder}}";
-    const sonarrQP = "{{.Config.Sonarr.QualityProfile}}";
-    const sonarrRF = "{{.Config.Sonarr.RootFolder}}";
-    const radarrURL = "{{.Config.Radarr.URL}}";
-    const sonarrURL = "{{.Config.Sonarr.URL}}";
-
-    if (radarrQP && radarrQP !== "0") {
-      document.getElementById("radarr-quality-profile").setAttribute("data-selected", radarrQP);
-    }
-    if (radarrRF) {
-      document.getElementById("radarr-root-folder").setAttribute("data-selected", radarrRF);
-    }
-    if (sonarrQP && sonarrQP !== "0") {
-      document.getElementById("sonarr-quality-profile").setAttribute("data-selected", sonarrQP);
-    }
-    if (sonarrRF) {
-      document.getElementById("sonarr-root-folder").setAttribute("data-selected", sonarrRF);
-    }
-
-    // Auto-load dropdowns if URLs are configured
-    if (radarrURL) {
-      loadRadarrProfiles(true);
-      loadRadarrRootFolders(true);
-    }
-    if (sonarrURL) {
-      loadSonarrProfiles(true);
-      loadSonarrRootFolders(true);
-    }
-  });
-
-  // Load Radarr quality profiles
-  window.loadRadarrProfiles = function(silent = false) {
-    const select = document.getElementById("radarr-quality-profile");
-    const savedValue = select.getAttribute("data-selected");
-    
-    fetch('/v1/radarr/quality-profiles')
-      .then(res => res.json())
-      .then(data => {
-        select.innerHTML = '<option value="">Select a quality profile...</option>';
-        if (data.data && data.data.length > 0) {
-          data.data.forEach(profile => {
-            const option = document.createElement('option');
-            option.value = profile.id;
-            option.textContent = profile.name;
-            if (savedValue && profile.id == savedValue) {
-              option.selected = true;
-            }
-            select.appendChild(option);
-          });
-          if (!silent) showNotification('Quality profiles loaded successfully', 'success');
-        } else {
-          if (!silent) showNotification('No quality profiles found', 'error');
-        }
-      })
-      .catch(err => {
-        if (!silent) showNotification('Failed to load quality profiles: ' + err.message, 'error');
-      });
-  };
-
-  // Load Radarr root folders
-  window.loadRadarrRootFolders = function(silent = false) {
-    const select = document.getElementById("radarr-root-folder");
-    const savedValue = select.getAttribute("data-selected");
-    
-    fetch('/v1/radarr/root-folders')
-      .then(res => res.json())
-      .then(data => {
-        select.innerHTML = '<option value="">Select a root folder...</option>';
-        if (data.data && data.data.length > 0) {
-          data.data.forEach(folder => {
-            const option = document.createElement('option');
-            option.value = folder.path;
-            const freeSpace = folder.freeSpace ? formatBytes(folder.freeSpace) : 'unknown';
-            option.textContent = `${folder.path} (${freeSpace} free)`;
-            if (savedValue && folder.path === savedValue) {
-              option.selected = true;
-            }
-            select.appendChild(option);
-          });
-          if (!silent) showNotification('Root folders loaded successfully', 'success');
-        } else {
-          if (!silent) showNotification('No root folders found', 'error');
-        }
-      })
-      .catch(err => {
-        if (!silent) showNotification('Failed to load root folders: ' + err.message, 'error');
-      });
-  };
-
-  // Load Sonarr quality profiles
-  window.loadSonarrProfiles = function(silent = false) {
-    const select = document.getElementById("sonarr-quality-profile");
-    const savedValue = select.getAttribute("data-selected");
-    
-    fetch('/v1/sonarr/quality-profiles')
-      .then(res => res.json())
-      .then(data => {
-        select.innerHTML = '<option value="">Select a quality profile...</option>';
-        if (data.data && data.data.length > 0) {
-          data.data.forEach(profile => {
-            const option = document.createElement('option');
-            option.value = profile.id;
-            option.textContent = profile.name;
-            if (savedValue && profile.id == savedValue) {
-              option.selected = true;
-            }
-            select.appendChild(option);
-          });
-          if (!silent) showNotification('Quality profiles loaded successfully', 'success');
-        } else {
-          if (!silent) showNotification('No quality profiles found', 'error');
-        }
-      })
-      .catch(err => {
-        if (!silent) showNotification('Failed to load quality profiles: ' + err.message, 'error');
-      });
-  };
-
-  // Load Sonarr root folders
-  window.loadSonarrRootFolders = function(silent = false) {
-    const select = document.getElementById("sonarr-root-folder");
-    const savedValue = select.getAttribute("data-selected");
-    
-    fetch('/v1/sonarr/root-folders')
-      .then(res => res.json())
-      .then(data => {
-        select.innerHTML = '<option value="">Select a root folder...</option>';
-        if (data.data && data.data.length > 0) {
-          data.data.forEach(folder => {
-            const option = document.createElement('option');
-            option.value = folder.path;
-            const freeSpace = folder.freeSpace ? formatBytes(folder.freeSpace) : 'unknown';
-            option.textContent = `${folder.path} (${freeSpace} free)`;
-            if (savedValue && folder.path === savedValue) {
-              option.selected = true;
-            }
-            select.appendChild(option);
-          });
-          if (!silent) showNotification('Root folders loaded successfully', 'success');
-        } else {
-          if (!silent) showNotification('No root folders found', 'error');
-        }
-      })
-      .catch(err => {
-        if (!silent) showNotification('Failed to load root folders: ' + err.message, 'error');
-      });
-  };
-
-  // Handle import configuration form
-  document.getElementById('import-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const fileInput = document.getElementById('config-file');
-    const messageDiv = document.getElementById('import-message');
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    
-    if (!fileInput.files || fileInput.files.length === 0) {
-      messageDiv.className = 'mt-4 bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg';
-      messageDiv.textContent = 'Please select a configuration file';
-      messageDiv.classList.remove('hidden');
-      return;
-    }
-    
-    const formData = new FormData();
-    formData.append('config', fileInput.files[0]);
-    
-    // Disable button during upload
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2 inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Uploading...';
-    
-    try {
-      const response = await fetch('/config/import', {
-        method: 'POST',
-        body: formData
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        messageDiv.className = 'mt-4 bg-green-500/20 border border-green-500 text-green-400 px-4 py-3 rounded-lg';
-        messageDiv.innerHTML = `<strong>✓ Success!</strong> ${result.message}<br><small>Saved to: ${result.path}</small><br><small class="text-green-300 mt-1 inline-block">Page will reload in 2 seconds...</small>`;
-        messageDiv.classList.remove('hidden');
-        
-        // Reload page after 2 seconds to show new config
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      } else {
-        messageDiv.className = 'mt-4 bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg';
-        messageDiv.textContent = '✗ ' + (result.error || 'Failed to import configuration');
-        messageDiv.classList.remove('hidden');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Upload & Apply';
-      }
-    } catch (err) {
-      messageDiv.className = 'mt-4 bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg';
-      messageDiv.textContent = '✗ Network error: ' + err.message;
-      messageDiv.classList.remove('hidden');
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Upload & Apply';
-    }
-  });
-
-  // Handle restore form submission
-  document.getElementById('restore-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const fileInput = document.getElementById('restore-file');
-    const messageDiv = document.getElementById('restore-message');
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    
-    if (!fileInput.files || fileInput.files.length === 0) {
-      messageDiv.className = 'mt-4 bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg';
-      messageDiv.textContent = 'Please select a backup file';
-      messageDiv.classList.remove('hidden');
-      return;
-    }
-    
-    // Confirm before restoring
-    if (!confirm('⚠️ This will replace your ENTIRE configuration including all credentials!\n\nA backup will be created automatically.\n\nAre you sure you want to continue?')) {
-      return;
-    }
-    
-    const formData = new FormData();
-    formData.append('config', fileInput.files[0]);
-    
-    // Disable button during upload
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2 inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Restoring...';
-    
-    try {
-      const response = await fetch('/config/restore', {
-        method: 'POST',
-        body: formData
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        messageDiv.className = 'mt-4 bg-green-500/20 border border-green-500 text-green-400 px-4 py-3 rounded-lg';
-        messageDiv.innerHTML = `<strong>✓ Success!</strong> ${result.message}<br><small>Saved to: ${result.path}</small><br><small class="text-green-300 mt-1 inline-block">Page will reload in 2 seconds...</small>`;
-        messageDiv.classList.remove('hidden');
-        
-        // Reload page after 2 seconds to show new config
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      } else {
-        messageDiv.className = 'mt-4 bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg';
-        messageDiv.textContent = '✗ ' + (result.error || 'Failed to restore configuration');
-        messageDiv.classList.remove('hidden');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Restore Backup';
-      }
-    } catch (err) {
-      messageDiv.className = 'mt-4 bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg';
-      messageDiv.textContent = '✗ Network error: ' + err.message;
-      messageDiv.classList.remove('hidden');
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Restore Backup';
-    }
-  });
-</script>
-
+<script defer src="/static/js/settings.js"></script>
 {{template "components/footer.html" .}}
 {{end}}
