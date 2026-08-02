@@ -3,6 +3,7 @@
   let allJobs = [];
   let jobTypes = {};
   let jobTemplates = [];
+  let ruleSets = [];
   let currentJob = null;
   let currentTemplateCategory = 'Movies';
   let templateSearchQuery = '';
@@ -91,6 +92,12 @@
     renderJobsList();
     renderTemplates();
 
+    // Supports "navigate to the relevant job" links from the Rules page.
+    const requestedJobId = new URLSearchParams(window.location.search).get('job');
+    if (requestedJobId && allJobs.some(job => String(job.id) === requestedJobId)) {
+      openJobModal(requestedJobId);
+    }
+
     const templateSearch = document.getElementById('template-search');
     if (templateSearch) {
       templateSearch.addEventListener('input', function(evt) {
@@ -101,8 +108,10 @@
 
     document.getElementById('custom-type')?.addEventListener('change', updateCustomFormFields);
     document.getElementById('custom-source')?.addEventListener('change', updateCustomFormFields);
+    document.getElementById('custom-media')?.addEventListener('change', updateCustomRuleSets);
     document.getElementById('modal-type')?.addEventListener('change', onJobTypeChange);
     document.getElementById('modal-source')?.addEventListener('change', updateModalTypeFields);
+    document.getElementById('modal-rule-set')?.addEventListener('change', updateRuleSetSummary);
     document.addEventListener('keydown', handleDialogKeyboard);
     document.addEventListener('click', handleJobsAction);
 
@@ -126,6 +135,7 @@
     const mediaSelect = document.getElementById('modal-media');
     if (mediaSelect) {
       mediaSelect.addEventListener('change', function() {
+        switchJobFilterMedia(mediaSelect.value);
         if (currentJob) {
           // Create temp job with current form values
           const tempJob = {
@@ -150,6 +160,8 @@
       'filter-templates': () => filterTemplates(target.dataset.category),
       'show-custom-job': () => showCustomJobForm(),
       'open-job': () => openJobModal(target.dataset.jobId, target),
+      'open-job-filters': () => openJobFilters(target.dataset.jobId, target),
+      'customize-job-rules': () => customizeJobRules(target),
       'trigger-job': () => triggerJob(target.dataset.jobId),
       'delete-job': () => deleteJob(target.dataset.jobId),
       'create-from-template': () => {
@@ -173,15 +185,17 @@
   async function loadData() {
     try {
       // Load all data in parallel
-      const [jobsRes, typesRes, templatesRes] = await Promise.all([
+      const [jobsRes, typesRes, templatesRes, ruleSetsRes] = await Promise.all([
         fetch('/v1/jobs/list'),
         fetch('/v1/jobs/types'),
-        fetch('/v1/jobs/templates')
+        fetch('/v1/jobs/templates'),
+        fetch('/v1/rule-sets')
       ]);
 
       allJobs = await jobsRes.json();
       jobTypes = await typesRes.json();
       jobTemplates = await templatesRes.json();
+      ruleSets = (await ruleSetsRes.json()).map(item => ({ ...item.rule_set, usage_count: item.usage_count }));
 
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -239,6 +253,7 @@
         const isLegacy = job.id.startsWith('legacy_');
 		const source = job.source || 'trakt';
 		const sourceLabel = source === 'tmdb' ? 'TMDB' : capitalize(source);
+		const assignedRules = ruleSets.find(rules => rules.id === job.rule_set_id) || ruleSets.find(rules => rules.id === `default-${job.media === 'show' ? 'shows' : 'movies'}`);
 
         return `
 		  <article class="job-row">
@@ -255,7 +270,10 @@
             </button>
             <span class="job-row-value">${escapeHTML(sourceLabel)}</span>
             <span class="job-row-value">${job.media === 'movie' ? 'Movie' : 'TV show'}</span>
-            <span class="job-row-value">${job.period ? escapeHTML(capitalize(job.period)) : 'Default'}</span>
+            <button type="button" class="job-filter-policy" data-action="open-job-filters" data-job-id="${escapeHTML(job.id)}" ${isLegacy ? 'disabled' : ''}>
+              <span>${escapeHTML(assignedRules?.name || 'Rules unavailable')}</span>
+              <small>${assignedRules ? `Revision ${assignedRules.revision}` : 'Check assignment'}</small>
+            </button>
             <div class="job-row-actions">
 				  ${unavailable ? '' : `<button
                     data-action="trigger-job"
@@ -487,6 +505,17 @@
     if (parseInt(limitInput.value) > maxLimit) {
       limitInput.value = maxLimit;
     }
+    updateCustomRuleSets();
+  }
+
+  function updateCustomRuleSets() {
+    const media = document.getElementById('custom-media')?.value || 'movie';
+    const select = document.getElementById('custom-rule-set');
+    if (!select) return;
+    const current = select.value;
+    const compatible = ruleSets.filter(rules => rules.media === media);
+    select.replaceChildren(...compatible.map(rules => new Option(`${rules.name} · ${rules.usage_count} job${rules.usage_count === 1 ? '' : 's'}`, rules.id)));
+    select.value = compatible.some(rules => rules.id === current) ? current : `default-${media === 'show' ? 'shows' : 'movies'}`;
   }
 
   // Custom job form submission
@@ -506,7 +535,8 @@
           media: formData.get('media'),
           enabled: true,
           limit: parseInt(formData.get('limit')),
-		  source: formData.get('source') || 'trakt'
+		  source: formData.get('source') || 'trakt',
+          rule_set_id: formData.get('rule_set_id')
         };
 
         // Add period if required
@@ -621,7 +651,8 @@
       media: media,
       enabled: true,
       limit: limit,
-	  source
+	  source,
+      rule_set_id: `default-${media === 'show' ? 'shows' : 'movies'}`
     };
 
     if (period) {
@@ -645,7 +676,7 @@
 
       closeAddJobModal();
       renderJobsList();
-      showNotification(`${name} created successfully!`, 'success');
+      showNotification(`${name} created with the default ${media === 'show' ? 'show' : 'movie'} rules.`, 'success');
 
       // Open the edit modal for the new job
       openJobModal(newJob.id);
@@ -691,10 +722,10 @@
 
     // Set badges
     document.getElementById('modal-badges').innerHTML = `
-      <span class="px-2 py-0.5 text-xs rounded bg-slate-700 text-slate-300">${capitalize(job.type)}</span>
-      <span class="px-2 py-0.5 text-xs rounded ${job.media === 'movie' ? 'bg-blue-900/30 text-blue-300' : 'bg-green-900/30 text-green-300'}">${job.media === 'movie' ? 'Movie' : 'TV Show'}</span>
-	  <span class="px-2 py-0.5 text-xs rounded bg-slate-700 text-slate-300">${job.source === 'tmdb' ? 'TMDB' : capitalize(job.source || 'trakt')}</span>
-      ${isLegacy ? '<span class="px-2 py-0.5 text-xs rounded bg-yellow-900/30 text-yellow-300">Legacy (Read-Only)</span>' : ''}
+      <span class="job-type-badge">${capitalize(job.type)}</span>
+      <span class="job-type-badge ${job.media === 'movie' ? 'job-type-badge-movie' : 'job-type-badge-show'}">${job.media === 'movie' ? 'Movie' : 'TV Show'}</span>
+	  <span class="job-type-badge">${job.source === 'tmdb' ? 'TMDB' : capitalize(job.source || 'trakt')}</span>
+      ${isLegacy ? '<span class="job-type-badge job-type-badge-legacy">Legacy (Read-Only)</span>' : ''}
     `;
 
     // Set max limit based on job type
@@ -723,6 +754,7 @@
 
     // Update type-dependent fields (period, smart, media options)
     updateModalTypeFields();
+    populateJobFilters(job, isLegacy);
 
     // Update direct mode fields
     updateDirectModeFields(job);
@@ -732,28 +764,37 @@
     const toggleDescription = document.getElementById('toggle-job-description');
     if (job.enabled) {
       toggleButton.textContent = 'Disable Job';
-      toggleButton.className = 'w-full px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-semibold rounded-lg transition-colors duration-200 border border-red-600/50';
+      toggleButton.className = 'job-disable-button w-full';
       toggleDescription.textContent = 'Pause this job from running';
     } else {
       toggleButton.textContent = 'Enable Job';
-      toggleButton.className = 'w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200';
+      toggleButton.className = 'job-enable-button w-full';
       toggleDescription.textContent = 'Start this job running on schedule';
     }
 
     // Show/hide delete button
-    const deleteButton = document.getElementById('delete-job-button');
+    const deleteZone = document.getElementById('delete-job-zone');
     if (isLegacy) {
-      deleteButton.classList.add('hidden');
+      deleteZone.classList.add('hidden');
     } else {
-      deleteButton.classList.remove('hidden');
+      deleteZone.classList.remove('hidden');
     }
 
     openDialog('job-modal', trigger);
   }
 
+  function openJobFilters(jobId, trigger) {
+    openJobModal(jobId, trigger);
+    requestAnimationFrame(() => {
+      document.getElementById('modal-filter-settings').scrollIntoView({ block: 'start' });
+      document.getElementById('modal-rule-set')?.focus();
+    });
+  }
+
   // Handle job type change in edit modal
   function onJobTypeChange() {
     updateModalTypeFields();
+    switchJobFilterMedia(document.getElementById('modal-media').value);
     // Update direct mode fields as media type may have changed
     if (currentJob) {
       // Create a temporary job object with updated values for direct mode check
@@ -852,6 +893,68 @@
     document.getElementById('modal-description').textContent = typeDef.description || '';
   }
 
+  function populateJobFilters(job, isLegacy) {
+    const select = document.getElementById('modal-rule-set');
+    const compatible = ruleSets.filter(rules => rules.media === job.media);
+    select.replaceChildren(...compatible.map(rules => new Option(`${rules.name} · ${rules.usage_count} job${rules.usage_count === 1 ? '' : 's'}`, rules.id)));
+    select.value = job.rule_set_id || `default-${job.media === 'show' ? 'shows' : 'movies'}`;
+    select.disabled = isLegacy;
+    document.getElementById('modal-filter-settings').classList.toggle('opacity-50', isLegacy);
+    updateRuleSetSummary();
+  }
+
+  function switchJobFilterMedia(media) {
+    if (!currentJob) return;
+    populateJobFilters({ ...currentJob, media, rule_set_id: '' }, currentJob.id.startsWith('legacy_'));
+  }
+
+  function updateRuleSetSummary() {
+    const rules = ruleSets.find(item => item.id === document.getElementById('modal-rule-set')?.value);
+    document.getElementById('modal-rule-set-summary').textContent = rules ? `${describeRuleSet(rules)} Changes apply to every assigned job.` : 'Select a compatible rule set.';
+    const customize = document.getElementById('customize-job-rules');
+    const isJobSpecific = rules && !rules.id.startsWith('default-') && rules.usage_count === 1 && currentJob?.rule_set_id === rules.id;
+    customize.classList.toggle('hidden', Boolean(isJobSpecific) || currentJob?.id.startsWith('legacy_'));
+    const edit = document.getElementById('edit-job-rules');
+    edit.textContent = isJobSpecific ? 'Edit job rules' : 'View selected rules';
+    edit.href = rules ? `/filters?ruleSet=${encodeURIComponent(rules.id)}` : '/filters';
+  }
+
+  function describeRuleSet(rules) {
+    const values = rules[rules.media === 'show' ? 'shows' : 'movies'] || {};
+    const parts = [];
+    if (values.blacklisted_min_year || values.blacklisted_max_year) parts.push(`${values.blacklisted_min_year || 'Any'}-${values.blacklisted_max_year || 'now'}`);
+    if (values.min_rating) parts.push(`rating ${values.min_rating}+`);
+    if (values.allowed_languages?.length) parts.push(values.allowed_languages.join(', '));
+    if (values.blacklisted_genres?.length) parts.push(`blocks ${values.blacklisted_genres.slice(0, 2).join(', ')}${values.blacklisted_genres.length > 2 ? ` +${values.blacklisted_genres.length - 2}` : ''}`);
+    return parts.length ? parts.join(' · ') + '.' : 'No filtering criteria.';
+  }
+
+  async function customizeJobRules(button) {
+    if (!currentJob || currentJob.id.startsWith('legacy_')) return;
+    button.disabled = true;
+    button.textContent = 'Creating copy...';
+    try {
+      const response = await fetch(`/v1/jobs/${encodeURIComponent(currentJob.id)}/customize-rules`, { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not create job rules');
+      const previousRuleSetID = currentJob.rule_set_id || `default-${currentJob.media === 'show' ? 'shows' : 'movies'}`;
+      const previousRules = ruleSets.find(rules => rules.id === previousRuleSetID);
+      if (previousRules) previousRules.usage_count = Math.max(0, previousRules.usage_count - 1);
+      ruleSets.push({ ...result.rule_set, usage_count: 1 });
+      currentJob = { ...currentJob, rule_set_id: result.rule_set.id };
+      const index = allJobs.findIndex(job => job.id === currentJob.id);
+      if (index !== -1) allJobs[index] = currentJob;
+      populateJobFilters(currentJob, false);
+      renderJobsList();
+      showNotification('Created rules for this job.', 'success');
+    } catch (error) {
+      showNotification(error.message, 'error');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Customize for this job';
+    }
+  }
+
   function closeJobModal() {
     closeDialog('job-modal');
     document.getElementById('modal-advanced').classList.add('hidden');
@@ -940,6 +1043,8 @@
       sync_interval: document.getElementById('modal-interval').value || '',
       mode: document.getElementById('modal-mode').value || ''
     };
+    updatedJob.rule_set_id = document.getElementById('modal-rule-set').value;
+    updatedJob.use_custom_filters = false;
 
     // Add period if applicable
     if (typeDef?.requires_period) {

@@ -53,6 +53,19 @@ func TestMoviePassesFilters_AllowedCountries(t *testing.T) {
 	}
 }
 
+func TestTitleExceptionPrecedence(t *testing.T) {
+	movie := integrations.Movie{Title: "Example", Country: "us", IDs: integrations.IDs{TMDB: 42}}
+	rules := config.MovieFilters{AllowedCountries: []string{"gb"}}
+	exceptions := config.TitleExceptions{AllowedMovieTMDBIDs: []int{42}}
+	if result := MoviePassesRules(movie, rules, exceptions); !result.Passed {
+		t.Fatalf("allowed title rejected: %s", result.Reason)
+	}
+	exceptions.BlockedMovieTMDBIDs = []int{42}
+	if result := MoviePassesRules(movie, rules, exceptions); result.Passed || result.Reason != "blocked title" {
+		t.Fatalf("block did not win: %#v", result)
+	}
+}
+
 func TestMoviePassesFilters_BlacklistedGenres(t *testing.T) {
 	tests := []struct {
 		name              string

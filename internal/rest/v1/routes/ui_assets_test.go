@@ -36,6 +36,7 @@ func TestUIRuntimeAssetsAreLocal(t *testing.T) {
 		"web/static/css/app.css",
 		"web/static/js/app.js",
 		"web/static/js/activity.js",
+		"web/static/js/filters.js",
 		"web/static/js/jobs.js",
 		"web/static/js/vendor/htmx.min.js",
 		"web/static/js/vendor/lucide.min.js",
@@ -43,6 +44,26 @@ func TestUIRuntimeAssetsAreLocal(t *testing.T) {
 	} {
 		if info, err := os.Stat(filepath.Join(root, filepath.FromSlash(path))); err != nil || info.Size() == 0 {
 			t.Errorf("required local asset %s is missing or empty", path)
+		}
+	}
+}
+
+func TestFiltersPageUsesExternalScriptAndDelegatedActions(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..")
+	template := readUIFile(t, filepath.Join(root, "web", "templates", "filters.html"))
+	script := readUIFile(t, filepath.Join(root, "web", "static", "js", "filters.js"))
+
+	if !strings.Contains(template, `defer src="/static/js/filters.js"`) {
+		t.Error("filters.html is missing its external script")
+	}
+	for _, inline := range []string{"onclick=", "onchange=", "onkeyup=", "hx-on=", "<script>"} {
+		if strings.Contains(template, inline) {
+			t.Errorf("filters.html still contains inline behavior %s", inline)
+		}
+	}
+	for _, expected := range []string{"[data-rules-view]", "function renderRuleList", "function saveRuleSet", "function saveExceptions"} {
+		if !strings.Contains(script, expected) {
+			t.Errorf("filters.js is missing %s", expected)
 		}
 	}
 }
@@ -120,6 +141,11 @@ func TestJobsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 	for _, expected := range []string{"function openDialog", "function closeDialog", "function handleDialogKeyboard", "function handleJobsAction"} {
 		if !strings.Contains(script, expected) {
 			t.Errorf("jobs.js is missing %s", expected)
+		}
+	}
+	for _, expected := range []string{`id="modal-rule-set"`, "function populateJobFilters", "rule_set_id", "/v1/rule-sets"} {
+		if !strings.Contains(jobs+script, expected) {
+			t.Errorf("per-job filter editor is missing %s", expected)
 		}
 	}
 }

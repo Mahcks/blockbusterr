@@ -623,10 +623,10 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			}
 
 			// Check if already blocked
-			alreadyBlocked := slices.Contains(cfg.Filters.Movies.BlacklistedTMDBIds, activityLog.TMDBID)
+			alreadyBlocked := slices.Contains(cfg.TitleExceptions.BlockedMovieTMDBIDs, activityLog.TMDBID)
 
 			if !alreadyBlocked {
-				cfg.Filters.Movies.BlacklistedTMDBIds = append(cfg.Filters.Movies.BlacklistedTMDBIds, activityLog.TMDBID)
+				cfg.TitleExceptions.BlockedMovieTMDBIDs = append(cfg.TitleExceptions.BlockedMovieTMDBIDs, activityLog.TMDBID)
 				if err := cfg.Save(); err != nil {
 					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 						"error": fmt.Sprintf("Failed to save config: %v", err),
@@ -644,10 +644,10 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			}
 
 			// Check if already blocked
-			alreadyBlocked := slices.Contains(cfg.Filters.Shows.BlacklistedTVDBIds, activityLog.TVDBID)
+			alreadyBlocked := slices.Contains(cfg.TitleExceptions.BlockedShowTVDBIDs, activityLog.TVDBID)
 
 			if !alreadyBlocked {
-				cfg.Filters.Shows.BlacklistedTVDBIds = append(cfg.Filters.Shows.BlacklistedTVDBIds, activityLog.TVDBID)
+				cfg.TitleExceptions.BlockedShowTVDBIDs = append(cfg.TitleExceptions.BlockedShowTVDBIDs, activityLog.TVDBID)
 				if err := cfg.Save(); err != nil {
 					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 						"error": fmt.Sprintf("Failed to save config: %v", err),

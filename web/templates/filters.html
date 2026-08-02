@@ -1,961 +1,217 @@
 {{define "filters"}}
-
-<!-- Info Alert -->
-{{template "alert-info" .AlertInfo}}
-
-<div>
-  <div id="message-container"></div>
-
-  <!-- Tab Buttons -->
-  <div class="flex border-b border-slate-700 mb-4">
-    <button
-      onclick="showTab('movies')"
-      id="movies-tab"
-      class="px-6 py-3 text-blue-400 border-b-2 border-blue-400 font-semibold transition-colors"
-    >
-      Movies
+<div id="filters-page">
+  <header class="jobs-toolbar">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight text-slate-50">Rules</h1>
+      <p class="mt-0.5 text-sm text-slate-500">Control what each discovery job can accept.</p>
+    </div>
+    <button type="button" id="new-rule-set" class="app-primary-button">
+      <i data-lucide="plus" class="h-4 w-4" aria-hidden="true"></i>
+      New rule set
     </button>
-    <button
-      onclick="showTab('shows')"
-      id="shows-tab"
-      class="px-6 py-3 text-slate-400 hover:text-slate-300 border-b-2 border-transparent transition-colors"
-    >
-      Shows
-    </button>
+  </header>
+
+  <nav class="filter-media-tabs" aria-label="Rules workspace" role="tablist">
+    <button type="button" data-rules-view="movie" role="tab" aria-selected="true"><i data-lucide="film" class="h-4 w-4" aria-hidden="true"></i>Movie rules</button>
+    <button type="button" data-rules-view="show" role="tab" aria-selected="false"><i data-lucide="tv" class="h-4 w-4" aria-hidden="true"></i>Show rules</button>
+    <button type="button" data-rules-view="exceptions" role="tab" aria-selected="false"><i data-lucide="shield-check" class="h-4 w-4" aria-hidden="true"></i>Title exceptions</button>
+  </nav>
+
+  <!-- Movie / Show rule-set workspace -->
+  <div id="rule-set-workspace" class="rule-set-workspace">
+    <aside class="rule-set-sidebar" aria-label="Rule sets">
+      <div class="rule-set-search">
+        <i data-lucide="search" class="h-3.5 w-3.5" aria-hidden="true"></i>
+        <input type="search" id="rule-set-search" placeholder="Search rule sets" autocomplete="off">
+      </div>
+      <div id="rule-set-list" role="list"></div>
+      <p id="rule-set-empty" class="rule-set-empty hidden">No rule sets match your search.</p>
+
+      <form id="create-rule-set-form" class="rule-set-create hidden">
+        <label for="new-rule-name">Name</label>
+        <input id="new-rule-name" required maxlength="80" autocomplete="off" placeholder="e.g. Family friendly">
+        <label for="new-rule-copy-from">Start from</label>
+        <select id="new-rule-copy-from">
+          <option value="">Empty rule set</option>
+        </select>
+        <div class="rule-set-create-actions">
+          <button type="button" id="cancel-rule-set" class="job-secondary-button">Cancel</button>
+          <button type="submit" class="job-save-button">Create</button>
+        </div>
+      </form>
+    </aside>
+
+    <section class="filter-workspace" aria-label="Rule set editor">
+      <form id="rule-set-form" novalidate>
+        <header class="rule-set-editor-header">
+          <div class="rule-set-editor-title">
+            <input type="text" id="rule-name" required maxlength="80" aria-label="Rule set name">
+            <div class="rule-set-editor-meta">
+              <span id="rule-media-badge" class="job-type-badge"></span>
+              <span id="rule-revision" class="rule-set-editor-revision"></span>
+            </div>
+          </div>
+          <div class="rule-set-editor-actions">
+            <span id="rule-set-save-status" class="rule-set-save-status" aria-live="polite"></span>
+            <button type="button" id="duplicate-rule-set" class="job-secondary-button">Duplicate</button>
+            <button type="button" id="delete-rule-set" class="job-delete-button">Delete</button>
+          </div>
+        </header>
+
+        <p id="rule-name-error" class="field-error hidden"></p>
+
+        <div class="filter-scope">
+          <div><i data-lucide="link-2" class="h-3.5 w-3.5" aria-hidden="true"></i><span id="rule-usage-text"></span></div>
+          <button type="button" id="toggle-rule-usage" class="filter-scope-toggle hidden" aria-expanded="false">Show jobs</button>
+        </div>
+        <ul id="rule-usage-jobs" class="rule-usage-jobs hidden"></ul>
+
+        <section class="filter-section">
+          <div class="filter-section-heading">
+            <div><i data-lucide="check-circle" aria-hidden="true"></i><h2>Allowed content</h2></div>
+            <p>When a list is populated, content must match one of its values to pass. Empty allows anything.</p>
+          </div>
+          <div class="filter-rule-grid">
+            <div class="filter-rule-copy">
+              <label id="rule-countries-label">Countries</label>
+              <div class="filter-value-entry" data-chip-field="countries">
+                <input type="text" placeholder="e.g. US" autocomplete="off" aria-labelledby="rule-countries-label">
+                <button type="button">Add</button>
+              </div>
+              <div class="filter-token-list filter-token-list-allow" data-chip-list="countries"></div>
+            </div>
+            <div class="filter-rule-copy">
+              <label id="rule-languages-label">Languages</label>
+              <div class="filter-value-entry" data-chip-field="languages">
+                <input type="text" placeholder="e.g. en" autocomplete="off" aria-labelledby="rule-languages-label">
+                <button type="button">Add</button>
+              </div>
+              <div class="filter-token-list filter-token-list-allow" data-chip-list="languages"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="filter-section">
+          <div class="filter-section-heading">
+            <div><i data-lucide="ban" aria-hidden="true"></i><h2>Blocked content</h2></div>
+            <p>Any match rejects the title. Keywords match partial title text; IDs match one exact title.</p>
+          </div>
+          <div class="filter-rule-grid">
+            <div class="filter-rule-copy">
+              <label id="rule-genres-label">Genres</label>
+              <div class="filter-value-entry" data-chip-field="genres">
+                <input type="text" placeholder="e.g. Horror" autocomplete="off" aria-labelledby="rule-genres-label">
+                <button type="button">Add</button>
+              </div>
+              <div class="filter-token-list filter-token-list-block" data-chip-list="genres"></div>
+            </div>
+            <div class="filter-rule-copy">
+              <label id="rule-keywords-label">Title keywords</label>
+              <div class="filter-value-entry" data-chip-field="keywords">
+                <input type="text" placeholder="e.g. concert" autocomplete="off" aria-labelledby="rule-keywords-label">
+                <button type="button">Add</button>
+              </div>
+              <div class="filter-token-list filter-token-list-block" data-chip-list="keywords"></div>
+            </div>
+            <div class="filter-rule-copy hidden" id="rule-networks-field">
+              <label id="rule-networks-label">Networks</label>
+              <div class="filter-value-entry" data-chip-field="networks">
+                <input type="text" placeholder="e.g. Hallmark" autocomplete="off" aria-labelledby="rule-networks-label">
+                <button type="button">Add</button>
+              </div>
+              <div class="filter-token-list filter-token-list-block" data-chip-list="networks"></div>
+            </div>
+            <div class="filter-rule-copy">
+              <label id="rule-blocked-ids-label">Blocked TMDB IDs</label>
+              <div class="filter-value-entry" data-chip-field="blockedIds">
+                <input type="text" inputmode="numeric" placeholder="e.g. 123" autocomplete="off" aria-labelledby="rule-blocked-ids-label">
+                <button type="button">Add</button>
+              </div>
+              <div class="filter-token-list filter-token-list-block" data-chip-list="blockedIds"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="filter-section">
+          <div class="filter-section-heading">
+            <div><i data-lucide="sliders-horizontal" aria-hidden="true"></i><h2>Boundaries</h2></div>
+            <p>Leave a side blank or at 0 to leave that side open.</p>
+          </div>
+          <div class="filter-boundary-grid">
+            <div class="filter-range">
+              <span>Release year</span>
+              <div class="filter-range-inputs">
+                <input type="number" min="0" id="rule-min-year" placeholder="Any" aria-label="Minimum release year">
+                <span aria-hidden="true">&ndash;</span>
+                <input type="number" min="0" id="rule-max-year" placeholder="Any" aria-label="Maximum release year">
+              </div>
+            </div>
+            <div class="filter-range">
+              <span>Runtime (minutes)</span>
+              <div class="filter-range-inputs">
+                <input type="number" min="0" id="rule-min-runtime" placeholder="Any" aria-label="Minimum runtime in minutes">
+                <span aria-hidden="true">&ndash;</span>
+                <input type="number" min="0" id="rule-max-runtime" placeholder="Any" aria-label="Maximum runtime in minutes">
+              </div>
+            </div>
+            <label class="filter-single-range">Minimum rating<input type="number" min="0" max="10" step="0.1" id="rule-min-rating" placeholder="Any"><span>/ 10</span></label>
+            <label class="filter-single-range">Minimum votes<input type="number" min="0" id="rule-min-votes" placeholder="Any"></label>
+          </div>
+          <p id="rule-boundary-error" class="field-error hidden"></p>
+        </section>
+
+        <footer class="rule-set-save-bar">
+          <span id="rule-set-dirty-hint" class="rule-set-dirty-hint hidden"><i data-lucide="circle" class="h-2 w-2" aria-hidden="true"></i>Unsaved changes</span>
+          <button type="submit" id="save-rule-set" class="job-save-button" disabled>Save changes</button>
+        </footer>
+      </form>
+    </section>
   </div>
 
-  <form
-    hx-post="/config/filters"
-    hx-target="#message-container"
-    hx-swap="innerHTML"
-  >
-    <!-- Movies Tab -->
-    <div id="movies-content" class="space-y-0">
-      <div class="bg-slate-800 rounded-lg p-6">
-        <h3
-          class="text-xl font-semibold text-slate-100 mb-6 flex items-center gap-2"
-        >
-          <svg
-            class="w-6 h-6 text-blue-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
-            ></path>
-          </svg>
-          Movie Filters
-        </h3>
+  <!-- Title exceptions workspace -->
+  <div id="exceptions-workspace" class="hidden">
+    <p class="exceptions-intro">Title exceptions apply across every job and take precedence over normal rule preferences.</p>
 
-        <div class="space-y-6">
-          <!-- Allowed Countries -->
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              <svg
-                class="w-4 h-4 inline mr-1 text-green-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-              </svg>
-              Allowed Countries
-            </label>
-            <div class="flex gap-2 mb-2">
-              <input
-                type="text"
-                id="movie-country-input"
-                placeholder="US, GB, CA..."
-                class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <button
-                type="button"
-                onclick="addMovieCountry()"
-                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <div id="movie-countries-list" class="space-y-2"></div>
-          </div>
+    <nav class="filter-media-tabs" aria-label="Title exceptions media" role="tablist">
+      <button type="button" data-exceptions-media="movie" role="tab" aria-selected="true"><i data-lucide="film" class="h-4 w-4" aria-hidden="true"></i>Movies</button>
+      <button type="button" data-exceptions-media="show" role="tab" aria-selected="false"><i data-lucide="tv" class="h-4 w-4" aria-hidden="true"></i>Shows</button>
+    </nav>
 
-          <!-- Allowed Languages -->
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              <svg
-                class="w-4 h-4 inline mr-1 text-green-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
-                ></path>
-              </svg>
-              Allowed Languages
-            </label>
-            <div class="flex gap-2 mb-2">
-              <input
-                type="text"
-                id="movie-language-input"
-                placeholder="en, es, fr..."
-                class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <button
-                type="button"
-                onclick="addMovieLanguage()"
-                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <div id="movie-languages-list" class="space-y-2"></div>
-          </div>
-
-          <!-- Blacklisted Genres -->
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              <svg
-                class="w-4 h-4 inline mr-1 text-red-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                ></path>
-              </svg>
-              Blacklisted Genres
-            </label>
-            <div class="flex gap-2 mb-2">
-              <input
-                type="text"
-                id="movie-genre-input"
-                placeholder="horror, documentary..."
-                class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <button
-                type="button"
-                onclick="addMovieGenre()"
-                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <div id="movie-genres-list" class="space-y-2"></div>
-          </div>
-
-          <!-- Blacklisted Keywords -->
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              <svg
-                class="w-4 h-4 inline mr-1 text-red-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                ></path>
-              </svg>
-              Blacklisted Keywords
-            </label>
-            <div class="flex gap-2 mb-2">
-              <input
-                type="text"
-                id="movie-keyword-input"
-                placeholder="christmas, musical..."
-                class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <button
-                type="button"
-                onclick="addMovieKeyword()"
-                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <div id="movie-keywords-list" class="space-y-2"></div>
-          </div>
-
-          <!-- Blacklisted IDs -->
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              <svg
-                class="w-4 h-4 inline mr-1 text-red-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-              </svg>
-              Blacklisted Trakt IDs
-            </label>
-            <div class="flex gap-2 mb-2">
-              <input
-                type="number"
-                id="movie-id-input"
-                placeholder="123456..."
-                class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <button
-                type="button"
-                onclick="addMovieID()"
-                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <div id="movie-ids-list" class="space-y-2"></div>
-          </div>
-
-          <!-- Runtime Range -->
-          <div class="grid md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2"
-                >Min Runtime (minutes)</label
-              >
-              <input
-                type="number"
-                name="movie_min_runtime"
-                value="{{.Config.Filters.Movies.BlacklistedMinRuntime}}"
-                placeholder="60"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2"
-                >Max Runtime (minutes)</label
-              >
-              <input
-                type="number"
-                name="movie_max_runtime"
-                value="{{.Config.Filters.Movies.BlacklistedMaxRuntime}}"
-                placeholder="180"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-            </div>
-          </div>
-
-          <!-- Year Range -->
-          <div class="grid md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2"
-                >Min Year</label
-              >
-              <input
-                type="number"
-                name="movie_min_year"
-                value="{{.Config.Filters.Movies.BlacklistedMinYear}}"
-                placeholder="2000"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2"
-                >Max Year</label
-              >
-              <input
-                type="number"
-                name="movie_max_year"
-                value="{{.Config.Filters.Movies.BlacklistedMaxYear}}"
-                placeholder="2025"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-            </div>
-          </div>
-
-          <!-- Rating Thresholds -->
-          <div
-            class="bg-indigo-900/20 border border-indigo-700/50 rounded-lg p-4"
-          >
-            <div class="flex items-start">
-              <svg
-                class="w-5 h-5 text-indigo-400 mt-0.5 mr-3 flex-shrink-0"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
-                ></path>
-              </svg>
-              <div class="text-xs text-slate-300">
-                <p class="font-semibold mb-1 text-indigo-300">
-                  Quality Control
-                </p>
-                <p>
-                  Set minimum rating and vote thresholds to ensure only
-                  high-quality content is added. Content below these thresholds
-                  will be automatically filtered out.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2">
-                Min Rating (0-10)
-                <span class="text-xs text-slate-400 ml-1">(0 = disabled)</span>
-              </label>
-              <input
-                type="number"
-                name="movie_min_rating"
-                value="{{.Config.Filters.Movies.MinRating}}"
-                placeholder="6.5"
-                step="0.1"
-                min="0"
-                max="10"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <p class="mt-1 text-xs text-slate-400">
-                Example: 6.5 filters out movies below 6.5/10
-              </p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2">
-                Min Votes
-                <span class="text-xs text-slate-400 ml-1">(0 = disabled)</span>
-              </label>
-              <input
-                type="number"
-                name="movie_min_votes"
-                value="{{.Config.Filters.Movies.MinVotes}}"
-                placeholder="1000"
-                min="0"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <p class="mt-1 text-xs text-slate-400">
-                Example: 1000 requires at least 1000 votes
-              </p>
-            </div>
-          </div>
+    <div class="filter-workspace">
+      <section class="filter-section">
+        <div class="filter-section-heading">
+          <div><i data-lucide="check-circle" aria-hidden="true"></i><h2>Always allow</h2></div>
+          <p>Bypasses rule preferences for these <span id="exceptions-id-kind">TMDB</span> IDs. Titles already blocked in your library are unaffected.</p>
         </div>
-      </div>
+        <div class="filter-rule-copy">
+          <div class="filter-value-entry" data-chip-field="exceptionsAllow">
+            <input type="text" inputmode="numeric" placeholder="e.g. 27205" autocomplete="off" aria-label="Add allowed title ID">
+            <button type="button">Add</button>
+          </div>
+          <div class="filter-token-list filter-token-list-allow" data-chip-list="exceptionsAllow"></div>
+        </div>
+      </section>
+      <section class="filter-section">
+        <div class="filter-section-heading">
+          <div><i data-lucide="ban" aria-hidden="true"></i><h2>Always block</h2></div>
+          <p>Blocks these titles everywhere. Block always wins over an allow entry for the same ID.</p>
+        </div>
+        <div class="filter-rule-copy">
+          <div class="filter-value-entry" data-chip-field="exceptionsBlock">
+            <input type="text" inputmode="numeric" placeholder="e.g. 11" autocomplete="off" aria-label="Add blocked title ID">
+            <button type="button">Add</button>
+          </div>
+          <div class="filter-token-list filter-token-list-block" data-chip-list="exceptionsBlock"></div>
+        </div>
+      </section>
     </div>
 
-    <!-- Shows Tab -->
-    <div id="shows-content" class="space-y-0" style="display: none">
-      <div class="bg-slate-800 rounded-lg p-6">
-        <h3
-          class="text-xl font-semibold text-slate-100 mb-6 flex items-center gap-2"
-        >
-          <svg
-            class="w-6 h-6 text-purple-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-            ></path>
-          </svg>
-          Show Filters
-        </h3>
-
-        <div class="space-y-6">
-          <!-- Allowed Countries -->
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              <svg
-                class="w-4 h-4 inline mr-1 text-green-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-              </svg>
-              Allowed Countries
-            </label>
-            <div class="flex gap-2 mb-2">
-              <input
-                type="text"
-                id="show-country-input"
-                placeholder="US, GB, CA..."
-                class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <button
-                type="button"
-                onclick="addShowCountry()"
-                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <div id="show-countries-list" class="space-y-2"></div>
-          </div>
-
-          <!-- Allowed Languages -->
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              <svg
-                class="w-4 h-4 inline mr-1 text-green-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
-                ></path>
-              </svg>
-              Allowed Languages
-            </label>
-            <div class="flex gap-2 mb-2">
-              <input
-                type="text"
-                id="show-language-input"
-                placeholder="en, es, fr..."
-                class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <button
-                type="button"
-                onclick="addShowLanguage()"
-                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <div id="show-languages-list" class="space-y-2"></div>
-          </div>
-
-          <!-- Blacklisted Genres -->
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              <svg
-                class="w-4 h-4 inline mr-1 text-red-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                ></path>
-              </svg>
-              Blacklisted Genres
-            </label>
-            <div class="flex gap-2 mb-2">
-              <input
-                type="text"
-                id="show-genre-input"
-                placeholder="reality, documentary..."
-                class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <button
-                type="button"
-                onclick="addShowGenre()"
-                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <div id="show-genres-list" class="space-y-2"></div>
-          </div>
-
-          <!-- Blacklisted Keywords -->
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              <svg
-                class="w-4 h-4 inline mr-1 text-red-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                ></path>
-              </svg>
-              Blacklisted Keywords
-            </label>
-            <div class="flex gap-2 mb-2">
-              <input
-                type="text"
-                id="show-keyword-input"
-                placeholder="reality, cooking..."
-                class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <button
-                type="button"
-                onclick="addShowKeyword()"
-                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <div id="show-keywords-list" class="space-y-2"></div>
-          </div>
-
-          <!-- Blacklisted Networks -->
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              <svg
-                class="w-4 h-4 inline mr-1 text-red-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                ></path>
-              </svg>
-              Blacklisted Networks
-            </label>
-            <div class="flex gap-2 mb-2">
-              <input
-                type="text"
-                id="show-network-input"
-                placeholder="MTV, Lifetime..."
-                class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <button
-                type="button"
-                onclick="addShowNetwork()"
-                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <div id="show-networks-list" class="space-y-2"></div>
-          </div>
-
-          <!-- Blacklisted IDs -->
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              <svg
-                class="w-4 h-4 inline mr-1 text-red-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-              </svg>
-              Blacklisted Trakt IDs
-            </label>
-            <div class="flex gap-2 mb-2">
-              <input
-                type="number"
-                id="show-id-input"
-                placeholder="123456..."
-                class="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <button
-                type="button"
-                onclick="addShowID()"
-                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <div id="show-ids-list" class="space-y-2"></div>
-          </div>
-
-          <!-- Runtime Range -->
-          <div class="grid md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2"
-                >Min Runtime (minutes)</label
-              >
-              <input
-                type="number"
-                name="show_min_runtime"
-                value="{{.Config.Filters.Shows.BlacklistedMinRuntime}}"
-                placeholder="20"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2"
-                >Max Runtime (minutes)</label
-              >
-              <input
-                type="number"
-                name="show_max_runtime"
-                value="{{.Config.Filters.Shows.BlacklistedMaxRuntime}}"
-                placeholder="60"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-            </div>
-          </div>
-
-          <!-- Year Range -->
-          <div class="grid md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2"
-                >Min Year</label
-              >
-              <input
-                type="number"
-                name="show_min_year"
-                value="{{.Config.Filters.Shows.BlacklistedMinYear}}"
-                placeholder="2000"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2"
-                >Max Year</label
-              >
-              <input
-                type="number"
-                name="show_max_year"
-                value="{{.Config.Filters.Shows.BlacklistedMaxYear}}"
-                placeholder="2025"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-            </div>
-          </div>
-
-          <!-- Rating Thresholds -->
-          <div
-            class="bg-indigo-900/20 border border-indigo-700/50 rounded-lg p-4"
-          >
-            <div class="flex items-start">
-              <svg
-                class="w-5 h-5 text-indigo-400 mt-0.5 mr-3 flex-shrink-0"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
-                ></path>
-              </svg>
-              <div class="text-xs text-slate-300">
-                <p class="font-semibold mb-1 text-indigo-300">
-                  Quality Control
-                </p>
-                <p>
-                  Set minimum rating and vote thresholds to ensure only
-                  high-quality content is added. Content below these thresholds
-                  will be automatically filtered out.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2">
-                Min Rating (0-10)
-                <span class="text-xs text-slate-400 ml-1">(0 = disabled)</span>
-              </label>
-              <input
-                type="number"
-                name="show_min_rating"
-                value="{{.Config.Filters.Shows.MinRating}}"
-                placeholder="7.0"
-                step="0.1"
-                min="0"
-                max="10"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <p class="mt-1 text-xs text-slate-400">
-                Example: 7.0 filters out shows below 7.0/10
-              </p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2">
-                Min Votes
-                <span class="text-xs text-slate-400 ml-1">(0 = disabled)</span>
-              </label>
-              <input
-                type="number"
-                name="show_min_votes"
-                value="{{.Config.Filters.Shows.MinVotes}}"
-                placeholder="500"
-                min="0"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
-              <p class="mt-1 text-xs text-slate-400">
-                Example: 500 requires at least 500 votes
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <button
-      type="submit"
-      class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 mt-6"
-    >
-      <svg
-        class="w-5 h-5"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M5 13l4 4L19 7"
-        ></path>
-      </svg>
-      Save Filters
-    </button>
-  </form>
+    <footer class="rule-set-save-bar">
+      <span id="exceptions-dirty-hint" class="rule-set-dirty-hint hidden"><i data-lucide="circle" class="h-2 w-2" aria-hidden="true"></i>Unsaved changes</span>
+      <button type="button" id="save-exceptions" class="job-save-button" disabled>Save changes</button>
+    </footer>
+  </div>
 </div>
-
-<script>
-  const movieCountries = [
-    {{- range $i, $v := .Config.Filters.Movies.AllowedCountries -}}
-      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
-  ];
-  const movieLanguages = [
-    {{- range $i, $v := .Config.Filters.Movies.AllowedLanguages -}}
-      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
-  ];
-  const movieGenres = [
-    {{- range $i, $v := .Config.Filters.Movies.BlacklistedGenres -}}
-      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
-  ];
-  const movieKeywords = [
-    {{- range $i, $v := .Config.Filters.Movies.BlacklistedKeywords -}}
-      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
-  ];
-  const movieIDs = [
-    {{- range $i, $v := .Config.Filters.Movies.BlacklistedTMDBIds -}}
-      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
-  ];
-  const showCountries = [
-    {{- range $i, $v := .Config.Filters.Shows.AllowedCountries -}}
-      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
-  ];
-  const showLanguages = [
-    {{- range $i, $v := .Config.Filters.Shows.AllowedLanguages -}}
-      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
-  ];
-  const showGenres = [
-    {{- range $i, $v := .Config.Filters.Shows.BlacklistedGenres -}}
-      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
-  ];
-  const showKeywords = [
-    {{- range $i, $v := .Config.Filters.Shows.BlacklistedKeywords -}}
-      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
-  ];
-  const showNetworks = [
-    {{- range $i, $v := .Config.Filters.Shows.BlacklistedNetworks -}}
-      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
-  ];
-  const showIDs = [
-    {{- range $i, $v := .Config.Filters.Shows.BlacklistedTVDBIds -}}
-      {{- if $i}}, {{end}}"{{$v}}"{{- end -}}
-  ];
-
-  function showTab(tab) {
-    document.getElementById("movies-tab").className =
-      tab === "movies"
-        ? "px-6 py-3 text-blue-400 border-b-2 border-blue-400 font-semibold transition-colors"
-        : "px-6 py-3 text-slate-400 hover:text-slate-300 border-b-2 border-transparent transition-colors";
-    document.getElementById("shows-tab").className =
-      tab === "shows"
-        ? "px-6 py-3 text-blue-400 border-b-2 border-blue-400 font-semibold transition-colors"
-        : "px-6 py-3 text-slate-400 hover:text-slate-300 border-b-2 border-transparent transition-colors";
-    document.getElementById("movies-content").style.display =
-      tab === "movies" ? "block" : "none";
-    document.getElementById("shows-content").style.display =
-      tab === "shows" ? "block" : "none";
-  }
-
-  function addMovieCountry() {
-    addItem(
-      movieCountries,
-      "movie-country-input",
-      "movie-countries-list",
-      "movie_allowed_countries"
-    );
-  }
-  function addMovieLanguage() {
-    addItem(
-      movieLanguages,
-      "movie-language-input",
-      "movie-languages-list",
-      "movie_allowed_languages"
-    );
-  }
-  function addMovieGenre() {
-    addItem(
-      movieGenres,
-      "movie-genre-input",
-      "movie-genres-list",
-      "movie_blacklisted_genres"
-    );
-  }
-  function addMovieKeyword() {
-    addItem(
-      movieKeywords,
-      "movie-keyword-input",
-      "movie-keywords-list",
-      "movie_blacklisted_keywords"
-    );
-  }
-  function addMovieID() {
-    addItem(
-      movieIDs,
-      "movie-id-input",
-      "movie-ids-list",
-      "movie_blacklisted_ids"
-    );
-  }
-  function addShowCountry() {
-    addItem(
-      showCountries,
-      "show-country-input",
-      "show-countries-list",
-      "show_allowed_countries"
-    );
-  }
-  function addShowLanguage() {
-    addItem(
-      showLanguages,
-      "show-language-input",
-      "show-languages-list",
-      "show_allowed_languages"
-    );
-  }
-  function addShowGenre() {
-    addItem(
-      showGenres,
-      "show-genre-input",
-      "show-genres-list",
-      "show_blacklisted_genres"
-    );
-  }
-  function addShowKeyword() {
-    addItem(
-      showKeywords,
-      "show-keyword-input",
-      "show-keywords-list",
-      "show_blacklisted_keywords"
-    );
-  }
-  function addShowNetwork() {
-    addItem(
-      showNetworks,
-      "show-network-input",
-      "show-networks-list",
-      "show_blacklisted_networks"
-    );
-  }
-  function addShowID() {
-    addItem(showIDs, "show-id-input", "show-ids-list", "show_blacklisted_ids");
-  }
-
-  function addItem(arr, inputId, listId, fieldName) {
-    const input = document.getElementById(inputId);
-    const val = input.value.trim();
-    if (val && !arr.includes(val)) {
-      arr.push(val);
-      renderList(arr, listId, fieldName);
-      input.value = "";
-    }
-  }
-
-  function removeItem(arr, listId, fieldName, val) {
-    const idx = arr.indexOf(val);
-    if (idx > -1) arr.splice(idx, 1);
-    renderList(arr, listId, fieldName);
-  }
-
-  function renderList(arr, listId, fieldName) {
-    const list = document.getElementById(listId);
-    list.innerHTML = arr
-      .map(
-        (v) => `
-    <div class="flex items-center justify-between bg-slate-900 px-4 py-2.5 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors">
-      <span class="text-slate-200 font-medium">${v}</span>
-      <button type="button" onclick="removeItem(${getArrayName(
-        fieldName
-      )}, '${listId}', '${fieldName}', '${v}')" class="text-red-400 hover:text-red-300 font-semibold transition-colors">Remove</button>
-      <input type="hidden" name="${fieldName}" value="${v}">
-    </div>
-  `
-      )
-      .join("");
-  }
-
-  function getArrayName(fieldName) {
-    const map = {
-      movie_allowed_countries: "movieCountries",
-      movie_allowed_languages: "movieLanguages",
-      movie_blacklisted_genres: "movieGenres",
-      movie_blacklisted_keywords: "movieKeywords",
-      movie_blacklisted_ids: "movieIDs",
-      show_allowed_countries: "showCountries",
-      show_allowed_languages: "showLanguages",
-      show_blacklisted_genres: "showGenres",
-      show_blacklisted_keywords: "showKeywords",
-      show_blacklisted_networks: "showNetworks",
-      show_blacklisted_ids: "showIDs",
-    };
-    return map[fieldName];
-  }
-
-  // Arrays are now initialized above using Go template output
-
-  renderList(movieCountries, "movie-countries-list", "movie_allowed_countries");
-  renderList(movieLanguages, "movie-languages-list", "movie_allowed_languages");
-  renderList(movieGenres, "movie-genres-list", "movie_blacklisted_genres");
-  renderList(
-    movieKeywords,
-    "movie-keywords-list",
-    "movie_blacklisted_keywords"
-  );
-  renderList(movieIDs, "movie-ids-list", "movie_blacklisted_ids");
-  renderList(showCountries, "show-countries-list", "show_allowed_countries");
-  renderList(showLanguages, "show-languages-list", "show_allowed_languages");
-  renderList(showGenres, "show-genres-list", "show_blacklisted_genres");
-  renderList(showKeywords, "show-keywords-list", "show_blacklisted_keywords");
-  renderList(showNetworks, "show-networks-list", "show_blacklisted_networks");
-  renderList(showIDs, "show-ids-list", "show_blacklisted_ids");
-</script>
-
+<script defer src="/static/js/filters.js"></script>
 {{template "components/footer.html" .}}
 {{end}}

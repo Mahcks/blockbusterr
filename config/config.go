@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -40,23 +41,54 @@ type ShowFilters struct {
 	MinVotes              int      `mapstructure:"min_votes" json:"min_votes" yaml:"min_votes"`
 }
 
+// FilterConfig contains the movie and show policies used during discovery.
+type FilterConfig struct {
+	Movies MovieFilters `mapstructure:"movies" json:"movies" yaml:"movies"`
+	Shows  ShowFilters  `mapstructure:"shows" json:"shows" yaml:"shows"`
+}
+
+const (
+	DefaultMoviesRuleSetID = "default-movies"
+	DefaultShowsRuleSetID  = "default-shows"
+)
+
+// RuleSet is a reusable, media-specific discovery policy.
+type RuleSet struct {
+	ID       string        `mapstructure:"id" json:"id" yaml:"id"`
+	Name     string        `mapstructure:"name" json:"name" yaml:"name"`
+	Media    string        `mapstructure:"media" json:"media" yaml:"media"`
+	Revision int           `mapstructure:"revision" json:"revision" yaml:"revision"`
+	Movies   *MovieFilters `mapstructure:"movies" json:"movies,omitempty" yaml:"movies,omitempty"`
+	Shows    *ShowFilters  `mapstructure:"shows" json:"shows,omitempty" yaml:"shows,omitempty"`
+}
+
+type TitleExceptions struct {
+	AllowedMovieTMDBIDs []int `mapstructure:"allowed_movie_tmdb_ids" json:"allowed_movie_tmdb_ids" yaml:"allowed_movie_tmdb_ids,omitempty"`
+	BlockedMovieTMDBIDs []int `mapstructure:"blocked_movie_tmdb_ids" json:"blocked_movie_tmdb_ids" yaml:"blocked_movie_tmdb_ids,omitempty"`
+	AllowedShowTVDBIDs  []int `mapstructure:"allowed_show_tvdb_ids" json:"allowed_show_tvdb_ids" yaml:"allowed_show_tvdb_ids,omitempty"`
+	BlockedShowTVDBIDs  []int `mapstructure:"blocked_show_tvdb_ids" json:"blocked_show_tvdb_ids" yaml:"blocked_show_tvdb_ids,omitempty"`
+}
+
 // DynamicJob represents a user-defined job instance that can be created, modified, and deleted
 type DynamicJob struct {
-	ID                  string  `mapstructure:"id" json:"id" yaml:"id"`
-	Name                string  `mapstructure:"name" json:"name" yaml:"name"`
-	Enabled             bool    `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-	Type                string  `mapstructure:"type" json:"type" yaml:"type"`                                                           // Job type: trending, popular, watched, collected, favorited, played, anticipated, box_office, smart_popular
-	Source              string  `mapstructure:"source" json:"source" yaml:"source"`                                                     // Discovery source: trakt, tmdb, or simkl
-	MediaType           string  `mapstructure:"media" json:"media" yaml:"media"`                                                        // Media type: movie or show
-	Limit               int     `mapstructure:"limit" json:"limit" yaml:"limit"`                                                        // Number of items to fetch
-	Period              string  `mapstructure:"period" json:"period" yaml:"period,omitempty"`                                           // Time period for watched/collected/favorited/played: weekly, monthly, yearly, all
-	SyncInterval        string  `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`                      // Custom sync interval (overrides global)
-	Mode                string  `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`                                                 // Execution mode: direct or jellyseerr (overrides global)
-	MinimumAvailability string  `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"` // For Radarr: announced, in_cinemas, released
-	Monitor             string  `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`                                        // Monitor setting for Radarr/Sonarr
-	BaseMinRating       float64 `mapstructure:"base_min_rating" json:"base_min_rating" yaml:"base_min_rating,omitempty"`                // For smart jobs: base minimum rating
-	AdjustmentFactor    float64 `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor,omitempty"`          // For smart jobs: rating adjustment factor
-	MinGlobalPicks      int     `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`             // Minimum picks for global limit
+	ID                  string       `mapstructure:"id" json:"id" yaml:"id"`
+	Name                string       `mapstructure:"name" json:"name" yaml:"name"`
+	Enabled             bool         `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+	Type                string       `mapstructure:"type" json:"type" yaml:"type"`                                                           // Job type: trending, popular, watched, collected, favorited, played, anticipated, box_office, smart_popular
+	Source              string       `mapstructure:"source" json:"source" yaml:"source"`                                                     // Discovery source: trakt, tmdb, or simkl
+	MediaType           string       `mapstructure:"media" json:"media" yaml:"media"`                                                        // Media type: movie or show
+	Limit               int          `mapstructure:"limit" json:"limit" yaml:"limit"`                                                        // Number of items to fetch
+	Period              string       `mapstructure:"period" json:"period" yaml:"period,omitempty"`                                           // Time period for watched/collected/favorited/played: weekly, monthly, yearly, all
+	SyncInterval        string       `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`                      // Custom sync interval (overrides global)
+	Mode                string       `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`                                                 // Execution mode: direct or jellyseerr (overrides global)
+	MinimumAvailability string       `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"` // For Radarr: announced, in_cinemas, released
+	Monitor             string       `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`                                        // Monitor setting for Radarr/Sonarr
+	BaseMinRating       float64      `mapstructure:"base_min_rating" json:"base_min_rating" yaml:"base_min_rating,omitempty"`                // For smart jobs: base minimum rating
+	AdjustmentFactor    float64      `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor,omitempty"`          // For smart jobs: rating adjustment factor
+	MinGlobalPicks      int          `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`             // Minimum picks for global limit
+	UseCustomFilters    bool         `mapstructure:"use_custom_filters" json:"use_custom_filters" yaml:"use_custom_filters,omitempty"`
+	Filters             FilterConfig `mapstructure:"filters" json:"filters" yaml:"filters,omitempty"`
+	RuleSetID           string       `mapstructure:"rule_set_id" json:"rule_set_id" yaml:"rule_set_id,omitempty"`
 }
 
 // Config represents the application configuration
@@ -298,10 +330,9 @@ type Config struct {
 		} `mapstructure:"smart_popular_shows" json:"smart_popular_shows" yaml:"smart_popular_shows"`
 	} `mapstructure:"jobs" json:"jobs" yaml:"jobs"`
 
-	Filters struct {
-		Movies MovieFilters `mapstructure:"movies" json:"movies" yaml:"movies"`
-		Shows  ShowFilters  `mapstructure:"shows" json:"shows" yaml:"shows"`
-	} `mapstructure:"filters" json:"filters" yaml:"filters"`
+	Filters         FilterConfig    `mapstructure:"filters" json:"filters" yaml:"filters"`
+	RuleSets        []RuleSet       `mapstructure:"rule_sets" json:"rule_sets" yaml:"rule_sets,omitempty"`
+	TitleExceptions TitleExceptions `mapstructure:"title_exceptions" json:"title_exceptions" yaml:"title_exceptions,omitempty"`
 
 	// Internal field to track config file path
 	ConfigFilePath string `mapstructure:"-" json:"-" yaml:"-"`
@@ -374,6 +405,7 @@ func New(version string) (*Config, error) {
 		c.Scoring.PopularityWeight = 0.3
 		c.Scoring.RecencyWeight = 0.1
 	}
+	c.MigrateRuleSets()
 
 	return c, nil
 }
@@ -390,12 +422,178 @@ func (c *Config) Save() error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	// Write to file
-	if err := os.WriteFile(c.ConfigFilePath, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
+	dir := filepath.Dir(c.ConfigFilePath)
+	tmp, err := os.CreateTemp(dir, ".blockbusterr-config-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary config: %w", err)
 	}
-
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	mode := os.FileMode(0o644)
+	if info, statErr := os.Stat(c.ConfigFilePath); statErr == nil {
+		mode = info.Mode().Perm()
+	}
+	if err = tmp.Chmod(mode); err == nil {
+		_, err = tmp.Write(data)
+	}
+	if err == nil {
+		err = tmp.Sync()
+	}
+	if closeErr := tmp.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return fmt.Errorf("failed to write temporary config: %w", err)
+	}
+	if err := os.Rename(tmpName, c.ConfigFilePath); err != nil {
+		return fmt.Errorf("failed to replace config file: %w", err)
+	}
 	return nil
+}
+
+func defaultRuleSetID(media string) string {
+	if media == "show" {
+		return DefaultShowsRuleSetID
+	}
+	return DefaultMoviesRuleSetID
+}
+
+func (c *Config) RuleSetByID(id string) (*RuleSet, bool) {
+	for i := range c.RuleSets {
+		if c.RuleSets[i].ID == id {
+			return &c.RuleSets[i], true
+		}
+	}
+	return nil, false
+}
+
+func (c *Config) ResolveRuleSet(job DynamicJob) (*RuleSet, FilterConfig, error) {
+	if len(c.RuleSets) == 0 {
+		c.MigrateRuleSets()
+	}
+	id := job.RuleSetID
+	if id == "" {
+		id = defaultRuleSetID(job.MediaType)
+	}
+	rules, ok := c.RuleSetByID(id)
+	if !ok {
+		return nil, FilterConfig{}, fmt.Errorf("rule set %q was not found", id)
+	}
+	if rules.Media != job.MediaType {
+		return nil, FilterConfig{}, fmt.Errorf("rule set %q is for %s jobs, not %s", rules.Name, rules.Media, job.MediaType)
+	}
+	effective := FilterConfig{}
+	if job.MediaType == "movie" && rules.Movies != nil {
+		effective.Movies = *rules.Movies
+	} else if job.MediaType == "show" && rules.Shows != nil {
+		effective.Shows = *rules.Shows
+	} else {
+		return nil, FilterConfig{}, fmt.Errorf("rule set %q has no %s rules", rules.Name, job.MediaType)
+	}
+	effective.Movies.BlacklistedTMDBIds = append(effective.Movies.BlacklistedTMDBIds, c.TitleExceptions.BlockedMovieTMDBIDs...)
+	effective.Shows.BlacklistedTVDBIds = append(effective.Shows.BlacklistedTVDBIds, c.TitleExceptions.BlockedShowTVDBIDs...)
+	return rules, effective, nil
+}
+
+func (c *Config) ValidateRuleSet(candidate RuleSet, exceptID string) error {
+	candidate.Name = strings.TrimSpace(candidate.Name)
+	if candidate.ID == "" || candidate.Name == "" {
+		return fmt.Errorf("rule set ID and name are required")
+	}
+	if candidate.Media != "movie" && candidate.Media != "show" {
+		return fmt.Errorf("media must be movie or show")
+	}
+	if candidate.Media == "movie" && (candidate.Movies == nil || candidate.Shows != nil) {
+		return fmt.Errorf("movie rule sets require only a movie filter payload")
+	}
+	if candidate.Media == "show" && (candidate.Shows == nil || candidate.Movies != nil) {
+		return fmt.Errorf("show rule sets require only a show filter payload")
+	}
+	var minYear, maxYear, minRuntime, maxRuntime, minVotes int
+	var minRating float64
+	if candidate.Media == "movie" {
+		minYear, maxYear, minRuntime, maxRuntime, minRating, minVotes = candidate.Movies.BlacklistedMinYear, candidate.Movies.BlacklistedMaxYear, candidate.Movies.BlacklistedMinRuntime, candidate.Movies.BlacklistedMaxRuntime, candidate.Movies.MinRating, candidate.Movies.MinVotes
+	} else {
+		minYear, maxYear, minRuntime, maxRuntime, minRating, minVotes = candidate.Shows.BlacklistedMinYear, candidate.Shows.BlacklistedMaxYear, candidate.Shows.BlacklistedMinRuntime, candidate.Shows.BlacklistedMaxRuntime, candidate.Shows.MinRating, candidate.Shows.MinVotes
+	}
+	if minYear < 0 || maxYear < 0 || minRuntime < 0 || maxRuntime < 0 || minVotes < 0 {
+		return fmt.Errorf("numeric rule values cannot be negative")
+	}
+	if minRating < 0 || minRating > 10 {
+		return fmt.Errorf("minimum rating must be between 0 and 10")
+	}
+	if minYear > 0 && maxYear > 0 && minYear > maxYear {
+		return fmt.Errorf("minimum year cannot exceed maximum year")
+	}
+	if minRuntime > 0 && maxRuntime > 0 && minRuntime > maxRuntime {
+		return fmt.Errorf("minimum runtime cannot exceed maximum runtime")
+	}
+	for _, rules := range c.RuleSets {
+		if rules.ID != exceptID && strings.EqualFold(rules.Name, candidate.Name) && rules.Media == candidate.Media {
+			return fmt.Errorf("a %s rule set named %q already exists", candidate.Media, candidate.Name)
+		}
+	}
+	return nil
+}
+
+func (c *Config) RuleSetUsage(id string) int {
+	count := 0
+	for _, job := range c.Jobs.List {
+		if job.RuleSetID == id {
+			count++
+		}
+	}
+	return count
+}
+
+// MigrateRuleSets upgrades global and embedded job filters deterministically in memory.
+func (c *Config) MigrateRuleSets() {
+	if _, ok := c.RuleSetByID(DefaultMoviesRuleSetID); !ok {
+		filters := c.Filters.Movies
+		c.RuleSets = append(c.RuleSets, RuleSet{ID: DefaultMoviesRuleSetID, Name: "Default Movies", Media: "movie", Revision: 1, Movies: &filters})
+	}
+	if _, ok := c.RuleSetByID(DefaultShowsRuleSetID); !ok {
+		filters := c.Filters.Shows
+		c.RuleSets = append(c.RuleSets, RuleSet{ID: DefaultShowsRuleSetID, Name: "Default Shows", Media: "show", Revision: 1, Shows: &filters})
+	}
+	for i := range c.Jobs.List {
+		job := &c.Jobs.List[i]
+		if job.RuleSetID != "" {
+			continue
+		}
+		job.RuleSetID = defaultRuleSetID(job.MediaType)
+		if job.UseCustomFilters {
+			id := "migrated-" + job.ID
+			if _, ok := c.RuleSetByID(id); !ok {
+				rules := RuleSet{ID: id, Name: job.Name + " Rules", Media: job.MediaType, Revision: 1}
+				if job.MediaType == "show" {
+					filters := job.Filters.Shows
+					rules.Shows = &filters
+				} else {
+					filters := job.Filters.Movies
+					rules.Movies = &filters
+				}
+				c.RuleSets = append(c.RuleSets, rules)
+			}
+			job.RuleSetID = id
+		}
+	}
+	c.TitleExceptions.BlockedMovieTMDBIDs = appendUniqueInts(c.TitleExceptions.BlockedMovieTMDBIDs, c.Filters.Movies.BlacklistedTMDBIds...)
+	c.TitleExceptions.BlockedShowTVDBIDs = appendUniqueInts(c.TitleExceptions.BlockedShowTVDBIDs, c.Filters.Shows.BlacklistedTVDBIds...)
+}
+
+func appendUniqueInts(dst []int, values ...int) []int {
+	seen := make(map[int]bool, len(dst)+len(values))
+	for _, value := range dst {
+		seen[value] = true
+	}
+	for _, value := range values {
+		if value > 0 && !seen[value] {
+			dst = append(dst, value)
+			seen[value] = true
+		}
+	}
+	return dst
 }
 
 // GetAllJobs returns a unified list of all jobs (dynamic list + legacy jobs converted to DynamicJob format)

@@ -654,7 +654,7 @@ func (e *ShowJobExecutor) evaluateShowsWithDecisions(
 		decision.PosterURL = GetShowPosterURL(e.Config, show.IDs.TMDB, show.IDs.TVDB)
 
 		// Run through filters and get detailed results
-		filterResult := filters.ShowPassesFiltersDetailed(show, e.Config.Filters.Shows)
+		filterResult := filters.ShowPassesRules(show, e.Config.Filters.Shows, e.Config.TitleExceptions)
 		decision.PassedFilters = filterResult.Passed
 
 		// Convert filter checks

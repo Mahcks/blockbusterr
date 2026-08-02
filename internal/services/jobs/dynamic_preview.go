@@ -23,6 +23,10 @@ func PreviewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 	if job.Limit <= 0 {
 		job.Limit = definition.DefaultLimit
 	}
+	cfg, err := configForJob(cfg, job)
+	if err != nil {
+		return PreviewResponse{}, err
+	}
 	mode := DetermineMode(job.Mode, cfg.Jobs.Mode)
 	response := PreviewResponse{JobName: job.Name, Source: job.Source, MediaType: job.MediaType, Mode: mode, HasPosters: hasTMDBConfigured(cfg), Items: []PreviewItem{}}
 	executor := &DynamicJobExecutor{Config: cfg, Database: db, DryRun: true}
@@ -80,8 +84,8 @@ func previewMovies(ctx context.Context, cfg *config.Config, mode string, movies 
 	}
 	for index, movie := range movies {
 		item := createMoviePreviewItem(cfg, movie, len(movies)-index)
-		if passes, reason := filters.MoviePassesFilters(movie, cfg.Filters.Movies); !passes {
-			item.FilteredOut, item.FilterReason = true, reason
+		if result := filters.MoviePassesRules(movie, cfg.Filters.Movies, cfg.TitleExceptions); !result.Passed {
+			item.FilteredOut, item.FilterReason = true, result.Reason
 			response.FilteredOut++
 		} else if mode == "direct" && existing[movie.IDs.TMDB] {
 			item.AlreadyExists = true
@@ -124,8 +128,8 @@ func previewShows(ctx context.Context, cfg *config.Config, mode string, shows []
 	}
 	for index, show := range shows {
 		item := createShowPreviewItem(cfg, show, len(shows)-index)
-		if passes, reason := filters.ShowPassesFilters(show, cfg.Filters.Shows); !passes {
-			item.FilteredOut, item.FilterReason = true, reason
+		if result := filters.ShowPassesRules(show, cfg.Filters.Shows, cfg.TitleExceptions); !result.Passed {
+			item.FilteredOut, item.FilterReason = true, result.Reason
 			response.FilteredOut++
 		} else if mode == "direct" && ((show.IDs.TVDB > 0 && existingTVDB[show.IDs.TVDB]) || (show.IDs.TMDB > 0 && existingTMDB[show.IDs.TMDB])) {
 			item.AlreadyExists = true

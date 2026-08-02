@@ -611,7 +611,7 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 		}
 
 		// Run through filters and get detailed results
-		filterResult := filters.MoviePassesFiltersDetailed(movie, e.Config.Filters.Movies)
+		filterResult := filters.MoviePassesRules(movie, e.Config.Filters.Movies, e.Config.TitleExceptions)
 		decision.PassedFilters = filterResult.Passed
 
 		// Convert filter checks

@@ -20,6 +20,14 @@ type DynamicJobExecutor struct {
 
 // Execute runs a dynamic job, routing to the appropriate executor based on job type and media
 func (e *DynamicJobExecutor) Execute(ctx context.Context, job config.DynamicJob) error {
+	effectiveConfig, err := configForJob(e.Config, job)
+	if err != nil {
+		return err
+	}
+	effectiveExecutor := *e
+	effectiveExecutor.Config = effectiveConfig
+	e = &effectiveExecutor
+
 	// Validate job type
 	typeDef, ok := GetJobTypeDefinition(job.Type)
 	if !ok {
@@ -79,6 +87,16 @@ func (e *DynamicJobExecutor) Execute(ctx context.Context, job config.DynamicJob)
 	default:
 		return fmt.Errorf("unsupported media type: %s", job.MediaType)
 	}
+}
+
+func configForJob(cfg *config.Config, job config.DynamicJob) (*config.Config, error) {
+	_, rules, err := cfg.ResolveRuleSet(job)
+	if err != nil {
+		return nil, err
+	}
+	effective := *cfg
+	effective.Filters = rules
+	return &effective, nil
 }
 
 // executeMovieJob executes a movie job using the appropriate executor

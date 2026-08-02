@@ -131,7 +131,7 @@
       <span>Job</span>
       <span>Source</span>
       <span>Media</span>
-      <span>Window</span>
+      <span>Rules</span>
       <span class="text-right">Actions</span>
     </div>
 
@@ -182,10 +182,10 @@
     aria-labelledby="add-job-title"
   >
     <div
-      class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 shadow-lg"
+      class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg"
     >
       <!-- Modal Header -->
-      <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 z-10">
+      <div class="sticky top-0 z-10">
         <div class="flex items-center justify-between">
           <div>
             <h2 id="add-job-title" class="text-xl font-semibold text-slate-100">New job</h2>
@@ -197,7 +197,7 @@
           <button
             type="button"
             data-action="close-add-job"
-            class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+            class="icon-button"
             aria-label="Close new job dialog"
           >
             <svg
@@ -250,7 +250,7 @@
       <!-- Modal Body - Templates -->
       <div id="templates-content" class="p-6">
         <div class="mb-4">
-          <label for="template-search" class="block text-sm font-medium text-slate-300 mb-2">
+          <label for="template-search" class="block mb-2 font-medium">
             Search Templates
           </label>
           <div class="relative">
@@ -258,7 +258,7 @@
               id="template-search"
               type="text"
               placeholder="Search by template name or type..."
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              class="w-full rounded-lg transition"
             />
             <span class="pointer-events-none absolute right-3 top-2.5 text-slate-500">
               <i data-lucide="search" class="w-5 h-5"></i>
@@ -276,7 +276,7 @@
         <form id="custom-job-form" class="space-y-4">
           <!-- Job Name -->
           <div>
-            <label for="custom-name" class="block text-sm font-medium text-slate-300 mb-2">
+            <label for="custom-name" class="block mb-2 font-medium">
               Job Name
             </label>
             <input
@@ -284,7 +284,7 @@
               id="custom-name"
               name="name"
               placeholder="e.g., My Weekly Movies"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              class="w-full rounded-lg transition"
               required
             />
           </div>
@@ -292,26 +292,26 @@
           <!-- Job Type and Media Type in a row -->
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label for="custom-type" class="block text-sm font-medium text-slate-300 mb-2">
+              <label for="custom-type" class="block mb-2 font-medium">
                 Job Type
               </label>
               <select
                 id="custom-type"
                 name="type"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                class="w-full rounded-lg transition"
                 required
               >
                 <!-- Options will be populated dynamically -->
               </select>
             </div>
             <div>
-              <label for="custom-media" class="block text-sm font-medium text-slate-300 mb-2">
+              <label for="custom-media" class="block mb-2 font-medium">
                 Media Type
               </label>
               <select
                 id="custom-media"
                 name="media"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                class="w-full rounded-lg transition"
                 required
               >
                 <option value="movie">Movie</option>
@@ -322,19 +322,25 @@
 
           <!-- Job Type Description -->
 		  <div>
-			<label for="custom-source" class="block text-sm font-medium text-slate-300 mb-2">Discovery Source</label>
-			<select id="custom-source" name="source" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"></select>
+			<label for="custom-source" class="block mb-2 font-medium">Discovery Source</label>
+			<select id="custom-source" name="source" class="w-full rounded-lg transition"></select>
 			<p id="custom-source-help" class="text-xs text-slate-400 mt-1">Only configured discovery sources are shown.</p>
 		  </div>
 
+          <div>
+            <label for="custom-rule-set" class="block mb-2 font-medium">Rule set</label>
+            <select id="custom-rule-set" name="rule_set_id" class="w-full rounded-lg transition" required></select>
+            <p id="custom-rule-set-help" class="text-xs text-slate-400 mt-1">Changes to this rule set apply to every assigned job.</p>
+          </div>
+
           <!-- Job Type Description -->
-          <div id="custom-type-description" class="bg-slate-900/50 rounded-lg p-3 border border-slate-700">
+          <div id="custom-type-description" class="job-nested-panel p-3">
             <p class="text-sm text-slate-400">Select a job type to see its description</p>
           </div>
 
           <!-- Limit -->
           <div>
-            <label for="custom-limit" class="block text-sm font-medium text-slate-300 mb-2">
+            <label for="custom-limit" class="block mb-2 font-medium">
               Content Limit
             </label>
             <input
@@ -344,7 +350,7 @@
               min="1"
               max="1000"
               value="50"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              class="w-full rounded-lg transition"
               required
             />
             <p id="custom-limit-description" class="text-xs text-slate-400 mt-1">Number of items to fetch</p>
@@ -352,13 +358,13 @@
 
           <!-- Period (shown only for period-based jobs) -->
           <div id="custom-period-container" class="hidden">
-            <label for="custom-period" class="block text-sm font-medium text-slate-300 mb-2">
+            <label for="custom-period" class="block mb-2 font-medium">
               Time Period
             </label>
             <select
               id="custom-period"
               name="period"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              class="w-full rounded-lg transition"
             >
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
@@ -370,7 +376,7 @@
           <!-- Smart Job Fields -->
           <div id="custom-smart-container" class="hidden space-y-4">
             <div>
-              <label for="custom-base-rating" class="block text-sm font-medium text-slate-300 mb-2">
+              <label for="custom-base-rating" class="block mb-2 font-medium">
                 Base Minimum Rating
               </label>
               <input
@@ -381,11 +387,11 @@
                 max="10"
                 step="0.1"
                 value="6.0"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                class="w-full rounded-lg transition"
               />
             </div>
             <div>
-              <label for="custom-adjustment-factor" class="block text-sm font-medium text-slate-300 mb-2">
+              <label for="custom-adjustment-factor" class="block mb-2 font-medium">
                 Adjustment Factor
               </label>
               <input
@@ -396,7 +402,7 @@
                 max="5"
                 step="0.1"
                 value="0.5"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                class="w-full rounded-lg transition"
               />
             </div>
           </div>
@@ -425,10 +431,10 @@
     aria-labelledby="preview-title"
   >
     <div
-      class="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 shadow-lg"
+      class="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-lg"
     >
       <!-- Modal Header -->
-      <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 z-10">
+      <div class="sticky top-0 z-10">
         <div class="flex items-center justify-between">
           <div>
             <h2
@@ -442,7 +448,7 @@
           <button
             type="button"
             data-action="close-preview"
-            class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+            class="icon-button"
             aria-label="Close preview dialog"
           >
             <svg
@@ -477,7 +483,7 @@
             data-action="filter-preview"
             data-filter="will_add"
             id="filter-will_add"
-            class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+            class="rounded-md bg-transparent px-3 py-1.5 text-sm font-medium text-slate-400 hover:bg-zinc-800 hover:text-slate-100"
           >
             Will Add
           </button>
@@ -485,7 +491,7 @@
             data-action="filter-preview"
             data-filter="already_exists"
             id="filter-already_exists"
-            class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+            class="rounded-md bg-transparent px-3 py-1.5 text-sm font-medium text-slate-400 hover:bg-zinc-800 hover:text-slate-100"
           >
             Already Exists
           </button>
@@ -493,7 +499,7 @@
             data-action="filter-preview"
             data-filter="filtered_out"
             id="filter-filtered_out"
-            class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+            class="rounded-md bg-transparent px-3 py-1.5 text-sm font-medium text-slate-400 hover:bg-zinc-800 hover:text-slate-100"
           >
             Filtered Out
           </button>
@@ -520,10 +526,10 @@
     aria-labelledby="modal-title"
   >
     <div
-      class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 shadow-lg"
+      class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg"
     >
       <!-- Modal Header -->
-      <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 z-10">
+      <div class="sticky top-0 z-10">
         <div class="flex items-center justify-between">
           <div>
             <h2 id="modal-title" class="text-2xl font-bold text-slate-100"></h2>
@@ -532,7 +538,7 @@
           <button
             type="button"
             data-action="close-job"
-            class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+            class="icon-button"
             aria-label="Close job editor"
           >
             <svg
@@ -559,11 +565,16 @@
         <form id="job-config-form" class="space-y-4">
           <input type="hidden" id="modal-job-id" name="job-id" value="" />
 
+          <div class="job-form-heading">
+            <h3>Discovery</h3>
+            <p>Choose what this job finds and where it looks.</p>
+          </div>
+
           <!-- Job Name -->
           <div id="modal-name-container">
             <label
               for="modal-name"
-              class="block text-sm font-medium text-slate-300 mb-2"
+              class="block mb-2 font-medium"
             >
               Job Name
             </label>
@@ -571,7 +582,7 @@
               type="text"
               id="modal-name"
               name="name"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              class="w-full rounded-lg transition"
             />
             <p class="text-xs text-slate-400 mt-1">
               A friendly name to identify this job
@@ -583,14 +594,14 @@
             <div>
               <label
                 for="modal-type"
-                class="block text-sm font-medium text-slate-300 mb-2"
+                class="block mb-2 font-medium"
               >
                 Job Type
               </label>
               <select
                 id="modal-type"
                 name="type"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                class="w-full rounded-lg transition"
               >
                 <!-- Options populated dynamically -->
               </select>
@@ -598,14 +609,14 @@
             <div>
               <label
                 for="modal-media"
-                class="block text-sm font-medium text-slate-300 mb-2"
+                class="block mb-2 font-medium"
               >
                 Media Type
               </label>
               <select
                 id="modal-media"
                 name="media"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                class="w-full rounded-lg transition"
               >
                 <option value="movie">Movie</option>
                 <option value="show">TV Show</option>
@@ -614,8 +625,8 @@
           </div>
 
 		  <div>
-			<label for="modal-source" class="block text-sm font-medium text-slate-300 mb-2">Discovery Source</label>
-			<select id="modal-source" name="source" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"></select>
+			<label for="modal-source" class="block mb-2 font-medium">Discovery Source</label>
+			<select id="modal-source" name="source" class="w-full rounded-lg transition"></select>
 			<p id="modal-source-help" class="text-xs text-slate-400 mt-1">Only configured discovery sources are shown.</p>
 		  </div>
 
@@ -623,7 +634,7 @@
           <div>
             <label
               for="modal-limit"
-              class="block text-sm font-medium text-slate-300 mb-2"
+              class="block mb-2 font-medium"
             >
               Content Limit
             </label>
@@ -633,7 +644,7 @@
               name="limit"
               min="1"
               max="1000"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              class="w-full rounded-lg transition"
             />
             <p class="text-xs text-slate-400 mt-1">
               Number of items to fetch
@@ -644,14 +655,14 @@
           <div id="modal-period-container" class="hidden">
             <label
               for="modal-period"
-              class="block text-sm font-medium text-slate-300 mb-2"
+              class="block mb-2 font-medium"
             >
               Time Period
             </label>
             <select
               id="modal-period"
               name="period"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              class="w-full rounded-lg transition"
             >
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
@@ -674,7 +685,7 @@
             <div>
               <label
                 for="modal-base-rating"
-                class="block text-sm font-medium text-slate-300 mb-2"
+                class="block mb-2 font-medium"
               >
                 Base Minimum Rating
               </label>
@@ -685,7 +696,7 @@
                 min="0"
                 max="10"
                 step="0.1"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                class="w-full rounded-lg transition"
               />
               <p class="text-xs text-slate-400 mt-1">
                 Baseline rating threshold (adjusted by popularity)
@@ -694,7 +705,7 @@
             <div>
               <label
                 for="modal-adjustment-factor"
-                class="block text-sm font-medium text-slate-300 mb-2"
+                class="block mb-2 font-medium"
               >
                 Adjustment Factor
               </label>
@@ -705,7 +716,7 @@
                 min="0"
                 max="5"
                 step="0.1"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                class="w-full rounded-lg transition"
               />
               <p class="text-xs text-slate-400 mt-1">
                 How much to adjust (0.5=mild, 2.0=aggressive)
@@ -718,14 +729,32 @@
             </div>
           </div>
 
+          <section id="modal-filter-settings" class="job-filter-settings" aria-labelledby="modal-filter-heading" tabindex="-1">
+            <div class="job-filter-heading">
+              <div>
+                <h3 id="modal-filter-heading">Rules</h3>
+                <p>Choose the reusable policy this job evaluates.</p>
+              </div>
+            </div>
+            <label class="job-rule-picker" for="modal-rule-set">
+              <span>Rule set</span>
+              <select id="modal-rule-set"></select>
+              <small id="modal-rule-set-summary">Loading compatible rule sets...</small>
+            </label>
+            <div class="job-rule-actions">
+              <button type="button" id="customize-job-rules" data-action="customize-job-rules" class="job-secondary-button">Customize for this job</button>
+              <a id="edit-job-rules" href="/filters" class="job-rule-link">View selected rules</a>
+            </div>
+          </section>
+
           <!-- Advanced Settings -->
           <div class="border-t border-slate-700 pt-4">
             <button
               type="button"
               data-action="toggle-advanced"
-              class="flex items-center justify-between w-full text-sm font-medium text-slate-300 hover:text-blue-400 transition-colors"
+              class="flex items-center justify-between w-full text-sm font-medium text-slate-300 hover:text-slate-100 transition-colors"
             >
-              <span>Advanced Settings</span>
+              <span>Delivery &amp; schedule</span>
               <svg
                 id="advanced-chevron"
                 class="w-4 h-4 transition-transform duration-200"
@@ -744,12 +773,12 @@
 
             <div
               id="modal-advanced"
-              class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700"
+              class="hidden mt-4 space-y-4 job-nested-panel p-4"
             >
               <div>
                 <label
                   for="modal-interval"
-                  class="block text-sm font-medium text-slate-300 mb-2"
+                  class="block mb-2 font-medium"
                 >
                   Custom Sync Interval
                 </label>
@@ -758,7 +787,7 @@
                   id="modal-interval"
                   name="sync_interval"
                   placeholder="Leave empty to use default"
-                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  class="w-full rounded-lg transition"
                 />
                 <p class="text-xs text-slate-400 mt-1">
                   Override default interval (e.g., 1h, 30m, 0 */2 * * *)
@@ -768,14 +797,14 @@
               <div>
                 <label
                   for="modal-mode"
-                  class="block text-sm font-medium text-slate-300 mb-2"
+                  class="block mb-2 font-medium"
                 >
                   Custom Mode
                 </label>
                 <select
                   id="modal-mode"
                   name="mode"
-                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  class="w-full rounded-lg transition"
                 >
                   <option value="">Use Global Default</option>
                   <option value="direct">Direct (Radarr/Sonarr)</option>
@@ -790,14 +819,14 @@
               <div id="modal-min-availability-container" class="hidden">
                 <label
                   for="modal-min-availability"
-                  class="block text-sm font-medium text-slate-300 mb-2"
+                  class="block mb-2 font-medium"
                 >
                   Minimum Availability
                 </label>
                 <select
                   id="modal-min-availability"
                   name="minimum_availability"
-                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  class="w-full rounded-lg transition"
                 >
                   <option value="">Use Global Default</option>
                   <option value="announced">Announced</option>
@@ -813,14 +842,14 @@
               <div id="modal-radarr-monitor-container" class="hidden">
                 <label
                   for="modal-radarr-monitor"
-                  class="block text-sm font-medium text-slate-300 mb-2"
+                  class="block mb-2 font-medium"
                 >
                   Monitor
                 </label>
                 <select
                   id="modal-radarr-monitor"
                   name="radarr_monitor"
-                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  class="w-full rounded-lg transition"
                 >
                   <option value="">Use Global Default</option>
                   <option value="movieOnly">Movie Only</option>
@@ -836,14 +865,14 @@
               <div id="modal-sonarr-monitor-container" class="hidden">
                 <label
                   for="modal-sonarr-monitor"
-                  class="block text-sm font-medium text-slate-300 mb-2"
+                  class="block mb-2 font-medium"
                 >
                   Monitor
                 </label>
                 <select
                   id="modal-sonarr-monitor"
                   name="sonarr_monitor"
-                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  class="w-full rounded-lg transition"
                 >
                   <option value="">Use Global Default</option>
                   <option value="all">All Episodes</option>
@@ -872,21 +901,22 @@
           <div class="grid grid-cols-1 gap-2 pt-4 sm:grid-cols-3">
             <button
               type="submit"
-              class="app-primary-button"
+              class="job-save-button"
             >
               Save Changes
             </button>
             <button
               type="button"
               data-action="preview-job"
-              class="rounded-lg border border-slate-600 px-4 py-2.5 font-semibold text-slate-100 transition-colors hover:bg-slate-800"
+              class="job-secondary-button"
             >
               Preview
             </button>
             <button
               type="button"
               data-action="run-job"
-              class="rounded-lg border border-slate-600 px-4 py-2.5 font-semibold text-slate-100 transition-colors hover:bg-slate-800"
+              class="job-run-button"
+              title="Runs this job immediately, outside its schedule"
             >
               Run Now
             </button>
@@ -905,14 +935,10 @@
           ></p>
 
           <!-- Delete Job Button (only for dynamic jobs) -->
-          <button
-            type="button"
-            id="delete-job-button"
-            data-action="delete-current-job"
-            class="hidden w-full px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-semibold rounded-lg transition-colors duration-200 border border-red-600/50"
-          >
-            Delete Job
-          </button>
+          <div id="delete-job-zone" class="job-danger-zone hidden">
+            <div><strong>Delete job</strong><span>Remove this job and its schedule permanently.</span></div>
+            <button type="button" id="delete-job-button" data-action="delete-current-job" class="job-delete-button">Delete</button>
+          </div>
         </form>
       </div>
     </div>

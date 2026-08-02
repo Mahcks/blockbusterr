@@ -14,6 +14,149 @@ import (
 
 // AddDynamicJobsRoutes adds the dynamic job management API endpoints
 func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
+	router.Get("/rule-sets", func(c *fiber.Ctx) error {
+		cfg := gctx.Config()
+		items := make([]fiber.Map, 0, len(cfg.RuleSets))
+		for _, rules := range cfg.RuleSets {
+			items = append(items, fiber.Map{"rule_set": rules, "usage_count": cfg.RuleSetUsage(rules.ID)})
+		}
+		return c.JSON(items)
+	})
+	router.Post("/rule-sets", func(c *fiber.Ctx) error {
+		var rules config.RuleSet
+		if err := c.BodyParser(&rules); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid request body: " + err.Error()})
+		}
+		if rules.ID == "" {
+			rules.ID = uuid.NewString()
+		}
+		rules.Revision = 1
+		cfg := gctx.Config()
+		if _, exists := cfg.RuleSetByID(rules.ID); exists {
+			return c.Status(409).JSON(fiber.Map{"error": "Rule set ID already exists"})
+		}
+		if err := cfg.ValidateRuleSet(rules, ""); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		}
+		cfg.RuleSets = append(cfg.RuleSets, rules)
+		if err := cfg.Save(); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+		if err := gctx.ReloadConfig(); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.Status(201).JSON(rules)
+	})
+	router.Put("/rule-sets/:id", func(c *fiber.Ctx) error {
+		cfg := gctx.Config()
+		id := c.Params("id")
+		current, ok := cfg.RuleSetByID(id)
+		if !ok {
+			return c.Status(404).JSON(fiber.Map{"error": "Rule set not found"})
+		}
+		var rules config.RuleSet
+		if err := c.BodyParser(&rules); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid request body: " + err.Error()})
+		}
+		if rules.ID != "" && rules.ID != id {
+			return c.Status(400).JSON(fiber.Map{"error": "Rule set ID cannot be changed"})
+		}
+		if rules.Revision != current.Revision {
+			return c.Status(409).JSON(fiber.Map{"error": "Rule set changed since it was opened; reload and try again"})
+		}
+		rules.ID, rules.Revision = id, current.Revision+1
+		if err := cfg.ValidateRuleSet(rules, id); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		}
+		*current = rules
+		if err := cfg.Save(); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+		if err := gctx.ReloadConfig(); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(rules)
+	})
+	router.Delete("/rule-sets/:id", func(c *fiber.Ctx) error {
+		cfg := gctx.Config()
+		id := c.Params("id")
+		if id == config.DefaultMoviesRuleSetID || id == config.DefaultShowsRuleSetID {
+			return c.Status(409).JSON(fiber.Map{"error": "Default rule sets cannot be deleted"})
+		}
+		if count := cfg.RuleSetUsage(id); count > 0 {
+			return c.Status(409).JSON(fiber.Map{"error": fmt.Sprintf("Rule set is used by %d job(s)", count)})
+		}
+		found := false
+		for i := range cfg.RuleSets {
+			if cfg.RuleSets[i].ID == id {
+				cfg.RuleSets = append(cfg.RuleSets[:i], cfg.RuleSets[i+1:]...)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return c.Status(404).JSON(fiber.Map{"error": "Rule set not found"})
+		}
+		if err := cfg.Save(); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+		if err := gctx.ReloadConfig(); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.SendStatus(204)
+	})
+	router.Get("/title-exceptions", func(c *fiber.Ctx) error { return c.JSON(gctx.Config().TitleExceptions) })
+	router.Put("/title-exceptions", func(c *fiber.Ctx) error {
+		cfg := gctx.Config()
+		var exceptions config.TitleExceptions
+		if err := c.BodyParser(&exceptions); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid request body: " + err.Error()})
+		}
+		cfg.TitleExceptions = exceptions
+		if err := cfg.Save(); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+		if err := gctx.ReloadConfig(); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(exceptions)
+	})
+
+	router.Post("/jobs/:id/customize-rules", func(c *fiber.Ctx) error {
+		cfg := gctx.Config()
+		job := cfg.GetDynamicJobByID(c.Params("id"))
+		if job == nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Job not found"})
+		}
+		assigned, _, err := cfg.ResolveRuleSet(*job)
+		if err != nil {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
+		}
+		clone := *assigned
+		clone.ID = uuid.NewString()
+		clone.Revision = 1
+		baseName := strings.TrimSpace(job.Name) + " Rules"
+		clone.Name = baseName
+		for suffix := 2; ; suffix++ {
+			if err := cfg.ValidateRuleSet(clone, ""); err == nil {
+				break
+			}
+			clone.Name = fmt.Sprintf("%s %d", baseName, suffix)
+		}
+		previousRuleSetID := job.RuleSetID
+		cfg.RuleSets = append(cfg.RuleSets, clone)
+		job.RuleSetID = clone.ID
+		if err := cfg.Save(); err != nil {
+			cfg.RuleSets = cfg.RuleSets[:len(cfg.RuleSets)-1]
+			job.RuleSetID = previousRuleSetID
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		if err := gctx.ReloadConfig(); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.Status(fiber.StatusCreated).JSON(fiber.Map{"job": job, "rule_set": clone, "usage_count": 1})
+	})
+
 	// Get all available job type definitions (for UI dropdowns)
 	router.Get("/jobs/types", func(c *fiber.Ctx) error {
 		cfg := gctx.Config()
@@ -83,6 +226,13 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 
 		// Validate the job
 		cfg := gctx.Config()
+		if job.RuleSetID == "" {
+			if job.MediaType == "show" {
+				job.RuleSetID = config.DefaultShowsRuleSetID
+			} else {
+				job.RuleSetID = config.DefaultMoviesRuleSetID
+			}
+		}
 		if err := validateDynamicJob(cfg, job); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": err.Error(),
@@ -140,6 +290,13 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 
 		// Validate the job
 		cfg := gctx.Config()
+		if job.RuleSetID == "" {
+			if job.MediaType == "show" {
+				job.RuleSetID = config.DefaultShowsRuleSetID
+			} else {
+				job.RuleSetID = config.DefaultMoviesRuleSetID
+			}
+		}
 		if err := validateDynamicJob(cfg, job); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": err.Error(),
@@ -382,6 +539,33 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 	if job.Source == "simkl" && job.Type == "watched" && job.Period != "weekly" && job.Period != "monthly" {
 		return fmt.Errorf("simkl most watched jobs support weekly or monthly periods")
 	}
+	if job.UseCustomFilters {
+		if err := validateFilterBounds(job.Filters.Movies.BlacklistedMinYear, job.Filters.Movies.BlacklistedMaxYear, job.Filters.Movies.BlacklistedMinRuntime, job.Filters.Movies.BlacklistedMaxRuntime, job.Filters.Movies.MinRating, job.Filters.Movies.MinVotes); err != nil {
+			return fmt.Errorf("movie filters: %w", err)
+		}
+		if err := validateFilterBounds(job.Filters.Shows.BlacklistedMinYear, job.Filters.Shows.BlacklistedMaxYear, job.Filters.Shows.BlacklistedMinRuntime, job.Filters.Shows.BlacklistedMaxRuntime, job.Filters.Shows.MinRating, job.Filters.Shows.MinVotes); err != nil {
+			return fmt.Errorf("show filters: %w", err)
+		}
+	}
+	if _, _, err := cfg.ResolveRuleSet(job); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+func validateFilterBounds(minYear, maxYear, minRuntime, maxRuntime int, minRating float64, minVotes int) error {
+	if minYear < 0 || maxYear < 0 || minRuntime < 0 || maxRuntime < 0 || minVotes < 0 {
+		return fmt.Errorf("numeric values cannot be negative")
+	}
+	if minRating < 0 || minRating > 10 {
+		return fmt.Errorf("minimum rating must be between 0 and 10")
+	}
+	if minYear > 0 && maxYear > 0 && minYear > maxYear {
+		return fmt.Errorf("minimum year cannot exceed maximum year")
+	}
+	if minRuntime > 0 && maxRuntime > 0 && minRuntime > maxRuntime {
+		return fmt.Errorf("minimum runtime cannot exceed maximum runtime")
+	}
 	return nil
 }

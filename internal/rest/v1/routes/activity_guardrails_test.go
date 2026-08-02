@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -43,6 +45,40 @@ func TestActivityLogsRejectsInvalidStatusFilter(t *testing.T) {
 	}
 	if resp.StatusCode != fiber.StatusBadRequest {
 		t.Fatalf("status code = %d, want %d", resp.StatusCode, fiber.StatusBadRequest)
+	}
+}
+
+func TestActivityBlockWritesUniversalTitleException(t *testing.T) {
+	db, err := database.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(configPath, []byte("version: test\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{ConfigFilePath: configPath}
+	gctx := global.New(context.Background(), cfg, db, "test", "test")
+	app := fiber.New()
+	RegisterActivityRoutes(app.Group("/v1"), gctx)
+	if err := db.LogActivity(database.ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "movie", Title: "Blocked", TMDBID: 42, Status: "rejected"}); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		resp, err := app.Test(httptest.NewRequest("POST", "/v1/activity/1/block", nil), -1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != fiber.StatusOK {
+			t.Fatalf("status = %d", resp.StatusCode)
+		}
+	}
+	if got := cfg.TitleExceptions.BlockedMovieTMDBIDs; len(got) != 1 || got[0] != 42 {
+		t.Fatalf("universal blocks = %v, want [42]", got)
+	}
+	if len(cfg.Filters.Movies.BlacklistedTMDBIds) != 0 {
+		t.Fatalf("legacy filters were mutated: %v", cfg.Filters.Movies.BlacklistedTMDBIds)
 	}
 }
 

@@ -23,6 +23,26 @@ type FilterResult struct {
 	Checks []FilterCheck `json:"checks"`
 }
 
+func MoviePassesRules(movie integrations.Movie, rules config.MovieFilters, exceptions config.TitleExceptions) FilterResult {
+	if slices.Contains(exceptions.BlockedMovieTMDBIDs, movie.IDs.TMDB) {
+		return FilterResult{Passed: false, Reason: "blocked title", Checks: []FilterCheck{{Name: "Title exceptions", Passed: false, Message: "Title is globally blocked"}}}
+	}
+	if slices.Contains(exceptions.AllowedMovieTMDBIDs, movie.IDs.TMDB) {
+		return FilterResult{Passed: true, Checks: []FilterCheck{{Name: "Title exceptions", Passed: true, Message: "Title is globally allowed"}}}
+	}
+	return MoviePassesFiltersDetailed(movie, rules)
+}
+
+func ShowPassesRules(show integrations.Show, rules config.ShowFilters, exceptions config.TitleExceptions) FilterResult {
+	if slices.Contains(exceptions.BlockedShowTVDBIDs, show.IDs.TVDB) {
+		return FilterResult{Passed: false, Reason: "blocked title", Checks: []FilterCheck{{Name: "Title exceptions", Passed: false, Message: "Title is globally blocked"}}}
+	}
+	if slices.Contains(exceptions.AllowedShowTVDBIDs, show.IDs.TVDB) {
+		return FilterResult{Passed: true, Checks: []FilterCheck{{Name: "Title exceptions", Passed: true, Message: "Title is globally allowed"}}}
+	}
+	return ShowPassesFiltersDetailed(show, rules)
+}
+
 // MoviePassesFilters checks if a movie passes all configured filters
 func MoviePassesFilters(movie integrations.Movie, filters config.MovieFilters) (bool, string) {
 	result := MoviePassesFiltersDetailed(movie, filters)
@@ -57,6 +77,9 @@ func MoviePassesFiltersDetailed(movie integrations.Movie, filters config.MovieFi
 
 	// Check country filter
 	if len(filters.AllowedCountries) > 0 && !slices.Contains(filters.AllowedCountries, "ignore") {
+		if movie.Country == "" {
+			return FilterResult{Passed: false, Reason: "country metadata unavailable", Checks: []FilterCheck{{Name: "Allowed Countries", Passed: false, Message: "Country metadata is unavailable"}}}
+		}
 		if movie.Country != "" {
 			if !containsIgnoreCase(filters.AllowedCountries, movie.Country) {
 				result.Checks = append(result.Checks, FilterCheck{
@@ -78,6 +101,9 @@ func MoviePassesFiltersDetailed(movie integrations.Movie, filters config.MovieFi
 
 	// Check language filter
 	if len(filters.AllowedLanguages) > 0 && !slices.Contains(filters.AllowedLanguages, "ignore") {
+		if movie.Language == "" {
+			return FilterResult{Passed: false, Reason: "language metadata unavailable", Checks: []FilterCheck{{Name: "Allowed Languages", Passed: false, Message: "Language metadata is unavailable"}}}
+		}
 		if movie.Language != "" {
 			if !containsIgnoreCase(filters.AllowedLanguages, movie.Language) {
 				result.Checks = append(result.Checks, FilterCheck{
@@ -282,6 +308,9 @@ func ShowPassesFiltersDetailed(show integrations.Show, filters config.ShowFilter
 
 	// Check country filter
 	if len(filters.AllowedCountries) > 0 && !slices.Contains(filters.AllowedCountries, "ignore") {
+		if show.Country == "" {
+			return FilterResult{Passed: false, Reason: "country metadata unavailable", Checks: []FilterCheck{{Name: "Allowed Countries", Passed: false, Message: "Country metadata is unavailable"}}}
+		}
 		if show.Country != "" && !containsIgnoreCase(filters.AllowedCountries, show.Country) {
 			result.Checks = append(result.Checks, FilterCheck{
 				Name:    "Allowed Countries",
@@ -301,6 +330,9 @@ func ShowPassesFiltersDetailed(show integrations.Show, filters config.ShowFilter
 
 	// Check language filter
 	if len(filters.AllowedLanguages) > 0 && !slices.Contains(filters.AllowedLanguages, "ignore") {
+		if show.Language == "" {
+			return FilterResult{Passed: false, Reason: "language metadata unavailable", Checks: []FilterCheck{{Name: "Allowed Languages", Passed: false, Message: "Language metadata is unavailable"}}}
+		}
 		if show.Language != "" && !containsIgnoreCase(filters.AllowedLanguages, show.Language) {
 			result.Checks = append(result.Checks, FilterCheck{
 				Name:    "Allowed Languages",
