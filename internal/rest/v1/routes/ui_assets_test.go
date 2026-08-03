@@ -101,7 +101,7 @@ func TestSharedUIFunctionsAndDynamicStylesAreCompiled(t *testing.T) {
 			t.Errorf("shared app.js is missing window.%s", function)
 		}
 	}
-	for _, class := range []string{".bg-green-500", ".bg-red-500", ".bg-yellow-500", ".from-yellow-900\\/50", ".to-slate-800\\/50"} {
+	for _, class := range []string{".bg-green-500", ".bg-red-500", ".bg-yellow-500"} {
 		if !strings.Contains(css, class) {
 			t.Errorf("compiled CSS is missing dynamic class %s", class)
 		}
@@ -145,7 +145,7 @@ func TestSettingsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 		"radarr.url", "radarr.api_key", "radarr.quality_profile", "radarr.root_folder", "radarr.minimum_availability", "radarr.monitor",
 		"sonarr.url", "sonarr.api_key", "sonarr.quality_profile", "sonarr.root_folder", "sonarr.monitor",
 		"jellyseerr.url", "jellyseerr.api_key", "jellyseerr.user_id", "jellyseerr.request_credentials.email", "jellyseerr.request_credentials.password",
-		"jobs.mode", "jobs.sync_interval", "jobs.global_limit_movies", "jobs.global_limit_shows", "jobs.global_period",
+		"jobs.mode", "jobs.sync_interval",
 		"scoring.enabled", "scoring.rating_weight", "scoring.popularity_weight", "scoring.recency_weight", "scoring.rating_scale", "scoring.popularity_metric", "scoring.recency_days",
 	} {
 		if !strings.Contains(index, `name="`+field+`"`) {

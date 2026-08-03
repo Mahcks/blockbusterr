@@ -81,13 +81,13 @@ Then open `http://localhost:9090` and configure your services.
 ## 📸 Screenshots
 
 ### Dashboard & Configuration
-![Settings](reference-docs/images/settings.png)
+![Settings](docs/src/assets/settings.png)
 
 ### Job Preview & Management
-![Jobs Preview](reference-docs/images/jobs.png)
+![Jobs Preview](docs/src/assets/jobs.png)
 
 ### Activity Log
-![Activity Log](reference-docs/images/activity_log_preview.png)
+![Activity Log](docs/src/assets/activity_log_preview.png)
 
 ---
 

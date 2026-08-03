@@ -41,7 +41,6 @@ jellyseerr:
 
 scoring:
   # Content scoring system - ranks content by rating, popularity, and recency
-  # Used by global limits to select top N items across all jobs
   enabled: true
   rating_weight: 0.6       # 60% weight on rating (must sum to 1.0 with other weights)
   popularity_weight: 0.3   # 30% weight on popularity (vote count)
@@ -70,13 +69,6 @@ jobs:
   # Default mode: "direct" (add directly to Radarr/Sonarr) or "jellyseerr" (request via Jellyseerr)
   # Can be overridden per job
   mode: direct
-
-  # Global Limits (optional)
-  # Aggregate results from all enabled jobs and only add the top N highest-scored items
-  # Leave at 0 to disable global limits (jobs will add items independently)
-  global_limit_movies: 0  # Maximum movies to add per period (0 = no limit)
-  global_limit_shows: 0   # Maximum shows to add per period (0 = no limit)
-  global_period: "weekly" # Options: "sync" (per-sync, no tracking), "daily", "weekly", "monthly"
 
   # Movie Jobs
   # Each job can optionally have its own sync_interval and mode

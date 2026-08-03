@@ -105,7 +105,6 @@ type DynamicJob struct {
 	Monitor             string       `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`                                        // Monitor setting for Radarr/Sonarr
 	BaseMinRating       float64      `mapstructure:"base_min_rating" json:"base_min_rating" yaml:"base_min_rating,omitempty"`                // For smart jobs: base minimum rating
 	AdjustmentFactor    float64      `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor,omitempty"`          // For smart jobs: rating adjustment factor
-	MinGlobalPicks      int          `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`             // Minimum picks for global limit
 	UseCustomFilters    bool         `mapstructure:"use_custom_filters" json:"use_custom_filters" yaml:"use_custom_filters,omitempty"`
 	Filters             FilterConfig `mapstructure:"filters" json:"filters" yaml:"filters,omitempty"`
 	RuleSetID           string       `mapstructure:"rule_set_id" json:"rule_set_id" yaml:"rule_set_id,omitempty"`
@@ -169,18 +168,12 @@ type Config struct {
 		SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval"` // Default/fallback interval
 		Mode         string `mapstructure:"mode" json:"mode" yaml:"mode"`                            // Default/fallback mode: "direct" or "jellyseerr"
 
-		// Global limits
-		GlobalLimitMovies int    `mapstructure:"global_limit_movies" json:"global_limit_movies" yaml:"global_limit_movies,omitempty"`
-		GlobalLimitShows  int    `mapstructure:"global_limit_shows" json:"global_limit_shows" yaml:"global_limit_shows,omitempty"`
-		GlobalPeriod      string `mapstructure:"global_period" json:"global_period" yaml:"global_period,omitempty"` // sync, daily, weekly, monthly
-
 		// Dynamic job list (new format - allows multiple instances of same job type)
 		List []DynamicJob `mapstructure:"list" json:"list" yaml:"list,omitempty"`
 
 		TrendingMovies struct {
 			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
 			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
@@ -188,18 +181,16 @@ type Config struct {
 		} `mapstructure:"trending_movies" json:"trending_movies" yaml:"trending_movies"`
 
 		TrendingShows struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
-			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor      string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"trending_shows" json:"trending_shows" yaml:"trending_shows"`
 
 		PopularMovies struct {
 			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
 			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
@@ -207,18 +198,16 @@ type Config struct {
 		} `mapstructure:"popular_movies" json:"popular_movies" yaml:"popular_movies"`
 
 		PopularShows struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
-			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor      string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"popular_shows" json:"popular_shows" yaml:"popular_shows"`
 
 		BoxOffice struct {
 			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
 			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
@@ -229,7 +218,6 @@ type Config struct {
 			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
 			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
 			Period              string `mapstructure:"period" json:"period" yaml:"period"`
-			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
@@ -240,7 +228,6 @@ type Config struct {
 			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
 			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
 			Period              string `mapstructure:"period" json:"period" yaml:"period"`
-			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
@@ -251,7 +238,6 @@ type Config struct {
 			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
 			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
 			Period              string `mapstructure:"period" json:"period" yaml:"period"`
-			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
@@ -262,7 +248,6 @@ type Config struct {
 			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
 			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
 			Period              string `mapstructure:"period" json:"period" yaml:"period"`
-			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
@@ -272,7 +257,6 @@ type Config struct {
 		AnticipatedMovies struct {
 			Enabled             bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
 			Limit               int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			MinGlobalPicks      int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
 			SyncInterval        string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
 			Mode                string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
 			MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
@@ -280,52 +264,47 @@ type Config struct {
 		} `mapstructure:"anticipated_movies" json:"anticipated_movies" yaml:"anticipated_movies"`
 
 		FavoritedShows struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period         string `mapstructure:"period" json:"period" yaml:"period"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
-			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period       string `mapstructure:"period" json:"period" yaml:"period"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor      string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"favorited_shows" json:"favorited_shows" yaml:"favorited_shows"`
 
 		PlayedShows struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period         string `mapstructure:"period" json:"period" yaml:"period"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
-			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period       string `mapstructure:"period" json:"period" yaml:"period"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor      string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"played_shows" json:"played_shows" yaml:"played_shows"`
 
 		WatchedShows struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period         string `mapstructure:"period" json:"period" yaml:"period"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
-			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period       string `mapstructure:"period" json:"period" yaml:"period"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor      string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"watched_shows" json:"watched_shows" yaml:"watched_shows"`
 
 		CollectedShows struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			Period         string `mapstructure:"period" json:"period" yaml:"period"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
-			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			Period       string `mapstructure:"period" json:"period" yaml:"period"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor      string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"collected_shows" json:"collected_shows" yaml:"collected_shows"`
 
 		AnticipatedShows struct {
-			Enabled        bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-			Limit          int    `mapstructure:"limit" json:"limit" yaml:"limit"`
-			MinGlobalPicks int    `mapstructure:"min_global_picks" json:"min_global_picks" yaml:"min_global_picks,omitempty"`
-			SyncInterval   string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
-			Mode           string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
-			Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			Limit        int    `mapstructure:"limit" json:"limit" yaml:"limit"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			Mode         string `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`
+			Monitor      string `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`
 		} `mapstructure:"anticipated_shows" json:"anticipated_shows" yaml:"anticipated_shows"`
 
 		SmartPopularMovies struct {
@@ -729,24 +708,22 @@ func (c *Config) getLegacyJobsAsDynamic() []DynamicJob {
 			Mode:                c.Jobs.TrendingMovies.Mode,
 			MinimumAvailability: c.Jobs.TrendingMovies.MinimumAvailability,
 			Monitor:             c.Jobs.TrendingMovies.Monitor,
-			MinGlobalPicks:      c.Jobs.TrendingMovies.MinGlobalPicks,
 		})
 	}
 
 	// Trending Shows
 	if c.Jobs.TrendingShows.Enabled && !c.hasDynamicJobOfType("trending", "show") {
 		jobs = append(jobs, DynamicJob{
-			ID:             "legacy_trending_shows",
-			Name:           "Trending Shows",
-			Enabled:        c.Jobs.TrendingShows.Enabled,
-			Type:           "trending",
-			Source:         "trakt",
-			MediaType:      "show",
-			Limit:          c.Jobs.TrendingShows.Limit,
-			SyncInterval:   c.Jobs.TrendingShows.SyncInterval,
-			Mode:           c.Jobs.TrendingShows.Mode,
-			Monitor:        c.Jobs.TrendingShows.Monitor,
-			MinGlobalPicks: c.Jobs.TrendingShows.MinGlobalPicks,
+			ID:           "legacy_trending_shows",
+			Name:         "Trending Shows",
+			Enabled:      c.Jobs.TrendingShows.Enabled,
+			Type:         "trending",
+			Source:       "trakt",
+			MediaType:    "show",
+			Limit:        c.Jobs.TrendingShows.Limit,
+			SyncInterval: c.Jobs.TrendingShows.SyncInterval,
+			Mode:         c.Jobs.TrendingShows.Mode,
+			Monitor:      c.Jobs.TrendingShows.Monitor,
 		})
 	}
 
@@ -764,24 +741,22 @@ func (c *Config) getLegacyJobsAsDynamic() []DynamicJob {
 			Mode:                c.Jobs.PopularMovies.Mode,
 			MinimumAvailability: c.Jobs.PopularMovies.MinimumAvailability,
 			Monitor:             c.Jobs.PopularMovies.Monitor,
-			MinGlobalPicks:      c.Jobs.PopularMovies.MinGlobalPicks,
 		})
 	}
 
 	// Popular Shows
 	if c.Jobs.PopularShows.Enabled && !c.hasDynamicJobOfType("popular", "show") {
 		jobs = append(jobs, DynamicJob{
-			ID:             "legacy_popular_shows",
-			Name:           "Popular Shows",
-			Enabled:        c.Jobs.PopularShows.Enabled,
-			Type:           "popular",
-			Source:         "trakt",
-			MediaType:      "show",
-			Limit:          c.Jobs.PopularShows.Limit,
-			SyncInterval:   c.Jobs.PopularShows.SyncInterval,
-			Mode:           c.Jobs.PopularShows.Mode,
-			Monitor:        c.Jobs.PopularShows.Monitor,
-			MinGlobalPicks: c.Jobs.PopularShows.MinGlobalPicks,
+			ID:           "legacy_popular_shows",
+			Name:         "Popular Shows",
+			Enabled:      c.Jobs.PopularShows.Enabled,
+			Type:         "popular",
+			Source:       "trakt",
+			MediaType:    "show",
+			Limit:        c.Jobs.PopularShows.Limit,
+			SyncInterval: c.Jobs.PopularShows.SyncInterval,
+			Mode:         c.Jobs.PopularShows.Mode,
+			Monitor:      c.Jobs.PopularShows.Monitor,
 		})
 	}
 
@@ -799,7 +774,6 @@ func (c *Config) getLegacyJobsAsDynamic() []DynamicJob {
 			Mode:                c.Jobs.BoxOffice.Mode,
 			MinimumAvailability: c.Jobs.BoxOffice.MinimumAvailability,
 			Monitor:             c.Jobs.BoxOffice.Monitor,
-			MinGlobalPicks:      c.Jobs.BoxOffice.MinGlobalPicks,
 		})
 	}
 
@@ -818,7 +792,6 @@ func (c *Config) getLegacyJobsAsDynamic() []DynamicJob {
 			Mode:                c.Jobs.FavoritedMovies.Mode,
 			MinimumAvailability: c.Jobs.FavoritedMovies.MinimumAvailability,
 			Monitor:             c.Jobs.FavoritedMovies.Monitor,
-			MinGlobalPicks:      c.Jobs.FavoritedMovies.MinGlobalPicks,
 		})
 	}
 
@@ -837,7 +810,6 @@ func (c *Config) getLegacyJobsAsDynamic() []DynamicJob {
 			Mode:                c.Jobs.PlayedMovies.Mode,
 			MinimumAvailability: c.Jobs.PlayedMovies.MinimumAvailability,
 			Monitor:             c.Jobs.PlayedMovies.Monitor,
-			MinGlobalPicks:      c.Jobs.PlayedMovies.MinGlobalPicks,
 		})
 	}
 
@@ -856,7 +828,6 @@ func (c *Config) getLegacyJobsAsDynamic() []DynamicJob {
 			Mode:                c.Jobs.WatchedMovies.Mode,
 			MinimumAvailability: c.Jobs.WatchedMovies.MinimumAvailability,
 			Monitor:             c.Jobs.WatchedMovies.Monitor,
-			MinGlobalPicks:      c.Jobs.WatchedMovies.MinGlobalPicks,
 		})
 	}
 
@@ -875,7 +846,6 @@ func (c *Config) getLegacyJobsAsDynamic() []DynamicJob {
 			Mode:                c.Jobs.CollectedMovies.Mode,
 			MinimumAvailability: c.Jobs.CollectedMovies.MinimumAvailability,
 			Monitor:             c.Jobs.CollectedMovies.Monitor,
-			MinGlobalPicks:      c.Jobs.CollectedMovies.MinGlobalPicks,
 		})
 	}
 
@@ -893,96 +863,90 @@ func (c *Config) getLegacyJobsAsDynamic() []DynamicJob {
 			Mode:                c.Jobs.AnticipatedMovies.Mode,
 			MinimumAvailability: c.Jobs.AnticipatedMovies.MinimumAvailability,
 			Monitor:             c.Jobs.AnticipatedMovies.Monitor,
-			MinGlobalPicks:      c.Jobs.AnticipatedMovies.MinGlobalPicks,
 		})
 	}
 
 	// Favorited Shows
 	if c.Jobs.FavoritedShows.Enabled && !c.hasDynamicJobOfType("favorited", "show") {
 		jobs = append(jobs, DynamicJob{
-			ID:             "legacy_favorited_shows",
-			Name:           "Favorited Shows",
-			Enabled:        c.Jobs.FavoritedShows.Enabled,
-			Type:           "favorited",
-			Source:         "trakt",
-			MediaType:      "show",
-			Limit:          c.Jobs.FavoritedShows.Limit,
-			Period:         c.Jobs.FavoritedShows.Period,
-			SyncInterval:   c.Jobs.FavoritedShows.SyncInterval,
-			Mode:           c.Jobs.FavoritedShows.Mode,
-			Monitor:        c.Jobs.FavoritedShows.Monitor,
-			MinGlobalPicks: c.Jobs.FavoritedShows.MinGlobalPicks,
+			ID:           "legacy_favorited_shows",
+			Name:         "Favorited Shows",
+			Enabled:      c.Jobs.FavoritedShows.Enabled,
+			Type:         "favorited",
+			Source:       "trakt",
+			MediaType:    "show",
+			Limit:        c.Jobs.FavoritedShows.Limit,
+			Period:       c.Jobs.FavoritedShows.Period,
+			SyncInterval: c.Jobs.FavoritedShows.SyncInterval,
+			Mode:         c.Jobs.FavoritedShows.Mode,
+			Monitor:      c.Jobs.FavoritedShows.Monitor,
 		})
 	}
 
 	// Played Shows
 	if c.Jobs.PlayedShows.Enabled && !c.hasDynamicJobOfType("played", "show") {
 		jobs = append(jobs, DynamicJob{
-			ID:             "legacy_played_shows",
-			Name:           "Played Shows",
-			Enabled:        c.Jobs.PlayedShows.Enabled,
-			Type:           "played",
-			Source:         "trakt",
-			MediaType:      "show",
-			Limit:          c.Jobs.PlayedShows.Limit,
-			Period:         c.Jobs.PlayedShows.Period,
-			SyncInterval:   c.Jobs.PlayedShows.SyncInterval,
-			Mode:           c.Jobs.PlayedShows.Mode,
-			Monitor:        c.Jobs.PlayedShows.Monitor,
-			MinGlobalPicks: c.Jobs.PlayedShows.MinGlobalPicks,
+			ID:           "legacy_played_shows",
+			Name:         "Played Shows",
+			Enabled:      c.Jobs.PlayedShows.Enabled,
+			Type:         "played",
+			Source:       "trakt",
+			MediaType:    "show",
+			Limit:        c.Jobs.PlayedShows.Limit,
+			Period:       c.Jobs.PlayedShows.Period,
+			SyncInterval: c.Jobs.PlayedShows.SyncInterval,
+			Mode:         c.Jobs.PlayedShows.Mode,
+			Monitor:      c.Jobs.PlayedShows.Monitor,
 		})
 	}
 
 	// Watched Shows
 	if c.Jobs.WatchedShows.Enabled && !c.hasDynamicJobOfType("watched", "show") {
 		jobs = append(jobs, DynamicJob{
-			ID:             "legacy_watched_shows",
-			Name:           "Watched Shows",
-			Enabled:        c.Jobs.WatchedShows.Enabled,
-			Type:           "watched",
-			Source:         "trakt",
-			MediaType:      "show",
-			Limit:          c.Jobs.WatchedShows.Limit,
-			Period:         c.Jobs.WatchedShows.Period,
-			SyncInterval:   c.Jobs.WatchedShows.SyncInterval,
-			Mode:           c.Jobs.WatchedShows.Mode,
-			Monitor:        c.Jobs.WatchedShows.Monitor,
-			MinGlobalPicks: c.Jobs.WatchedShows.MinGlobalPicks,
+			ID:           "legacy_watched_shows",
+			Name:         "Watched Shows",
+			Enabled:      c.Jobs.WatchedShows.Enabled,
+			Type:         "watched",
+			Source:       "trakt",
+			MediaType:    "show",
+			Limit:        c.Jobs.WatchedShows.Limit,
+			Period:       c.Jobs.WatchedShows.Period,
+			SyncInterval: c.Jobs.WatchedShows.SyncInterval,
+			Mode:         c.Jobs.WatchedShows.Mode,
+			Monitor:      c.Jobs.WatchedShows.Monitor,
 		})
 	}
 
 	// Collected Shows
 	if c.Jobs.CollectedShows.Enabled && !c.hasDynamicJobOfType("collected", "show") {
 		jobs = append(jobs, DynamicJob{
-			ID:             "legacy_collected_shows",
-			Name:           "Collected Shows",
-			Enabled:        c.Jobs.CollectedShows.Enabled,
-			Type:           "collected",
-			Source:         "trakt",
-			MediaType:      "show",
-			Limit:          c.Jobs.CollectedShows.Limit,
-			Period:         c.Jobs.CollectedShows.Period,
-			SyncInterval:   c.Jobs.CollectedShows.SyncInterval,
-			Mode:           c.Jobs.CollectedShows.Mode,
-			Monitor:        c.Jobs.CollectedShows.Monitor,
-			MinGlobalPicks: c.Jobs.CollectedShows.MinGlobalPicks,
+			ID:           "legacy_collected_shows",
+			Name:         "Collected Shows",
+			Enabled:      c.Jobs.CollectedShows.Enabled,
+			Type:         "collected",
+			Source:       "trakt",
+			MediaType:    "show",
+			Limit:        c.Jobs.CollectedShows.Limit,
+			Period:       c.Jobs.CollectedShows.Period,
+			SyncInterval: c.Jobs.CollectedShows.SyncInterval,
+			Mode:         c.Jobs.CollectedShows.Mode,
+			Monitor:      c.Jobs.CollectedShows.Monitor,
 		})
 	}
 
 	// Anticipated Shows
 	if c.Jobs.AnticipatedShows.Enabled && !c.hasDynamicJobOfType("anticipated", "show") {
 		jobs = append(jobs, DynamicJob{
-			ID:             "legacy_anticipated_shows",
-			Name:           "Anticipated Shows",
-			Enabled:        c.Jobs.AnticipatedShows.Enabled,
-			Type:           "anticipated",
-			Source:         "trakt",
-			MediaType:      "show",
-			Limit:          c.Jobs.AnticipatedShows.Limit,
-			SyncInterval:   c.Jobs.AnticipatedShows.SyncInterval,
-			Mode:           c.Jobs.AnticipatedShows.Mode,
-			Monitor:        c.Jobs.AnticipatedShows.Monitor,
-			MinGlobalPicks: c.Jobs.AnticipatedShows.MinGlobalPicks,
+			ID:           "legacy_anticipated_shows",
+			Name:         "Anticipated Shows",
+			Enabled:      c.Jobs.AnticipatedShows.Enabled,
+			Type:         "anticipated",
+			Source:       "trakt",
+			MediaType:    "show",
+			Limit:        c.Jobs.AnticipatedShows.Limit,
+			SyncInterval: c.Jobs.AnticipatedShows.SyncInterval,
+			Mode:         c.Jobs.AnticipatedShows.Mode,
+			Monitor:      c.Jobs.AnticipatedShows.Monitor,
 		})
 	}
 

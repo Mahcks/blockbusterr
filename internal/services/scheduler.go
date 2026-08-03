@@ -305,7 +305,7 @@ func parseSyncInterval(interval string) (time.Duration, *cron.Schedule, error) {
 
 func jobSignature(job config.DynamicJob) string {
 	return fmt.Sprintf(
-		"%s|%t|%s|%s|%s|%d|%s|%s|%s|%s|%s|%f|%f|%d|%s",
+		"%s|%t|%s|%s|%s|%d|%s|%s|%s|%s|%s|%f|%f|%s",
 		job.ID,
 		job.Enabled,
 		job.Type,
@@ -319,7 +319,6 @@ func jobSignature(job config.DynamicJob) string {
 		job.Monitor,
 		job.BaseMinRating,
 		job.AdjustmentFactor,
-		job.MinGlobalPicks,
 		job.RuleSetID,
 	)
 }

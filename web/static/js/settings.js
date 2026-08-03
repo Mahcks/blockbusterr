@@ -33,7 +33,6 @@ function init() {
   renderModeReadiness();
   updateWeightTotal();
   renderScoringSummary();
-  renderLimitsSummary();
   updateSaveBar();
 
   form.addEventListener('input', onFormChange);
@@ -60,7 +59,6 @@ function onFormChange() {
   renderModeReadiness();
   updateWeightTotal();
   renderScoringSummary();
-  renderLimitsSummary();
   updateSaveBar();
 }
 
@@ -222,29 +220,6 @@ function applyPreset(event) {
   document.getElementById('recency-weight').value = preset.recency;
   event.target.value = '';
   onFormChange();
-}
-
-// ---- Global limits -----------------------------------------------------
-
-function renderLimitsSummary() {
-  const movies = Number(document.getElementById('global-limit-movies')?.value) || 0;
-  const shows = Number(document.getElementById('global-limit-shows')?.value) || 0;
-  const period = document.getElementById('global-period')?.value || 'sync';
-  const summaryEl = document.querySelector('[data-limits-summary]');
-  const dependencyEl = document.querySelector('[data-limits-dependency]');
-  const active = movies > 0 || shows > 0;
-
-  if (summaryEl) summaryEl.textContent = active ? `${movies} movies / ${shows} shows per ${period}` : 'Disabled';
-
-  if (dependencyEl) {
-    const scoringOn = document.getElementById('scoring-enabled')?.checked;
-    if (active && !scoringOn) {
-      dependencyEl.textContent = 'Requires content scoring enabled above to rank candidates.';
-      dependencyEl.style.color = 'rgb(250 204 21)';
-    } else {
-      dependencyEl.textContent = '';
-    }
-  }
 }
 
 // ---- Save bar ----------------------------------------------------------

@@ -75,15 +75,15 @@
   }
 
   const typeStyles = {
-    'trending': { color: 'text-yellow-400', bg: 'from-yellow-900/50' },
-    'popular': { color: 'text-red-400', bg: 'from-red-900/50' },
-    'watched': { color: 'text-cyan-400', bg: 'from-cyan-900/50' },
-    'collected': { color: 'text-amber-400', bg: 'from-amber-900/50' },
-    'favorited': { color: 'text-pink-400', bg: 'from-pink-900/50' },
-    'played': { color: 'text-blue-400', bg: 'from-blue-900/50' },
-    'anticipated': { color: 'text-purple-400', bg: 'from-purple-900/50' },
-    'box_office': { color: 'text-green-400', bg: 'from-green-900/50' },
-    'smart_popular': { color: 'text-indigo-400', bg: 'from-indigo-900/50' }
+    'trending': { color: 'text-yellow-400' },
+    'popular': { color: 'text-red-400' },
+    'watched': { color: 'text-cyan-400' },
+    'collected': { color: 'text-amber-400' },
+    'favorited': { color: 'text-pink-400' },
+    'played': { color: 'text-blue-400' },
+    'anticipated': { color: 'text-purple-400' },
+    'box_office': { color: 'text-green-400' },
+    'smart_popular': { color: 'text-indigo-400' }
   };
 
   // Initialize

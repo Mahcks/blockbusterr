@@ -384,7 +384,7 @@
               <input type="checkbox" name="scoring.enabled" value="true" id="scoring-enabled" {{if .Config.Scoring.Enabled}}checked{{end}}>
               <span>
                 <span class="mode-choice-name">Enable content scoring</span>
-                <span class="svc-help" style="margin-top:2px;display:block;">Ranks content by rating, popularity, and recency. Required for global limits to pick the best items.</span>
+                <span class="svc-help" style="margin-top:2px;display:block;">Ranks content by rating, popularity, and recency.</span>
               </span>
             </label>
 
@@ -440,35 +440,6 @@
           </div>
         </details>
 
-        <details class="settings-disclosure" {{if or (gt .Config.Jobs.GlobalLimitMovies 0) (gt .Config.Jobs.GlobalLimitShows 0)}}open{{end}}>
-          <summary>
-            <span class="settings-disclosure-title"><i data-lucide="gauge" aria-hidden="true"></i>Global limits</span>
-            <span class="settings-disclosure-summary" data-limits-summary></span>
-          </summary>
-          <div class="settings-disclosure-body">
-            <p class="settings-inline-help">Combine candidates from all jobs and deliver only the highest-scoring items within each period. Zero means unlimited.</p>
-            <p class="settings-inline-help" data-limits-dependency></p>
-            <div class="limit-fields">
-              <div class="svc-field">
-                <label for="global-limit-movies">Max movies</label>
-                <input type="number" id="global-limit-movies" name="jobs.global_limit_movies" value="{{.Config.Jobs.GlobalLimitMovies}}" placeholder="0" min="0">
-              </div>
-              <div class="svc-field">
-                <label for="global-limit-shows">Max shows</label>
-                <input type="number" id="global-limit-shows" name="jobs.global_limit_shows" value="{{.Config.Jobs.GlobalLimitShows}}" placeholder="0" min="0">
-              </div>
-              <div class="svc-field">
-                <label for="global-period">Reset period</label>
-                <select id="global-period" name="jobs.global_period">
-                  <option value="sync" {{if eq .Config.Jobs.GlobalPeriod "sync"}}selected{{end}}>Per sync</option>
-                  <option value="daily" {{if eq .Config.Jobs.GlobalPeriod "daily"}}selected{{end}}>Daily</option>
-                  <option value="weekly" {{if eq .Config.Jobs.GlobalPeriod "weekly"}}selected{{end}}>Weekly</option>
-                  <option value="monthly" {{if eq .Config.Jobs.GlobalPeriod "monthly"}}selected{{end}}>Monthly</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </details>
       </section>
     </form>
 

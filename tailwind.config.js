@@ -1,15 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./web/templates/**/*.html", "./web/static/**/*.js"],
-  // Activity job definitions assemble these finite class fragments at runtime.
   safelist: [
-    "bg-gradient-to-r",
-    "from-blue-600", "to-cyan-600", "from-purple-600", "to-pink-600",
-    "from-green-600", "to-emerald-600", "from-orange-600", "to-red-600",
-    "from-indigo-600", "to-purple-600", "from-teal-600", "to-blue-600",
-    "text-blue-400", "text-purple-400", "text-green-400", "text-orange-400",
-    "text-indigo-400", "text-teal-400", "ring-blue-500/40", "ring-purple-500/40",
-    "ring-green-500/40", "ring-orange-500/40", "ring-indigo-500/40", "ring-teal-500/40",
     // Activity outcome classes are assembled from the log/run status string
     // (Go template interpolation or JS template literals), so the literal
     // class names never appear in scanned content and must be safelisted.

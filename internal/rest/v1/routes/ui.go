@@ -238,9 +238,6 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 
 		radarrQualityProfile := parseInt("Radarr quality profile", "radarr.quality_profile", cfg.Radarr.QualityProfile)
 		sonarrQualityProfile := parseInt("Sonarr quality profile", "sonarr.quality_profile", cfg.Sonarr.QualityProfile)
-		globalLimitMovies := parseNonNegativeInt("Max movies per period", "jobs.global_limit_movies", cfg.Jobs.GlobalLimitMovies)
-		globalLimitShows := parseNonNegativeInt("Max shows per period", "jobs.global_limit_shows", cfg.Jobs.GlobalLimitShows)
-
 		scoringEnabled := c.FormValue("scoring.enabled") == "true"
 		ratingWeight := parseFloat("Rating weight", "scoring.rating_weight", 0.6)
 		popularityWeight := parseFloat("Popularity weight", "scoring.popularity_weight", 0.3)
@@ -289,12 +286,6 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		if syncInterval := c.FormValue("jobs.sync_interval"); syncInterval != "" {
 			cfg.Jobs.SyncInterval = syncInterval
 		}
-		if period := c.FormValue("jobs.global_period"); period != "" {
-			cfg.Jobs.GlobalPeriod = period
-		}
-		cfg.Jobs.GlobalLimitMovies = globalLimitMovies
-		cfg.Jobs.GlobalLimitShows = globalLimitShows
-
 		cfg.Scoring.Enabled = scoringEnabled
 		cfg.Scoring.RatingWeight = ratingWeight
 		cfg.Scoring.PopularityWeight = popularityWeight

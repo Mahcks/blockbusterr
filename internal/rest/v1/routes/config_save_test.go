@@ -81,25 +81,6 @@ func TestConfigSaveRejectsInvalidScoringTotal(t *testing.T) {
 	}
 }
 
-func TestConfigSaveRejectsMalformedNumbers(t *testing.T) {
-	app, cfg := newConfigSaveTestApp(t)
-
-	rec, payload := postConfigSave(t, app, map[string]string{
-		"jobs.sync_interval":       "1h",
-		"jobs.global_limit_movies": "not-a-number",
-	})
-
-	if rec.Code != fiber.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", rec.Code)
-	}
-	if payload["error"] == nil {
-		t.Fatal("expected a structured error message")
-	}
-	if cfg.Jobs.GlobalLimitMovies != 0 {
-		t.Error("live config was mutated despite validation failure")
-	}
-}
-
 func TestConfigSaveAcceptsValidSubmission(t *testing.T) {
 	app, cfg := newConfigSaveTestApp(t)
 

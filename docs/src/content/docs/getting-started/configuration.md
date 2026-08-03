@@ -44,9 +44,6 @@ jellyseerr:
 jobs:
   sync_interval: 24h
   mode: direct
-  global_limit_movies: 0
-  global_limit_shows: 0
-  global_period: sync
   list:
     - id: trending-movies
       name: Trending Movies
@@ -130,7 +127,6 @@ Jobs created in the UI are stored under `jobs.list`.
 | `monitor` | Optional Radarr/Sonarr override |
 | `base_min_rating` | Smart Popular baseline rating |
 | `adjustment_factor` | Smart Popular popularity adjustment |
-| `min_global_picks` | Minimum picks reserved when applying global limits |
 
 Legacy named job sections remain readable for backward compatibility. Use the Jobs UI for new configurations.
 
