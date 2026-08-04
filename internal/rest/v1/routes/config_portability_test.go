@@ -76,7 +76,7 @@ func TestShareableConfigRoundTripIncludesPoliciesAndPreservesCredentials(t *test
 	target.TMDB.APIKey = "target-tmdb-secret"
 	target.Radarr.APIKey = "target-radarr-secret"
 	response = uploadConfig(t, configRoutesTestApp(target), "/config/import", exported)
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != fiber.StatusOK {
 		body, _ := io.ReadAll(response.Body)
 		t.Fatalf("status=%d body=%s", response.StatusCode, body)
@@ -116,7 +116,7 @@ func TestJobBundleImportRegeneratesIDsAndDisablesJob(t *testing.T) {
 	target := portableTestConfig(t)
 	target.Jobs.List = nil
 	response = uploadConfig(t, configRoutesTestApp(target), "/config/jobs/import", exported)
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != fiber.StatusCreated {
 		body, _ := io.ReadAll(response.Body)
 		t.Fatalf("status=%d body=%s", response.StatusCode, body)

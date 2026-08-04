@@ -12,7 +12,7 @@ func TestSelectionCyclePersistence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	cycleID, err := db.StartSelectionCycle(time.Now())
 	if err != nil {
 		t.Fatal(err)

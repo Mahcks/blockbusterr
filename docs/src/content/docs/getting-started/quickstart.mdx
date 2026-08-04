@@ -16,10 +16,10 @@ docker run -d \
   ghcr.io/mahcks/blockbusterr:latest
 ```
 
-Open `http://localhost:9090`.
+Open `http://localhost:9090`. To enable owner authentication, add `-e BLOCKBUSTERR_AUTH_TOKEN="replace-with-at-least-32-random-characters"` and sign in as `blockbusterr`.
 
 <Aside type="caution">
-Blockbusterr has no built-in authentication. Keep it on a trusted network or place it behind an authenticated reverse proxy or VPN.
+The single-owner token is optional. If you omit it, keep Blockbusterr on a trusted network or behind an authenticated HTTPS reverse proxy or VPN.
 </Aside>
 
 ## Configure the first pipeline

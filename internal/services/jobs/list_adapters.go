@@ -56,7 +56,7 @@ func (source letterboxdListSource) FetchList(ctx context.Context, locator config
 func init() {
 	RegisterListSource("trakt", func(cfg *config.Config) (ListSource, error) {
 		if cfg.Trakt.ClientID == "" {
-			return nil, fmt.Errorf("Trakt client ID is not configured")
+			return nil, fmt.Errorf("trakt client ID is not configured")
 		}
 		client := integrations.NewTrakt(integrations.TraktConfig{ClientID: cfg.Trakt.ClientID, ClientSecret: cfg.Trakt.ClientSecret, AccessToken: cfg.Trakt.AccessToken, RefreshToken: cfg.Trakt.RefreshToken, TokenExpires: cfg.Trakt.TokenExpires, OnToken: func(token integrations.TraktToken) error {
 			cfg.Trakt.AccessToken, cfg.Trakt.RefreshToken, cfg.Trakt.TokenExpires = token.AccessToken, token.RefreshToken, token.ExpiresAt()
@@ -78,7 +78,7 @@ func init() {
 	})
 	RegisterListSource("letterboxd", func(cfg *config.Config) (ListSource, error) {
 		if !cfg.Letterboxd.ExperimentalScraping {
-			return nil, fmt.Errorf("Letterboxd experimental scraping is disabled")
+			return nil, fmt.Errorf("letterboxd experimental scraping is disabled")
 		}
 		return letterboxdListSource{client: integrations.NewLetterboxd(integrations.LetterboxdConfig{TMDBAPIKey: cfg.TMDB.APIKey})}, nil
 	})

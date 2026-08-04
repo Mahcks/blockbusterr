@@ -7,8 +7,8 @@ import { Tabs, TabItem, Steps, Card, CardGrid, Aside } from '@astrojs/starlight/
 
 Choose your preferred installation method to get Blockbusterr running.
 
-<Aside type="caution" title="Trusted LAN only">
-Blockbusterr has no built-in authentication and is intended for a trusted LAN. Do not expose port 9090 directly to the internet; use an authenticated reverse proxy or VPN for remote access.
+<Aside type="caution" title="Keep it private">
+Blockbusterr can use an optional owner token, but you should still keep port 9090 behind a trusted LAN, VPN, or HTTPS reverse proxy. The built-in owner boundary is not a multi-user identity system.
 </Aside>
 
 ## Prerequisites
@@ -86,6 +86,7 @@ Use `docker logs blockbusterr -f` to view live logs and verify startup.
          - ./config:/app/config  # Optional: external config
        environment:
          - TZ=America/New_York
+         # BLOCKBUSTERR_AUTH_TOKEN: replace-with-at-least-32-random-characters
        restart: unless-stopped
    ```
 
@@ -258,6 +259,7 @@ Configure Blockbusterr behavior with environment variables:
 | `CONFIG_PATH` | config search paths | Directory containing the config file |
 | `DATA_DIR` | `./data` | Database directory |
 | `DISABLE_UI` | `false` | Disable the web UI when set to `true`, `1`, or `yes` |
+| `BLOCKBUSTERR_AUTH_TOKEN` | unset | Optional owner token (at least 32 characters); sign in with username `blockbusterr` |
 | `VERSION` | build metadata | Override displayed version metadata |
 | `COMMIT` | build metadata | Override displayed commit metadata |
 | `TZ` | `UTC` | Timezone for scheduling |
@@ -279,7 +281,7 @@ docker run -d \
 Verify Blockbusterr is running correctly:
 
 ```bash
-curl http://localhost:9090/v1/
+curl -u blockbusterr:$BLOCKBUSTERR_AUTH_TOKEN http://localhost:9090/v1/
 ```
 
 Expected response:

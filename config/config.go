@@ -147,14 +147,14 @@ type Config struct {
 
 	Trakt struct {
 		ClientID     string `mapstructure:"client_id" json:"client_id" yaml:"client_id"`
-		ClientSecret string `mapstructure:"client_secret" json:"client_secret" yaml:"client_secret"`
+		ClientSecret string `mapstructure:"client_secret" json:"-" yaml:"client_secret"`
 		AccessToken  string `mapstructure:"access_token" json:"-" yaml:"access_token,omitempty"`
 		RefreshToken string `mapstructure:"refresh_token" json:"-" yaml:"refresh_token,omitempty"`
 		TokenExpires int64  `mapstructure:"token_expires" json:"-" yaml:"token_expires,omitempty"`
 	} `mapstructure:"trakt" json:"trakt" yaml:"trakt"`
 
 	TMDB struct {
-		APIKey    string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+		APIKey    string `mapstructure:"api_key" json:"-" yaml:"api_key"`
 		SessionID string `mapstructure:"session_id" json:"-" yaml:"session_id,omitempty"`
 		AccountID int    `mapstructure:"account_id" json:"account_id,omitempty" yaml:"account_id,omitempty"`
 	} `mapstructure:"tmdb" json:"tmdb" yaml:"tmdb"`
@@ -164,7 +164,7 @@ type Config struct {
 	} `mapstructure:"simkl" json:"simkl" yaml:"simkl"`
 
 	MDBList struct {
-		APIKey string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+		APIKey string `mapstructure:"api_key" json:"-" yaml:"api_key"`
 	} `mapstructure:"mdblist" json:"mdblist" yaml:"mdblist"`
 
 	Letterboxd struct {
@@ -173,7 +173,7 @@ type Config struct {
 
 	Radarr struct {
 		URL                 string `mapstructure:"url" json:"url" yaml:"url"`
-		APIKey              string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+		APIKey              string `mapstructure:"api_key" json:"-" yaml:"api_key"`
 		QualityProfile      int    `mapstructure:"quality_profile" json:"quality_profile" yaml:"quality_profile"`
 		RootFolder          string `mapstructure:"root_folder" json:"root_folder" yaml:"root_folder"`
 		MinimumAvailability string `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"`
@@ -182,7 +182,7 @@ type Config struct {
 
 	Sonarr struct {
 		URL            string `mapstructure:"url" json:"url" yaml:"url"`
-		APIKey         string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+		APIKey         string `mapstructure:"api_key" json:"-" yaml:"api_key"`
 		QualityProfile int    `mapstructure:"quality_profile" json:"quality_profile" yaml:"quality_profile"`
 		RootFolder     string `mapstructure:"root_folder" json:"root_folder" yaml:"root_folder"`
 		Monitor        string `mapstructure:"monitor" json:"monitor" yaml:"monitor"`
@@ -190,11 +190,11 @@ type Config struct {
 
 	Jellyseerr struct {
 		URL                string `mapstructure:"url" json:"url" yaml:"url"`
-		APIKey             string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+		APIKey             string `mapstructure:"api_key" json:"-" yaml:"api_key"`
 		UserID             string `mapstructure:"user_id" json:"user_id" yaml:"user_id"` // Optional: request as specific user
 		RequestCredentials struct {
 			Email    string `mapstructure:"email" json:"email" yaml:"email"`
-			Password string `mapstructure:"password" json:"password" yaml:"password"`
+			Password string `mapstructure:"password" json:"-" yaml:"password"`
 		} `mapstructure:"request_credentials" json:"request_credentials" yaml:"request_credentials,omitempty"`
 	} `mapstructure:"jellyseerr" json:"jellyseerr" yaml:"jellyseerr"`
 
@@ -490,7 +490,7 @@ func (c *Config) Save() error {
 		return fmt.Errorf("failed to create temporary config: %w", err)
 	}
 	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
+	defer func() { _ = os.Remove(tmpName) }()
 	mode := os.FileMode(0o644)
 	if info, statErr := os.Stat(c.ConfigFilePath); statErr == nil {
 		mode = info.Mode().Perm()

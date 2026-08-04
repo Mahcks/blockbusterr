@@ -61,7 +61,7 @@ func (d *Database) GetRecentSelectionCycles(limit int) ([]SelectionCycle, error)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	cycles := []SelectionCycle{}
 	for rows.Next() {
 		var cycle SelectionCycle

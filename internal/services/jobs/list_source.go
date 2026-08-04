@@ -91,7 +91,7 @@ func ValidateListSourceLocator(provider string, locator config.ListLocator) erro
 		return err
 	}
 	if provider == "letterboxd" && strings.TrimSpace(locator.Owner) == "" {
-		return fmt.Errorf("Letterboxd requires a public member name")
+		return fmt.Errorf("letterboxd requires a public member name")
 	}
 	return nil
 }

@@ -1,4 +1,4 @@
-.PHONY: help build run dev test test-verbose clean install stop start restart lint fmt vet assets assets-check
+.PHONY: help build run dev test test-verbose clean install stop start restart lint fmt fmt-check vet assets assets-check check
 
 # Default target
 help:
@@ -28,6 +28,7 @@ help:
 	@echo "Code Quality:"
 	@echo "  lint            Run linter"
 	@echo "  fmt             Format code"
+	@echo "  fmt-check       Verify Go formatting without changing files"
 	@echo "  vet             Run go vet"
 	@echo "  check           Run fmt, vet, and lint"
 	@echo ""
@@ -137,6 +138,9 @@ fmt:
 	@go fmt ./...
 	@echo "✓ Code formatted"
 
+fmt-check:
+	@files="$$(find . -type f -name '*.go' -not -path './vendor/*' -print0 | xargs -0 gofmt -l)"; if [ -n "$$files" ]; then echo "Go files need formatting:"; echo "$$files"; exit 1; fi
+
 # Run go vet
 vet:
 	@echo "Running go vet..."
@@ -147,15 +151,16 @@ vet:
 lint:
 	@echo "Running linter..."
 	@if command -v golangci-lint > /dev/null; then \
-		golangci-lint run ./...; \
+		golangci-lint run ./... && \
 		echo "✓ Lint complete"; \
 	else \
-		echo "⚠ golangci-lint not installed"; \
+		echo "golangci-lint is required"; \
 		echo "Install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
+		exit 1; \
 	fi
 
 # Run all checks
-check: fmt vet
+check: fmt-check vet lint
 	@echo "✓ All checks passed"
 
 # Build for production

@@ -124,6 +124,13 @@ func determineConfigPath() string {
 	return "./config.yaml"
 }
 
+// preserveBlankSecret keeps an existing credential unless the user supplies a replacement.
+func preserveBlankSecret(c *fiber.Ctx, field string, destination *string) {
+	if value := strings.TrimSpace(c.FormValue(field)); value != "" {
+		*destination = value
+	}
+}
+
 // RegisterUIRoutes handles web UI routes
 func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 	// Root route for web UI - show jobs page with full context
@@ -355,27 +362,27 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 
 		// All values validated — safe to apply to the live config now.
 		cfg.Trakt.ClientID = c.FormValue("trakt.client_id")
-		cfg.Trakt.ClientSecret = c.FormValue("trakt.client_secret")
-		cfg.TMDB.APIKey = c.FormValue("tmdb.api_key")
 		cfg.Simkl.ClientID = c.FormValue("simkl.client_id")
-		cfg.MDBList.APIKey = c.FormValue("mdblist.api_key")
+		preserveBlankSecret(c, "trakt.client_secret", &cfg.Trakt.ClientSecret)
+		preserveBlankSecret(c, "tmdb.api_key", &cfg.TMDB.APIKey)
+		preserveBlankSecret(c, "mdblist.api_key", &cfg.MDBList.APIKey)
 		cfg.Letterboxd.ExperimentalScraping = c.FormValue("letterboxd.experimental_scraping") == "true"
 		cfg.Radarr.URL = c.FormValue("radarr.url")
-		cfg.Radarr.APIKey = c.FormValue("radarr.api_key")
+		preserveBlankSecret(c, "radarr.api_key", &cfg.Radarr.APIKey)
 		cfg.Radarr.RootFolder = c.FormValue("radarr.root_folder")
 		cfg.Radarr.MinimumAvailability = c.FormValue("radarr.minimum_availability")
 		cfg.Radarr.Monitor = c.FormValue("radarr.monitor")
 		cfg.Radarr.QualityProfile = radarrQualityProfile
 		cfg.Sonarr.URL = c.FormValue("sonarr.url")
-		cfg.Sonarr.APIKey = c.FormValue("sonarr.api_key")
+		preserveBlankSecret(c, "sonarr.api_key", &cfg.Sonarr.APIKey)
 		cfg.Sonarr.RootFolder = c.FormValue("sonarr.root_folder")
 		cfg.Sonarr.Monitor = c.FormValue("sonarr.monitor")
 		cfg.Sonarr.QualityProfile = sonarrQualityProfile
 		cfg.Jellyseerr.URL = c.FormValue("jellyseerr.url")
-		cfg.Jellyseerr.APIKey = c.FormValue("jellyseerr.api_key")
+		preserveBlankSecret(c, "jellyseerr.api_key", &cfg.Jellyseerr.APIKey)
 		cfg.Jellyseerr.UserID = c.FormValue("jellyseerr.user_id")
 		cfg.Jellyseerr.RequestCredentials.Email = c.FormValue("jellyseerr.request_credentials.email")
-		cfg.Jellyseerr.RequestCredentials.Password = c.FormValue("jellyseerr.request_credentials.password")
+		preserveBlankSecret(c, "jellyseerr.request_credentials.password", &cfg.Jellyseerr.RequestCredentials.Password)
 		if mode := c.FormValue("jobs.mode"); mode != "" {
 			cfg.Jobs.Mode = mode
 		}

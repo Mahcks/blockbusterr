@@ -54,7 +54,7 @@ func TestSelectionCapacityHonorsRollingBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	cfg := &config.Config{}
 	cfg.Jobs.GlobalLimitMovies = 1
 	cfg.Jobs.GlobalPeriod = "daily"

@@ -26,12 +26,14 @@ RUN CGO_ENABLED=1 GOOS=linux go build \
     ./cmd/app/main.go
 
 # Runtime stage
-FROM alpine:latest
+FROM alpine:3.22
 
 # Install ca-certificates for HTTPS requests
 # Use --no-scripts to avoid trigger issues with QEMU emulation in multi-arch builds
 RUN apk --no-cache --no-scripts add ca-certificates tzdata && \
-    update-ca-certificates
+    update-ca-certificates && \
+    addgroup -g 10001 blockbusterr && \
+    adduser -D -u 10001 -G blockbusterr blockbusterr
 
 WORKDIR /app
 
@@ -46,10 +48,12 @@ COPY config/config.example.yaml ./config/config.example.yaml
 COPY web/ ./web/
 
 # Create data directory
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && chown -R blockbusterr:blockbusterr /app
 
 # Expose port (hardcoded to 9090)
 EXPOSE 9090
+
+USER 10001:10001
 
 # Run the application
 CMD ["./blockbusterr"]

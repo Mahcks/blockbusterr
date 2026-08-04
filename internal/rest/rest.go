@@ -9,7 +9,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	htmlEngine "github.com/gofiber/template/html/v2"
 	"github.com/mahcks/blockbusterr/internal/global"
@@ -17,16 +16,6 @@ import (
 	v1 "github.com/mahcks/blockbusterr/internal/rest/v1"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes"
 )
-
-var allowedHeaders = []string{
-	"Content-Type",
-	"Content-Length",
-	"Accept-Encoding",
-	"Authorization",
-	"Cookie",
-	"X-Api-Key",
-	"X-CSRF-Token",
-}
 
 const shutdownTimeout = 5 * time.Second
 
@@ -80,14 +69,6 @@ func New(gctx global.Context) error {
 		Format: "[${ip}]:${port} ${status} - ${method} ${path}\n",
 	}))
 
-	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000",
-		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-		AllowHeaders:     strings.Join(allowedHeaders, ", "),
-		AllowCredentials: true,
-		ExposeHeaders:    "Content-Length, Content-Type",
-	}))
-
 	// Security headers
 	app.Use(middleware.SecureHeaders())
 
@@ -96,6 +77,16 @@ func New(gctx global.Context) error {
 	app.Get("/favicon.ico", func(c *fiber.Ctx) error {
 		return c.Redirect("/static/favicon.svg", fiber.StatusPermanentRedirect)
 	})
+
+	ownerToken := strings.TrimSpace(os.Getenv("BLOCKBUSTERR_AUTH_TOKEN"))
+	if ownerToken == "" {
+		log.Warn("Owner authentication is disabled; keep Blockbusterr on a trusted network")
+	} else {
+		if len(ownerToken) < 32 {
+			return errors.New("BLOCKBUSTERR_AUTH_TOKEN must contain at least 32 characters")
+		}
+		app.Use(middleware.OwnerAccess(ownerToken), middleware.SameOriginMutations())
+	}
 
 	// Conditionally enable UI routes
 	if uiEnabled {

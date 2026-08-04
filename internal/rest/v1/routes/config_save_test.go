@@ -44,7 +44,7 @@ func postConfigSave(t *testing.T, app *fiber.App, fields map[string]string) (*ht
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	recorder := httptest.NewRecorder()
 	recorder.Code = resp.StatusCode
@@ -112,6 +112,46 @@ func TestConfigSaveAcceptsValidSubmission(t *testing.T) {
 	}
 	if cfg.Jobs.GlobalLimitMovies != 12 || cfg.Jobs.GlobalLimitShows != 8 || cfg.Jobs.GlobalPeriod != "weekly" {
 		t.Errorf("delivery limits not applied: %+v", cfg.Jobs)
+	}
+}
+
+func TestConfigSavePreservesBlankSecretsAndReplacesProvidedSecrets(t *testing.T) {
+	app, cfg := newConfigSaveTestApp(t)
+	cfg.TMDB.APIKey = "sentinel-tmdb"
+	cfg.Radarr.APIKey = "sentinel-radarr"
+
+	rec, payload := postConfigSave(t, app, map[string]string{
+		"jobs.sync_interval":        "2h",
+		"tmdb.api_key":              "",
+		"radarr.api_key":            "replacement",
+		"scoring.rating_weight":     "0.6",
+		"scoring.popularity_weight": "0.3",
+		"scoring.recency_weight":    "0.1",
+	})
+	if rec.Code != fiber.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", rec.Code, payload)
+	}
+	if cfg.TMDB.APIKey != "sentinel-tmdb" {
+		t.Fatalf("blank field erased stored secret: %q", cfg.TMDB.APIKey)
+	}
+	if cfg.Radarr.APIKey != "replacement" {
+		t.Fatalf("replacement was not stored: %q", cfg.Radarr.APIKey)
+	}
+}
+
+func TestConfigJSONOmitsSecrets(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Trakt.ClientSecret = "sentinel"
+	cfg.TMDB.APIKey = "sentinel"
+	cfg.Radarr.APIKey = "sentinel"
+	cfg.Jellyseerr.RequestCredentials.Password = "sentinel"
+
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(data, []byte("sentinel")) {
+		t.Fatalf("ordinary config JSON exposed a credential: %s", data)
 	}
 }
 

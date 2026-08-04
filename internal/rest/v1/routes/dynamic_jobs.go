@@ -800,10 +800,10 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 		}
 	}
 	if job.SeriesType != "" && !slices.Contains([]string{"standard", "daily", "anime"}, job.SeriesType) {
-		return fmt.Errorf("Sonarr series type must be standard, daily, or anime")
+		return fmt.Errorf("sonarr series type must be standard, daily, or anime")
 	}
 	if job.MediaType != "show" && job.SeriesType != "" {
-		return fmt.Errorf("Sonarr series type is only valid for show jobs")
+		return fmt.Errorf("sonarr series type is only valid for show jobs")
 	}
 
 	// Check period requirement

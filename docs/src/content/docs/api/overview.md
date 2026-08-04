@@ -44,10 +44,10 @@ All endpoints return JSON unless otherwise specified.
 
 ## Authentication
 
-Blockbusterr does not provide built-in authentication. It is designed for a trusted LAN and its API can change jobs, trigger downloads, and export configuration.
+When `BLOCKBUSTERR_AUTH_TOKEN` is configured, the UI and API use HTTP Basic authentication. Use username `blockbusterr` and the configured token. Without a token, access is unrestricted and the instance must remain on a trusted network.
 
 :::caution
-Do not expose port 9090 directly to the public internet. If remote access is required, place Blockbusterr behind an authenticated reverse proxy or VPN.
+Use HTTPS for remote access so credentials are encrypted in transit. Keep port 9090 behind a trusted LAN, VPN, or reverse proxy.
 :::
 
 ## Rate Limiting

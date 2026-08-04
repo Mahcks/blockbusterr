@@ -17,6 +17,7 @@ services:
       # Or mount a config directory
       # - ./config:/app/config:ro
     environment:
+      # BLOCKBUSTERR_AUTH_TOKEN: replace-with-at-least-32-random-characters
       # Optional: Specify custom config file location
       # CONFIG_PATH: /app/config
       

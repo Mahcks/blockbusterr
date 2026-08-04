@@ -17,11 +17,13 @@ The backup must include the YAML configuration and SQLite database. Do not test 
 ## Upgrade
 
 1. Pull the v2 image or replace the binary.
-2. Start Blockbusterr with the existing configuration and data mounts.
-3. Open **Settings** and confirm discovery and delivery connections.
-4. Open **Jobs**. If the legacy migration banner appears, review the count and choose **Upgrade jobs**.
-5. Open **Rules** and review Default Movies, Default Shows, migrated job-specific rule sets, and title exceptions.
-6. Preview every enabled job before running it.
+2. Optionally set `BLOCKBUSTERR_AUTH_TOKEN` to a random value of at least 32 characters and save it in your password manager.
+3. Ensure the mounted data directory is writable by container UID/GID `10001:10001` (for example, `sudo chown -R 10001:10001 ./data`).
+4. Start Blockbusterr with the existing configuration and data mounts.
+5. If authentication is enabled, sign in with username `blockbusterr` and the owner token. Open **Settings** and confirm discovery and delivery connections.
+6. Open **Jobs**. If the legacy migration banner appears, review the count and choose **Upgrade jobs**.
+7. Open **Rules** and review Default Movies, Default Shows, migrated job-specific rule sets, and title exceptions.
+8. Preview every enabled job before running it.
 
 The migration creates dynamic jobs, assigns media-compatible default rules, preserves supported scheduling and delivery overrides, saves the configuration, and disables migrated legacy entries. Embedded custom job filters become job-specific rule sets.
 
@@ -33,6 +35,7 @@ The migration creates dynamic jobs, assigns media-compatible default rules, pres
 - Activity is split into **Activity Entries** and **Job Runs**.
 - Discovery source selection is explicit per job.
 - Global Limits now enforce successful deliveries. Existing movie/show values carry forward; the obsolete `sync` period becomes a rolling 24-hour period.
+- Release containers run as UID/GID `10001:10001`; `BLOCKBUSTERR_AUTH_TOKEN` optionally protects the UI and API.
 
 ## Verify the upgrade
 

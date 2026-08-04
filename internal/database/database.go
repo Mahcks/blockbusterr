@@ -407,9 +407,10 @@ func (d *Database) CountDeliveriesSince(mediaType string, since time.Time) (int,
 
 func (d *Database) GetDeliveryBudgetUsage(period string) (DeliveryBudgetUsage, error) {
 	window := 24 * time.Hour
-	if period == "weekly" {
+	switch period {
+	case "weekly":
 		window = 7 * 24 * time.Hour
-	} else if period == "monthly" {
+	case "monthly":
 		window = 30 * 24 * time.Hour
 	}
 	since := time.Now().Add(-window)

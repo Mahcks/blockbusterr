@@ -61,7 +61,7 @@ docker run -d \
   ghcr.io/mahcks/blockbusterr:latest
 ```
 
-Then open `http://localhost:9090` and configure your services.
+Then open `http://localhost:9090` and configure your services. Keep the instance on a trusted network, or set `BLOCKBUSTERR_AUTH_TOKEN` to enable owner authentication.
 
 **[→ Full Quick Start Guide](https://blockbusterr.dev/getting-started/quickstart/)**
 
@@ -143,6 +143,7 @@ services:
       - ./data:/app/data
     environment:
       - TZ=America/New_York
+      # BLOCKBUSTERR_AUTH_TOKEN: replace-with-at-least-32-random-characters
     restart: unless-stopped
 ```
 
