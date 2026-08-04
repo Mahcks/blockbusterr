@@ -6,6 +6,9 @@ import starlight from '@astrojs/starlight';
 export default defineConfig({
 	site: 'https://blockbusterr.dev',
 	base: '/',
+	redirects: {
+		'/concepts/filters': '/concepts/rules',
+	},
 	integrations: [
 		starlight({
 			title: 'Blockbusterr',
@@ -79,7 +82,7 @@ export default defineConfig({
 					label: 'Core Concepts',
 					items: [
 						{ label: 'Jobs Overview', slug: 'concepts/jobs' },
-						{ label: 'Rules', slug: 'concepts/filters' },
+						{ label: 'Rules', slug: 'concepts/rules' },
 						{ label: 'Smart Jobs', slug: 'concepts/smart-jobs' },
 						{ label: 'Integration Modes', slug: 'concepts/integration-modes' },
 					],
