@@ -174,7 +174,12 @@
       'delete-job': () => deleteJob(target.dataset.jobId),
       'create-from-template': () => {
         const template = jobTemplates[Number(target.dataset.templateIndex)];
-        if (template) createJobFromTemplate(template.type, template.media, template.name, template.limit, template.period || '');
+        if (!template) return;
+        if (!template.ready) {
+          showNotification(template.missing || 'Complete setup before using this recipe.', 'error');
+          return;
+        }
+        createJobFromTemplate(template);
       },
       'close-preview': () => closePreviewModal(),
       'filter-preview': () => filterPreview(target.dataset.filter),
@@ -438,8 +443,9 @@
       await loadData();
       renderJobsList();
       closeAddJobModal();
-      showNotification(`${result.name} imported disabled. Preview it before enabling.`, 'success');
-      openJobModal(result.id);
+	  showNotification(`${result.name} imported disabled with ${result.rule_set_name}; IDs regenerated.`, 'success');
+	  currentJob = result;
+	  previewJob();
     } catch (error) {
       showNotification(error.message, 'error');
     } finally {
@@ -653,25 +659,26 @@
     const grid = document.getElementById('templates-grid');
     const count = document.getElementById('templates-count');
     const filtered = jobTemplates
-	  .filter(t => jobTypes[t.type]?.sources?.length)
       .filter(t => t.category === currentTemplateCategory)
       .filter(t => {
         if (!templateSearchQuery) return true;
         const name = String(t.name || '').toLowerCase();
         const type = String(t.type || '').toLowerCase();
         const description = String(t.description || '').toLowerCase();
-        return name.includes(templateSearchQuery) || type.includes(templateSearchQuery) || description.includes(templateSearchQuery);
+		const source = String(t.source || '').toLowerCase();
+		const rules = String(t.rule_set_name || '').toLowerCase();
+        return name.includes(templateSearchQuery) || type.includes(templateSearchQuery) || description.includes(templateSearchQuery) || source.includes(templateSearchQuery) || rules.includes(templateSearchQuery);
       })
       .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 
     if (count) {
-      count.textContent = `${filtered.length} template${filtered.length === 1 ? '' : 's'} available`;
+      count.textContent = `${filtered.filter(template => template.ready).length} of ${filtered.length} ready`;
     }
 
     if (!filtered.length) {
       grid.innerHTML = `
         <div class="p-6 text-center">
-          <p class="text-sm font-medium text-slate-200">No templates found</p>
+          <p class="text-sm font-medium text-slate-200">No recipes found</p>
           <p class="mt-1 text-xs text-slate-400">Try a different search, or use Custom Job.</p>
         </div>
       `;
@@ -683,22 +690,26 @@
 
     grid.innerHTML = filtered.map(template => {
       const style = typeStyles[template.type] || typeStyles['popular'];
+	  const cadence = template.sync_interval === '24h' ? 'Daily' : template.sync_interval === '168h' ? 'Weekly' : template.sync_interval;
+	  const availability = template.ready ? 'Ready to preview' : template.missing;
 
       return `
         <button
           type="button"
           data-action="create-from-template"
           data-template-index="${jobTemplates.indexOf(template)}"
-          class="template-row"
+		  aria-disabled="${String(!template.ready)}"
+		  class="template-row ${template.ready ? '' : 'template-row-unavailable'}"
         >
           <div class="flex items-center gap-3">
             <span class="job-row-icon ${style.color}">${getTypeIcon(template.type, 'w-4 h-4')}</span>
             <div class="flex-1">
               <div class="flex items-center justify-between gap-3">
                 <h3 class="text-sm font-medium text-slate-100">${escapeHTML(template.name)}</h3>
-                <span class="shrink-0 text-xs text-slate-500">${template.limit} items${template.period ? ` · ${escapeHTML(capitalize(template.period))}` : ''}</span>
+				<span class="shrink-0 text-xs ${template.ready ? 'text-green-400' : 'text-yellow-400'}">${escapeHTML(availability)}</span>
               </div>
               <p class="mt-0.5 text-xs text-slate-500">${escapeHTML(template.description)}</p>
+			  <p class="template-meta">${escapeHTML(capitalize(template.source))} · ${escapeHTML(cadence)} · ${template.limit} candidates · ${template.delivery_limit || 'Unlimited'} deliveries · ${escapeHTML(template.rule_set_name)}</p>
             </div>
           </div>
         </button>
@@ -710,32 +721,9 @@
     }
   }
 
-  async function createJobFromTemplate(type, media, name, limit, period) {
-	const source = jobTypes[type]?.sources?.[0];
-	if (!source) {
-	  showNotification('Configure a discovery source that supports this job type first.', 'error');
-	  return;
-	}
-    const job = {
-      name: name,
-      type: type,
-      media: media,
-      enabled: true,
-      limit: limit,
-	  source,
-      rule_set_id: `default-${media === 'show' ? 'shows' : 'movies'}`
-    };
-
-    if (period) {
-      job.period = period;
-    }
-
+  async function createJobFromTemplate(template) {
     try {
-      const response = await fetch('/v1/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(job)
-      });
+	  const response = await fetch(`/v1/jobs/recipes/${encodeURIComponent(template.id)}`, { method: 'POST' });
 
       if (!response.ok) {
         const error = await response.json();
@@ -743,14 +731,13 @@
       }
 
       const newJob = await response.json();
-      allJobs.push(newJob);
+	  await loadData();
 
       closeAddJobModal();
       renderJobsList();
-      showNotification(`${name} created with the default ${media === 'show' ? 'show' : 'movie'} rules.`, 'success');
-
-      // Open the edit modal for the new job
-      openJobModal(newJob.id);
+	  showNotification(`${template.name} created disabled with dedicated rules.`, 'success');
+	  currentJob = newJob;
+	  previewJob();
     } catch (error) {
       showNotification(error.message, 'error');
     }
@@ -1372,6 +1359,7 @@
         });
 
         previewData = await response.json();
+		if (!response.ok) throw new Error(previewData.error || 'Preview failed');
         renderPreview(previewData);
       } catch (error) {
         document.getElementById('preview-content').innerHTML = `

@@ -210,7 +210,55 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 
 	// Get all pre-configured job templates
 	router.Get("/jobs/templates", func(c *fiber.Ctx) error {
-		return c.JSON(jobs.GetAllTemplates())
+		return c.JSON(jobs.GetAllTemplates(gctx.Config()))
+	})
+
+	router.Post("/jobs/recipes/:id", func(c *fiber.Ctx) error {
+		cfg := gctx.Config()
+		recipe, ok := jobs.GetTemplate(c.Params("id"))
+		if !ok {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Recipe not found"})
+		}
+		for _, available := range jobs.GetAllTemplates(cfg) {
+			if available.ID == recipe.ID && !available.Ready {
+				return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": available.Missing})
+			}
+		}
+
+		candidate := *cfg
+		candidate.RuleSets = append([]config.RuleSet(nil), cfg.RuleSets...)
+		candidate.Jobs.List = append([]config.DynamicJob(nil), cfg.Jobs.List...)
+		rules := config.RuleSet{ID: uuid.NewString(), Name: availableRecipeRuleName(&candidate, recipe.RuleSetName, recipe.MediaType), Media: recipe.MediaType, Revision: 1}
+		if recipe.Movies != nil {
+			filters := *recipe.Movies
+			rules.Movies = &filters
+		}
+		if recipe.Shows != nil {
+			filters := *recipe.Shows
+			rules.Shows = &filters
+		}
+		config.ApplyRuleSetDefaults(&rules)
+		if err := candidate.ValidateRuleSet(rules, ""); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Recipe rules are invalid: " + err.Error()})
+		}
+		candidate.RuleSets = append(candidate.RuleSets, rules)
+		job := config.DynamicJob{ID: uuid.NewString(), Name: recipe.Name, Enabled: false, Type: recipe.Type, Source: recipe.Source, MediaType: recipe.MediaType, Limit: recipe.Limit, DeliveryLimit: recipe.DeliveryLimit, Period: recipe.Period, SyncInterval: recipe.SyncInterval, Mode: recipe.Mode, RuleSetID: rules.ID}
+		if recipe.List != nil {
+			locator := *recipe.List
+			job.List = &locator
+		}
+		if err := validateDynamicJob(&candidate, job); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Recipe job is invalid: " + err.Error()})
+		}
+		candidate.Jobs.List = append(candidate.Jobs.List, job)
+		if err := candidate.Save(); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save recipe: " + err.Error()})
+		}
+		*cfg = candidate
+		if err := gctx.ReloadConfig(); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Recipe saved but configuration failed to reload: " + err.Error()})
+		}
+		return c.Status(fiber.StatusCreated).JSON(job)
 	})
 
 	// Get all configured jobs (dynamic + legacy)
@@ -712,6 +760,23 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 	}
 
 	return nil
+}
+
+func availableRecipeRuleName(cfg *config.Config, base, media string) string {
+	name := base
+	for suffix := 2; ; suffix++ {
+		available := true
+		for _, rules := range cfg.RuleSets {
+			if rules.Media == media && strings.EqualFold(rules.Name, name) {
+				available = false
+				break
+			}
+		}
+		if available {
+			return name
+		}
+		name = fmt.Sprintf("%s %d", base, suffix)
+	}
 }
 
 func validateFilterBounds(minYear, maxYear, minRuntime, maxRuntime int, minRating float64, minVotes int) error {

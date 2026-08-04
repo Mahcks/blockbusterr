@@ -1239,6 +1239,11 @@
     background: var(--surface-raised);
   }
 
+  .template-row:disabled { cursor: not-allowed; }
+  .template-row-unavailable { opacity: 0.58; }
+  .template-row-unavailable:hover { background: transparent; }
+  .template-meta { margin-top: 6px; color: var(--muted); font-size: 10.5px; }
+
   .activity-metrics {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));

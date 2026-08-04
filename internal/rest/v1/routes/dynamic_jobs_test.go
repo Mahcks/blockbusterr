@@ -3,6 +3,7 @@ package routes
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -72,6 +73,35 @@ func TestValidateDynamicJobRejectsInvalidCustomFilters(t *testing.T) {
 	job.Filters.Movies.BlacklistedMaxYear = 2000
 	if err := validateDynamicJob(cfg, job); err == nil {
 		t.Fatal("expected invalid custom filter range error")
+	}
+}
+
+func TestCreateRecipeSeedsDisabledJobAndDedicatedRules(t *testing.T) {
+	cfg := &config.Config{ConfigFilePath: filepath.Join(t.TempDir(), "config.yaml")}
+	cfg.TMDB.APIKey = "configured"
+	cfg.Radarr.URL, cfg.Radarr.APIKey = "http://radarr", "key"
+	cfg.MigrateRuleSets()
+	app := fiber.New()
+	AddDynamicJobsRoutes(app.Group("/v1"), dynamicJobsTestContext{Context: context.Background(), cfg: cfg})
+
+	response, err := app.Test(httptest.NewRequest("POST", "/v1/jobs/recipes/balanced-trending-movies", nil), -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != fiber.StatusCreated {
+		body, _ := io.ReadAll(response.Body)
+		t.Fatalf("status=%d body=%s", response.StatusCode, body)
+	}
+	var job config.DynamicJob
+	if err := json.NewDecoder(response.Body).Decode(&job); err != nil {
+		t.Fatal(err)
+	}
+	if job.Enabled || job.Source != "tmdb" || job.SyncInterval != "24h" || job.DeliveryLimit != 5 || job.RuleSetID == config.DefaultMoviesRuleSetID {
+		t.Fatalf("unexpected recipe job: %+v", job)
+	}
+	rules, ok := cfg.RuleSetByID(job.RuleSetID)
+	if !ok || rules.Movies == nil || rules.Movies.MinRating != 6.5 || rules.Movies.MinVotes != 250 {
+		t.Fatalf("unexpected recipe rules: %+v", rules)
 	}
 }
 

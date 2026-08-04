@@ -38,6 +38,12 @@ type jobBundle struct {
 	TitleExceptions config.TitleExceptions `yaml:"title_exceptions,omitempty"`
 }
 
+type importedJobResponse struct {
+	config.DynamicJob
+	RuleSetName    string `json:"rule_set_name"`
+	IDsRegenerated bool   `json:"ids_regenerated"`
+}
+
 func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 	// Export portable automation without integration credentials.
 	router.Get("/config/export", func(c *fiber.Ctx) error {
@@ -145,7 +151,12 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 		if err := gctx.ReloadConfig(); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Job imported but configuration failed to reload: %v", err)})
 		}
-		return c.Status(fiber.StatusCreated).JSON(importedJob)
+		rules, _ := candidate.RuleSetByID(importedJob.RuleSetID)
+		ruleSetName := "Imported Rules"
+		if rules != nil {
+			ruleSetName = rules.Name
+		}
+		return c.Status(fiber.StatusCreated).JSON(importedJobResponse{DynamicJob: importedJob, RuleSetName: ruleSetName, IDsRegenerated: true})
 	})
 
 	// Restore full configuration backup

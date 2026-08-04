@@ -12,13 +12,25 @@ You can run one job or combine several providers and strategies. Each job remain
 ## Create a job
 
 1. Open **Jobs** and select **New job**.
-2. Choose the discovery type and media type.
-3. Select an available provider.
-4. Set the candidate limit and any required period.
-5. Assign a movie or show rule set.
-6. Save, preview, then enable the job.
+2. Choose a ready recipe or open **Custom Job**.
+3. Recipes create a disabled job with an explicit provider, cadence, delivery limit, and dedicated rule set.
+4. Review the automatic preview, adjust the job or its rules, then enable it.
 
-The UI only offers providers supported by the chosen job type. A provider must be configured in Settings before the job can run.
+Unavailable recipes remain visible and identify the connection they need. Recipes never silently select a different configured provider.
+
+## Built-in recipes
+
+| Outcome | Provider | Default cadence |
+|---|---|---|
+| Balanced Trending movies and shows | TMDB | Daily |
+| New & Well Rated movies | TMDB | Daily |
+| Anticipated With Approval | Trakt + Jellyseerr/Seerr | Daily |
+| Documentary, Science-Fiction, Family, Reality TV, Anime | TMDB | Weekly |
+| Current TV | TMDB | Daily |
+| All-Time Classics | Trakt | Weekly |
+| Personal Watchlist | Connected TMDB account | Every 2 hours |
+
+Every recipe is versioned, disabled by default, and preview-first. Creating the same recipe again makes a separately named rule set rather than changing the first job's policy.
 
 ## Discovery types
 
@@ -67,6 +79,7 @@ Letterboxd or IMDb.
 - **Sync interval:** Optional Go duration or five-field cron override.
 - **Mode:** Optional `direct` or `jellyseerr` delivery override.
 - **Availability and monitoring:** Optional Radarr/Sonarr overrides.
+- **Repeat handling:** Optional override for when previously delivered and later removed media becomes eligible again.
 
 ## Shared and job-specific rules
 

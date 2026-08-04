@@ -8,7 +8,8 @@ All endpoints use `/v1` and return JSON unless noted otherwise.
 ## Discover capabilities
 
 - `GET /v1/jobs/types` returns job definitions filtered to configured providers.
-- `GET /v1/jobs/templates` returns starter templates.
+- `GET /v1/jobs/templates` returns versioned recipes with readiness and missing-setup details.
+- `POST /v1/jobs/recipes/:id` creates a disabled recipe job and dedicated rule set.
 - `GET /v1/jobs/list` returns dynamic and readable legacy jobs.
 - `GET /v1/jobs/enabled` returns enabled jobs.
 
