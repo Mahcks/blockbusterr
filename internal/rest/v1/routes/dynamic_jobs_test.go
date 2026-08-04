@@ -105,6 +105,19 @@ func TestCreateRecipeSeedsDisabledJobAndDedicatedRules(t *testing.T) {
 	}
 }
 
+func TestSelectionPreviewRequiresOptIn(t *testing.T) {
+	cfg := &config.Config{}
+	app := fiber.New()
+	AddDynamicJobsRoutes(app.Group("/v1"), dynamicJobsTestContext{Context: context.Background(), cfg: cfg})
+	response, err := app.Test(httptest.NewRequest("POST", "/v1/jobs/selection/preview", nil), -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != fiber.StatusConflict {
+		t.Fatalf("status = %d, want %d", response.StatusCode, fiber.StatusConflict)
+	}
+}
+
 func TestCustomizeRulesCreatesAndAssignsJobSpecificCopy(t *testing.T) {
 	cfg := &config.Config{ConfigFilePath: filepath.Join(t.TempDir(), "config.yaml")}
 	cfg.Filters.Movies.MinRating = 7

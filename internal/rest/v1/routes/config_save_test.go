@@ -114,3 +114,24 @@ func TestConfigSaveAcceptsValidSubmission(t *testing.T) {
 		t.Errorf("delivery limits not applied: %+v", cfg.Jobs)
 	}
 }
+
+func TestConfigSaveValidatesRankedSelection(t *testing.T) {
+	app, cfg := newConfigSaveTestApp(t)
+	fields := map[string]string{
+		"jobs.sync_interval": "2h", "jobs.selection.enabled": "true", "jobs.selection.sync_interval": "24h",
+		"jobs.selection.movie_limit": "5", "jobs.selection.show_limit": "0",
+		"scoring.enabled": "true", "scoring.rating_weight": "0.6", "scoring.popularity_weight": "0.3", "scoring.recency_weight": "0.1",
+	}
+	rec, payload := postConfigSave(t, app, fields)
+	if rec.Code != fiber.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", rec.Code, payload)
+	}
+	if !cfg.Jobs.Selection.Enabled || cfg.Jobs.Selection.MovieLimit != 5 || cfg.Jobs.Selection.SyncInterval != "24h" {
+		t.Fatalf("selection not applied: %+v", cfg.Jobs.Selection)
+	}
+
+	fields["scoring.enabled"] = "false"
+	if rec, _ := postConfigSave(t, app, fields); rec.Code != fiber.StatusBadRequest {
+		t.Fatalf("expected scoring dependency rejection, got %d", rec.Code)
+	}
+}

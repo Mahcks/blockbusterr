@@ -1,6 +1,7 @@
   // Owns Jobs page state and the /v1/jobs/* interactions. The module stays
   // global-compatible while templates migrate away from inline handlers.
   let allJobs = [];
+  let jobModalRequest = 0;
   let jobTypes = {};
   let jobTemplates = [];
   let ruleSets = [];
@@ -111,10 +112,12 @@
     document.getElementById('custom-type')?.addEventListener('change', updateCustomFormFields);
     document.getElementById('custom-source')?.addEventListener('change', updateCustomFormFields);
 	document.getElementById('custom-list-kind')?.addEventListener('change', () => updateListGuidance('custom'));
+	document.getElementById('custom-selection-cycle')?.addEventListener('change', () => updateSelectionFields('custom'));
     document.getElementById('custom-media')?.addEventListener('change', updateCustomRuleSets);
     document.getElementById('modal-type')?.addEventListener('change', onJobTypeChange);
     document.getElementById('modal-source')?.addEventListener('change', updateModalTypeFields);
 	document.getElementById('modal-list-kind')?.addEventListener('change', () => updateListGuidance('modal'));
+	document.getElementById('modal-selection-cycle')?.addEventListener('change', () => updateSelectionFields('modal'));
     document.getElementById('modal-rule-set')?.addEventListener('change', updateRuleSetSummary);
     document.addEventListener('keydown', handleDialogKeyboard);
     document.addEventListener('click', handleJobsAction);
@@ -280,7 +283,7 @@
                   ${isLegacy ? '<span class="text-xs text-slate-500">Legacy</span>' : ''}
                   ${unavailable ? '<span class="text-xs font-medium text-amber-300">Setup required</span>' : ''}
                 </span>
-                <span class="mt-0.5 block truncate text-xs text-slate-500">${escapeHTML(capitalize(job.type))} · ${job.limit} items</span>
+                <span class="mt-0.5 block truncate text-xs text-slate-500">${escapeHTML(capitalize(job.type))} · ${job.limit} items${job.selection_cycle === true ? ' · Ranked selection' : ''}</span>
               </span>
             </button>
             <span class="job-row-value">${escapeHTML(sourceLabel)}</span>
@@ -585,6 +588,14 @@
     select.value = compatible.some(rules => rules.id === current) ? current : `default-${media === 'show' ? 'shows' : 'movies'}`;
   }
 
+  function updateSelectionFields(scope) {
+	const enabled = document.getElementById(`${scope}-selection-cycle`)?.checked;
+	const minimum = document.getElementById(`${scope}-minimum-picks`);
+	if (!minimum) return;
+	minimum.disabled = !enabled;
+	if (!enabled) minimum.value = '0';
+  }
+
   // Custom job form submission
   document.addEventListener('DOMContentLoaded', function() {
     const customForm = document.getElementById('custom-job-form');
@@ -603,6 +614,8 @@
           enabled: true,
           limit: parseInt(formData.get('limit')),
 		  delivery_limit: parseInt(formData.get('delivery_limit')) || 0,
+		  selection_cycle: formData.get('selection_cycle') === 'on',
+		  minimum_picks: parseInt(formData.get('minimum_picks')) || 0,
 		  repeat_policy: formData.get('repeat_policy') || '',
 		  source: formData.get('source') || 'trakt',
           rule_set_id: formData.get('rule_set_id')
@@ -744,8 +757,18 @@
   }
 
   // Job Configuration Modal
-  function openJobModal(jobId, trigger) {
-    const job = allJobs.find(j => j.id === jobId);
+  async function openJobModal(jobId, trigger) {
+    const request = ++jobModalRequest;
+    let job;
+    try {
+      const response = await fetch(`/v1/jobs/dynamic/${encodeURIComponent(jobId)}`);
+      if (!response.ok) throw new Error('Job not found');
+      job = await response.json();
+    } catch (error) {
+      showNotification(error.message || 'Could not load job', 'error');
+      return;
+    }
+    if (request !== jobModalRequest) return;
     if (!job) {
       showNotification('Job not found', 'error');
       return;
@@ -763,6 +786,9 @@
     document.getElementById('modal-name').value = job.name;
     document.getElementById('modal-limit').value = job.limit;
     document.getElementById('modal-delivery-limit').value = job.delivery_limit || 0;
+	document.getElementById('modal-selection-cycle').checked = job.selection_cycle === true;
+	document.getElementById('modal-minimum-picks').value = job.minimum_picks || 0;
+	updateSelectionFields('modal');
 	document.getElementById('modal-repeat-policy').value = job.repeat_policy || '';
     document.getElementById('modal-interval').value = job.sync_interval || '';
     document.getElementById('modal-mode').value = job.mode || '';
@@ -849,8 +875,9 @@
     openDialog('job-modal', trigger);
   }
 
-  function openJobFilters(jobId, trigger) {
-    openJobModal(jobId, trigger);
+  async function openJobFilters(jobId, trigger) {
+    await openJobModal(jobId, trigger);
+    if (!currentJob || currentJob.id !== jobId) return;
     requestAnimationFrame(() => {
       document.getElementById('modal-filter-settings').scrollIntoView({ block: 'start' });
       document.getElementById('modal-rule-set')?.focus();
@@ -1074,6 +1101,7 @@
   }
 
   function closeJobModal() {
+    jobModalRequest++;
     closeDialog('job-modal');
     document.getElementById('modal-advanced').classList.add('hidden');
     document.getElementById('advanced-chevron').style.transform = '';
@@ -1159,6 +1187,8 @@
       source: document.getElementById('modal-source').value || 'trakt',
       limit: parseInt(document.getElementById('modal-limit').value),
 	  delivery_limit: parseInt(document.getElementById('modal-delivery-limit').value) || 0,
+	  selection_cycle: document.getElementById('modal-selection-cycle').checked,
+	  minimum_picks: parseInt(document.getElementById('modal-minimum-picks').value) || 0,
 	  repeat_policy: document.getElementById('modal-repeat-policy').value || '',
       sync_interval: document.getElementById('modal-interval').value || '',
       mode: document.getElementById('modal-mode').value || ''
@@ -1214,12 +1244,14 @@
         throw new Error(error.error || 'Failed to save job');
       }
 
-      // Update local state
+      const savedJob = await response.json();
+
+      // Keep the list and modal aligned with the canonical persisted job.
       const index = allJobs.findIndex(j => j.id === currentJob.id);
       if (index !== -1) {
-        allJobs[index] = updatedJob;
+        allJobs[index] = savedJob;
       }
-      currentJob = updatedJob;
+      currentJob = savedJob;
 
       renderJobsList();
       showNotification('Job saved successfully!', 'success');

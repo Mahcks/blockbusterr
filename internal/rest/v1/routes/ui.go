@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/mahcks/blockbusterr/config"
@@ -247,6 +248,19 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		sonarrQualityProfile := parseInt("Sonarr quality profile", "sonarr.quality_profile", cfg.Sonarr.QualityProfile)
 		globalLimitMovies := parseNonNegativeInt("Movie delivery limit", "jobs.global_limit_movies", cfg.Jobs.GlobalLimitMovies)
 		globalLimitShows := parseNonNegativeInt("Show delivery limit", "jobs.global_limit_shows", cfg.Jobs.GlobalLimitShows)
+		selectionEnabled := c.FormValue("jobs.selection.enabled") == "true"
+		selectionInterval := c.FormValue("jobs.selection.sync_interval")
+		if selectionInterval == "" {
+			selectionInterval = "24h"
+		}
+		if duration, err := time.ParseDuration(selectionInterval); err != nil || duration <= 0 {
+			fieldErrors = append(fieldErrors, "Ranked selection interval must be a positive duration")
+		}
+		selectionMovieLimit := parseNonNegativeInt("Ranked movie limit", "jobs.selection.movie_limit", cfg.Jobs.Selection.MovieLimit)
+		selectionShowLimit := parseNonNegativeInt("Ranked show limit", "jobs.selection.show_limit", cfg.Jobs.Selection.ShowLimit)
+		if selectionEnabled && (selectionMovieLimit == 0 && selectionShowLimit == 0) {
+			fieldErrors = append(fieldErrors, "Ranked selection needs a movie or show limit")
+		}
 		globalPeriod := c.FormValue("jobs.global_period")
 		if globalPeriod == "" {
 			globalPeriod = cfg.Jobs.GlobalPeriod
@@ -278,6 +292,25 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			total := ratingWeight + popularityWeight + recencyWeight
 			if total < 0.999 || total > 1.001 {
 				fieldErrors = append(fieldErrors, fmt.Sprintf("Scoring weights must total 1.0 (currently %.2f)", total))
+			}
+		}
+		if selectionEnabled && !scoringEnabled {
+			fieldErrors = append(fieldErrors, "Ranked selection requires content scoring")
+		}
+		if selectionEnabled {
+			movieMinima, showMinima := 0, 0
+			for _, job := range cfg.Jobs.List {
+				if !job.Enabled || !job.SelectionCycle {
+					continue
+				}
+				if job.MediaType == "show" {
+					showMinima += job.MinimumPicks
+				} else {
+					movieMinima += job.MinimumPicks
+				}
+			}
+			if movieMinima > selectionMovieLimit || showMinima > selectionShowLimit {
+				fieldErrors = append(fieldErrors, "Ranked selection limits cannot be lower than participating job minimums")
 			}
 		}
 
@@ -321,6 +354,10 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Jobs.GlobalLimitShows = globalLimitShows
 		cfg.Jobs.GlobalPeriod = globalPeriod
 		cfg.Jobs.RepeatPolicy = string(repeatPolicy)
+		cfg.Jobs.Selection.Enabled = selectionEnabled
+		cfg.Jobs.Selection.SyncInterval = selectionInterval
+		cfg.Jobs.Selection.MovieLimit = selectionMovieLimit
+		cfg.Jobs.Selection.ShowLimit = selectionShowLimit
 		cfg.Scoring.Enabled = scoringEnabled
 		cfg.Scoring.RatingWeight = ratingWeight
 		cfg.Scoring.PopularityWeight = popularityWeight

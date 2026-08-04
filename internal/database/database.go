@@ -159,6 +159,31 @@ func (d *Database) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_delivery_budget_media_time ON delivery_budget_reservations(media_type, reserved_at);
 	CREATE INDEX IF NOT EXISTS idx_delivery_budget_run ON delivery_budget_reservations(run_id);
 
+	CREATE TABLE IF NOT EXISTS selection_cycles (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		started_at DATETIME NOT NULL,
+		finished_at DATETIME,
+		status TEXT NOT NULL,
+		movie_winners INTEGER NOT NULL DEFAULT 0,
+		show_winners INTEGER NOT NULL DEFAULT 0,
+		error_message TEXT
+	);
+
+	CREATE TABLE IF NOT EXISTS selection_cycle_items (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		cycle_id INTEGER NOT NULL,
+		media_key TEXT NOT NULL,
+		job_id TEXT NOT NULL,
+		job_ids TEXT NOT NULL,
+		sources TEXT NOT NULL,
+		score REAL NOT NULL,
+		rank INTEGER NOT NULL,
+		reason TEXT NOT NULL,
+		FOREIGN KEY(cycle_id) REFERENCES selection_cycles(id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_selection_cycle_items_cycle ON selection_cycle_items(cycle_id);
+
 	`
 
 	_, err := d.db.Exec(schema)

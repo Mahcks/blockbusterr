@@ -103,11 +103,15 @@ func (s *Scheduler) scheduleJobs() {
 
 	// Get all enabled jobs (both dynamic and legacy)
 	enabledJobs := runnableJobs(cfg)
+	cycleJobs, enabledJobs := splitSelectionJobs(cfg, enabledJobs)
 
 	// Track which jobs should be running
 	activeJobIDs := make(map[string]bool)
 	for _, job := range enabledJobs {
 		activeJobIDs[job.ID] = true
+	}
+	if len(cycleJobs) > 0 {
+		activeJobIDs[selectionCycleJobID] = true
 	}
 
 	s.jobMutex.Lock()
@@ -169,6 +173,22 @@ func (s *Scheduler) scheduleJobs() {
 		s.startJobScheduler(jc)
 		s.jobSigs[job.ID] = jobSig
 		s.jobNames[job.ID] = job.Name
+	}
+
+	if len(cycleJobs) > 0 {
+		sig := selectionCycleSignature(cfg, cycleJobs)
+		if _, exists := s.jobStops[selectionCycleJobID]; exists && s.jobSigs[selectionCycleJobID] != sig {
+			s.jobStops[selectionCycleJobID]()
+			delete(s.jobStops, selectionCycleJobID)
+		}
+		if _, exists := s.jobStops[selectionCycleJobID]; !exists {
+			s.startJobScheduler(jobConfig{id: selectionCycleJobID, name: "Ranked selection", enabled: true, syncInterval: cfg.Jobs.Selection.SyncInterval, mode: "shared", runFunc: func(ctx context.Context) {
+				if _, err := jobs.RunSelectionCycle(ctx, s.getConfig(), s.db, dryRun); err != nil && !errors.Is(err, context.Canceled) {
+					log.Errorf("Failed to run ranked selection: %v", err)
+				}
+			}})
+			s.jobSigs[selectionCycleJobID], s.jobNames[selectionCycleJobID] = sig, "Ranked selection"
+		}
 	}
 }
 
@@ -245,8 +265,14 @@ func (s *Scheduler) executeAllJobs() {
 
 	// Get all enabled jobs (both dynamic and legacy)
 	enabledJobs := runnableJobs(cfg)
+	cycleJobs, enabledJobs := splitSelectionJobs(cfg, enabledJobs)
 
-	log.Infof("Found %d enabled jobs to execute", len(enabledJobs))
+	log.Infof("Found %d enabled jobs to execute", len(enabledJobs)+len(cycleJobs))
+	if len(cycleJobs) > 0 {
+		if _, err := jobs.RunSelectionCycle(s.ctx, cfg, s.db, dryRun); err != nil && !errors.Is(err, context.Canceled) {
+			log.Errorf("Failed to run ranked selection: %v", err)
+		}
+	}
 
 	// Run each enabled job
 	for _, job := range enabledJobs {
@@ -257,6 +283,27 @@ func (s *Scheduler) executeAllJobs() {
 	}
 
 	log.Info("Completed initial job execution")
+}
+
+const selectionCycleJobID = "selection-cycle"
+
+func splitSelectionJobs(cfg *config.Config, enabled []config.DynamicJob) (cycle, standalone []config.DynamicJob) {
+	for _, job := range enabled {
+		if cfg.Jobs.Selection.Enabled && job.SelectionCycle {
+			cycle = append(cycle, job)
+		} else {
+			standalone = append(standalone, job)
+		}
+	}
+	return cycle, standalone
+}
+
+func selectionCycleSignature(cfg *config.Config, cycleJobs []config.DynamicJob) string {
+	sig := fmt.Sprintf("%t|%s|%d|%d", cfg.Jobs.Selection.Enabled, cfg.Jobs.Selection.SyncInterval, cfg.Jobs.Selection.MovieLimit, cfg.Jobs.Selection.ShowLimit)
+	for _, job := range cycleJobs {
+		sig += "|" + jobSignature(job)
+	}
+	return sig
 }
 
 func runnableJobs(cfg *config.Config) []config.DynamicJob {
@@ -305,7 +352,7 @@ func parseSyncInterval(interval string) (time.Duration, *cron.Schedule, error) {
 
 func jobSignature(job config.DynamicJob) string {
 	return fmt.Sprintf(
-		"%s|%t|%s|%s|%s|%d|%s|%s|%s|%s|%s|%f|%f|%s",
+		"%s|%t|%s|%s|%s|%d|%s|%s|%s|%s|%s|%f|%f|%s|%t|%d",
 		job.ID,
 		job.Enabled,
 		job.Type,
@@ -320,6 +367,8 @@ func jobSignature(job config.DynamicJob) string {
 		job.BaseMinRating,
 		job.AdjustmentFactor,
 		job.RuleSetID,
+		job.SelectionCycle,
+		job.MinimumPicks,
 	)
 }
 

@@ -80,12 +80,19 @@ Letterboxd or IMDb.
 - **Mode:** Optional `direct` or `jellyseerr` delivery override.
 - **Availability and monitoring:** Optional Radarr/Sonarr overrides.
 - **Repeat handling:** Optional override for when previously delivered and later removed media becomes eligible again.
+- **Ranked selection:** Opt a job into a shared cycle and optionally reserve a minimum number of picks.
 
 ## Shared and job-specific rules
 
 Jobs reference one media-compatible rule set. Reuse a rule set when jobs should stay synchronized, or use **Make job-specific copy** to clone the effective policy for one job. See [Rules](/concepts/filters/).
 
 Delivery limits are separate from discovery limits. The discovery limit controls how many candidates are evaluated. The delivery limit controls how many successful additions or requests the job may make after rules, scoring, and duplicate checks. Global rolling movie and show budgets are configured under **Settings → Automation**.
+
+## Ranked selection cycles
+
+Ranked selection is opt-in under **Settings → Automation** and requires content scoring. At each shared cadence, Blockbusterr fetches every participating job, applies its assigned rules, merges duplicate media by canonical provider ID, and selects the highest normalized scores up to the movie and show cycle limits.
+
+Optional job minimums are allocated first and are validated against the cycle capacity. Remaining slots go to the highest scores with provider rank and stable IDs used as deterministic tie-breakers. A provider failure is shown for that job while successful providers still compete. Global rolling delivery limits remain hard ceilings, and all participating jobs retain their normal Activity Entries and Job Runs. The latest cycle summary appears above Job Runs.
 
 ## Preview, run, and schedule
 

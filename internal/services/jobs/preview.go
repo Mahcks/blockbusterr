@@ -100,6 +100,9 @@ type PreviewItem struct {
 	FilteredOut    bool                  `json:"filtered_out,omitempty"`
 	FilterReason   string                `json:"filter_reason,omitempty"`
 	DecisionReason string                `json:"decision_reason,omitempty"`
+	Score          float64               `json:"score,omitempty"`
+	Rank           int                   `json:"rank,omitempty"`
+	ProviderRank   int                   `json:"provider_rank,omitempty"`
 	FilterChecks   []filters.FilterCheck `json:"filter_checks,omitempty"`
 }
 

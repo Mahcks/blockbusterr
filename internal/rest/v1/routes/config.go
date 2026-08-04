@@ -333,6 +333,17 @@ func validatePortableAutomation(candidate *config.Config) error {
 			return fmt.Errorf("scoring weights must total 1.0")
 		}
 	}
+	if candidate.Jobs.Selection.Enabled {
+		if !candidate.Scoring.Enabled {
+			return fmt.Errorf("ranked selection requires content scoring")
+		}
+		if candidate.Jobs.Selection.MovieLimit < 0 || candidate.Jobs.Selection.ShowLimit < 0 || (candidate.Jobs.Selection.MovieLimit == 0 && candidate.Jobs.Selection.ShowLimit == 0) {
+			return fmt.Errorf("ranked selection limits are invalid")
+		}
+		if duration, err := time.ParseDuration(candidate.Jobs.Selection.SyncInterval); err != nil || duration <= 0 {
+			return fmt.Errorf("ranked selection interval must be a positive duration")
+		}
+	}
 	for _, rules := range candidate.RuleSets {
 		if err := candidate.ValidateRuleSet(rules, rules.ID); err != nil {
 			return fmt.Errorf("invalid rule set %q: %w", rules.Name, err)

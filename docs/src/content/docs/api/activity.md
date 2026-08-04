@@ -21,7 +21,7 @@ Each entry contains its job identity, media identity, outcome, decision message,
 
 `GET /v1/activity/runs`
 
-Returns executions with start/finish timing and found, passed, added, requested, rejected, skipped, and failed totals.
+Returns executions with start/finish timing and found, passed, added, requested, rejected, skipped, and failed totals. The response also includes recent ranked-selection cycle summaries when that opt-in feature is enabled.
 
 ## Supporting data
 

@@ -18,6 +18,7 @@ type DynamicJobExecutor struct {
 	Database    *database.Database
 	DryRun      bool
 	ListSources ListSourceRegistry
+	Selection   map[string]ScoreInfo
 }
 
 // Execute runs a dynamic job, routing to the appropriate executor based on job type and media
@@ -154,6 +155,7 @@ func (e *DynamicJobExecutor) executeMovieJob(ctx context.Context, job config.Dyn
 			Database:  e.Database,
 			DryRun:    e.DryRun,
 			discovery: discovery,
+			selection: e.Selection,
 		}
 		return executor.Execute(ctx, jobConfig, fetcher)
 	}
@@ -205,6 +207,7 @@ func (e *DynamicJobExecutor) executeShowJob(ctx context.Context, job config.Dyna
 			Database:  e.Database,
 			DryRun:    e.DryRun,
 			discovery: discovery,
+			selection: e.Selection,
 		}
 		return executor.Execute(ctx, jobConfig, fetcher)
 	}
@@ -308,4 +311,8 @@ func RunDynamicJob(ctx context.Context, cfg *config.Config, db *database.Databas
 		DryRun:   dryRun,
 	}
 	return executor.Execute(ctx, job)
+}
+
+func RunSelectedDynamicJob(ctx context.Context, cfg *config.Config, db *database.Database, job config.DynamicJob, dryRun bool, selection map[string]ScoreInfo) error {
+	return (&DynamicJobExecutor{Config: cfg, Database: db, DryRun: dryRun, Selection: selection}).Execute(ctx, job)
 }

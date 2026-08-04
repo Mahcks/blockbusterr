@@ -124,6 +124,8 @@ type DynamicJob struct {
 	BaseMinRating       float64      `mapstructure:"base_min_rating" json:"base_min_rating" yaml:"base_min_rating,omitempty"`                // For smart jobs: base minimum rating
 	AdjustmentFactor    float64      `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor,omitempty"`          // For smart jobs: rating adjustment factor
 	DeliveryLimit       int          `mapstructure:"delivery_limit" json:"delivery_limit" yaml:"delivery_limit,omitempty"`                   // Maximum successful deliveries per run; zero is unlimited
+	SelectionCycle      bool         `mapstructure:"selection_cycle" json:"selection_cycle" yaml:"selection_cycle,omitempty"`
+	MinimumPicks        int          `mapstructure:"minimum_picks" json:"minimum_picks" yaml:"minimum_picks,omitempty"`
 	RepeatPolicy        string       `mapstructure:"repeat_policy" json:"repeat_policy" yaml:"repeat_policy,omitempty"`
 	UseCustomFilters    bool         `mapstructure:"use_custom_filters" json:"use_custom_filters" yaml:"use_custom_filters,omitempty"`
 	Filters             FilterConfig `mapstructure:"filters" json:"filters" yaml:"filters,omitempty"`
@@ -205,6 +207,12 @@ type Config struct {
 		GlobalLimitShows  int    `mapstructure:"global_limit_shows" json:"global_limit_shows" yaml:"global_limit_shows,omitempty"`
 		GlobalPeriod      string `mapstructure:"global_period" json:"global_period" yaml:"global_period,omitempty"` // daily, weekly, monthly
 		RepeatPolicy      string `mapstructure:"repeat_policy" json:"repeat_policy" yaml:"repeat_policy,omitempty"`
+		Selection         struct {
+			Enabled      bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+			SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`
+			MovieLimit   int    `mapstructure:"movie_limit" json:"movie_limit" yaml:"movie_limit,omitempty"`
+			ShowLimit    int    `mapstructure:"show_limit" json:"show_limit" yaml:"show_limit,omitempty"`
+		} `mapstructure:"selection" json:"selection" yaml:"selection"`
 
 		// Dynamic job list (new format - allows multiple instances of same job type)
 		List []DynamicJob `mapstructure:"list" json:"list" yaml:"list,omitempty"`
@@ -447,6 +455,9 @@ func New(version string) (*Config, error) {
 	}
 	if !enums.RepeatPolicy(c.Jobs.RepeatPolicy).IsValid(false) {
 		c.Jobs.RepeatPolicy = string(enums.RepeatPolicy90Days)
+	}
+	if c.Jobs.Selection.SyncInterval == "" {
+		c.Jobs.Selection.SyncInterval = "24h"
 	}
 	c.MigrateRuleSets()
 

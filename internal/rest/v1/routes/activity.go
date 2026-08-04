@@ -351,9 +351,14 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 				"error": "Failed to retrieve job runs",
 			})
 		}
+		cycles, err := db.GetRecentSelectionCycles(20)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve selection cycles"})
+		}
 
 		return c.JSON(fiber.Map{
-			"runs": runs,
+			"runs":   runs,
+			"cycles": cycles,
 		})
 	})
 

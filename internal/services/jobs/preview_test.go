@@ -18,7 +18,7 @@ func TestPreviewMoviesReturnsRadarrLookupError(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.Radarr.URL = server.URL
 	response := PreviewResponse{}
-	if err := previewMovies(t.Context(), cfg, "direct", nil, &response); err == nil {
+	if err := previewMovies(t.Context(), cfg, nil, "direct", "", nil, &response); err == nil {
 		t.Fatal("expected Radarr lookup error")
 	}
 }
@@ -242,7 +242,7 @@ func TestPreviewExplainsCertificationDecision(t *testing.T) {
 	cfg.Filters.Movies = config.MovieFilters{CertificationCountry: "US", AllowedCertifications: []string{"PG"}, UnknownCertification: "reject"}
 	response := PreviewResponse{}
 	movies := []integrations.Movie{{Title: "Rated", IDs: integrations.IDs{TMDB: 1}, Certifications: []integrations.Certification{{Value: "R", Country: "US", Source: "tmdb"}}}}
-	if err := previewMovies(t.Context(), cfg, "", movies, &response); err != nil {
+	if err := previewMovies(t.Context(), cfg, nil, "", "", movies, &response); err != nil {
 		t.Fatal(err)
 	}
 	if len(response.Items) != 1 || !response.Items[0].FilteredOut || len(response.Items[0].FilterChecks) == 0 || response.Items[0].FilterChecks[0].Message != "US certification R is not allowed (TMDB)" {

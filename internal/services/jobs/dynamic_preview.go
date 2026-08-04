@@ -50,7 +50,7 @@ func previewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 			return response, err
 		}
 		response.TotalFound = len(movies)
-		if err := previewMovies(ctx, cfg, mode, movies, &response); err != nil {
+		if err := previewMovies(ctx, cfg, db, mode, job.RepeatPolicy, movies, &response); err != nil {
 			return response, err
 		}
 		return response, nil
@@ -65,14 +65,15 @@ func previewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 		return response, err
 	}
 	response.TotalFound = len(shows)
-	if err := previewShows(ctx, cfg, mode, shows, &response); err != nil {
+	if err := previewShows(ctx, cfg, db, mode, job.RepeatPolicy, shows, &response); err != nil {
 		return response, err
 	}
 	return response, nil
 }
 
-func previewMovies(ctx context.Context, cfg *config.Config, mode string, movies []integrations.Movie, response *PreviewResponse) error {
+func previewMovies(ctx context.Context, cfg *config.Config, db *database.Database, mode, repeatPolicy string, movies []integrations.Movie, response *PreviewResponse) error {
 	enrichMovieCertifications(ctx, cfg, movies)
+	scores := ScoreAndRankMovies(movies, cfg)
 	existing := map[int]bool{}
 	if mode == "direct" {
 		client := integrations.NewRadarr(integrations.RadarrConfig{BaseURL: cfg.Radarr.URL, APIKey: cfg.Radarr.APIKey})
@@ -90,12 +91,19 @@ func previewMovies(ctx context.Context, cfg *config.Config, mode string, movies 
 	}
 	for index, movie := range movies {
 		item := createMoviePreviewItem(cfg, movie, len(movies)-index)
+		item.Score, item.Rank = scores[movie.IDs.TMDB].Score, scores[movie.IDs.TMDB].Rank
+		item.ProviderRank = index + 1
 		result := filters.MoviePassesRules(movie, cfg.Filters.Movies, cfg.TitleExceptions)
 		item.FilterChecks = result.Checks
 		item.DecisionReason = filters.Explain(result)
 		if !result.Passed {
 			item.FilteredOut, item.FilterReason = true, item.DecisionReason
 			response.FilteredOut++
+		} else if reason, err := repeatSkipReason(cfg, db, repeatPolicy, "movie", movie.IDs.TMDB, 0, time.Now()); err != nil {
+			return err
+		} else if reason != "" {
+			item.AlreadyExists, item.DecisionReason = true, "Skipped: "+reason
+			response.AlreadyExists++
 		} else if mode == "direct" && existing[movie.IDs.TMDB] {
 			item.AlreadyExists = true
 			item.DecisionReason = "Skipped: Already in Radarr"
@@ -121,8 +129,9 @@ func previewMovies(ctx context.Context, cfg *config.Config, mode string, movies 
 	return nil
 }
 
-func previewShows(ctx context.Context, cfg *config.Config, mode string, shows []integrations.Show, response *PreviewResponse) error {
+func previewShows(ctx context.Context, cfg *config.Config, db *database.Database, mode, repeatPolicy string, shows []integrations.Show, response *PreviewResponse) error {
 	enrichShowCertifications(ctx, cfg, shows)
+	scores := ScoreAndRankShows(shows, cfg)
 	existingTVDB, existingTMDB := map[int]bool{}, map[int]bool{}
 	if mode == "direct" {
 		client := integrations.NewSonarr(integrations.SonarrConfig{BaseURL: cfg.Sonarr.URL, APIKey: cfg.Sonarr.APIKey})
@@ -141,12 +150,19 @@ func previewShows(ctx context.Context, cfg *config.Config, mode string, shows []
 	}
 	for index, show := range shows {
 		item := createShowPreviewItem(cfg, show, len(shows)-index)
+		item.Score, item.Rank = scores[show.IDs.TVDB].Score, scores[show.IDs.TVDB].Rank
+		item.ProviderRank = index + 1
 		result := filters.ShowPassesRules(show, cfg.Filters.Shows, cfg.TitleExceptions)
 		item.FilterChecks = result.Checks
 		item.DecisionReason = filters.Explain(result)
 		if !result.Passed {
 			item.FilteredOut, item.FilterReason = true, item.DecisionReason
 			response.FilteredOut++
+		} else if reason, err := repeatSkipReason(cfg, db, repeatPolicy, "show", show.IDs.TMDB, show.IDs.TVDB, time.Now()); err != nil {
+			return err
+		} else if reason != "" {
+			item.AlreadyExists, item.DecisionReason = true, "Skipped: "+reason
+			response.AlreadyExists++
 		} else if mode == "direct" && ((show.IDs.TVDB > 0 && existingTVDB[show.IDs.TVDB]) || (show.IDs.TMDB > 0 && existingTMDB[show.IDs.TMDB])) {
 			item.AlreadyExists = true
 			item.DecisionReason = "Skipped: Already in Sonarr"

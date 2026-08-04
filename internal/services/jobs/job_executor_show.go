@@ -22,6 +22,7 @@ type ShowJobExecutor struct {
 	lastDecisions *JobRunDecisions // Store last run decisions for API access
 	currentRunID  int64
 	discovery     *DiscoveryClient
+	selection     map[string]ScoreInfo
 }
 
 // Execute runs a show job with the given configuration and fetcher function
@@ -92,6 +93,19 @@ func (e *ShowJobExecutor) Execute(
 
 	// Apply filters with detailed decision tracking
 	filteredShows, scoreMap, showDecisions := e.evaluateShowsWithDecisions(ctx, shows, jobConfig)
+	if e.selection != nil {
+		selected := filteredShows[:0]
+		for _, show := range filteredShows {
+			key := showSelectionKey(show.IDs.TVDB, show.IDs.TMDB, show.IDs.IMDB)
+			if score, ok := e.selection[key]; ok {
+				selected = append(selected, show)
+				scoreMap[show.IDs.TVDB] = score
+			} else {
+				e.skipShowDelivery(jobConfig, show, scoreMap, "Displaced by ranked selection")
+			}
+		}
+		filteredShows = selected
+	}
 	runDecisions.Decisions = showDecisions
 	runDecisions.PassedFilters = len(filteredShows)
 

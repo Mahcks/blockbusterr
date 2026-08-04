@@ -22,6 +22,12 @@ const PRESETS = {
   new: { rating: 0.4, popularity: 0.2, recency: 0.4 },
 };
 
+function escapeHTML(value) {
+  const element = document.createElement('span');
+  element.textContent = String(value ?? '');
+  return element.innerHTML;
+}
+
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
@@ -34,6 +40,8 @@ function init() {
   renderModeReadiness();
   updateWeightTotal();
   renderScoringSummary();
+  renderSelectionSummary();
+  updateSelectionControls();
   renderLimitsSummary();
   renderRepeatSummary();
   updateSaveBar();
@@ -62,6 +70,8 @@ function onFormChange() {
   renderModeReadiness();
   updateWeightTotal();
   renderScoringSummary();
+  renderSelectionSummary();
+  updateSelectionControls();
   renderLimitsSummary();
   renderRepeatSummary();
   updateSaveBar();
@@ -71,8 +81,9 @@ function serializeForm(form) {
   const data = new FormData(form);
   // Unchecked checkboxes are absent from FormData entirely, so represent
   // scoring.enabled explicitly rather than relying on its presence/absence.
-	const entries = [...data.entries()].filter(([key]) => key !== 'scoring.enabled' && key !== 'letterboxd.experimental_scraping');
+	const entries = [...data.entries()].filter(([key]) => key !== 'scoring.enabled' && key !== 'jobs.selection.enabled' && key !== 'letterboxd.experimental_scraping');
 	entries.push(['scoring.enabled', String(document.getElementById('scoring-enabled')?.checked)]);
+	entries.push(['jobs.selection.enabled', String(document.getElementById('selection-enabled')?.checked)]);
 	entries.push(['letterboxd.experimental_scraping', String(document.getElementById('letterboxd-experimental-scraping')?.checked)]);
   entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   return JSON.stringify(entries);
@@ -223,6 +234,37 @@ function renderScoringSummary() {
   el.textContent = `Enabled — ${rating.toFixed(1)}/${popularity.toFixed(1)}/${recency.toFixed(1)}`;
 }
 
+function renderSelectionSummary() {
+  const el = document.querySelector('[data-selection-summary]');
+  if (!el) return;
+  if (!document.getElementById('selection-enabled')?.checked) {
+    el.textContent = 'Disabled';
+    return;
+  }
+  const movies = Number(document.getElementById('selection-movie-limit')?.value) || 0;
+  const shows = Number(document.getElementById('selection-show-limit')?.value) || 0;
+  el.textContent = `${movies} movies, ${shows} shows per cycle`;
+}
+
+function updateSelectionControls() {
+  const enabled = Boolean(document.getElementById('selection-enabled')?.checked);
+  const dirty = isDirty();
+  const controls = document.querySelector('[data-selection-controls]');
+  const preview = document.querySelector('[data-action="preview-selection"]');
+  if (controls) controls.disabled = !enabled;
+  if (preview) preview.disabled = !enabled || dirty;
+
+  const status = document.getElementById('selection-preview-status');
+  if (!status || status.dataset.busy === 'true') return;
+  if (dirty || !enabled) status.dataset.state = '';
+  if (!dirty && enabled && (status.dataset.state === 'success' || status.dataset.state === 'error')) return;
+  status.textContent = !enabled
+    ? 'Enable and save ranked selection to preview it.'
+    : dirty
+      ? 'Save changes before previewing this cycle.'
+      : 'Uses saved settings and never delivers media.';
+}
+
 function renderLimitsSummary() {
   const el = document.querySelector('[data-limits-summary]');
   if (!el) return;
@@ -284,6 +326,7 @@ async function saveSettings() {
 
   const formData = new FormData(form);
 	formData.set('scoring.enabled', document.getElementById('scoring-enabled')?.checked ? 'true' : 'false');
+	formData.set('jobs.selection.enabled', document.getElementById('selection-enabled')?.checked ? 'true' : 'false');
 	formData.set('letterboxd.experimental_scraping', document.getElementById('letterboxd-experimental-scraping')?.checked ? 'true' : 'false');
 
   try {
@@ -297,6 +340,7 @@ async function saveSettings() {
     }
     baselineSnapshot = serializeForm(form);
     updateSaveBar();
+    updateSelectionControls();
     setSaveStatus('Saved', 'success');
     window.showNotification?.('Configuration saved.', 'success');
     setTimeout(() => setSaveStatus(''), 2500);
@@ -606,6 +650,10 @@ function handleSettingsClick(event) {
     loadOptions(target.dataset.service, target.dataset.kind, false);
     return;
   }
+  if (action === 'preview-selection') {
+    previewSelection(target);
+    return;
+  }
   if (action === 'save') {
     saveSettings();
     return;
@@ -622,6 +670,41 @@ function handleSettingsClick(event) {
   if (action === 'confirm-restore') {
     confirmRestore();
     return;
+  }
+}
+
+async function previewSelection(button) {
+  const status = document.getElementById('selection-preview-status');
+  const panel = document.getElementById('selection-preview');
+  button.disabled = true;
+  status.dataset.busy = 'true';
+  status.dataset.state = '';
+  status.textContent = 'Fetching and evaluating participating jobs…';
+  try {
+    const response = await fetch('/v1/jobs/selection/preview', { method: 'POST' });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not preview ranked selection');
+    const errors = Object.entries(result.errors || {});
+    const winners = [...(result.movies.winners || []), ...(result.shows.winners || [])];
+    const excluded = [...(result.movies.excluded || []), ...(result.shows.excluded || [])];
+    const minimums = winners.filter((winner) => winner.reason === 'minimum').length;
+    const budgetExcluded = excluded.filter((candidate) => candidate.reason === 'budget').length;
+    const participants = result.participants || [];
+    const candidateCount = participants.reduce((total, job) => total + (job.candidates || 0), 0);
+    panel.innerHTML = `<div class="selection-preview-head"><strong>Next cycle</strong><span>${result.movies.winners?.length || 0} movies · ${result.shows.winners?.length || 0} shows</span></div>
+      <div class="selection-preview-jobs">${participants.map((job) => `<div><span><strong>${escapeHTML(job.name)}</strong><small>${escapeHTML(job.source)} · ${escapeHTML(job.media_type)}</small></span><span>${job.found || 0} found · ${job.candidates || 0} eligible${job.rejected ? ` · ${job.rejected} rejected` : ''}${job.already_exists ? ` · ${job.already_exists} already present` : ''}${job.delivery_limit ? ` · cap ${job.delivery_limit}` : ''}</span></div>`).join('')}</div>
+      ${winners.length ? winners.slice(0, 10).map((winner, index) => `<div class="selection-preview-row"><span>${index + 1}. ${escapeHTML(winner.candidate.title || winner.candidate.key)} <small class="selection-preview-meta">${winner.reason === 'minimum' ? 'Minimum pick' : 'Ranked pick'}</small></span><span class="selection-preview-score">${Math.round((winner.candidate.score || 0) * 100)}%</span></div>`).join('') : `<div class="selection-preview-empty">${participants.length} participating job${participants.length === 1 ? '' : 's'} produced ${candidateCount} eligible candidates. Check their rules, source connectivity, and repeat handling.</div>`}
+      ${errors.length ? `<div class="selection-preview-errors">${errors.length} job${errors.length === 1 ? '' : 's'} unavailable: ${errors.map(([jobID, message]) => `${escapeHTML(jobID)} — ${escapeHTML(message)}`).join(' · ')}</div>` : ''}`;
+    panel.classList.remove('hidden');
+    status.dataset.state = 'success';
+    status.textContent = `${participants.length} jobs · ${candidateCount} eligible candidates · ${excluded.length - budgetExcluded} displaced · ${budgetExcluded} blocked by delivery limits. Nothing delivered.`;
+  } catch (error) {
+    panel.classList.add('hidden');
+    status.dataset.state = 'error';
+    status.textContent = error.message;
+  } finally {
+    status.dataset.busy = 'false';
+    button.disabled = isDirty() || !document.getElementById('selection-enabled')?.checked;
   }
 }
 

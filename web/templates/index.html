@@ -525,6 +525,58 @@
           </div>
         </details>
 
+        <details class="settings-disclosure" {{if .Config.Jobs.Selection.Enabled}}open{{end}}>
+          <summary>
+            <span class="settings-disclosure-title"><i data-lucide="trophy" aria-hidden="true"></i>Ranked selection</span>
+            <span class="settings-disclosure-summary" data-selection-summary>{{if .Config.Jobs.Selection.Enabled}}Enabled{{else}}Disabled{{end}}</span>
+          </summary>
+          <div class="settings-disclosure-body selection-settings">
+            <label class="selection-toggle">
+              <input type="checkbox" name="jobs.selection.enabled" value="true" id="selection-enabled" {{if .Config.Jobs.Selection.Enabled}}checked{{end}}>
+              <span>
+                <span class="selection-toggle-title">Enable ranked selection</span>
+                <span class="selection-toggle-help">Compare candidates from participating jobs before anything is sent.</span>
+              </span>
+            </label>
+
+            <div class="selection-flow" aria-label="Ranked selection flow">
+              <div><span>1</span><strong>Discover</strong><small>Jobs collect candidates</small></div>
+              <i data-lucide="chevron-right" aria-hidden="true"></i>
+              <div><span>2</span><strong>Rank</strong><small>Duplicates compete by score</small></div>
+              <i data-lucide="chevron-right" aria-hidden="true"></i>
+              <div><span>3</span><strong>Deliver</strong><small>Winners respect safety limits</small></div>
+            </div>
+
+            <fieldset class="selection-controls" data-selection-controls>
+              <legend>Cycle policy</legend>
+              <div class="svc-field">
+                <label for="selection-interval">Run selection every</label>
+                <input type="text" id="selection-interval" name="jobs.selection.sync_interval" value="{{.Config.Jobs.Selection.SyncInterval}}" placeholder="24h">
+                <span class="svc-help">Duration or cron expression</span>
+              </div>
+              <div class="svc-field">
+                <label for="selection-movie-limit">Movies selected</label>
+                <input type="number" id="selection-movie-limit" name="jobs.selection.movie_limit" value="{{.Config.Jobs.Selection.MovieLimit}}" min="0">
+                <span class="svc-help">Per cycle; zero is unlimited</span>
+              </div>
+              <div class="svc-field">
+                <label for="selection-show-limit">Shows selected</label>
+                <input type="number" id="selection-show-limit" name="jobs.selection.show_limit" value="{{.Config.Jobs.Selection.ShowLimit}}" min="0">
+                <span class="svc-help">Per cycle; zero is unlimited</span>
+              </div>
+            </fieldset>
+
+            <div class="selection-actions">
+              <div>
+                <strong>Check the next cycle</strong>
+                <span id="selection-preview-status" aria-live="polite">Uses saved settings and never delivers media.</span>
+              </div>
+              <button type="button" class="job-secondary-button" data-action="preview-selection">Preview cycle</button>
+            </div>
+            <div id="selection-preview" class="selection-preview hidden"></div>
+          </div>
+        </details>
+
         <details class="settings-disclosure" {{if ne .Config.Jobs.RepeatPolicy "90_days"}}open{{end}}>
           <summary>
             <span class="settings-disclosure-title"><i data-lucide="history" aria-hidden="true"></i>Repeat handling</span>

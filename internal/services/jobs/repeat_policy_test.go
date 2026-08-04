@@ -7,6 +7,7 @@ import (
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/integrations"
 	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
@@ -40,5 +41,12 @@ func TestRepeatPolicyUsesSuccessfulDeliveryHistory(t *testing.T) {
 	}
 	if reason, err := repeatSkipReason(cfg, db, string(enums.RepeatPolicyNever), "movie", 20, 0, now); err != nil || !strings.Contains(reason, "never") {
 		t.Fatalf("never override result: reason=%q err=%v", reason, err)
+	}
+	preview := PreviewResponse{}
+	if err := previewMovies(t.Context(), cfg, db, "", "", []integrations.Movie{{Title: "Delivered", IDs: integrations.IDs{TMDB: 20}}}, &preview); err != nil {
+		t.Fatal(err)
+	}
+	if len(preview.Items) != 1 || !preview.Items[0].AlreadyExists || preview.WillAdd != 0 {
+		t.Fatalf("repeat preview did not match execution gate: %+v", preview)
 	}
 }

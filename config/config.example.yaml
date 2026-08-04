@@ -68,6 +68,11 @@ jobs:
   global_limit_movies: 0 # Successful deliveries in the rolling period; zero is unlimited
   global_limit_shows: 0
   global_period: daily # daily (24h), weekly (7d), or monthly (30d)
+  selection:
+    enabled: false # Opt-in: rank participating jobs together by normalized score
+    sync_interval: 24h
+    movie_limit: 0 # Winners per cycle; at least one limit is required when enabled
+    show_limit: 0
   list:
     - id: trending-movies
       name: Trending Movies
@@ -77,6 +82,8 @@ jobs:
       media: movie
       limit: 20
       delivery_limit: 0 # Successful additions or requests per run; zero is unlimited
+      selection_cycle: false
+      minimum_picks: 0
       rule_set_id: default-movies
 
     - id: trending-shows

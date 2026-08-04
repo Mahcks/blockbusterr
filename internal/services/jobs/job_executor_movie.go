@@ -22,6 +22,7 @@ type MovieJobExecutor struct {
 	lastDecisions *JobRunDecisions // Store last run decisions for API access
 	currentRunID  int64
 	discovery     *DiscoveryClient
+	selection     map[string]ScoreInfo
 }
 
 // Execute runs a movie job with the given configuration and fetcher function
@@ -92,6 +93,19 @@ func (e *MovieJobExecutor) Execute(
 
 	// Apply filters with detailed decision tracking
 	filteredMovies, scoreMap, movieDecisions := e.evaluateMoviesWithDecisions(ctx, movies, jobConfig)
+	if e.selection != nil {
+		selected := filteredMovies[:0]
+		for _, movie := range filteredMovies {
+			key := movieSelectionKey(movie.IDs.TMDB, movie.IDs.IMDB)
+			if score, ok := e.selection[key]; ok {
+				selected = append(selected, movie)
+				scoreMap[movie.IDs.TMDB] = score
+			} else {
+				e.skipMovieDelivery(jobConfig, movie, scoreMap, "Displaced by ranked selection")
+			}
+		}
+		filteredMovies = selected
+	}
 	runDecisions.Decisions = movieDecisions
 	runDecisions.PassedFilters = len(filteredMovies)
 

@@ -157,6 +157,7 @@ func TestSettingsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 		"sonarr.url", "sonarr.api_key", "sonarr.quality_profile", "sonarr.root_folder", "sonarr.monitor",
 		"jellyseerr.url", "jellyseerr.api_key", "jellyseerr.user_id", "jellyseerr.request_credentials.email", "jellyseerr.request_credentials.password",
 		"jobs.mode", "jobs.sync_interval", "jobs.global_limit_movies", "jobs.global_limit_shows", "jobs.global_period",
+		"jobs.selection.enabled", "jobs.selection.sync_interval", "jobs.selection.movie_limit", "jobs.selection.show_limit",
 		"scoring.enabled", "scoring.rating_weight", "scoring.popularity_weight", "scoring.recency_weight", "scoring.rating_scale", "scoring.popularity_metric", "scoring.recency_days",
 	} {
 		if !strings.Contains(index, `name="`+field+`"`) {
@@ -205,6 +206,15 @@ func TestJobsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 	for _, expected := range []string{`id="modal-rule-set"`, "function populateJobFilters", "rule_set_id", "/v1/rule-sets", `id="modal-delivery-limit"`, "delivery_limit", `id="import-job-file"`, `data-action="export-job"`, "function importJobBundle", "function exportCurrentJob"} {
 		if !strings.Contains(jobs+script, expected) {
 			t.Errorf("per-job filter editor is missing %s", expected)
+		}
+	}
+	for _, expected := range []string{
+		"fetch(`/v1/jobs/dynamic/${encodeURIComponent(jobId)}`)",
+		"job.selection_cycle === true",
+		"const savedJob = await response.json()",
+	} {
+		if !strings.Contains(script, expected) {
+			t.Errorf("job editor isolation guard is missing %s", expected)
 		}
 	}
 }

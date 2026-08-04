@@ -51,6 +51,10 @@ Legacy jobs return a conflict/error and should be migrated first.
 
 Discovers and evaluates candidates without delivering them. Preview uses the same source and assigned rule set as a live run.
 
+`POST /v1/jobs/selection/preview`
+
+Fetches participating jobs and returns deduplicated movie/show winners, displaced candidates, merged source/job provenance, and provider errors without delivering anything.
+
 ## Trigger
 
 `POST /v1/jobs/:id/trigger`

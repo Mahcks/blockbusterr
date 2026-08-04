@@ -20,3 +20,12 @@ func TestRunnableJobsSkipsUnconfiguredProviders(t *testing.T) {
 		t.Fatalf("runnableJobs() = %#v, want only Simkl job", jobs)
 	}
 }
+
+func TestSplitSelectionJobs(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Jobs.Selection.Enabled = true
+	cycle, standalone := splitSelectionJobs(cfg, []config.DynamicJob{{ID: "ranked", SelectionCycle: true}, {ID: "normal"}})
+	if len(cycle) != 1 || cycle[0].ID != "ranked" || len(standalone) != 1 || standalone[0].ID != "normal" {
+		t.Fatalf("cycle=%+v standalone=%+v", cycle, standalone)
+	}
+}

@@ -212,6 +212,13 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 	router.Get("/jobs/templates", func(c *fiber.Ctx) error {
 		return c.JSON(jobs.GetAllTemplates(gctx.Config()))
 	})
+	router.Post("/jobs/selection/preview", func(c *fiber.Ctx) error {
+		preview, err := jobs.PreviewSelectionCycle(gctx.Config(), gctx.Database())
+		if err != nil {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(preview)
+	})
 
 	router.Post("/jobs/recipes/:id", func(c *fiber.Ctx) error {
 		cfg := gctx.Config()
@@ -685,6 +692,34 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 	}
 	if job.DeliveryLimit < 0 {
 		return fmt.Errorf("delivery limit cannot be negative")
+	}
+	if job.MinimumPicks < 0 {
+		return fmt.Errorf("minimum picks cannot be negative")
+	}
+	if !job.SelectionCycle && job.MinimumPicks > 0 {
+		return fmt.Errorf("minimum picks require ranked selection")
+	}
+	if job.SelectionCycle {
+		if job.Type == "smart_popular" {
+			return fmt.Errorf("adaptive smart jobs cannot join ranked selection")
+		}
+		if cfg.Jobs.Selection.Enabled && !cfg.Scoring.Enabled {
+			return fmt.Errorf("ranked selection requires content scoring")
+		}
+		if cfg.Jobs.Selection.Enabled {
+			capacity, minima := cfg.Jobs.Selection.MovieLimit, job.MinimumPicks
+			if job.MediaType == "show" {
+				capacity = cfg.Jobs.Selection.ShowLimit
+			}
+			for _, existing := range cfg.Jobs.List {
+				if existing.ID != job.ID && existing.Enabled && existing.SelectionCycle && existing.MediaType == job.MediaType {
+					minima += existing.MinimumPicks
+				}
+			}
+			if capacity <= 0 || minima > capacity {
+				return fmt.Errorf("ranked %s minimum picks require capacity %d or greater", job.MediaType, minima)
+			}
+		}
 	}
 	if !enums.RepeatPolicy(job.RepeatPolicy).IsValid(true) {
 		return fmt.Errorf("repeat handling policy is invalid")
