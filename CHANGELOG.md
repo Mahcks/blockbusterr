@@ -4,27 +4,46 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 
 ## [Unreleased]
 
+## [2.0.0-beta.1] - 2026-08-04
+
 ### Added
 
 - Reusable movie and show rule sets with assignment counts and revisions.
 - Per-job rule assignment and one-click job-specific rule copies.
 - Universal movie and show title exceptions.
+- Country, language, genre, certification, network, keyword, provider ID, year, runtime, rating, and vote rules.
+- Typed list and watchlist jobs for TMDB, Trakt, MDBList, and experimental public Letterboxd lists.
+- Curated recipes and recommendations for common movie and show discovery jobs.
 - Dynamic jobs with explicit TMDB, Simkl, or Trakt discovery sources where supported.
 - Redesigned Jobs, Rules, Activity, Job Runs, and Settings workflows.
 - Structured Job Run flow and outcome distribution with title-level decision details.
-- Readiness checks, local compiled assets, configuration backup/restore, and improved shutdown behavior.
+- Ranked selection cycles that compare candidates across participating jobs before delivery.
+- Preview-first job creation, provider inspection, and disabled-by-default imports and recipes.
+- Repeat handling for titles removed by another application.
+- Optional owner authentication with `BLOCKBUSTERR_AUTH_TOKEN`.
+- Readiness checks, local compiled assets, configuration backup/restore, complete log clearing, and improved shutdown behavior.
 - Automatic migration of legacy jobs and embedded custom filters.
 - Enforced per-job and global delivery budgets with rolling movie/show periods.
 - Versioned portable job bundles that include their reusable rules and import disabled with fresh IDs.
-- A typed list/watchlist job contract that reuses the existing preview, rules, Activity, and delivery pipeline.
 
 ### Changed
 
 - Filters are now presented as reusable Rules while the existing documentation URL remains compatible.
 - Activity terminology is standardized as Activity Entries and Job Runs.
 - The application no longer requires Trakt when enabled jobs use another configured provider.
+- Direct Radarr/Sonarr additions and Jellyseerr/Seerr requests remain distinct in Job Runs while combined totals are labeled Delivered.
+- The settings and job editors now expose delivery mode, rule assignment, safety limits, and provider readiness more clearly.
+- Documentation is versioned so stable v1 and beta v2 guidance can coexist.
 - Documentation now describes Blockbusterr as the discovery and decision layer in a media automation stack.
 - Sonarr lookup results now require matching provider identity before a show is treated as already present.
+
+### Fixed
+
+- Graceful shutdown is bounded so repeated interrupts cannot leave Blockbusterr hanging indefinitely.
+- Ranked-selection participation is stored per job instead of leaking between job editors.
+- Activity empty states now reflect existing Activity Entries and Job Runs correctly.
+- Legacy v1 jobs and custom filters migrate into the v2 job and Rules model.
+- Provider readiness warnings identify the affected enabled jobs instead of reporting misleading totals.
 
 ### Removed
 
@@ -35,6 +54,8 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 
 - Back up the configuration and database together before upgrading.
 - Review migrated jobs and rule assignments, then preview every enabled job.
-- See the [v2 upgrade guide](https://blockbusterr.dev/getting-started/upgrading-to-v2/).
+- The beta image is published as `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.1` and `ghcr.io/mahcks/blockbusterr:latest-beta`; `latest` remains on v1 until the stable release.
+- See the [v2 upgrade guide](https://blockbusterr.dev/v2/getting-started/upgrading-to-v2/).
 
-[Unreleased]: https://github.com/Mahcks/blockbusterr/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.1...HEAD
+[2.0.0-beta.1]: https://github.com/Mahcks/blockbusterr/compare/v1.5.0...v2.0.0-beta.1
