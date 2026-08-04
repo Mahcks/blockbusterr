@@ -36,6 +36,12 @@ Describe your specific use case:
 - How often would you use it?
 - Who else might benefit from this?
 
+## Relevant Version
+
+- [ ] v2
+- [ ] v1
+- [ ] Version-independent
+
 ## Mockups / Examples
 
 If applicable, add mockups, diagrams, or examples from other applications.
@@ -55,6 +61,6 @@ Add any other context, screenshots, or references about the feature request here
 ## Checklist
 
 - [ ] I have checked existing issues/discussions for similar requests
-- [ ] This feature aligns with Blockbusterr's goals (media automation from Trakt)
+- [ ] This feature aligns with Blockbusterr's media discovery and delivery goals
 - [ ] I have provided sufficient detail and use cases
 - [ ] I am willing to help test this feature if implemented

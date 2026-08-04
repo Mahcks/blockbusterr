@@ -1,0 +1,118 @@
+name: Bug report
+description: Report unexpected Blockbusterr behavior
+title: "[BUG] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve Blockbusterr. Never include API keys, passwords, tokens, or unredacted configuration files.
+
+  - type: dropdown
+    id: release
+    attributes:
+      label: Release channel
+      description: Select the version family where the problem occurs.
+      options:
+        - v2 beta
+        - v1 stable
+        - Development build
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Exact version or image tag
+      description: Use the immutable version whenever possible, not latest or latest-beta.
+      placeholder: v2.0.0-beta.2 or ghcr.io/mahcks/blockbusterr:v2.0.0-beta.2
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - Docker Compose
+        - Docker CLI
+        - Binary
+        - Built from source
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: Architecture
+      options:
+        - amd64
+        - arm64
+        - Other or unknown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: upgrade
+    attributes:
+      label: Installation history
+      options:
+        - Fresh v2 installation
+        - Upgraded from v1
+        - Existing v1 installation
+        - Other or unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Configure ...
+        2. Open ...
+        3. Run ...
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: integrations
+    attributes:
+      label: Relevant jobs and integrations
+      description: Include the job type, discovery source, delivery mode, rule set, and affected integrations.
+      placeholder: TMDB list job using Default Movies, delivered directly to Radarr
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and sanitized configuration
+      description: Attach relevant logs or configuration with every secret removed.
+      render: shell
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add screenshots or anything else that may help reproduce the problem.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing open and closed issues for duplicates.
+          required: true
+        - label: I reproduced this with the exact version listed above.
+          required: true
+        - label: I removed all API keys, passwords, tokens, and other secrets.
+          required: true
