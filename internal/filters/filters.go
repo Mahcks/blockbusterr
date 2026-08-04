@@ -7,6 +7,7 @@ import (
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/integrations"
+	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
 // FilterCheck represents a single filter check result
@@ -55,13 +56,24 @@ func MoviePassesRules(movie integrations.Movie, rules config.MovieFilters, excep
 	if slices.Contains(exceptions.AllowedMovieTMDBIDs, movie.IDs.TMDB) {
 		return FilterResult{Passed: true, Checks: []FilterCheck{{Name: "Title exceptions", Passed: true, Message: "Title is globally allowed"}}}
 	}
+	certification := certificationCheck(movie.Certifications, rules.CertificationCountry, rules.AllowedCertifications, rules.BlockedCertifications, rules.UnknownCertification)
+	if certification != nil && !certification.Passed {
+		return *certification
+	}
 	if blocked := movieHardBlock(movie, rules); blocked != nil {
 		return *blocked
 	}
 	if allowed := movieAllowOverride(movie, rules); allowed != nil {
+		if certification != nil {
+			allowed.Checks = append(certification.Checks, allowed.Checks...)
+		}
 		return *allowed
 	}
-	return MoviePassesFiltersDetailed(movie, rules)
+	result := MoviePassesFiltersDetailed(movie, rules)
+	if certification != nil {
+		result.Checks = append(certification.Checks, result.Checks...)
+	}
+	return result
 }
 
 func ShowPassesRules(show integrations.Show, rules config.ShowFilters, exceptions config.TitleExceptions) FilterResult {
@@ -71,13 +83,54 @@ func ShowPassesRules(show integrations.Show, rules config.ShowFilters, exception
 	if slices.Contains(exceptions.AllowedShowTVDBIDs, show.IDs.TVDB) {
 		return FilterResult{Passed: true, Checks: []FilterCheck{{Name: "Title exceptions", Passed: true, Message: "Title is globally allowed"}}}
 	}
+	certification := certificationCheck(show.Certifications, rules.CertificationCountry, rules.AllowedCertifications, rules.BlockedCertifications, rules.UnknownCertification)
+	if certification != nil && !certification.Passed {
+		return *certification
+	}
 	if blocked := showHardBlock(show, rules); blocked != nil {
 		return *blocked
 	}
 	if allowed := showAllowOverride(show, rules); allowed != nil {
+		if certification != nil {
+			allowed.Checks = append(certification.Checks, allowed.Checks...)
+		}
 		return *allowed
 	}
-	return ShowPassesFiltersDetailed(show, rules)
+	result := ShowPassesFiltersDetailed(show, rules)
+	if certification != nil {
+		result.Checks = append(certification.Checks, result.Checks...)
+	}
+	return result
+}
+
+func certificationCheck(certifications []integrations.Certification, country string, allowed, blocked []string, unknown string) *FilterResult {
+	if len(allowed) == 0 && len(blocked) == 0 {
+		return nil
+	}
+	country = strings.ToUpper(strings.TrimSpace(country))
+	values := []string{}
+	source := "TMDB"
+	for _, certification := range certifications {
+		if strings.EqualFold(certification.Country, country) && certification.Value != "" && !containsIgnoreCase(values, certification.Value) {
+			values = append(values, strings.ToUpper(certification.Value))
+			if certification.Source != "" {
+				source = strings.ToUpper(certification.Source)
+			}
+		}
+	}
+	if len(values) == 0 {
+		if unknown == "" || enums.CertificationUnknownPolicy(unknown) == enums.CertificationUnknownAllow {
+			return &FilterResult{Passed: true, Checks: []FilterCheck{{Name: "Content certification", Passed: true, Message: fmt.Sprintf("TMDB has no %s certification; unknown ratings are allowed", country)}}}
+		}
+		return failed("Content certification", fmt.Sprintf("TMDB has no %s certification; unknown ratings are rejected", country))
+	}
+	if match := firstMatch(blocked, values); match != "" {
+		return failed("Content certification", fmt.Sprintf("%s certification %s is blocked (%s)", country, match, source))
+	}
+	if len(allowed) > 0 && firstMatch(allowed, values) == "" {
+		return failed("Content certification", fmt.Sprintf("%s certification %s is not allowed (%s)", country, strings.Join(values, ", "), source))
+	}
+	return &FilterResult{Passed: true, Checks: []FilterCheck{{Name: "Content certification", Passed: true, Message: fmt.Sprintf("%s certification %s is allowed (%s)", country, strings.Join(values, ", "), source)}}}
 }
 
 func movieHardBlock(movie integrations.Movie, rules config.MovieFilters) *FilterResult {

@@ -157,6 +157,36 @@
           </div>
         </section>
 
+        <section class="filter-section">
+          <div class="filter-section-heading">
+            <div><i data-lucide="badge-check" aria-hidden="true"></i><h2>Content ratings</h2></div>
+            <p>Evaluate the rating issued in one country. TMDB supplies regional movie certifications and TV content ratings.</p>
+          </div>
+          <div class="filter-rule-grid">
+            <label class="filter-single-range">Country
+              <input type="text" id="rule-certification-country" maxlength="2" placeholder="US" autocomplete="off" aria-describedby="rule-certification-help">
+            </label>
+            <label class="filter-single-range">When no rating is found
+              <select id="rule-unknown-certification">
+                <option value="allow">Allow the title</option>
+                <option value="reject">Reject the title</option>
+              </select>
+            </label>
+            <div class="filter-rule-copy">
+              <label id="rule-allowed-certifications-label">Allowed ratings</label>
+              <div class="filter-value-entry" data-chip-field="allowedCertifications"><input type="text" placeholder="e.g. PG-13" autocomplete="off" aria-labelledby="rule-allowed-certifications-label"><button type="button">Add</button></div>
+              <div class="filter-token-list filter-token-list-allow" data-chip-list="allowedCertifications"></div>
+            </div>
+            <div class="filter-rule-copy">
+              <label id="rule-blocked-certifications-label">Blocked ratings</label>
+              <div class="filter-value-entry" data-chip-field="blockedCertifications"><input type="text" placeholder="e.g. NC-17" autocomplete="off" aria-labelledby="rule-blocked-certifications-label"><button type="button">Add</button></div>
+              <div class="filter-token-list filter-token-list-block" data-chip-list="blockedCertifications"></div>
+            </div>
+          </div>
+          <p id="rule-certification-help" class="filter-section-note">Rules stay inactive until an allowed or blocked rating is added. Unknown means TMDB has no rating for the selected country.</p>
+          <p id="rule-certification-error" class="field-error hidden"></p>
+        </section>
+
         <section class="filter-section filter-section-override">
           <div class="filter-section-heading">
             <div><i data-lucide="shield-check" aria-hidden="true"></i><h2>Allow overrides</h2></div>

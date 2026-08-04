@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mahcks/blockbusterr/pkg/enums"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
@@ -32,6 +33,10 @@ type MovieFilters struct {
 	BlacklistedMaxYear    int      `mapstructure:"blacklisted_max_year" json:"blacklisted_max_year" yaml:"blacklisted_max_year"`
 	MinRating             float64  `mapstructure:"min_rating" json:"min_rating" yaml:"min_rating"`
 	MinVotes              int      `mapstructure:"min_votes" json:"min_votes" yaml:"min_votes"`
+	CertificationCountry  string   `mapstructure:"certification_country" json:"certification_country" yaml:"certification_country,omitempty"`
+	AllowedCertifications []string `mapstructure:"allowed_certifications" json:"allowed_certifications" yaml:"allowed_certifications,omitempty"`
+	BlockedCertifications []string `mapstructure:"blocked_certifications" json:"blocked_certifications" yaml:"blocked_certifications,omitempty"`
+	UnknownCertification  string   `mapstructure:"unknown_certification" json:"unknown_certification" yaml:"unknown_certification"`
 }
 
 // ShowFilters represents filtering options for TV shows
@@ -59,6 +64,10 @@ type ShowFilters struct {
 	BlacklistedMaxYear    int      `mapstructure:"blacklisted_max_year" json:"blacklisted_max_year" yaml:"blacklisted_max_year"`
 	MinRating             float64  `mapstructure:"min_rating" json:"min_rating" yaml:"min_rating"`
 	MinVotes              int      `mapstructure:"min_votes" json:"min_votes" yaml:"min_votes"`
+	CertificationCountry  string   `mapstructure:"certification_country" json:"certification_country" yaml:"certification_country,omitempty"`
+	AllowedCertifications []string `mapstructure:"allowed_certifications" json:"allowed_certifications" yaml:"allowed_certifications,omitempty"`
+	BlockedCertifications []string `mapstructure:"blocked_certifications" json:"blocked_certifications" yaml:"blocked_certifications,omitempty"`
+	UnknownCertification  string   `mapstructure:"unknown_certification" json:"unknown_certification" yaml:"unknown_certification"`
 }
 
 // FilterConfig contains the movie and show policies used during discovery.
@@ -540,12 +549,18 @@ func (c *Config) ValidateRuleSet(candidate RuleSet, exceptID string) error {
 	}
 	var minYear, maxYear, minRuntime, maxRuntime, minVotes int
 	var minRating, allowMinRating float64
+	var certificationCountry, unknownCertification string
+	var allowedCertifications, blockedCertifications []string
 	if candidate.Media == "movie" {
 		minYear, maxYear, minRuntime, maxRuntime, minRating, minVotes = candidate.Movies.BlacklistedMinYear, candidate.Movies.BlacklistedMaxYear, candidate.Movies.BlacklistedMinRuntime, candidate.Movies.BlacklistedMaxRuntime, candidate.Movies.MinRating, candidate.Movies.MinVotes
 		allowMinRating = candidate.Movies.AllowMinRating
+		certificationCountry, unknownCertification = candidate.Movies.CertificationCountry, candidate.Movies.UnknownCertification
+		allowedCertifications, blockedCertifications = candidate.Movies.AllowedCertifications, candidate.Movies.BlockedCertifications
 	} else {
 		minYear, maxYear, minRuntime, maxRuntime, minRating, minVotes = candidate.Shows.BlacklistedMinYear, candidate.Shows.BlacklistedMaxYear, candidate.Shows.BlacklistedMinRuntime, candidate.Shows.BlacklistedMaxRuntime, candidate.Shows.MinRating, candidate.Shows.MinVotes
 		allowMinRating = candidate.Shows.AllowMinRating
+		certificationCountry, unknownCertification = candidate.Shows.CertificationCountry, candidate.Shows.UnknownCertification
+		allowedCertifications, blockedCertifications = candidate.Shows.AllowedCertifications, candidate.Shows.BlockedCertifications
 	}
 	if minYear < 0 || maxYear < 0 || minRuntime < 0 || maxRuntime < 0 || minVotes < 0 {
 		return fmt.Errorf("numeric rule values cannot be negative")
@@ -562,12 +577,30 @@ func (c *Config) ValidateRuleSet(candidate RuleSet, exceptID string) error {
 	if minRuntime > 0 && maxRuntime > 0 && minRuntime > maxRuntime {
 		return fmt.Errorf("minimum runtime cannot exceed maximum runtime")
 	}
+	if unknownCertification == "" {
+		unknownCertification = string(enums.CertificationUnknownAllow)
+	}
+	if !enums.CertificationUnknownPolicy(unknownCertification).Valid() {
+		return fmt.Errorf("unknown certification policy must be allow or reject")
+	}
+	if len(allowedCertifications)+len(blockedCertifications) > 0 && len(strings.TrimSpace(certificationCountry)) != 2 {
+		return fmt.Errorf("certification country must be a two-letter country code")
+	}
 	for _, rules := range c.RuleSets {
 		if rules.ID != exceptID && strings.EqualFold(rules.Name, candidate.Name) && rules.Media == candidate.Media {
 			return fmt.Errorf("a %s rule set named %q already exists", candidate.Media, candidate.Name)
 		}
 	}
 	return nil
+}
+
+func ApplyRuleSetDefaults(rules *RuleSet) {
+	if rules.Movies != nil && rules.Movies.UnknownCertification == "" {
+		rules.Movies.UnknownCertification = string(enums.CertificationUnknownAllow)
+	}
+	if rules.Shows != nil && rules.Shows.UnknownCertification == "" {
+		rules.Shows.UnknownCertification = string(enums.CertificationUnknownAllow)
+	}
 }
 
 func (c *Config) RuleSetUsage(id string) int {
@@ -589,6 +622,9 @@ func (c *Config) MigrateRuleSets() {
 	if _, ok := c.RuleSetByID(DefaultShowsRuleSetID); !ok {
 		filters := c.Filters.Shows
 		c.RuleSets = append(c.RuleSets, RuleSet{ID: DefaultShowsRuleSetID, Name: "Default Shows", Media: "show", Revision: 1, Shows: &filters})
+	}
+	for index := range c.RuleSets {
+		ApplyRuleSetDefaults(&c.RuleSets[index])
 	}
 	for i := range c.Jobs.List {
 		job := &c.Jobs.List[i]

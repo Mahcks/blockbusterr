@@ -176,6 +176,7 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 	percentiles map[int]float64,
 	jobConfig SmartJobConfig,
 ) ([]integrations.Movie, map[int]ScoreInfo, []ContentDecision) {
+	enrichMovieCertifications(ctx, e.Config, movies)
 	decisions := make([]ContentDecision, 0, len(movies))
 	passedMovies := make([]integrations.Movie, 0)
 

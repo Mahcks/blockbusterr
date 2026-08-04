@@ -100,6 +100,23 @@ type tmdbShowDetails struct {
 		IMDB string `json:"imdb_id"`
 		TVDB int    `json:"tvdb_id"`
 	} `json:"external_ids"`
+	ContentRatings struct {
+		Results []struct {
+			Rating  string `json:"rating"`
+			Country string `json:"iso_3166_1"`
+		} `json:"results"`
+	} `json:"content_ratings"`
+}
+
+type tmdbMovieCertifications struct {
+	ReleaseDates struct {
+		Results []struct {
+			Country string `json:"iso_3166_1"`
+			Dates   []struct {
+				Certification string `json:"certification"`
+			} `json:"release_dates"`
+		} `json:"results"`
+	} `json:"release_dates"`
 }
 
 var tmdbMovieGenres = map[int]string{12: "adventure", 14: "fantasy", 16: "animation", 18: "drama", 27: "horror", 28: "action", 35: "comedy", 36: "history", 37: "western", 53: "thriller", 80: "crime", 99: "documentary", 878: "science-fiction", 9648: "mystery", 10402: "music", 10749: "romance", 10751: "family", 10752: "war", 10770: "tv-movie"}
@@ -196,7 +213,7 @@ func (t *TMDB) enrichShows(ctx context.Context, shows []Show) {
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 			var details tmdbShowDetails
-			if err := t.get(ctx, fmt.Sprintf("/tv/%d", shows[index].IDs.TMDB), url.Values{"append_to_response": {"external_ids"}, "language": {"en-US"}}, &details); err != nil {
+			if err := t.get(ctx, fmt.Sprintf("/tv/%d", shows[index].IDs.TMDB), url.Values{"append_to_response": {"external_ids,content_ratings"}, "language": {"en-US"}}, &details); err != nil {
 				return
 			}
 			shows[index].IDs.IMDB = details.ExternalIDs.IMDB
@@ -207,9 +224,81 @@ func (t *TMDB) enrichShows(ctx context.Context, shows []Show) {
 			if len(details.Networks) > 0 {
 				shows[index].Network = details.Networks[0].Name
 			}
+			shows[index].Certifications = showCertifications(details)
 		})
 	}
 	waitGroup.Wait()
+}
+
+func (t *TMDB) EnrichMovieCertifications(ctx context.Context, movies []Movie) {
+	var waitGroup sync.WaitGroup
+	semaphore := make(chan struct{}, 8)
+	for index := range movies {
+		if movies[index].IDs.TMDB <= 0 || len(movies[index].Certifications) > 0 {
+			continue
+		}
+		waitGroup.Go(func() {
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+			var details tmdbMovieCertifications
+			if t.get(ctx, fmt.Sprintf("/movie/%d", movies[index].IDs.TMDB), url.Values{"append_to_response": {"release_dates"}}, &details) == nil {
+				movies[index].Certifications = movieCertifications(details)
+			}
+		})
+	}
+	waitGroup.Wait()
+}
+
+func (t *TMDB) EnrichShowCertifications(ctx context.Context, shows []Show) {
+	var waitGroup sync.WaitGroup
+	semaphore := make(chan struct{}, 8)
+	for index := range shows {
+		if shows[index].IDs.TMDB <= 0 || len(shows[index].Certifications) > 0 {
+			continue
+		}
+		waitGroup.Go(func() {
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+			var details tmdbShowDetails
+			if t.get(ctx, fmt.Sprintf("/tv/%d", shows[index].IDs.TMDB), url.Values{"append_to_response": {"content_ratings"}}, &details) == nil {
+				shows[index].Certifications = showCertifications(details)
+			}
+		})
+	}
+	waitGroup.Wait()
+}
+
+func movieCertifications(details tmdbMovieCertifications) []Certification {
+	result := []Certification{}
+	for _, country := range details.ReleaseDates.Results {
+		for _, release := range country.Dates {
+			value := strings.ToUpper(strings.TrimSpace(release.Certification))
+			if value != "" && !hasCertification(result, country.Country, value) {
+				result = append(result, Certification{Value: value, Country: strings.ToUpper(country.Country), Source: "tmdb"})
+			}
+		}
+	}
+	return result
+}
+
+func showCertifications(details tmdbShowDetails) []Certification {
+	result := []Certification{}
+	for _, rating := range details.ContentRatings.Results {
+		value := strings.ToUpper(strings.TrimSpace(rating.Rating))
+		if value != "" && !hasCertification(result, rating.Country, value) {
+			result = append(result, Certification{Value: value, Country: strings.ToUpper(rating.Country), Source: "tmdb"})
+		}
+	}
+	return result
+}
+
+func hasCertification(certifications []Certification, country, value string) bool {
+	for _, certification := range certifications {
+		if strings.EqualFold(certification.Country, country) && strings.EqualFold(certification.Value, value) {
+			return true
+		}
+	}
+	return false
 }
 
 func (t *TMDB) GetTrendingMovies(ctx context.Context, limit int) ([]Movie, error) {

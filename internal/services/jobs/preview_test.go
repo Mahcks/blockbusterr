@@ -236,3 +236,16 @@ func TestPreviewItemFiltered(t *testing.T) {
 		t.Errorf("FilterReason = %s, want 'Rating 3.0 below minimum threshold'", item.FilterReason)
 	}
 }
+
+func TestPreviewExplainsCertificationDecision(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Filters.Movies = config.MovieFilters{CertificationCountry: "US", AllowedCertifications: []string{"PG"}, UnknownCertification: "reject"}
+	response := PreviewResponse{}
+	movies := []integrations.Movie{{Title: "Rated", IDs: integrations.IDs{TMDB: 1}, Certifications: []integrations.Certification{{Value: "R", Country: "US", Source: "tmdb"}}}}
+	if err := previewMovies(t.Context(), cfg, "", movies, &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(response.Items) != 1 || !response.Items[0].FilteredOut || len(response.Items[0].FilterChecks) == 0 || response.Items[0].FilterChecks[0].Message != "US certification R is not allowed (TMDB)" {
+		t.Fatalf("preview = %#v", response)
+	}
+}

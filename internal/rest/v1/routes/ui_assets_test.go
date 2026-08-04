@@ -66,6 +66,16 @@ func TestFiltersPageUsesExternalScriptAndDelegatedActions(t *testing.T) {
 			t.Errorf("filters.js is missing %s", expected)
 		}
 	}
+	for _, expected := range []string{`id="rule-certification-country"`, `id="rule-unknown-certification"`, `data-chip-field="allowedCertifications"`, `data-chip-field="blockedCertifications"`} {
+		if !strings.Contains(template, expected) {
+			t.Errorf("filters.html is missing %s", expected)
+		}
+	}
+	for _, expected := range []string{"certification_country", "allowed_certifications", "blocked_certifications", "unknown_certification"} {
+		if !strings.Contains(script, expected) {
+			t.Errorf("filters.js is missing %s", expected)
+		}
+	}
 }
 
 func TestActivityUsesExternalScriptAndDelegatedActions(t *testing.T) {

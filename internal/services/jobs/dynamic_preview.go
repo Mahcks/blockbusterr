@@ -72,6 +72,7 @@ func previewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 }
 
 func previewMovies(ctx context.Context, cfg *config.Config, mode string, movies []integrations.Movie, response *PreviewResponse) error {
+	enrichMovieCertifications(ctx, cfg, movies)
 	existing := map[int]bool{}
 	if mode == "direct" {
 		client := integrations.NewRadarr(integrations.RadarrConfig{BaseURL: cfg.Radarr.URL, APIKey: cfg.Radarr.APIKey})
@@ -121,6 +122,7 @@ func previewMovies(ctx context.Context, cfg *config.Config, mode string, movies 
 }
 
 func previewShows(ctx context.Context, cfg *config.Config, mode string, shows []integrations.Show, response *PreviewResponse) error {
+	enrichShowCertifications(ctx, cfg, shows)
 	existingTVDB, existingTMDB := map[int]bool{}, map[int]bool{}
 	if mode == "direct" {
 		client := integrations.NewSonarr(integrations.SonarrConfig{BaseURL: cfg.Sonarr.URL, APIKey: cfg.Sonarr.APIKey})

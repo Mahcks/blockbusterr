@@ -465,7 +465,9 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			if log.Message != "" {
 				reason := strings.ToLower(log.Message)
 				// Categorize common reasons
-				if strings.Contains(reason, "rating") {
+				if strings.Contains(reason, "certification") {
+					reasonCounts["Content Rating"]++
+				} else if strings.Contains(reason, "rating") {
 					reasonCounts["Low Rating"]++
 				} else if strings.Contains(reason, "country") {
 					reasonCounts["Wrong Country"]++

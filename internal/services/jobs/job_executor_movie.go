@@ -619,6 +619,7 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 	movies []integrations.Movie,
 	jobConfig JobConfig,
 ) ([]integrations.Movie, map[int]ScoreInfo, []ContentDecision) {
+	enrichMovieCertifications(ctx, e.Config, movies)
 	decisions := make([]ContentDecision, 0, len(movies))
 	passedMovies := make([]integrations.Movie, 0)
 

@@ -204,14 +204,15 @@
               <i data-lucide="chevron-down" class="svc-chevron" aria-hidden="true"></i>
             </summary>
             <div class="svc-body">
-              <div class="job-nested-panel border-amber-700/60 bg-amber-950/30 p-3 text-xs text-amber-200">
-                Letterboxd does not provide generally available API access. This feature scrapes public pages and may be blocked or stop working whenever Letterboxd changes its site. Private lists are never supported. Prefer MDBList when reliability matters.
+              <div class="readiness-inline" role="note">
+                <i data-lucide="triangle-alert" aria-hidden="true"></i>
+                <span><strong>Public-list scraping can break.</strong> Letterboxd has no general API, so site changes may interrupt this integration. Private lists are not supported; prefer MDBList when reliability matters.</span>
               </div>
-              <label class="mt-3 flex items-start gap-3" for="letterboxd-experimental-scraping">
+              <label class="mode-choice" for="letterboxd-experimental-scraping">
                 <input type="checkbox" id="letterboxd-experimental-scraping" name="letterboxd.experimental_scraping" value="true" {{if .Config.Letterboxd.ExperimentalScraping}}checked{{end}}>
                 <span>
-                  <span class="block font-medium text-slate-100">Enable experimental scraping</span>
-                  <span class="svc-help">I understand this integration is brittle and unsupported by Letterboxd.</span>
+                  <span class="mode-choice-name">Enable experimental scraping</span>
+                  <span class="svc-help">Use public Letterboxd lists and watchlists as discovery sources.</span>
                 </span>
               </label>
             </div>
@@ -493,13 +494,14 @@
 
             <div class="preset-row">
               <label for="scoring-preset">Apply preset</label>
-              <select id="scoring-preset">
+              <select id="scoring-preset" aria-describedby="scoring-preset-help">
                 <option value="">Choose a preset&hellip;</option>
                 <option value="balanced">Balanced</option>
                 <option value="quality">Quality focused</option>
                 <option value="trending">Trending focused</option>
                 <option value="new">New releases</option>
               </select>
+              <span class="svc-help" id="scoring-preset-help">Updates these values now; save to keep them.</span>
             </div>
 
             <div class="weight-fields" style="margin-top:16px;">

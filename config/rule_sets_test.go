@@ -38,6 +38,26 @@ func TestMigrateRuleSetsIsDeterministic(t *testing.T) {
 	if len(effective.Movies.BlacklistedTMDBIds) != 1 || effective.Movies.BlacklistedTMDBIds[0] != 42 {
 		t.Fatalf("custom block not preserved: %v", effective.Movies.BlacklistedTMDBIds)
 	}
+	if effective.Movies.UnknownCertification != "allow" || defaults.Movies.UnknownCertification != "allow" {
+		t.Fatalf("unknown certification migration = %q, %q", effective.Movies.UnknownCertification, defaults.Movies.UnknownCertification)
+	}
+}
+
+func TestValidateCertificationRules(t *testing.T) {
+	cfg := &Config{}
+	base := RuleSet{ID: "family", Name: "Family", Media: "movie", Movies: &MovieFilters{CertificationCountry: "US", AllowedCertifications: []string{"G", "PG"}, UnknownCertification: "reject"}}
+	if err := cfg.ValidateRuleSet(base, ""); err != nil {
+		t.Fatal(err)
+	}
+	base.Movies.CertificationCountry = "USA"
+	if err := cfg.ValidateRuleSet(base, ""); err == nil {
+		t.Fatal("expected invalid certification country")
+	}
+	base.Movies.CertificationCountry = "US"
+	base.Movies.UnknownCertification = "maybe"
+	if err := cfg.ValidateRuleSet(base, ""); err == nil {
+		t.Fatal("expected invalid unknown certification policy")
+	}
 }
 
 func TestResolveRuleSetFailsClosedOnMediaMismatch(t *testing.T) {

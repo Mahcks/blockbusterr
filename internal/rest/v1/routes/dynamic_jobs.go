@@ -64,6 +64,7 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			rules.ID = uuid.NewString()
 		}
 		rules.Revision = 1
+		config.ApplyRuleSetDefaults(&rules)
 		cfg := gctx.Config()
 		if _, exists := cfg.RuleSetByID(rules.ID); exists {
 			return c.Status(409).JSON(fiber.Map{"error": "Rule set ID already exists"})
@@ -98,6 +99,7 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			return c.Status(409).JSON(fiber.Map{"error": "Rule set changed since it was opened; reload and try again"})
 		}
 		rules.ID, rules.Revision = id, current.Revision+1
+		config.ApplyRuleSetDefaults(&rules)
 		if err := cfg.ValidateRuleSet(rules, id); err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 		}

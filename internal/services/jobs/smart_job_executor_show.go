@@ -159,6 +159,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 	percentiles map[int]float64,
 	jobConfig SmartJobConfig,
 ) ([]integrations.Show, map[int]ScoreInfo, []ContentDecision) {
+	enrichShowCertifications(ctx, e.Config, shows)
 	decisions := make([]ContentDecision, 0, len(shows))
 	passedShows := make([]integrations.Show, 0)
 

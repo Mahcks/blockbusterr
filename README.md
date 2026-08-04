@@ -118,7 +118,7 @@ Then open `http://localhost:9090` and configure your services.
 
 ## Use Cases
 
-- **Family Curator** - Restrict discovery by genre, language, year, runtime, rating, and votes
+- **Family Curator** - Restrict discovery by regional content rating, genre, language, year, runtime, rating, and votes
 - **Quality Curator** - Only add movies scoring 80+, minimum 50k IMDb votes
 - **Genre Specialist** - Sci-fi and fantasy only, no comedies or romance
 - **Completionist** - Add everything trending with minimal filtering

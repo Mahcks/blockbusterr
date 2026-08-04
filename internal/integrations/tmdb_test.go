@@ -16,6 +16,31 @@ func (fn roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error)
 	return fn(request)
 }
 
+func TestTMDBCertificationEnrichment(t *testing.T) {
+	client := NewTMDB(TMDBConfig{APIKey: "key"})
+	client.httpClient.Transport = roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		switch request.URL.Path {
+		case "/3/movie/10":
+			return jsonResponse(http.StatusOK, `{"release_dates":{"results":[{"iso_3166_1":"US","release_dates":[{"certification":"PG-13"},{"certification":"PG-13"},{"certification":"R"}]},{"iso_3166_1":"GB","release_dates":[{"certification":"12"}]}]}}`), nil
+		case "/3/tv/20":
+			return jsonResponse(http.StatusOK, `{"content_ratings":{"results":[{"iso_3166_1":"US","rating":"TV-14"}]}}`), nil
+		default:
+			t.Fatalf("path = %s", request.URL.Path)
+			return nil, nil
+		}
+	})
+	movies := []Movie{{IDs: IDs{TMDB: 10}}}
+	shows := []Show{{IDs: IDs{TMDB: 20}}}
+	client.EnrichMovieCertifications(t.Context(), movies)
+	client.EnrichShowCertifications(t.Context(), shows)
+	if len(movies[0].Certifications) != 3 || movies[0].Certifications[0] != (Certification{Value: "PG-13", Country: "US", Source: "tmdb"}) {
+		t.Fatalf("movie certifications = %#v", movies[0].Certifications)
+	}
+	if len(shows[0].Certifications) != 1 || shows[0].Certifications[0].Value != "TV-14" {
+		t.Fatalf("show certifications = %#v", shows[0].Certifications)
+	}
+}
+
 func TestTMDBShowEnrichmentIsBoundedAndConcurrent(t *testing.T) {
 	var active, maximum int32
 	client := NewTMDB(TMDBConfig{APIKey: "configured"})

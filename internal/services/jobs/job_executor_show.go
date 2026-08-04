@@ -684,6 +684,7 @@ func (e *ShowJobExecutor) evaluateShowsWithDecisions(
 	shows []integrations.Show,
 	jobConfig JobConfig,
 ) ([]integrations.Show, map[int]ScoreInfo, []ContentDecision) {
+	enrichShowCertifications(ctx, e.Config, shows)
 	decisions := make([]ContentDecision, 0, len(shows))
 	passedShows := make([]integrations.Show, 0)
 

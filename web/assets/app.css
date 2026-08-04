@@ -2401,12 +2401,41 @@
 
   .filter-single-range {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .filter-single-range input,
+  .filter-single-range select {
+    width: 100%;
     min-width: 0;
   }
 
-  .filter-single-range input {
-    width: 100%;
-    min-width: 0;
+  #filters-page select {
+    height: 34px;
+    padding: 0 9px;
+    border: 1px solid var(--border-strong);
+    border-radius: 5px;
+    background: var(--canvas);
+    color: var(--text);
+    font-size: 12px;
+  }
+
+  #filters-page select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+    outline: 0;
+  }
+
+  .filter-section-note {
+    grid-column: 2;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.5;
   }
 
   .filter-single-range input { padding-right: 34px; }
@@ -2611,5 +2640,6 @@
     }
 
     .filter-rule-wide { grid-column: auto; }
+    .filter-section-note { grid-column: auto; }
   }
 }

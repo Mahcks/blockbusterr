@@ -178,6 +178,8 @@ function writeRule(rule) {
   chips.get('allowKeywords').setValues(values.allow_keywords || []);
   chips.get('allowNetworks').setValues(values.allow_networks || []);
   chips.get('blockedIds').setValues((rule.media === 'show' ? values.blacklisted_tvdb_ids : values.blacklisted_tmdb_ids) || []);
+  chips.get('allowedCertifications').setValues(values.allowed_certifications || []);
+  chips.get('blockedCertifications').setValues(values.blocked_certifications || []);
 
   document.getElementById('rule-networks-field').classList.toggle('hidden', rule.media !== 'show');
   document.getElementById('rule-required-networks-field').classList.toggle('hidden', rule.media !== 'show');
@@ -191,6 +193,8 @@ function writeRule(rule) {
   set('rule-min-rating', values.min_rating);
   set('rule-min-votes', values.min_votes);
   set('rule-allow-min-rating', values.allow_min_rating);
+  document.getElementById('rule-certification-country').value = values.certification_country || 'US';
+  document.getElementById('rule-unknown-certification').value = values.unknown_certification || 'allow';
 
   const usage = jobsUsing(rule.id);
   document.getElementById('rule-usage-text').textContent = describeUsage(rule, usage.length);
@@ -203,6 +207,7 @@ function writeRule(rule) {
   document.getElementById('delete-rule-set').classList.toggle('hidden', isProtectedRuleSet(rule.id));
   clearFieldError('rule-name-error');
   clearFieldError('rule-boundary-error');
+  clearFieldError('rule-certification-error');
 
   ruleSnapshot = JSON.stringify(readRuleForm());
   updateRuleDirtyState();
@@ -269,6 +274,10 @@ function readRuleForm() {
     blacklisted_max_runtime: num('rule-max-runtime'),
     min_rating: Number(document.getElementById('rule-min-rating').value) || 0,
     min_votes: num('rule-min-votes'),
+    certification_country: document.getElementById('rule-certification-country').value.trim().toUpperCase(),
+    allowed_certifications: chips.get('allowedCertifications').getValues(),
+    blocked_certifications: chips.get('blockedCertifications').getValues(),
+    unknown_certification: document.getElementById('rule-unknown-certification').value,
   };
   const blockedIds = chips.get('blockedIds').getValues();
   if (media === 'show') {
@@ -357,6 +366,8 @@ function applyFieldError(message) {
   const lower = message.toLowerCase();
   if (lower.includes('name') || lower.includes('named')) {
     showFieldError('rule-name-error', message);
+  } else if (lower.includes('certification')) {
+    showFieldError('rule-certification-error', message);
   } else if (lower.includes('year') || lower.includes('runtime') || lower.includes('rating') || lower.includes('negative')) {
     showFieldError('rule-boundary-error', message);
   }
@@ -518,10 +529,12 @@ function buildChipFields() {
   registerChipField('allowKeywords', { normalize: (v) => v.trim(), emptyText: 'No overrides' });
   registerChipField('allowNetworks', { normalize: (v) => v.trim(), emptyText: 'No overrides' });
   registerChipField('blockedIds', { normalize: normalizeID, validate: validateID, emptyText: 'None blocked', numeric: true });
+  registerChipField('allowedCertifications', { normalize: (v) => v.trim().toUpperCase(), emptyText: 'Any rating' });
+  registerChipField('blockedCertifications', { normalize: (v) => v.trim().toUpperCase(), emptyText: 'None blocked' });
   registerChipField('exceptionsAllow', { normalize: normalizeID, validate: validateID, emptyText: 'No allowed titles', numeric: true });
   registerChipField('exceptionsBlock', { normalize: normalizeID, validate: validateID, emptyText: 'No blocked titles', numeric: true });
 
-  ['countries', 'languages', 'blockedCountries', 'blockedLanguages', 'genres', 'keywords', 'networks', 'requiredGenres', 'requiredKeywords', 'requiredNetworks', 'allowCountries', 'allowLanguages', 'allowGenres', 'allowKeywords', 'allowNetworks', 'blockedIds'].forEach((key) => chips.get(key)?.onChange(() => updateRuleDirtyState()));
+  ['countries', 'languages', 'blockedCountries', 'blockedLanguages', 'genres', 'keywords', 'networks', 'requiredGenres', 'requiredKeywords', 'requiredNetworks', 'allowCountries', 'allowLanguages', 'allowGenres', 'allowKeywords', 'allowNetworks', 'blockedIds', 'allowedCertifications', 'blockedCertifications'].forEach((key) => chips.get(key)?.onChange(() => updateRuleDirtyState()));
   ['exceptionsAllow', 'exceptionsBlock'].forEach((key) => chips.get(key)?.onChange(() => updateExceptionsDirtyState()));
 
   document.getElementById('rule-name')?.addEventListener('input', () => clearFieldError('rule-name-error'));

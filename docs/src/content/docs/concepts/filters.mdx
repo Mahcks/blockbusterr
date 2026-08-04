@@ -23,11 +23,12 @@ Blockbusterr evaluates a candidate in this order:
 
 1. Universal title block
 2. Universal title allow
-3. Block rules
-4. Allow overrides
-5. Required matches and boundaries such as year, runtime, rating, and votes
+3. Regional content-rating rules
+4. Block rules
+5. Allow overrides
+6. Required matches and boundaries such as year, runtime, rating, and votes
 
-A universally blocked title is always rejected, while a universally allowed title bypasses the selected rule set. Within a rule set, block rules win over allow overrides. Otherwise, the title must satisfy every configured requirement and boundary.
+A universally blocked title is always rejected, while a universally allowed title bypasses the selected rule set. Within a rule set, content-rating and block rules win over allow overrides. Otherwise, the title must satisfy every configured requirement and boundary.
 
 ## Rule groups
 
@@ -42,6 +43,12 @@ Block countries, languages, genres, keywords, networks, or provider IDs. Keyword
 ### Allow overrides
 
 Allow overrides admit a title that matches a configured country, language, genre, keyword, network, or minimum rating after it clears block rules. Use them sparingly: a matching override bypasses required matches and boundaries.
+
+### Content ratings
+
+Choose a two-letter country, then add allowed or blocked certifications for that region. Movie certifications and TV content ratings are enriched through TMDB only when a rule set uses this feature. If TMDB has multiple ratings for the selected country, any blocked match rejects the title.
+
+Choose an explicit unknown-rating policy. **Allow** preserves v1 behavior when regional metadata is missing; **Reject** fails closed and is recommended for family-focused rules. Preview and Activity identify the country, value, TMDB source, and unknown-rating decision.
 
 ### Boundaries
 

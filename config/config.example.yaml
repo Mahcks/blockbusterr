@@ -113,6 +113,10 @@ rule_sets:
       blacklisted_max_year: 0
       min_rating: 0
       min_votes: 0
+      certification_country: US
+      allowed_certifications: []
+      blocked_certifications: []
+      unknown_certification: allow
 
   - id: default-shows
     name: Default Shows
@@ -142,6 +146,10 @@ rule_sets:
       blacklisted_max_year: 0
       min_rating: 0
       min_votes: 0
+      certification_country: US
+      allowed_certifications: []
+      blocked_certifications: []
+      unknown_certification: allow
 
 # Universal exceptions take precedence over assigned rule sets.
 title_exceptions:

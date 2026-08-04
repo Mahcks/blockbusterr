@@ -53,6 +53,37 @@ func TestMoviePassesFilters_AllowedCountries(t *testing.T) {
 	}
 }
 
+func TestCertificationRules(t *testing.T) {
+	certifications := []integrations.Certification{{Value: "PG-13", Country: "US", Source: "tmdb"}, {Value: "R", Country: "US", Source: "tmdb"}, {Value: "12", Country: "GB", Source: "tmdb"}}
+	tests := []struct {
+		name        string
+		values      []integrations.Certification
+		country     string
+		allowed     []string
+		blocked     []string
+		unknown     string
+		wantPassed  bool
+		wantMessage string
+	}{
+		{name: "allowed", values: certifications[:1], country: "US", allowed: []string{"PG-13"}, unknown: "reject", wantPassed: true, wantMessage: "US certification PG-13 is allowed (TMDB)"},
+		{name: "blocked wins across multiple releases", values: certifications, country: "US", allowed: []string{"PG-13"}, blocked: []string{"R"}, unknown: "allow", wantMessage: "US certification R is blocked (TMDB)"},
+		{name: "unknown allowed", country: "US", allowed: []string{"PG"}, unknown: "allow", wantPassed: true, wantMessage: "TMDB has no US certification; unknown ratings are allowed"},
+		{name: "unknown rejected", country: "US", allowed: []string{"PG"}, unknown: "reject", wantMessage: "TMDB has no US certification; unknown ratings are rejected"},
+		{name: "wrong region is unknown", values: certifications[2:], country: "US", allowed: []string{"12"}, unknown: "reject", wantMessage: "TMDB has no US certification; unknown ratings are rejected"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			movie := integrations.Movie{IDs: integrations.IDs{TMDB: 1}, Certifications: test.values}
+			movieResult := MoviePassesRules(movie, config.MovieFilters{CertificationCountry: test.country, AllowedCertifications: test.allowed, BlockedCertifications: test.blocked, UnknownCertification: test.unknown}, config.TitleExceptions{})
+			show := integrations.Show{IDs: integrations.IDs{TVDB: 1}, Certifications: test.values}
+			showResult := ShowPassesRules(show, config.ShowFilters{CertificationCountry: test.country, AllowedCertifications: test.allowed, BlockedCertifications: test.blocked, UnknownCertification: test.unknown}, config.TitleExceptions{})
+			if movieResult.Passed != test.wantPassed || showResult.Passed != test.wantPassed || len(movieResult.Checks) == 0 || movieResult.Checks[0].Message != test.wantMessage || showResult.Checks[0].Message != test.wantMessage {
+				t.Fatalf("movie=%#v show=%#v", movieResult, showResult)
+			}
+		})
+	}
+}
+
 func TestTitleExceptionPrecedence(t *testing.T) {
 	movie := integrations.Movie{Title: "Example", Country: "us", IDs: integrations.IDs{TMDB: 42}}
 	rules := config.MovieFilters{AllowedCountries: []string{"gb"}}

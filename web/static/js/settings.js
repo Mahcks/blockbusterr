@@ -241,7 +241,6 @@ function applyPreset(event) {
   document.getElementById('rating-weight').value = preset.rating;
   document.getElementById('popularity-weight').value = preset.popularity;
   document.getElementById('recency-weight').value = preset.recency;
-  event.target.value = '';
   onFormChange();
 }
 

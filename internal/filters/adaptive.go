@@ -142,8 +142,15 @@ func MoviePassesAdaptiveFilters(
 	adaptiveFilters := filters
 	adaptiveFilters.MinRating = adjustedMinRating
 
+	certification := certificationCheck(movie.Certifications, adaptiveFilters.CertificationCountry, adaptiveFilters.AllowedCertifications, adaptiveFilters.BlockedCertifications, adaptiveFilters.UnknownCertification)
+	if certification != nil && !certification.Passed {
+		return *certification
+	}
 	// Use the existing detailed filter logic
 	result := MoviePassesFiltersDetailed(movie, adaptiveFilters)
+	if certification != nil {
+		result.Checks = append(certification.Checks, result.Checks...)
+	}
 
 	// Update the rating check message to show it was adaptive
 	for i := range result.Checks {
@@ -178,8 +185,15 @@ func ShowPassesAdaptiveFilters(
 	adaptiveFilters := filters
 	adaptiveFilters.MinRating = adjustedMinRating
 
+	certification := certificationCheck(show.Certifications, adaptiveFilters.CertificationCountry, adaptiveFilters.AllowedCertifications, adaptiveFilters.BlockedCertifications, adaptiveFilters.UnknownCertification)
+	if certification != nil && !certification.Passed {
+		return *certification
+	}
 	// Use the existing detailed filter logic
 	result := ShowPassesFiltersDetailed(show, adaptiveFilters)
+	if certification != nil {
+		result.Checks = append(certification.Checks, result.Checks...)
+	}
 
 	// Update the rating check message to show it was adaptive
 	for i := range result.Checks {
