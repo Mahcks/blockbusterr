@@ -55,6 +55,7 @@ jobs:
         run: |
           npm run build --prefix v1/docs
           DOCS_BASE=/v2/ npm run build --prefix v2/docs
+          npm run check:v2-links --prefix v2/docs
           mkdir -p v1/docs/dist/v2
           cp -a v2/docs/dist/. v1/docs/dist/v2/
 

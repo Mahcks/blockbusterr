@@ -1,17 +1,32 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { unified } from '@astrojs/markdown-remark';
 
 const base = process.env.DOCS_BASE || '/';
 const isVersionedPreview = base !== '/';
+const basePath = base.replace(/\/$/, '');
+
+function prefixVersionedLinks() {
+	return (tree) => {
+		const walk = (node) => {
+			if (node.type === 'link' && node.url?.startsWith('/') && !node.url.startsWith('//')) {
+				node.url = `${basePath}${node.url}`;
+			}
+			node.children?.forEach(walk);
+		};
+		walk(tree);
+	};
+}
 
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://blockbusterr.dev',
 	base,
 	redirects: {
-		'/concepts/filters': '/concepts/rules',
+		'/concepts/filters': `${base}concepts/rules/`,
 	},
+	markdown: { processor: unified({ remarkPlugins: [prefixVersionedLinks] }) },
 	integrations: [
 		starlight({
 			title: isVersionedPreview ? 'Blockbusterr v2' : 'Blockbusterr',

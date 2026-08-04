@@ -234,6 +234,6 @@ For more information about TMDB API:
 
 ## Next Steps
 
-- Learn about [Job Previews](/concepts/jobs/#preview-before-enabling)
-- Configure your [first job](/getting-started/quickstart/#step-3-configure-your-first-job)
+- Learn about [Job Previews](/concepts/jobs/#preview-run-and-schedule)
+- Configure your [first pipeline](/getting-started/quickstart/#configure-the-first-pipeline)
 - Explore [other integrations](/integrations/trakt/)
