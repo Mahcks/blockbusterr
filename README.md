@@ -26,7 +26,7 @@ flowchart LR
     C --> E[Jellyseerr / Seerr]
     E --> D
     D --> F[Download client]
-    F --> G[Plex / Jellyfin / Emby]
+    F --> G[Media server, such as Plex / Jellyfin / Emby]
 ```
 
 One discovery provider is enough. Mix providers when you want different jobs to serve different purposes, such as trending movies, a personal watchlist, family-safe shows, or a tightly curated public list.
@@ -55,9 +55,13 @@ Pair Blockbusterr with [Maintainerr](https://github.com/Maintainerr/Maintainerr)
 | Experimental lists | [Letterboxd](https://blockbusterr.dev/v2/integrations/mdblist/) | Public lists only; scraping is opt-in and may break when Letterboxd changes its site |
 | Direct delivery | [Radarr](https://blockbusterr.dev/v2/integrations/radarr/), [Sonarr](https://blockbusterr.dev/v2/integrations/sonarr/) | Movies and shows are added with your selected quality profile, root folder, and monitoring settings |
 | Request delivery | [Jellyseerr and Seerr](https://blockbusterr.dev/v2/integrations/jellyseerr/) | Requests use the configured user or optional request credentials |
-| Media servers | Plex, Jellyfin, Emby | Served downstream through your existing media stack |
+| Downstream playback | Any media server using the Radarr/Sonarr-managed library | Plex, Jellyfin, and Emby are common examples; Blockbusterr does not communicate with media servers directly |
 
 Trakt is optional. Personal Trakt and TMDB watchlists require account authorization; public discovery only needs the provider's application credentials.
+
+Blockbusterr is media-server agnostic. Its delivery boundary is Radarr, Sonarr, Jellyseerr, or Seerr; your existing media stack handles downloading and playback after that.
+
+Want support for another discovery provider, list source, direct delivery target, or request manager? Feature requests and pull requests are always welcome!
 
 ## Quick start
 
