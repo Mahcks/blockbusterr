@@ -14,8 +14,8 @@ body:
       label: Release channel
       description: Select the version family where the problem occurs.
       options:
-        - v2 beta
         - v1 stable
+        - v2 beta
         - Development build
     validations:
       required: true
