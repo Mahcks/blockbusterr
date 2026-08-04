@@ -4,11 +4,11 @@
 
 Blockbusterr follows trends, lists, and watchlists from the providers you already use. It evaluates every movie or show against your rules, ranks the candidates, and sends the winners to Radarr, Sonarr, Jellyseerr, or Seerr.
 
-New here? Start with the **[60-second quick start](https://blockbusterr.dev/getting-started/quickstart/)** or browse the **[complete documentation](https://blockbusterr.dev/)**.
+New here? Start with the **[60-second quick start](https://blockbusterr.dev/v2/getting-started/quickstart/)** or browse the **[complete documentation](https://blockbusterr.dev/v2/)**.
 
 [![GitHub release](https://img.shields.io/github/v/release/Mahcks/blockbusterr)](https://github.com/Mahcks/blockbusterr/releases)
 [![Container](https://img.shields.io/badge/container-ghcr.io-blue)](https://github.com/mahcks/blockbusterr/pkgs/container/blockbusterr)
-[![Documentation](https://img.shields.io/badge/docs-blockbusterr.dev-blue)](https://blockbusterr.dev/)
+[![Documentation](https://img.shields.io/badge/docs-blockbusterr.dev-blue)](https://blockbusterr.dev/v2/)
 [![License](https://img.shields.io/github/license/Mahcks/blockbusterr)](LICENSE)
 [![Discord](https://img.shields.io/discord/1463322126999097386?label=Discord&logo=discord&color=5865F2)](https://discord.com/invite/c8vb3VZqmg)
 
@@ -35,26 +35,26 @@ Pair Blockbusterr with [Maintainerr](https://github.com/Maintainerr/Maintainerr)
 
 ## What v2 gives you
 
-- **[Preview-first jobs](https://blockbusterr.dev/concepts/jobs/#preview-run-and-schedule):** inspect candidates and rule decisions before enabling delivery.
-- **[Reusable rules](https://blockbusterr.dev/concepts/rules/#the-v2-model):** assign a movie or show policy to many jobs, or create a job-specific copy.
-- **[Lists and watchlists](https://blockbusterr.dev/concepts/jobs/#discovery-types):** follow Trakt, TMDB, MDBList, and experimental public Letterboxd sources.
-- **[Recipes and custom jobs](https://blockbusterr.dev/concepts/jobs/#built-in-recipes):** start from a safe built-in recipe or configure the complete discovery flow yourself.
+- **[Preview-first jobs](https://blockbusterr.dev/v2/concepts/jobs/#preview-run-and-schedule):** inspect candidates and rule decisions before enabling delivery.
+- **[Reusable rules](https://blockbusterr.dev/v2/concepts/rules/#the-v2-model):** assign a movie or show policy to many jobs, or create a job-specific copy.
+- **[Lists and watchlists](https://blockbusterr.dev/v2/concepts/jobs/#discovery-types):** follow Trakt, TMDB, MDBList, and experimental public Letterboxd sources.
+- **[Recipes and custom jobs](https://blockbusterr.dev/v2/concepts/jobs/#built-in-recipes):** start from a safe built-in recipe or configure the complete discovery flow yourself.
 - **Explainable automation:** every title has an outcome, reason, score, source, and Job Run.
-- **[Ranked selection](https://blockbusterr.dev/concepts/jobs/#ranked-selection-cycles):** let participating jobs compete for a shared number of movie or show slots.
-- **Delivery safeguards:** combine [delivery budgets](https://blockbusterr.dev/getting-started/configuration/#delivery-budgets), [previews](https://blockbusterr.dev/concepts/jobs/#preview-run-and-schedule), [repeat handling](https://blockbusterr.dev/getting-started/configuration/#repeat-handling), and [title exceptions](https://blockbusterr.dev/concepts/rules/#title-exceptions).
-- **[Two delivery paths](https://blockbusterr.dev/concepts/integration-modes/):** add directly to Radarr and Sonarr, or request through Jellyseerr or Seerr.
-- **[Portable configuration](https://blockbusterr.dev/api/config/#portable-configuration):** export shareable jobs and rules separately from credentialed backups.
+- **[Ranked selection](https://blockbusterr.dev/v2/concepts/jobs/#ranked-selection-cycles):** let participating jobs compete for a shared number of movie or show slots.
+- **Delivery safeguards:** combine [delivery budgets](https://blockbusterr.dev/v2/getting-started/configuration/#delivery-budgets), [previews](https://blockbusterr.dev/v2/concepts/jobs/#preview-run-and-schedule), [repeat handling](https://blockbusterr.dev/v2/getting-started/configuration/#repeat-handling), and [title exceptions](https://blockbusterr.dev/v2/concepts/rules/#title-exceptions).
+- **[Two delivery paths](https://blockbusterr.dev/v2/concepts/integration-modes/):** add directly to Radarr and Sonarr, or request through Jellyseerr or Seerr.
+- **[Portable configuration](https://blockbusterr.dev/v2/api/config/#portable-configuration):** export shareable jobs and rules separately from credentialed backups.
 - **Single-container operation:** local compiled assets, SQLite persistence, optional owner authentication, and no required external database.
 
 ## Supported services
 
 | Role | Services | Notes |
 | --- | --- | --- |
-| Discovery | [TMDB](https://blockbusterr.dev/integrations/tmdb/), [Simkl](https://blockbusterr.dev/integrations/simkl/), [Trakt](https://blockbusterr.dev/integrations/trakt/) | Trending, popular, anticipated, history-based jobs, lists, and watchlists vary by provider |
-| Curated lists | [MDBList](https://blockbusterr.dev/integrations/mdblist/) | Public lists and the API-key owner's watchlist; recommended bridge for imported Letterboxd or IMDb lists |
-| Experimental lists | [Letterboxd](https://blockbusterr.dev/integrations/mdblist/) | Public lists only; scraping is opt-in and may break when Letterboxd changes its site |
-| Direct delivery | [Radarr](https://blockbusterr.dev/integrations/radarr/), [Sonarr](https://blockbusterr.dev/integrations/sonarr/) | Movies and shows are added with your selected quality profile, root folder, and monitoring settings |
-| Request delivery | [Jellyseerr and Seerr](https://blockbusterr.dev/integrations/jellyseerr/) | Requests use the configured user or optional request credentials |
+| Discovery | [TMDB](https://blockbusterr.dev/v2/integrations/tmdb/), [Simkl](https://blockbusterr.dev/v2/integrations/simkl/), [Trakt](https://blockbusterr.dev/v2/integrations/trakt/) | Trending, popular, anticipated, history-based jobs, lists, and watchlists vary by provider |
+| Curated lists | [MDBList](https://blockbusterr.dev/v2/integrations/mdblist/) | Public lists and the API-key owner's watchlist; recommended bridge for imported Letterboxd or IMDb lists |
+| Experimental lists | [Letterboxd](https://blockbusterr.dev/v2/integrations/mdblist/) | Public lists only; scraping is opt-in and may break when Letterboxd changes its site |
+| Direct delivery | [Radarr](https://blockbusterr.dev/v2/integrations/radarr/), [Sonarr](https://blockbusterr.dev/v2/integrations/sonarr/) | Movies and shows are added with your selected quality profile, root folder, and monitoring settings |
+| Request delivery | [Jellyseerr and Seerr](https://blockbusterr.dev/v2/integrations/jellyseerr/) | Requests use the configured user or optional request credentials |
 | Media servers | Plex, Jellyfin, Emby | Served downstream through your existing media stack |
 
 Trakt is optional. Personal Trakt and TMDB watchlists require account authorization; public discovery only needs the provider's application credentials.
@@ -76,7 +76,7 @@ Open `http://localhost:9090`, connect one discovery provider and one delivery ta
 
 Blockbusterr has no login requirement by default. Keep it on a trusted LAN, behind an authenticated reverse proxy or VPN, or set `BLOCKBUSTERR_AUTH_TOKEN` to a random value of at least 32 characters. The username is `blockbusterr`.
 
-[Read the quick start](https://blockbusterr.dev/getting-started/quickstart/) · [Installation options](https://blockbusterr.dev/getting-started/installation/) · [Upgrade from v1](https://blockbusterr.dev/getting-started/upgrading-to-v2/)
+[Read the quick start](https://blockbusterr.dev/v2/getting-started/quickstart/) · [Installation options](https://blockbusterr.dev/v2/getting-started/installation/) · [Upgrade from v1](https://blockbusterr.dev/v2/getting-started/upgrading-to-v2/)
 
 ## See it in use
 
@@ -119,12 +119,12 @@ Removing an item from a source list never deletes media that Blockbusterr alread
 
 ## Documentation
 
-- [Jobs and recipes](https://blockbusterr.dev/concepts/jobs/)
-- [Rules and title exceptions](https://blockbusterr.dev/concepts/rules/)
-- [Integration modes](https://blockbusterr.dev/concepts/integration-modes/)
-- [Configuration reference](https://blockbusterr.dev/getting-started/configuration/)
-- [Real-world examples](https://blockbusterr.dev/examples/use-cases/)
-- [API reference](https://blockbusterr.dev/api/overview/)
+- [Jobs and recipes](https://blockbusterr.dev/v2/concepts/jobs/)
+- [Rules and title exceptions](https://blockbusterr.dev/v2/concepts/rules/)
+- [Integration modes](https://blockbusterr.dev/v2/concepts/integration-modes/)
+- [Configuration reference](https://blockbusterr.dev/v2/getting-started/configuration/)
+- [Real-world examples](https://blockbusterr.dev/v2/examples/use-cases/)
+- [API reference](https://blockbusterr.dev/v2/api/overview/)
 
 ## Development
 

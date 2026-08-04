@@ -2,7 +2,7 @@ name: Deploy Docs to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, release/v2.0.0]
     paths:
       - 'docs/**'
       - '.github/workflows/deploy-docs.yml'
@@ -23,13 +23,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
+          path: v1
+
+      - name: Checkout v2
+        uses: actions/checkout@v4
+        with:
+          ref: release/v2.0.0
+          path: v2
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: docs/package-lock.json
+          cache-dependency-path: |
+            v1/docs/package-lock.json
+            v2/docs/package-lock.json
 
       - name: Setup Pages
         id: pages
@@ -37,18 +48,20 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd docs
-          npm ci
+          npm ci --prefix v1/docs
+          npm ci --prefix v2/docs
 
-      - name: Build with Astro
+      - name: Build v1 and v2 with Astro
         run: |
-          cd docs
-          npm run build
+          npm run build --prefix v1/docs
+          DOCS_BASE=/v2/ npm run build --prefix v2/docs
+          mkdir -p v1/docs/dist/v2
+          cp -a v2/docs/dist/. v1/docs/dist/v2/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs/dist
+          path: ./v1/docs/dist
 
   deploy:
     environment:

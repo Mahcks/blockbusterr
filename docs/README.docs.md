@@ -10,7 +10,7 @@ npm install
 npm run dev
 ```
 
-Visit `http://localhost:4321/blockbusterr/` to view the docs locally.
+Visit `http://localhost:4321/` to view the docs locally.
 
 ## Building
 
@@ -18,13 +18,25 @@ Visit `http://localhost:4321/blockbusterr/` to view the docs locally.
 npm run build
 ```
 
+Build the v2 release-candidate path locally with:
+
+```bash
+DOCS_BASE=/v2/ npm run build
+```
+
 Built files will be in `dist/`.
 
 ## Deployment
 
-Documentation is automatically deployed to GitHub Pages when changes are pushed to the `main` branch.
+Documentation is automatically deployed to GitHub Pages when documentation changes are pushed to `main` or `release/v2.0.0`. The deployment combines both branches:
 
-View live docs at: https://mahcks.github.io/blockbusterr/
+- `/` serves the stable v1 documentation from `main`.
+- `/v2/` serves the release-candidate documentation from `release/v2.0.0`.
+
+When v2 becomes stable, archive the final v1 documentation under `/v1/`, make
+`main` the unversioned v2 source, and redirect `/v2/` to `/`.
+
+View live docs at: https://blockbusterr.dev/
 
 ## Structure
 
@@ -37,7 +49,7 @@ src/content/docs/
 │   └── configuration.md
 ├── concepts/
 │   ├── jobs.md
-│   ├── filters.md
+│   ├── rules.mdx
 │   ├── smart-jobs.md
 │   └── integration-modes.md
 ├── integrations/

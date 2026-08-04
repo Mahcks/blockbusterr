@@ -2,16 +2,19 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
+const base = process.env.DOCS_BASE || '/';
+const isVersionedPreview = base !== '/';
+
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://blockbusterr.dev',
-	base: '/',
+	base,
 	redirects: {
 		'/concepts/filters': '/concepts/rules',
 	},
 	integrations: [
 		starlight({
-			title: 'Blockbusterr',
+			title: isVersionedPreview ? 'Blockbusterr v2' : 'Blockbusterr',
 			description: 'Automate media discovery with reusable rules and observable delivery',
 			tagline: 'Smart content discovery for your media server',
 			
@@ -58,7 +61,7 @@ export default defineConfig({
 			
 			// Edit link (optional - links to GitHub)
 			editLink: {
-				baseUrl: 'https://github.com/mahcks/blockbusterr/edit/main/docs/',
+				baseUrl: `https://github.com/mahcks/blockbusterr/edit/${isVersionedPreview ? 'release/v2.0.0' : 'main'}/docs/`,
 			},
 			
 			// Last updated timestamp
@@ -68,6 +71,13 @@ export default defineConfig({
 			pagination: true,
 			
 			sidebar: [
+				...(isVersionedPreview ? [{
+					label: 'Documentation version',
+					items: [
+						{ label: 'v2 release candidate', link: 'https://blockbusterr.dev/v2/', badge: 'Current' },
+						{ label: 'v1 stable', link: 'https://blockbusterr.dev/' },
+					],
+				}] : []),
 				{
 					label: 'Getting Started',
 					items: [
