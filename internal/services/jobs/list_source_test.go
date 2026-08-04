@@ -114,7 +114,7 @@ func TestListSourceRegistryOnlyReportsConfiguredAdapters(t *testing.T) {
 	}
 	cfg := &config.Config{}
 	cfg.Trakt.ClientID = "configured"
-	if got := AvailableListSources(cfg); len(got) != 1 || got[0] != "fake" {
+	if got := AvailableListSources(cfg); len(got) != 2 || got[0] != "fake" || got[1] != "trakt" {
 		t.Fatalf("configured sources = %v", got)
 	}
 }

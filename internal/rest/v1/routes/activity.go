@@ -179,6 +179,13 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 				"error": "Failed to retrieve activity logs",
 			})
 		}
+		sources := make(map[string]string)
+		for _, job := range gctx.Config().GetAllJobs() {
+			sources[job.ID] = job.Source
+		}
+		for index := range logs {
+			logs[index].Source = sources[logs[index].JobID]
+		}
 
 		// Apply search filter
 		if search != "" {

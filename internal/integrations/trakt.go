@@ -7,12 +7,13 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
 const (
-	TraktAPIBaseURL     = "https://api.trakt.tv"
-	TraktAPIVersion     = "2"
+	TraktAPIBaseURL      = "https://api.trakt.tv"
+	TraktAPIVersion      = "2"
 	TraktDefaultPageSize = 100 // Max items per page for most Trakt endpoints
 )
 
@@ -20,13 +21,22 @@ const (
 type Trakt struct {
 	clientID     string
 	clientSecret string
+	accessToken  string
+	refreshToken string
+	tokenExpires int64
+	onToken      func(TraktToken) error
 	httpClient   *http.Client
+	tokenMu      sync.Mutex
 }
 
 // TraktConfig holds configuration for Trakt client
 type TraktConfig struct {
 	ClientID     string
 	ClientSecret string
+	AccessToken  string
+	RefreshToken string
+	TokenExpires int64
+	OnToken      func(TraktToken) error
 }
 
 // NewTrakt creates a new Trakt API client
@@ -34,6 +44,10 @@ func NewTrakt(config TraktConfig) *Trakt {
 	return &Trakt{
 		clientID:     config.ClientID,
 		clientSecret: config.ClientSecret,
+		accessToken:  config.AccessToken,
+		refreshToken: config.RefreshToken,
+		tokenExpires: config.TokenExpires,
+		onToken:      config.OnToken,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -42,6 +56,11 @@ func NewTrakt(config TraktConfig) *Trakt {
 
 // doRequest performs an HTTP request to the Trakt API
 func (t *Trakt) doRequest(ctx context.Context, method, endpoint string, body io.Reader) (*http.Response, error) {
+	if t.refreshToken != "" && t.tokenExpires > 0 && time.Now().Unix() >= t.tokenExpires-60 {
+		if err := t.refreshAccessToken(ctx); err != nil {
+			return nil, err
+		}
+	}
 	url := fmt.Sprintf("%s%s", TraktAPIBaseURL, endpoint)
 
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
@@ -53,6 +72,9 @@ func (t *Trakt) doRequest(ctx context.Context, method, endpoint string, body io.
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("trakt-api-version", TraktAPIVersion)
 	req.Header.Set("trakt-api-key", t.clientID)
+	if t.accessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+t.accessToken)
+	}
 
 	resp, err := t.httpClient.Do(req)
 	if err != nil {

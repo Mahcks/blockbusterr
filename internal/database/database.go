@@ -23,6 +23,7 @@ type ActivityLog struct {
 	RunID         int64     `json:"run_id,omitempty"`
 	JobID         string    `json:"job_id,omitempty"`
 	JobType       string    `json:"job_type"`
+	Source        string    `json:"source,omitempty"`
 	MediaType     string    `json:"media_type"` // "movie" or "show"
 	Title         string    `json:"title"`
 	Language      string    `json:"language,omitempty"`

@@ -110,9 +110,11 @@
 
     document.getElementById('custom-type')?.addEventListener('change', updateCustomFormFields);
     document.getElementById('custom-source')?.addEventListener('change', updateCustomFormFields);
+	document.getElementById('custom-list-kind')?.addEventListener('change', () => updateListGuidance('custom'));
     document.getElementById('custom-media')?.addEventListener('change', updateCustomRuleSets);
     document.getElementById('modal-type')?.addEventListener('change', onJobTypeChange);
     document.getElementById('modal-source')?.addEventListener('change', updateModalTypeFields);
+	document.getElementById('modal-list-kind')?.addEventListener('change', () => updateListGuidance('modal'));
     document.getElementById('modal-rule-set')?.addEventListener('change', updateRuleSetSummary);
     document.addEventListener('keydown', handleDialogKeyboard);
     document.addEventListener('click', handleJobsAction);
@@ -182,6 +184,7 @@
       'run-job': () => runJobNow(),
       'toggle-job': () => toggleJobEnabled(),
       'export-job': () => exportCurrentJob(),
+	  'inspect-list': () => inspectList(target.dataset.scope, target),
       'delete-current-job': () => deleteCurrentJob()
     };
     if (!actions[target.dataset.action]) return;
@@ -505,6 +508,7 @@
 	  ? 'Simkl attribution will be shown with sourced results.'
 	  : 'Only configured discovery sources are shown.';
 	listContainer.classList.toggle('hidden', selectedType !== 'list');
+	if (selectedType === 'list') updateListGuidance('custom');
 	document.getElementById('custom-create-button').disabled = !sources.length;
 	const customPeriod = document.getElementById('custom-period');
 	if (sourceSelect.value === 'simkl' && selectedType === 'watched') {
@@ -903,6 +907,7 @@
 	  ? (sourceSelect.value === 'simkl' ? 'Simkl attribution will be shown with sourced results.' : 'Only configured discovery sources are shown.')
 	  : 'This job requires a discovery source that is not configured. Change its type or delete it.';
 	listContainer.classList.toggle('hidden', selectedType !== 'list');
+	if (selectedType === 'list') updateListGuidance('modal');
 	const modalPeriod = document.getElementById('modal-period');
 	if (sourceSelect.value === 'simkl' && selectedType === 'watched') {
 	  modalPeriod.innerHTML = '<option value="weekly">Weekly</option><option value="monthly">Monthly</option>';
@@ -994,6 +999,46 @@
     const edit = document.getElementById('edit-job-rules');
     edit.textContent = isJobSpecific ? 'Edit job rules' : 'View selected rules';
     edit.href = rules ? `/filters?ruleSet=${encodeURIComponent(rules.id)}` : '/filters';
+  }
+
+  function updateListGuidance(scope) {
+	const source = document.getElementById(`${scope}-source`)?.value;
+	const kind = document.getElementById(`${scope}-list-kind`)?.value;
+	const owner = document.getElementById(`${scope}-list-owner`);
+	const listID = document.getElementById(`${scope}-list-id`);
+	if (!owner || !listID) return;
+	const watchlist = kind === 'watchlist';
+	const ownerNeeded = source === 'trakt';
+	owner.placeholder = watchlist ? (source === 'trakt' ? 'Blank for connected account, or public username' : 'Connected TMDB account') : (source === 'trakt' ? 'Optional Trakt username' : 'Not needed for TMDB');
+	owner.disabled = !ownerNeeded;
+	if (!ownerNeeded) owner.value = '';
+	listID.placeholder = watchlist ? 'Not needed for watchlists' : 'Provider list ID or slug';
+	listID.required = !watchlist;
+	listID.disabled = watchlist;
+	if (watchlist) listID.value = '';
+  }
+
+  async function inspectList(scope, button) {
+	const source = document.getElementById(`${scope}-source`)?.value;
+	const result = document.getElementById(`${scope}-list-result`);
+	const locator = {
+	  kind: document.getElementById(`${scope}-list-kind`)?.value,
+	  owner: document.getElementById(`${scope}-list-owner`)?.value || '',
+	  list_id: document.getElementById(`${scope}-list-id`)?.value || '',
+	  ordering: document.getElementById(`${scope}-list-ordering`)?.value || 'source'
+	};
+	button.disabled = true;
+	result.textContent = 'Checking source…';
+	try {
+	  const response = await fetch('/v1/jobs/lists/inspect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source, list: locator }) });
+	  const data = await response.json();
+	  if (!response.ok) throw new Error(data.error || 'Could not read source');
+	  result.textContent = `${data.name || capitalize(source)} connected · sample: ${data.movies} movies, ${data.shows} shows`;
+	} catch (error) {
+	  result.textContent = error.message;
+	} finally {
+	  button.disabled = false;
+	}
   }
 
   function describeRuleSet(rules) {

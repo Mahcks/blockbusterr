@@ -6,6 +6,7 @@
 let baselineSnapshot = null;
 let sessionTestResults = {}; // service -> 'connected' | 'failed', session-local only
 let restoreFile = null;
+let tmdbRequestToken = '';
 
 const REQUIRED_PAIR = {
   radarr: ['radarr.url', 'radarr.api_key'],
@@ -569,6 +570,22 @@ function handleSettingsClick(event) {
     testConnection(target.dataset.service, target);
     return;
   }
+  if (action === 'connect-trakt') {
+    connectTraktAccount(target);
+    return;
+  }
+  if (action === 'connect-tmdb') {
+    connectTMDBAccount(target);
+    return;
+  }
+  if (action === 'complete-tmdb') {
+    completeTMDBAccount(target);
+    return;
+  }
+  if (action === 'disconnect-account') {
+    disconnectAccount(target.dataset.provider, target);
+    return;
+  }
   if (action === 'reload-options') {
     loadOptions(target.dataset.service, target.dataset.kind, false);
     return;
@@ -589,6 +606,88 @@ function handleSettingsClick(event) {
   if (action === 'confirm-restore') {
     confirmRestore();
     return;
+  }
+}
+
+async function connectTraktAccount(button) {
+  button.disabled = true;
+  try {
+    const response = await fetch('/v1/auth/trakt/device', { method: 'POST' });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not start Trakt authorization');
+    const panel = document.getElementById('trakt-auth-panel');
+    panel.classList.remove('hidden');
+    panel.querySelector('[data-trakt-auth-url]').href = result.verification_url;
+    panel.querySelector('[data-trakt-user-code]').textContent = result.user_code;
+    pollTraktAccount(result.device_code, Math.max(1, result.interval), Date.now() + result.expires_in * 1000);
+  } catch (error) {
+    window.showNotification?.(error.message, 'error');
+    button.disabled = false;
+  }
+}
+
+async function pollTraktAccount(deviceCode, interval, expiresAt) {
+  if (Date.now() >= expiresAt) {
+    document.querySelector('[data-trakt-auth-status]').textContent = 'Authorization expired. Start again.';
+    return;
+  }
+  const response = await fetch('/v1/auth/trakt/device/poll', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ device_code: deviceCode }) });
+  if (response.ok) {
+    document.querySelector('[data-trakt-auth-status]').textContent = 'Connected. Reloading…';
+    window.location.reload();
+    return;
+  }
+  if (response.status === 400) {
+    window.setTimeout(() => pollTraktAccount(deviceCode, interval, expiresAt), interval * 1000);
+    return;
+  }
+  if (response.status === 429) interval += 1;
+  if (response.status === 429) {
+    window.setTimeout(() => pollTraktAccount(deviceCode, interval, expiresAt), interval * 1000);
+    return;
+  }
+  const result = await response.json().catch(() => ({}));
+  document.querySelector('[data-trakt-auth-status]').textContent = result.error || 'Authorization failed. Start again.';
+}
+
+async function connectTMDBAccount(button) {
+  button.disabled = true;
+  try {
+    const response = await fetch('/v1/auth/tmdb/start', { method: 'POST' });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not start TMDB authorization');
+    tmdbRequestToken = result.request_token;
+    document.getElementById('tmdb-auth-panel').classList.remove('hidden');
+    window.open(result.authorize_url, '_blank', 'noopener');
+  } catch (error) {
+    window.showNotification?.(error.message, 'error');
+    button.disabled = false;
+  }
+}
+
+async function completeTMDBAccount(button) {
+  if (!tmdbRequestToken) return;
+  button.disabled = true;
+  try {
+    const response = await fetch('/v1/auth/tmdb/complete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ request_token: tmdbRequestToken }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'TMDB approval is not complete');
+    window.location.reload();
+  } catch (error) {
+    window.showNotification?.(error.message, 'error');
+    button.disabled = false;
+  }
+}
+
+async function disconnectAccount(provider, button) {
+  button.disabled = true;
+  try {
+    const response = await fetch(`/v1/auth/${encodeURIComponent(provider)}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error(`Could not disconnect ${provider}`);
+    window.location.reload();
+  } catch (error) {
+    window.showNotification?.(error.message, 'error');
+    button.disabled = false;
   }
 }
 

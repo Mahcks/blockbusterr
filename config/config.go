@@ -128,10 +128,15 @@ type Config struct {
 	Trakt struct {
 		ClientID     string `mapstructure:"client_id" json:"client_id" yaml:"client_id"`
 		ClientSecret string `mapstructure:"client_secret" json:"client_secret" yaml:"client_secret"`
+		AccessToken  string `mapstructure:"access_token" json:"-" yaml:"access_token,omitempty"`
+		RefreshToken string `mapstructure:"refresh_token" json:"-" yaml:"refresh_token,omitempty"`
+		TokenExpires int64  `mapstructure:"token_expires" json:"-" yaml:"token_expires,omitempty"`
 	} `mapstructure:"trakt" json:"trakt" yaml:"trakt"`
 
 	TMDB struct {
-		APIKey string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+		APIKey    string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+		SessionID string `mapstructure:"session_id" json:"-" yaml:"session_id,omitempty"`
+		AccountID int    `mapstructure:"account_id" json:"account_id,omitempty" yaml:"account_id,omitempty"`
 	} `mapstructure:"tmdb" json:"tmdb" yaml:"tmdb"`
 
 	Simkl struct {

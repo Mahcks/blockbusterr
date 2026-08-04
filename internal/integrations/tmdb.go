@@ -15,24 +15,31 @@ import (
 
 const (
 	TMDBAPIBaseURL   = "https://api.themoviedb.org/3"
+	TMDBAPIv4BaseURL = "https://api.themoviedb.org/4"
 	TMDBImageBaseURL = "https://image.tmdb.org/t/p/w500"
 )
 
 // TMDB is the client for interacting with TMDB API
 type TMDB struct {
 	apiKey     string
+	sessionID  string
+	accountID  int
 	httpClient *http.Client
 }
 
 // TMDBConfig holds configuration for TMDB client
 type TMDBConfig struct {
-	APIKey string
+	APIKey    string
+	SessionID string
+	AccountID int
 }
 
 // NewTMDB creates a new TMDB API client
 func NewTMDB(config TMDBConfig) *TMDB {
 	return &TMDB{
-		apiKey: config.APIKey,
+		apiKey:    config.APIKey,
+		sessionID: config.SessionID,
+		accountID: config.AccountID,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},

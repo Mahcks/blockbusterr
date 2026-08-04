@@ -582,13 +582,14 @@ async function exportToCSV() {
       return;
     }
 
-		const headers = ['Timestamp', 'Job Type', 'Media Type', 'Title', 'Language', 'Year', 'Score', 'Rank', 'Status', 'Message', 'TMDB ID', 'IMDB ID', 'TVDB ID'];
+		const headers = ['Timestamp', 'Job Type', 'Source', 'Media Type', 'Title', 'Language', 'Year', 'Score', 'Rank', 'Status', 'Message', 'TMDB ID', 'IMDB ID', 'TVDB ID'];
     const csvRows = [headers.join(',')];
     
     logs.forEach(log => {
       const row = [
         log.timestamp,
         log.job_type,
+		log.source || '',
         log.media_type,
         `"${(log.title || '').replace(/"/g, '""')}"`,
 			log.language || '',

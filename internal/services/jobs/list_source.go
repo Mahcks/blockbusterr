@@ -14,8 +14,16 @@ import (
 // ListResult is the provider-neutral output consumed by the existing job pipeline.
 type ListResult struct {
 	Source string
+	Name   string
 	Movies []integrations.Movie
 	Shows  []integrations.Show
+}
+
+type ListInspection struct {
+	Source string `json:"source"`
+	Name   string `json:"name,omitempty"`
+	Movies int    `json:"movies"`
+	Shows  int    `json:"shows"`
 }
 
 type ListSource interface {
@@ -52,6 +60,22 @@ func configuredListSource(cfg *config.Config, provider string) (ListSource, erro
 	return factory(cfg)
 }
 
+func InspectListSource(ctx context.Context, cfg *config.Config, provider string, locator config.ListLocator) (ListInspection, error) {
+	if err := ValidateListLocator(locator); err != nil {
+		return ListInspection{}, err
+	}
+	adapter, err := configuredListSource(cfg, provider)
+	if err != nil {
+		return ListInspection{}, err
+	}
+	result, err := adapter.FetchList(ctx, locator, 5)
+	if err != nil {
+		return ListInspection{}, err
+	}
+	result = normalizeListResult(result)
+	return ListInspection{Source: provider, Name: result.Name, Movies: len(result.Movies), Shows: len(result.Shows)}, nil
+}
+
 func ValidateListLocator(locator config.ListLocator) error {
 	kind := enums.ListKind(locator.Kind)
 	if !kind.Valid() {
@@ -67,9 +91,6 @@ func ValidateListLocator(locator config.ListLocator) error {
 	}
 	if kind == enums.ListKindPublicList && strings.TrimSpace(locator.ListID) == "" && strings.TrimSpace(locator.Slug) == "" {
 		return fmt.Errorf("public lists require a list ID or slug")
-	}
-	if kind == enums.ListKindWatchlist && strings.TrimSpace(locator.Owner) == "" {
-		return fmt.Errorf("watchlists require an owner or member identifier")
 	}
 	return nil
 }

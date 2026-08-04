@@ -8,9 +8,11 @@ version: "2.0.0"
 trakt:
   client_id: ""
   client_secret: ""
+  # User authorization is completed from Settings; tokens are stored here automatically.
 
 tmdb:
   api_key: ""
+  # User authorization is completed from Settings; the session is stored here automatically.
 
 simkl:
   client_id: ""

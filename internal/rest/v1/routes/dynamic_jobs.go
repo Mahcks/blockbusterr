@@ -9,12 +9,30 @@ import (
 	"github.com/google/uuid"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/global"
+	"github.com/mahcks/blockbusterr/internal/integrations"
 	"github.com/mahcks/blockbusterr/internal/services/jobs"
 	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
 // AddDynamicJobsRoutes adds the dynamic job management API endpoints
 func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
+	router.Post("/jobs/lists/inspect", func(c *fiber.Ctx) error {
+		var request struct {
+			Source string             `json:"source"`
+			List   config.ListLocator `json:"list"`
+		}
+		if err := c.BodyParser(&request); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+		}
+		inspection, err := jobs.InspectListSource(c.Context(), gctx.Config(), request.Source, request.List)
+		if err != nil {
+			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(inspection)
+	})
+
+	registerAccountAuthRoutes(router, gctx)
+
 	router.Get("/rule-sets", func(c *fiber.Ctx) error {
 		cfg := gctx.Config()
 		items := make([]fiber.Map, 0, len(cfg.RuleSets))
@@ -481,6 +499,97 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 	})
 }
 
+func registerAccountAuthRoutes(router fiber.Router, gctx global.Context) {
+	router.Post("/auth/trakt/device", func(c *fiber.Ctx) error {
+		cfg := gctx.Config()
+		if cfg.Trakt.ClientID == "" || cfg.Trakt.ClientSecret == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Save the Trakt client ID and secret first"})
+		}
+		code, err := integrations.NewTrakt(integrations.TraktConfig{ClientID: cfg.Trakt.ClientID, ClientSecret: cfg.Trakt.ClientSecret}).StartDeviceAuth(c.Context())
+		if err != nil {
+			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(code)
+	})
+	router.Post("/auth/trakt/device/poll", func(c *fiber.Ctx) error {
+		var request struct {
+			DeviceCode string `json:"device_code"`
+		}
+		if err := c.BodyParser(&request); err != nil || request.DeviceCode == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Device code is required"})
+		}
+		cfg := gctx.Config()
+		token, status, err := integrations.NewTrakt(integrations.TraktConfig{ClientID: cfg.Trakt.ClientID, ClientSecret: cfg.Trakt.ClientSecret}).PollDeviceAuth(c.Context(), request.DeviceCode)
+		if err != nil {
+			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+		}
+		if status != fiber.StatusOK {
+			return c.Status(status).JSON(fiber.Map{"connected": false})
+		}
+		previousAccess, previousRefresh, previousExpiry := cfg.Trakt.AccessToken, cfg.Trakt.RefreshToken, cfg.Trakt.TokenExpires
+		cfg.Trakt.AccessToken, cfg.Trakt.RefreshToken, cfg.Trakt.TokenExpires = token.AccessToken, token.RefreshToken, token.ExpiresAt()
+		if err := cfg.Save(); err != nil {
+			cfg.Trakt.AccessToken, cfg.Trakt.RefreshToken, cfg.Trakt.TokenExpires = previousAccess, previousRefresh, previousExpiry
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"connected": true})
+	})
+	router.Post("/auth/tmdb/start", func(c *fiber.Ctx) error {
+		cfg := gctx.Config()
+		if cfg.TMDB.APIKey == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Save the TMDB API key first"})
+		}
+		token, err := integrations.NewTMDB(integrations.TMDBConfig{APIKey: cfg.TMDB.APIKey}).CreateRequestToken(c.Context())
+		if err != nil {
+			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"request_token": token.RequestToken, "authorize_url": "https://www.themoviedb.org/authenticate/" + token.RequestToken, "expires_at": token.ExpiresAt})
+	})
+	router.Post("/auth/tmdb/complete", func(c *fiber.Ctx) error {
+		var request struct {
+			RequestToken string `json:"request_token"`
+		}
+		if err := c.BodyParser(&request); err != nil || request.RequestToken == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Request token is required"})
+		}
+		cfg := gctx.Config()
+		client := integrations.NewTMDB(integrations.TMDBConfig{APIKey: cfg.TMDB.APIKey})
+		session, err := client.CreateSession(c.Context(), request.RequestToken)
+		if err != nil {
+			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+		}
+		account, err := client.GetAccount(c.Context(), session.SessionID)
+		if err != nil {
+			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+		}
+		previousSession, previousAccount := cfg.TMDB.SessionID, cfg.TMDB.AccountID
+		cfg.TMDB.SessionID, cfg.TMDB.AccountID = session.SessionID, account.ID
+		if err := cfg.Save(); err != nil {
+			cfg.TMDB.SessionID, cfg.TMDB.AccountID = previousSession, previousAccount
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"connected": true, "username": account.Username})
+	})
+	router.Delete("/auth/:provider", func(c *fiber.Ctx) error {
+		cfg := gctx.Config()
+		previousTrakt := cfg.Trakt
+		previousTMDB := cfg.TMDB
+		switch c.Params("provider") {
+		case "trakt":
+			cfg.Trakt.AccessToken, cfg.Trakt.RefreshToken, cfg.Trakt.TokenExpires = "", "", 0
+		case "tmdb":
+			cfg.TMDB.SessionID, cfg.TMDB.AccountID = "", 0
+		default:
+			return c.SendStatus(fiber.StatusNotFound)
+		}
+		if err := cfg.Save(); err != nil {
+			cfg.Trakt, cfg.TMDB = previousTrakt, previousTMDB
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.SendStatus(fiber.StatusNoContent)
+	})
+}
+
 // validateDynamicJob validates a DynamicJob configuration
 func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 	if job.Type == "" {
@@ -531,6 +640,18 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 		}
 		if !slices.Contains(jobs.AvailableListSources(cfg), job.Source) {
 			return fmt.Errorf("%s list adapter is unavailable", job.Source)
+		}
+		if enums.ListKind(job.List.Kind) == enums.ListKindWatchlist {
+			switch job.Source {
+			case "trakt":
+				if cfg.Trakt.AccessToken == "" && job.List.Owner == "" {
+					return fmt.Errorf("connect a Trakt account or provide a public watchlist owner")
+				}
+			case "tmdb":
+				if cfg.TMDB.SessionID == "" || cfg.TMDB.AccountID == 0 {
+					return fmt.Errorf("connect a TMDB account to use its watchlist")
+				}
+			}
 		}
 	} else {
 		if !jobs.SupportsSource(job.Type, job.Source) {

@@ -7,6 +7,12 @@ import { Aside } from '@astrojs/starlight/components';
 
 TMDB provides trending and popular discovery jobs plus poster images. It is optional when another discovery source is configured.
 
+TMDB also supports public mixed-media lists and the connected account's movie
+or TV watchlist. Save the API key first, then use **Connect account** in
+Settings when a personal watchlist job is needed. Public lists do not require
+account authorization. Session credentials stay in the private configuration
+and are excluded from shareable exports.
+
 ## Display Modes
 
 ### Without TMDB (List View)

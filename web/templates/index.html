@@ -74,6 +74,19 @@
                   </div>
                 </div>
               </div>
+              <div class="svc-test-row">
+                {{if .Config.TMDB.SessionID}}
+                <span class="svc-test-result" data-account-status="tmdb">Account connected</span>
+                <button type="button" class="job-secondary-button" data-action="disconnect-account" data-provider="tmdb">Disconnect account</button>
+                {{else}}
+                <button type="button" class="job-secondary-button" data-action="connect-tmdb">Connect account for watchlists</button>
+                <span class="svc-test-result" data-account-status="tmdb">Optional for personal watchlists</span>
+                {{end}}
+              </div>
+              <div id="tmdb-auth-panel" class="job-nested-panel hidden p-3">
+                <p class="svc-help">Approve Blockbusterr in the TMDB tab, then return here.</p>
+                <button type="button" class="job-secondary-button" data-action="complete-tmdb">Complete connection</button>
+              </div>
             </div>
           </details>
 
@@ -130,6 +143,20 @@
               <div class="svc-test-row">
                 <button type="button" class="job-secondary-button" data-action="test-connection" data-service="trakt">Test connection</button>
                 <span class="svc-test-result" data-test-result="trakt"></span>
+              </div>
+              <div class="svc-test-row">
+                {{if .Config.Trakt.AccessToken}}
+                <span class="svc-test-result" data-account-status="trakt">Account connected</span>
+                <button type="button" class="job-secondary-button" data-action="disconnect-account" data-provider="trakt">Disconnect account</button>
+                {{else}}
+                <button type="button" class="job-secondary-button" data-action="connect-trakt">Connect account for watchlists</button>
+                <span class="svc-test-result" data-account-status="trakt">Optional for personal watchlists</span>
+                {{end}}
+              </div>
+              <div id="trakt-auth-panel" class="job-nested-panel hidden p-3">
+                <p class="svc-help">Open <a data-trakt-auth-url target="_blank" rel="noopener" class="svc-doc-link">Trakt activation</a> and enter:</p>
+                <strong data-trakt-user-code></strong>
+                <p class="svc-help" data-trakt-auth-status>Waiting for approval…</p>
               </div>
             </div>
           </details>

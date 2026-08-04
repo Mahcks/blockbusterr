@@ -313,6 +313,10 @@
               </div>
             </div>
             <p class="text-xs text-slate-400">Use provider identifiers, not a copied web URL. Removing an item later never deletes media already delivered.</p>
+            <div class="flex items-center gap-3">
+              <button type="button" class="job-secondary-button" data-action="inspect-list" data-scope="custom">Check source</button>
+              <span id="custom-list-result" class="text-xs text-slate-400" aria-live="polite"></span>
+            </div>
           </div>
 
           <div>
@@ -615,6 +619,10 @@
               </div>
             </div>
             <p class="text-xs text-slate-400">Provider identifiers only. Source-list removals never delete downstream media.</p>
+            <div class="flex items-center gap-3">
+              <button type="button" class="job-secondary-button" data-action="inspect-list" data-scope="modal">Check source</button>
+              <span id="modal-list-result" class="text-xs text-slate-400" aria-live="polite"></span>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
