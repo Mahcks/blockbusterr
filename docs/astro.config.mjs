@@ -32,6 +32,9 @@ export default defineConfig({
 			title: isVersionedPreview ? 'Blockbusterr v2' : 'Blockbusterr',
 			description: 'Automate media discovery with reusable rules and observable delivery',
 			tagline: 'Smart content discovery for your media server',
+			components: {
+				SiteTitle: './src/components/VersionedSiteTitle.astro',
+			},
 			
 			// Logo (optional - add logo file to public/)
 			// logo: {
@@ -86,13 +89,6 @@ export default defineConfig({
 			pagination: true,
 			
 			sidebar: [
-				...(isVersionedPreview ? [{
-					label: 'Documentation version',
-					items: [
-						{ label: 'v2 release candidate', link: 'https://blockbusterr.dev/v2/', badge: 'Current' },
-						{ label: 'v1 stable', link: 'https://blockbusterr.dev/' },
-					],
-				}] : []),
 				{
 					label: 'Getting Started',
 					items: [
@@ -121,10 +117,10 @@ export default defineConfig({
 				{
 					label: 'Integrations',
 					items: [
-						{ label: 'Trakt', slug: 'integrations/trakt' },
 						{ label: 'Radarr', slug: 'integrations/radarr' },
 						{ label: 'Sonarr', slug: 'integrations/sonarr' },
-						{ label: 'Jellyseerr', slug: 'integrations/jellyseerr' },
+						{ label: 'Jellyseerr / Seerr', slug: 'integrations/jellyseerr' },
+						{ label: 'Trakt (Optional)', slug: 'integrations/trakt' },
 						{ label: 'TMDB (Optional)', slug: 'integrations/tmdb' },
 						{ label: 'Simkl (Optional)', slug: 'integrations/simkl' },
 						{ label: 'MDBList (Optional)', slug: 'integrations/mdblist' },
