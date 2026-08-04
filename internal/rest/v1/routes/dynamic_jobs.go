@@ -10,6 +10,7 @@ import (
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/services/jobs"
+	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
 // AddDynamicJobsRoutes adds the dynamic job management API endpoints
@@ -170,7 +171,7 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 		if cfg.Simkl.ClientID != "" {
 			providers = append(providers, "simkl")
 		}
-		return c.JSON(jobs.GetAvailableJobTypes(providers))
+		return c.JSON(jobs.GetAvailableJobTypes(providers, jobs.AvailableListSources(cfg)))
 	})
 
 	// Get all pre-configured job templates
@@ -390,7 +391,11 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 				"error": "Job is disabled",
 			})
 		}
-		if !jobs.IsProviderConfigured(cfg, targetJob.Source) {
+		sourceReady := jobs.IsProviderConfigured(cfg, targetJob.Source)
+		if targetJob.Type == string(enums.JobTypeList) {
+			sourceReady = slices.Contains(jobs.AvailableListSources(cfg), targetJob.Source)
+		}
+		if !sourceReady {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 				"error": fmt.Sprintf("%s is not configured", targetJob.Source),
 			})
@@ -517,14 +522,26 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 	if !jobs.SupportsMediaType(job.Type, job.MediaType) {
 		return fmt.Errorf("%s jobs do not support media type '%s'", job.Type, job.MediaType)
 	}
-	if !jobs.SupportsSource(job.Type, job.Source) {
-		return fmt.Errorf("%s jobs do not support the %s source", job.Type, job.Source)
-	}
-	if !jobs.IsProviderConfigured(cfg, job.Source) {
-		return fmt.Errorf("%s is not configured", job.Source)
-	}
-	if job.Source == "simkl" && job.Limit > 500 {
-		return fmt.Errorf("simkl jobs cannot exceed 500 items")
+	if job.Type == string(enums.JobTypeList) {
+		if job.List == nil {
+			return fmt.Errorf("list locator is required")
+		}
+		if err := jobs.ValidateListLocator(*job.List); err != nil {
+			return err
+		}
+		if !slices.Contains(jobs.AvailableListSources(cfg), job.Source) {
+			return fmt.Errorf("%s list adapter is unavailable", job.Source)
+		}
+	} else {
+		if !jobs.SupportsSource(job.Type, job.Source) {
+			return fmt.Errorf("%s jobs do not support the %s source", job.Type, job.Source)
+		}
+		if !jobs.IsProviderConfigured(cfg, job.Source) {
+			return fmt.Errorf("%s is not configured", job.Source)
+		}
+		if job.Source == "simkl" && job.Limit > 500 {
+			return fmt.Errorf("simkl jobs cannot exceed 500 items")
+		}
 	}
 
 	// Check period requirement

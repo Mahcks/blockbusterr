@@ -68,7 +68,8 @@
       played: 'play',
       anticipated: 'clock-3',
       box_office: 'ticket',
-      smart_popular: 'brain'
+      smart_popular: 'brain',
+      list: 'list'
     };
     const iconName = iconNames[type] || iconNames.popular;
     return `<i data-lucide="${iconName}" class="${cls}"></i>`;
@@ -83,7 +84,8 @@
     'played': { color: 'text-blue-400' },
     'anticipated': { color: 'text-purple-400' },
     'box_office': { color: 'text-green-400' },
-    'smart_popular': { color: 'text-indigo-400' }
+    'smart_popular': { color: 'text-indigo-400' },
+    'list': { color: 'text-emerald-400' }
   };
 
   // Initialize
@@ -469,8 +471,8 @@
 
     // Populate job type dropdown
     const typeSelect = document.getElementById('custom-type');
-    typeSelect.innerHTML = Object.entries(jobTypes).filter(([, def]) => def.sources?.length).map(([key, def]) => {
-      return `<option value="${key}">${def.name}</option>`;
+    typeSelect.innerHTML = Object.entries(jobTypes).map(([key, def]) => {
+      return `<option value="${key}">${def.name}${def.sources?.length ? '' : ' (unavailable)'}</option>`;
     }).join('');
 
     // Trigger initial field update
@@ -485,18 +487,25 @@
     const descriptionEl = document.getElementById('custom-type-description');
     const limitInput = document.getElementById('custom-limit');
 	const sourceSelect = document.getElementById('custom-source');
+	const listContainer = document.getElementById('custom-list-container');
 
     const selectedType = typeSelect.value;
     const typeDef = jobTypes[selectedType];
 
     if (!typeDef) return;
 	const currentSource = sourceSelect.value;
-	const sources = typeDef.sources || [typeDef.source || 'trakt'];
-	sourceSelect.innerHTML = sources.map(source => `<option value="${source}">${source === 'tmdb' ? 'TMDB' : capitalize(source)}</option>`).join('');
+	const sources = typeDef.sources || [];
+	const knownSources = typeDef.known_sources || sources;
+	sourceSelect.innerHTML = knownSources.map(source => `<option value="${source}" ${sources.includes(source) ? '' : 'disabled'}>${source === 'tmdb' ? 'TMDB' : capitalize(source)}${sources.includes(source) ? '' : ' — unavailable'}</option>`).join('');
+	if (!sources.length) sourceSelect.insertAdjacentHTML('afterbegin', '<option value="" selected>No configured source available</option>');
 	if (sources.includes(currentSource)) sourceSelect.value = currentSource;
-	document.getElementById('custom-source-help').textContent = sourceSelect.value === 'simkl'
+	document.getElementById('custom-source-help').textContent = !sources.length
+	  ? (selectedType === 'list' ? 'List providers become selectable when Blockbusterr supports them and their settings are configured.' : 'Configure a supported discovery source in Settings to create this job.')
+	  : sourceSelect.value === 'simkl'
 	  ? 'Simkl attribution will be shown with sourced results.'
 	  : 'Only configured discovery sources are shown.';
+	listContainer.classList.toggle('hidden', selectedType !== 'list');
+	document.getElementById('custom-create-button').disabled = !sources.length;
 	const customPeriod = document.getElementById('custom-period');
 	if (sourceSelect.value === 'simkl' && selectedType === 'watched') {
 	  customPeriod.innerHTML = '<option value="weekly">Weekly</option><option value="monthly">Monthly</option>';
@@ -587,6 +596,14 @@
 		  source: formData.get('source') || 'trakt',
           rule_set_id: formData.get('rule_set_id')
         };
+		if (selectedType === 'list') {
+		  job.list = {
+			kind: formData.get('list_kind'),
+			owner: formData.get('list_owner'),
+			list_id: formData.get('list_id'),
+			ordering: formData.get('list_ordering')
+		  };
+		}
 
         // Add period if required
         if (typeDef?.requires_period) {
@@ -757,6 +774,10 @@
     document.getElementById('modal-interval').value = job.sync_interval || '';
     document.getElementById('modal-mode').value = job.mode || '';
     document.getElementById('modal-source').value = job.source || 'trakt';
+	document.getElementById('modal-list-kind').value = job.list?.kind || 'public_list';
+	document.getElementById('modal-list-ordering').value = job.list?.ordering || 'source';
+	document.getElementById('modal-list-owner').value = job.list?.owner || '';
+	document.getElementById('modal-list-id').value = job.list?.list_id || job.list?.slug || '';
 
     // Populate job type dropdown
     const typeSelect = document.getElementById('modal-type');
@@ -866,18 +887,22 @@
     const periodContainer = document.getElementById('modal-period-container');
     const smartContainer = document.getElementById('modal-smart-container');
 	const sourceSelect = document.getElementById('modal-source');
+	const listContainer = document.getElementById('modal-list-container');
 
     const selectedType = typeSelect.value;
     const typeDef = jobTypes[selectedType];
 
     if (!typeDef) return;
 	const currentSource = sourceSelect.value || currentJob?.source || 'trakt';
-	const sources = typeDef.sources || [typeDef.source || 'trakt'];
-	sourceSelect.innerHTML = sources.map(source => `<option value="${source}">${source === 'tmdb' ? 'TMDB' : capitalize(source)}</option>`).join('');
+	const sources = typeDef.sources || [];
+	const knownSources = typeDef.known_sources || sources;
+	sourceSelect.innerHTML = knownSources.map(source => `<option value="${source}" ${sources.includes(source) || source === currentSource ? '' : 'disabled'}>${source === 'tmdb' ? 'TMDB' : capitalize(source)}${sources.includes(source) ? '' : ' — unavailable'}</option>`).join('');
 	if (sources.includes(currentSource)) sourceSelect.value = currentSource;
+	else if (knownSources.includes(currentSource)) sourceSelect.value = currentSource;
 	document.getElementById('modal-source-help').textContent = sources.length
 	  ? (sourceSelect.value === 'simkl' ? 'Simkl attribution will be shown with sourced results.' : 'Only configured discovery sources are shown.')
 	  : 'This job requires a discovery source that is not configured. Change its type or delete it.';
+	listContainer.classList.toggle('hidden', selectedType !== 'list');
 	const modalPeriod = document.getElementById('modal-period');
 	if (sourceSelect.value === 'simkl' && selectedType === 'watched') {
 	  modalPeriod.innerHTML = '<option value="weekly">Weekly</option><option value="monthly">Monthly</option>';
@@ -1102,6 +1127,12 @@
     };
     updatedJob.rule_set_id = document.getElementById('modal-rule-set').value;
     updatedJob.use_custom_filters = false;
+	updatedJob.list = selectedType === 'list' ? {
+	  kind: document.getElementById('modal-list-kind').value,
+	  owner: document.getElementById('modal-list-owner').value,
+	  list_id: document.getElementById('modal-list-id').value,
+	  ordering: document.getElementById('modal-list-ordering').value
+	} : null;
 
     // Add period if applicable
     if (typeDef?.requires_period) {

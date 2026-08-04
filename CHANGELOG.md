@@ -16,6 +16,7 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 - Automatic migration of legacy jobs and embedded custom filters.
 - Enforced per-job and global delivery budgets with rolling movie/show periods.
 - Versioned portable job bundles that include their reusable rules and import disabled with fresh IDs.
+- A typed list/watchlist job contract that reuses the existing preview, rules, Activity, and delivery pipeline.
 
 ### Changed
 

@@ -21,6 +21,7 @@ type MovieJobExecutor struct {
 	DryRun        bool
 	lastDecisions *JobRunDecisions // Store last run decisions for API access
 	currentRunID  int64
+	discovery     *DiscoveryClient
 }
 
 // Execute runs a movie job with the given configuration and fetcher function
@@ -46,10 +47,14 @@ func (e *MovieJobExecutor) Execute(
 		}
 	}
 
-	discoveryClient, err := NewDiscoveryClient(e.Config, jobConfig.Source)
-	if err != nil {
-		log.Errorf("Failed to configure discovery source for %s: %v", jobLabel, err)
-		return err
+	discoveryClient := e.discovery
+	if discoveryClient == nil {
+		var err error
+		discoveryClient, err = NewDiscoveryClient(e.Config, jobConfig.Source)
+		if err != nil {
+			log.Errorf("Failed to configure discovery source for %s: %v", jobLabel, err)
+			return err
+		}
 	}
 
 	// Fetch movies using the provided fetcher

@@ -14,6 +14,10 @@ import (
 
 // PreviewDynamicJob uses the same provider selection and fetchers as job execution.
 func PreviewDynamicJob(cfg *config.Config, db *database.Database, job config.DynamicJob) (PreviewResponse, error) {
+	return previewDynamicJob(cfg, db, job, nil)
+}
+
+func previewDynamicJob(cfg *config.Config, db *database.Database, job config.DynamicJob, listSources ListSourceRegistry) (PreviewResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -30,14 +34,14 @@ func PreviewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 	}
 	mode := DetermineMode(job.Mode, cfg.Jobs.Mode)
 	response := PreviewResponse{JobName: job.Name, Source: job.Source, MediaType: job.MediaType, Mode: mode, HasPosters: hasTMDBConfigured(cfg), Items: []PreviewItem{}}
-	executor := &DynamicJobExecutor{Config: cfg, Database: db, DryRun: true}
-	discovery, err := NewDiscoveryClient(cfg, job.Source)
+	executor := &DynamicJobExecutor{Config: cfg, Database: db, DryRun: true, ListSources: listSources}
+	discovery, err := executor.discoveryForJob(job)
 	if err != nil {
 		return response, err
 	}
 
 	if job.MediaType == "movie" {
-		fetcher := executor.getMovieFetcher(job.Type)
+		fetcher := executor.getMovieFetcher(job)
 		if fetcher == nil {
 			return response, fmt.Errorf("no movie fetcher for job type: %s", job.Type)
 		}
@@ -52,7 +56,7 @@ func PreviewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 		return response, nil
 	}
 
-	fetcher := executor.getShowFetcher(job.Type)
+	fetcher := executor.getShowFetcher(job)
 	if fetcher == nil {
 		return response, fmt.Errorf("no show fetcher for job type: %s", job.Type)
 	}

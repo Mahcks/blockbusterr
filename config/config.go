@@ -89,6 +89,15 @@ type TitleExceptions struct {
 	BlockedShowTVDBIDs  []int `mapstructure:"blocked_show_tvdb_ids" json:"blocked_show_tvdb_ids" yaml:"blocked_show_tvdb_ids,omitempty"`
 }
 
+// ListLocator identifies a provider-owned list without storing an arbitrary URL.
+type ListLocator struct {
+	Kind     string `mapstructure:"kind" json:"kind" yaml:"kind"`
+	Owner    string `mapstructure:"owner" json:"owner,omitempty" yaml:"owner,omitempty"`
+	ListID   string `mapstructure:"list_id" json:"list_id,omitempty" yaml:"list_id,omitempty"`
+	Slug     string `mapstructure:"slug" json:"slug,omitempty" yaml:"slug,omitempty"`
+	Ordering string `mapstructure:"ordering" json:"ordering,omitempty" yaml:"ordering,omitempty"`
+}
+
 // DynamicJob represents a user-defined job instance that can be created, modified, and deleted
 type DynamicJob struct {
 	ID                  string       `mapstructure:"id" json:"id" yaml:"id"`
@@ -109,6 +118,7 @@ type DynamicJob struct {
 	UseCustomFilters    bool         `mapstructure:"use_custom_filters" json:"use_custom_filters" yaml:"use_custom_filters,omitempty"`
 	Filters             FilterConfig `mapstructure:"filters" json:"filters" yaml:"filters,omitempty"`
 	RuleSetID           string       `mapstructure:"rule_set_id" json:"rule_set_id" yaml:"rule_set_id,omitempty"`
+	List                *ListLocator `mapstructure:"list" json:"list,omitempty" yaml:"list,omitempty"`
 }
 
 // Config represents the application configuration

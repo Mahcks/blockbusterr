@@ -33,8 +33,14 @@ The UI only offers providers supported by the chosen job type. A provider must b
 | Anticipated | Upcoming anticipated releases |
 | Box office | Current movie box-office discovery |
 | Smart Popular | Popularity with an adaptive rating threshold |
+| List or Watchlist | A provider-owned public list or personal watchlist |
 
 Support varies by provider and media type; the Jobs editor is the source of truth for valid combinations.
+
+List jobs store a provider owner, list ID, or slug rather than an arbitrary web
+URL. They use the same preview, rules, scoring, duplicate checks, Activity
+Entries, and delivery limits as every other job. Removing an item from the
+source list never deletes media that Blockbusterr already delivered.
 
 ## Job settings
 

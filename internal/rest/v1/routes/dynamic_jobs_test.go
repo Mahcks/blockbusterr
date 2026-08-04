@@ -40,6 +40,7 @@ func TestValidateDynamicJobSources(t *testing.T) {
 		{name: "Simkl yearly unsupported", job: config.DynamicJob{Name: "Watched", Type: "watched", Source: "simkl", MediaType: "movie", Limit: 50, Period: "yearly"}, wantErr: true},
 		{name: "Simkl limit", job: config.DynamicJob{Name: "Trending", Type: "trending", Source: "simkl", MediaType: "movie", Limit: 501}, wantErr: true},
 		{name: "Negative delivery limit", job: config.DynamicJob{Name: "Trending", Type: "trending", Source: "tmdb", MediaType: "movie", Limit: 50, DeliveryLimit: -1}, wantErr: true},
+		{name: "List URL rejected", job: config.DynamicJob{Name: "Unsafe", Type: "list", Source: "trakt", MediaType: "movie", Limit: 50, List: &config.ListLocator{Kind: "public_list", ListID: "https://example.com/list"}}, wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

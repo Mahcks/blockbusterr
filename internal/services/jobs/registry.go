@@ -1,6 +1,10 @@
 package jobs
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/mahcks/blockbusterr/pkg/enums"
+)
 
 // JobTypeDefinition describes a job type that can be instantiated as a DynamicJob
 type JobTypeDefinition struct {
@@ -9,6 +13,7 @@ type JobTypeDefinition struct {
 	Description    string   `json:"description"`     // UI description
 	Source         string   `json:"source"`          // Data source: "trakt", "tmdb", etc.
 	Sources        []string `json:"sources"`         // Supported discovery sources.
+	KnownSources   []string `json:"known_sources"`   // Sources shown disabled until their adapter is available.
 	SupportedMedia []string `json:"supported_media"` // ["movie"], ["show"], or ["movie", "show"]
 	RequiresPeriod bool     `json:"requires_period"` // Whether this job type uses period parameter
 	IsSmartJob     bool     `json:"is_smart_job"`    // Whether this is a smart job with adaptive filters
@@ -20,6 +25,16 @@ type JobTypeDefinition struct {
 // Note: MaxLimit is set high (1000) for most types since Trakt supports pagination.
 // Box Office is limited to 10 as that's all Trakt returns for that endpoint.
 var JobTypeRegistry = map[string]JobTypeDefinition{
+	string(enums.JobTypeList): {
+		Type:           string(enums.JobTypeList),
+		Name:           "List or Watchlist",
+		Description:    "Discover content from a provider list or personal watchlist",
+		Sources:        []string{"trakt", "tmdb", "letterboxd", "mdblist"},
+		KnownSources:   []string{"trakt", "tmdb", "letterboxd", "mdblist"},
+		SupportedMedia: []string{"movie", "show"},
+		DefaultLimit:   100,
+		MaxLimit:       1000,
+	},
 	"trending": {
 		Type:           "trending",
 		Name:           "Trending",
@@ -293,11 +308,18 @@ func SupportsMediaType(jobType, mediaType string) bool {
 
 // GetAvailableJobTypes limits each definition to configured providers. Empty
 // definitions are retained so existing jobs remain understandable in the UI.
-func GetAvailableJobTypes(providers []string) map[string]JobTypeDefinition {
+func GetAvailableJobTypes(providers, listProviders []string) map[string]JobTypeDefinition {
 	definitions := make(map[string]JobTypeDefinition, len(JobTypeRegistry))
 	for jobType, definition := range JobTypeRegistry {
+		if len(definition.KnownSources) == 0 {
+			definition.KnownSources = slices.Clone(definition.Sources)
+		}
+		available := providers
+		if jobType == string(enums.JobTypeList) {
+			available = listProviders
+		}
 		definition.Sources = slices.DeleteFunc(slices.Clone(definition.Sources), func(source string) bool {
-			return !slices.Contains(providers, source)
+			return !slices.Contains(available, source)
 		})
 		definitions[jobType] = definition
 	}

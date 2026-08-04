@@ -15,6 +15,11 @@ type DiscoveryClient struct {
 	trakt    *integrations.Trakt
 	tmdb     *integrations.TMDB
 	simkl    *integrations.Simkl
+	list     ListSource
+}
+
+func newListDiscoveryClient(source string, adapter ListSource) *DiscoveryClient {
+	return &DiscoveryClient{provider: enums.DiscoveryProvider(source), list: adapter}
 }
 
 func NewDiscoveryClient(cfg *config.Config, source string) (*DiscoveryClient, error) {
@@ -56,6 +61,33 @@ func IsProviderConfigured(cfg *config.Config, source string) bool {
 }
 
 func (d *DiscoveryClient) Source() string { return string(d.provider) }
+
+func (d *DiscoveryClient) GetListMovies(ctx context.Context, locator config.ListLocator, limit int) ([]integrations.Movie, error) {
+	result, err := d.getList(ctx, locator, limit)
+	return result.Movies, err
+}
+
+func (d *DiscoveryClient) GetListShows(ctx context.Context, locator config.ListLocator, limit int) ([]integrations.Show, error) {
+	result, err := d.getList(ctx, locator, limit)
+	return result.Shows, err
+}
+
+func (d *DiscoveryClient) getList(ctx context.Context, locator config.ListLocator, limit int) (ListResult, error) {
+	if err := ValidateListLocator(locator); err != nil {
+		return ListResult{}, err
+	}
+	if d.list == nil {
+		return ListResult{}, fmt.Errorf("%s list adapter is unavailable", d.provider)
+	}
+	result, err := d.list.FetchList(ctx, locator, limit)
+	if err != nil {
+		return ListResult{}, err
+	}
+	if result.Source == "" {
+		result.Source = d.Source()
+	}
+	return normalizeListResult(result), nil
+}
 
 func unsupported(provider enums.DiscoveryProvider, jobType string) error {
 	return fmt.Errorf("%s does not support %s jobs", provider, jobType)
