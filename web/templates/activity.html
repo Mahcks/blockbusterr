@@ -241,8 +241,8 @@
   <!-- Clear Logs Modal -->
   <div id="clearLogsModal" class="job-dialog hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="clear-logs-title">
     <div class="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl border border-slate-700">
-      <h3 id="clear-logs-title" class="mb-4 text-xl font-semibold text-red-400">Clear Old Activity Logs</h3>
-      <p class="text-slate-300 mb-4">This will permanently delete activity logs older than the selected time period.</p>
+      <h3 id="clear-logs-title" class="mb-2 text-xl font-semibold text-red-400">Clear activity history</h3>
+      <p class="mb-4 text-sm text-slate-300">Delete old Activity Entries, or permanently clear all Activity Entries, Job Runs, and ranked-selection history.</p>
       <div class="mb-6">
         <label class="block text-sm font-medium mb-2">Delete logs older than:</label>
         <select id="clearLogsDays" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2">
@@ -251,14 +251,20 @@
           <option value="30" selected>30 days</option>
           <option value="60">60 days</option>
           <option value="90">90 days</option>
+          <option value="all">All history</option>
         </select>
+      </div>
+      <div id="clearAllConfirmation" class="mb-6 hidden rounded-md border border-red-900/70 bg-red-950/30 p-3">
+        <p class="mb-3 text-sm text-red-200">This also erases delivery memory. Removed titles may become eligible to be added again.</p>
+        <label for="clearLogsConfirmation" class="mb-2 block text-sm font-medium text-slate-200">Type <strong>CLEAR</strong> to confirm</label>
+        <input id="clearLogsConfirmation" type="text" autocomplete="off" class="w-full rounded-md border border-red-900 bg-zinc-950 px-3 py-2 text-sm" />
       </div>
       <div class="flex gap-3">
         <button data-action="close-clear-logs" class="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
           Cancel
         </button>
-        <button data-action="clear-logs" class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
-          Clear Logs
+        <button id="clearLogsButton" data-action="clear-logs" class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors">
+          Clear history
         </button>
       </div>
     </div>

@@ -764,6 +764,29 @@ func (d *Database) ClearOldLogs(daysToKeep int) (int64, error) {
 	return result.RowsAffected()
 }
 
+// ClearActivityHistory removes Activity Entries, Job Runs, and ranked-selection history.
+func (d *Database) ClearActivityHistory() (int64, error) {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var count int64
+	for _, table := range []string{"activity_logs", "job_runs", "selection_cycle_items", "selection_cycles"} {
+		result, err := tx.Exec("DELETE FROM " + table)
+		if err != nil {
+			return 0, err
+		}
+		rows, err := result.RowsAffected()
+		if err != nil {
+			return 0, err
+		}
+		count += rows
+	}
+	return count, tx.Commit()
+}
+
 // GetActivityLogByID retrieves a single activity log entry by ID
 func (d *Database) GetActivityLogByID(id int64) (*ActivityLog, error) {
 	if err := d.ensureActivityIdentityColumns(); err != nil {

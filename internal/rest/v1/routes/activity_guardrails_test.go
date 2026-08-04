@@ -48,6 +48,34 @@ func TestActivityLogsRejectsInvalidStatusFilter(t *testing.T) {
 	}
 }
 
+func TestClearAllActivityHistoryRequiresConfirmationAndClearsRuns(t *testing.T) {
+	t.Parallel()
+
+	app, db := setupActivityTestApp(t)
+	if err := db.LogActivity(database.ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "movie", Title: "Test", Status: "skipped"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.StartJobRun("job-a", "Job A", "movie", "direct", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := app.Test(httptest.NewRequest("DELETE", "/v1/activity/logs?scope=all", nil), -1)
+	if err != nil || resp.StatusCode != fiber.StatusBadRequest {
+		t.Fatalf("unconfirmed clear status = %d, error = %v", resp.StatusCode, err)
+	}
+	resp, err = app.Test(httptest.NewRequest("DELETE", "/v1/activity/logs?scope=all&confirm=CLEAR", nil), -1)
+	if err != nil || resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("confirmed clear status = %d, error = %v", resp.StatusCode, err)
+	}
+	if runs, err := db.GetRecentJobRuns(10, ""); err != nil || len(runs) != 0 {
+		t.Fatalf("remaining runs = %d, error = %v", len(runs), err)
+	}
+	stats, err := db.GetActivityStats()
+	if err != nil || stats["total_skipped"] != 0 {
+		t.Fatalf("activity stats after clear = %#v, error = %v", stats, err)
+	}
+}
+
 func TestActivityBlockWritesUniversalTitleException(t *testing.T) {
 	db, err := database.New(t.TempDir())
 	if err != nil {

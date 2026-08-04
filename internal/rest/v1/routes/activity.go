@@ -511,6 +511,17 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			})
 		}
 
+		if c.Query("scope") == "all" {
+			if c.Query("confirm") != "CLEAR" {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Type CLEAR to confirm deletion"})
+			}
+			count, err := db.ClearActivityHistory()
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to clear activity history"})
+			}
+			return c.JSON(fiber.Map{"message": "Activity history cleared successfully", "count": count})
+		}
+
 		// Get days from query params (default 30)
 		days := 30
 		if daysStr := c.Query("days"); daysStr != "" {

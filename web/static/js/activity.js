@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (timelineStatus) timelineStatus.addEventListener('change', renderActivityTimeline);
   document.getElementById('searchInput')?.addEventListener('input', debounceSearch);
   document.getElementById('autoRefresh')?.addEventListener('change', toggleAutoRefresh);
+  document.getElementById('clearLogsDays')?.addEventListener('change', updateClearLogsConfirmation);
+  document.getElementById('clearLogsConfirmation')?.addEventListener('input', updateClearLogsConfirmation);
   ['statusFilter', 'mediaFilter', 'jobFilter', 'languageFilter', 'dateRangeFilter'].forEach((id) => {
     document.getElementById(id)?.addEventListener('change', applyFilters);
   });
@@ -534,11 +536,14 @@ function toggleHistory(triggerOrIndex, maybeIndex) {
 function showClearLogsModal() {
   const modal = document.getElementById('clearLogsModal');
   modal.classList.remove('hidden');
+  updateClearLogsConfirmation();
   modal.querySelector('select')?.focus();
 }
 
 function closeClearLogsModal() {
   document.getElementById('clearLogsModal').classList.add('hidden');
+  document.getElementById('clearLogsConfirmation').value = '';
+  updateClearLogsConfirmation();
 }
 
 function refreshActivityData() {
@@ -555,19 +560,31 @@ function refreshActivityData() {
 
 async function clearOldLogs() {
   const days = document.getElementById('clearLogsDays').value;
+  const clearAll = days === 'all';
+  const confirmation = document.getElementById('clearLogsConfirmation').value;
+  if (clearAll && confirmation !== 'CLEAR') return;
   try {
-    const response = await fetch(`/v1/activity/logs?days=${days}`, {
+    const query = clearAll ? 'scope=all&confirm=CLEAR' : `days=${encodeURIComponent(days)}`;
+    const response = await fetch(`/v1/activity/logs?${query}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error(`Request failed (${response.status})`);
     const data = await response.json();
     closeClearLogsModal();
-    window.showNotification(`Cleared ${data.count} old activity entries`, 'success');
+    window.showNotification(clearAll ? 'Cleared all activity history' : `Cleared ${data.count} old activity entries`, 'success');
     applyFilters();
     htmx.trigger('#stats', 'statsUpdate');
+    loadJobRuns();
   } catch (err) {
     window.showNotification(`Failed to clear logs: ${err.message}`, 'error');
   }
+}
+
+function updateClearLogsConfirmation() {
+  const clearAll = document.getElementById('clearLogsDays')?.value === 'all';
+  const confirmation = document.getElementById('clearLogsConfirmation');
+  document.getElementById('clearAllConfirmation')?.classList.toggle('hidden', !clearAll);
+  document.getElementById('clearLogsButton').disabled = clearAll && confirmation?.value !== 'CLEAR';
 }
 
 async function exportToCSV() {
