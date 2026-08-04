@@ -1,5 +1,8 @@
 # Blockbusterr
 
+> [!IMPORTANT]
+> **Blockbusterr v2 is available for public beta testing.** Read the [v2 documentation](https://blockbusterr.dev/v2/) and [v2.0.0-beta.2 release notes](https://github.com/Mahcks/blockbusterr/releases/tag/v2.0.0-beta.2). Use `latest-beta` to follow beta updates; the stable `latest` image remains on v1.
+
 **Automate your media library with smart content discovery from TMDB, Simkl, or Trakt.**
 
 Blockbusterr automatically adds trending, popular, and highly-rated movies and TV shows to your Radarr/Sonarr library. Choose a discovery source per job, configure once, and let it run on a schedule.
