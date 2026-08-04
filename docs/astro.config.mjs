@@ -11,6 +11,9 @@ export default defineConfig({
 			title: 'Blockbusterr',
 			description: 'Automate your media library with smart filters and scoring',
 			tagline: 'Smart content discovery for your media server',
+			components: {
+				SiteTitle: './src/components/VersionedSiteTitle.astro',
+			},
 			
 			// Logo (optional - add logo file to public/)
 			// logo: {
