@@ -95,12 +95,12 @@ export default defineConfig({
 				{
 					label: 'Integrations',
 					items: [
-						{ label: 'Trakt', slug: 'integrations/trakt' },
 						{ label: 'Radarr', slug: 'integrations/radarr' },
 						{ label: 'Sonarr', slug: 'integrations/sonarr' },
-						{ label: 'Jellyseerr', slug: 'integrations/jellyseerr' },
+						{ label: 'Jellyseerr/Seerr', slug: 'integrations/jellyseerr' },
 						{ label: 'TMDB (Optional)', slug: 'integrations/tmdb' },
 						{ label: 'Simkl (Optional)', slug: 'integrations/simkl' },
+						{ label: 'Trakt (Optional)', slug: 'integrations/trakt' },
 					],
 				},
 				{
