@@ -1,5 +1,8 @@
 # Blockbusterr
 
+> [!IMPORTANT]
+> **Blockbusterr v2 is available for public beta testing.** Read the [v2 documentation](https://blockbusterr.dev/v2/) and [v2.0.0-beta.2 release notes](https://github.com/Mahcks/blockbusterr/releases/tag/v2.0.0-beta.2). Use `latest-beta` to follow beta updates; the stable `latest` image remains on v1.
+
 **Automated content discovery for self-hosted media libraries.**
 
 Blockbusterr follows trends, lists, and watchlists from the providers you already use. It evaluates every movie or show against your rules, ranks the candidates, and sends the winners to Radarr, Sonarr, Jellyseerr, or Seerr.
@@ -73,7 +76,7 @@ docker run -d \
   --restart unless-stopped \
   -p 9090:9090 \
   -v blockbusterr-data:/app/data \
-  ghcr.io/mahcks/blockbusterr:latest
+  ghcr.io/mahcks/blockbusterr:v2.0.0-beta.2
 ```
 
 Open `http://localhost:9090`, connect one discovery provider and one delivery target, then create and preview a job.
