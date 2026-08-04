@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -299,11 +300,11 @@ func splitSelectionJobs(cfg *config.Config, enabled []config.DynamicJob) (cycle,
 }
 
 func selectionCycleSignature(cfg *config.Config, cycleJobs []config.DynamicJob) string {
-	sig := fmt.Sprintf("%t|%s|%d|%d", cfg.Jobs.Selection.Enabled, cfg.Jobs.Selection.SyncInterval, cfg.Jobs.Selection.MovieLimit, cfg.Jobs.Selection.ShowLimit)
+	parts := []string{fmt.Sprintf("%t|%s|%d|%d", cfg.Jobs.Selection.Enabled, cfg.Jobs.Selection.SyncInterval, cfg.Jobs.Selection.MovieLimit, cfg.Jobs.Selection.ShowLimit)}
 	for _, job := range cycleJobs {
-		sig += "|" + jobSignature(job)
+		parts = append(parts, jobSignature(job))
 	}
-	return sig
+	return strings.Join(parts, "|")
 }
 
 func runnableJobs(cfg *config.Config) []config.DynamicJob {
