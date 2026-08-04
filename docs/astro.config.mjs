@@ -119,11 +119,11 @@ export default defineConfig({
 					items: [
 						{ label: 'Radarr', slug: 'integrations/radarr' },
 						{ label: 'Sonarr', slug: 'integrations/sonarr' },
-						{ label: 'Jellyseerr / Seerr', slug: 'integrations/jellyseerr' },
-						{ label: 'Trakt (Optional)', slug: 'integrations/trakt' },
+						{ label: 'Jellyseerr/Seerr', slug: 'integrations/jellyseerr' },
 						{ label: 'TMDB (Optional)', slug: 'integrations/tmdb' },
 						{ label: 'Simkl (Optional)', slug: 'integrations/simkl' },
 						{ label: 'MDBList (Optional)', slug: 'integrations/mdblist' },
+						{ label: 'Trakt (Optional)', slug: 'integrations/trakt' },
 					],
 				},
 				{
