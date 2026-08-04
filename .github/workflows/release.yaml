@@ -1,18 +1,18 @@
-  name: Build and Publish Blockbusterr Images
+name: Build and Publish Blockbusterr Images
 
-  on:
-    release:
-      types: [published]
+on:
+  release:
+    types: [published]
 
-  permissions:
-    contents: write
-    packages: write
+permissions:
+  contents: write
+  packages: write
 
-  jobs:
-    build:
-      runs-on: ubuntu-latest
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-      steps:
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -24,15 +24,28 @@
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GH_TOKEN }}
+          password: ${{ github.token }}
 
       - name: Lowercase repo name
-        id: repo
-        run: echo "repo=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        run: echo "repo=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
       - name: Extract version from tag
         id: version
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate image tags
+        id: tags
+        shell: bash
+        run: |
+          tags="ghcr.io/${{ env.repo }}:${{ steps.version.outputs.version }}"
+          if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+            tags="$tags"$'\n'"ghcr.io/${{ env.repo }}:latest-beta"
+          else
+            tags="$tags"$'\n'"ghcr.io/${{ env.repo }}:latest"
+          fi
+          echo "tags<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$tags" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
         uses: docker/build-push-action@v5
@@ -40,10 +53,10 @@
           context: ./
           file: ./Dockerfile
           push: true
+          provenance: mode=max
+          sbom: true
           platforms: linux/amd64,linux/arm64
-          tags: |
-            ghcr.io/${{ env.repo }}:${{ steps.version.outputs.version }}
-            ghcr.io/${{ env.repo }}:latest
+          tags: ${{ steps.tags.outputs.tags }}
           build-args: |
             GOLANG_TAG=1.25.6-alpine
             VERSION=${{ steps.version.outputs.version }}
