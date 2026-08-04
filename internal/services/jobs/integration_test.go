@@ -79,6 +79,33 @@ func TestShowJobExecutorStructure(t *testing.T) {
 	}
 }
 
+func TestShowDryRunNeverPostsToSonarr(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodPost {
+			t.Fatalf("dry-run show attempted Sonarr mutation: %s", request.URL.Path)
+		}
+		requests++
+		w.Header().Set("Content-Type", "application/json")
+		if request.URL.Path == "/api/v3/series/lookup" {
+			_, _ = w.Write([]byte(`[{"title":"Test Show","year":2025,"tvdbId":123}]`))
+			return
+		}
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := &config.Config{}
+	cfg.Sonarr.URL, cfg.Sonarr.APIKey = server.URL, "key"
+	executor := &ShowJobExecutor{Config: cfg, DryRun: true, discovery: &DiscoveryClient{}}
+	err := executor.Execute(t.Context(), JobConfig{JobName: "Dry show", MediaType: "show", Mode: "direct", Limit: 1, SeriesType: "anime"}, func(context.Context, *DiscoveryClient, int, string) ([]integrations.Show, error) {
+		return []integrations.Show{{Title: "Test Show", Year: 2025, IDs: integrations.IDs{TVDB: 123}}}, nil
+	})
+	if err != nil || requests != 2 {
+		t.Fatalf("dry-run error=%v requests=%d", err, requests)
+	}
+}
+
 // TestDetermineMode verifies the mode fallback logic
 func TestDetermineMode(t *testing.T) {
 	tests := []struct {

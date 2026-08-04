@@ -105,6 +105,22 @@ func TestActivityUsesExternalScriptAndDelegatedActions(t *testing.T) {
 	}
 }
 
+func TestJobsExposesRecommendationSeedsAndSonarrSeriesType(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..")
+	template := readUIFile(t, filepath.Join(root, "web", "templates", "jobs.html"))
+	script := readUIFile(t, filepath.Join(root, "web", "static", "js", "jobs.js"))
+	for _, expected := range []string{"custom-recommendation-seeds", "custom-recommendation-list-source", "modal-series-type"} {
+		if !strings.Contains(template, expected) {
+			t.Errorf("jobs.html is missing %s", expected)
+		}
+	}
+	for _, expected := range []string{"recommendation_seeds", "recommendation_list", "series_type"} {
+		if !strings.Contains(script, expected) {
+			t.Errorf("jobs.js is missing %s", expected)
+		}
+	}
+}
+
 func TestSharedUIFunctionsAndDynamicStylesAreCompiled(t *testing.T) {
 	root := filepath.Join("..", "..", "..", "..")
 	app := readUIFile(t, filepath.Join(root, "web", "static", "js", "app.js"))

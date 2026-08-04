@@ -46,6 +46,7 @@ Every recipe is versioned, disabled by default, and preview-first. Creating the 
 | Box office | Current movie box-office discovery |
 | Smart Popular | Popularity with an adaptive rating threshold |
 | List or Watchlist | A provider-owned public list or personal watchlist |
+| Recommendations | One-hop TMDB recommendations from explicit seed IDs or a provider seed list |
 
 Support varies by provider and media type; the Jobs editor is the source of truth for valid combinations.
 
@@ -68,6 +69,12 @@ its pages. It never accesses private content and fails instead of guessing a
 title match. MDBList remains the reliable bridge for lists imported from
 Letterboxd or IMDb.
 
+Recommendation jobs accept up to 20 explicit TMDB movie or show IDs, an
+existing provider list, or both. Seed lists are normalized to TMDB identities;
+unmapped entries are ignored and a job with no usable seeds fails clearly.
+Seeds and results are deduplicated, seed titles are excluded, and results are
+never recursively expanded.
+
 ## Job settings
 
 - **Source:** TMDB, Simkl, Trakt, or MDBList when supported.
@@ -79,6 +86,7 @@ Letterboxd or IMDb.
 - **Sync interval:** Optional Go duration or five-field cron override.
 - **Mode:** Optional `direct` or `jellyseerr` delivery override.
 - **Availability and monitoring:** Optional Radarr/Sonarr overrides.
+- **Sonarr series type:** `standard`, `anime`, or `daily` for show jobs.
 - **Repeat handling:** Optional override for when previously delivered and later removed media becomes eligible again.
 - **Ranked selection:** Opt a job into a shared cycle and optionally reserve a minimum number of picks.
 
@@ -106,6 +114,10 @@ Manual runs ignore the schedule but use the same provider, rules, scoring, and d
 ## Delivery modes
 
 In **Direct mode**, accepted movies go to Radarr and shows go to Sonarr. In **Jellyseerr mode**, accepted titles are requested through Jellyseerr or Seerr, which applies its own approval permissions before forwarding them. See [Integration Modes](/concepts/integration-modes/).
+
+The Anime Discovery recipe uses normal show rules plus Sonarr's `anime` series
+type. TMDB must provide a TVDB identity and Sonarr must return that exact series;
+Blockbusterr reports a mapping failure instead of delivering a title-only guess.
 
 ## Understand a run
 

@@ -27,6 +27,17 @@ type JobTypeDefinition struct {
 // Note: MaxLimit is set high (1000) for most types since Trakt supports pagination.
 // Box Office is limited to 10 as that's all Trakt returns for that endpoint.
 var JobTypeRegistry = map[string]JobTypeDefinition{
+	string(enums.JobTypeRecommendations): {
+		Type:           string(enums.JobTypeRecommendations),
+		Name:           "Recommendations",
+		Description:    "One-hop TMDB recommendations from explicit seed titles",
+		Source:         "tmdb",
+		Sources:        []string{"tmdb"},
+		KnownSources:   []string{"tmdb"},
+		SupportedMedia: []string{"movie", "show"},
+		DefaultLimit:   50,
+		MaxLimit:       500,
+	},
 	string(enums.JobTypeList): {
 		Type:           string(enums.JobTypeList),
 		Name:           "List or Watchlist",
@@ -161,6 +172,7 @@ type JobTemplate struct {
 	Period        string               `json:"period,omitempty"`
 	SyncInterval  string               `json:"sync_interval"`
 	Mode          string               `json:"mode,omitempty"`
+	SeriesType    string               `json:"series_type,omitempty"`
 	Category      string               `json:"category"` // "Movies" or "TV Shows"
 	RuleSetName   string               `json:"rule_set_name"`
 	DefaultRules  bool                 `json:"default_rules,omitempty"`
@@ -188,7 +200,7 @@ var JobTemplates = []JobTemplate{
 	{ID: "balanced-trending-shows", Version: 1, Name: "Balanced Trending", Description: "Current TV with baseline quality checks and a conservative delivery cap.", Type: "trending", MediaType: "show", Source: "tmdb", Limit: 50, DeliveryLimit: 5, SyncInterval: "24h", Category: "TV Shows", RuleSetName: "Balanced Trending Shows", Shows: &config.ShowFilters{MinRating: 6.5, MinVotes: 100}},
 	{ID: "reality-tv-discovery", Version: 1, Name: "Reality TV Discovery", Description: "Popular reality shows from TMDB.", Type: "popular", MediaType: "show", Source: "tmdb", Limit: 100, DeliveryLimit: 5, SyncInterval: "168h", Category: "TV Shows", RuleSetName: "Reality TV", Shows: &config.ShowFilters{RequiredGenres: []string{"Reality"}, MinRating: 6}},
 	{ID: "current-tv", Version: 1, Name: "Current TV", Description: "Trending shows first aired within the last two years.", Type: "trending", MediaType: "show", Source: "tmdb", Limit: 100, DeliveryLimit: 5, SyncInterval: "24h", Category: "TV Shows", RuleSetName: "Current TV", Shows: &config.ShowFilters{BlacklistedMinYear: time.Now().Year() - 1, MinRating: 6.5}},
-	{ID: "anime-discovery", Version: 1, Name: "Anime Discovery", Description: "Japanese animation that must map cleanly into Sonarr.", Type: "popular", MediaType: "show", Source: "tmdb", Limit: 100, DeliveryLimit: 5, SyncInterval: "168h", Category: "TV Shows", RuleSetName: "Anime Discovery", Shows: &config.ShowFilters{AllowedCountries: []string{"JP"}, RequiredGenres: []string{"Animation"}, MinRating: 6.5}},
+	{ID: "anime-discovery", Version: 1, Name: "Anime Discovery", Description: "Japanese animation that must map cleanly into Sonarr.", Type: "popular", MediaType: "show", Source: "tmdb", Limit: 100, DeliveryLimit: 5, SyncInterval: "168h", Category: "TV Shows", RuleSetName: "Anime Discovery", SeriesType: "anime", Shows: &config.ShowFilters{AllowedCountries: []string{"JP"}, RequiredGenres: []string{"Animation"}, MinRating: 6.5}},
 }
 
 // GetJobTypeDefinition returns the definition for a job type

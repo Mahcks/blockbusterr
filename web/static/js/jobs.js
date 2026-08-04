@@ -70,7 +70,8 @@
       anticipated: 'clock-3',
       box_office: 'ticket',
       smart_popular: 'brain',
-      list: 'list'
+      list: 'list',
+      recommendations: 'sparkles'
     };
     const iconName = iconNames[type] || iconNames.popular;
     return `<i data-lucide="${iconName}" class="${cls}"></i>`;
@@ -86,7 +87,8 @@
     'anticipated': { color: 'text-purple-400' },
     'box_office': { color: 'text-green-400' },
     'smart_popular': { color: 'text-indigo-400' },
-    'list': { color: 'text-emerald-400' }
+    'list': { color: 'text-emerald-400' },
+    'recommendations': { color: 'text-violet-400' }
   };
 
   // Initialize
@@ -113,7 +115,10 @@
     document.getElementById('custom-source')?.addEventListener('change', updateCustomFormFields);
 	document.getElementById('custom-list-kind')?.addEventListener('change', () => updateListGuidance('custom'));
 	document.getElementById('custom-selection-cycle')?.addEventListener('change', () => updateSelectionFields('custom'));
-    document.getElementById('custom-media')?.addEventListener('change', updateCustomRuleSets);
+    document.getElementById('custom-media')?.addEventListener('change', () => {
+      updateCustomRuleSets();
+      updateCustomFormFields();
+    });
     document.getElementById('modal-type')?.addEventListener('change', onJobTypeChange);
     document.getElementById('modal-source')?.addEventListener('change', updateModalTypeFields);
 	document.getElementById('modal-list-kind')?.addEventListener('change', () => updateListGuidance('modal'));
@@ -145,6 +150,7 @@
     if (mediaSelect) {
       mediaSelect.addEventListener('change', function() {
         switchJobFilterMedia(mediaSelect.value);
+        updateModalTypeFields();
         if (currentJob) {
           // Create temp job with current form values
           const tempJob = {
@@ -500,6 +506,7 @@
     const limitInput = document.getElementById('custom-limit');
 	const sourceSelect = document.getElementById('custom-source');
 	const listContainer = document.getElementById('custom-list-container');
+	const recommendationsContainer = document.getElementById('custom-recommendations-container');
 
     const selectedType = typeSelect.value;
     const typeDef = jobTypes[selectedType];
@@ -517,6 +524,8 @@
 	  ? 'Simkl attribution will be shown with sourced results.'
 	  : 'Only configured discovery sources are shown.';
 	listContainer.classList.toggle('hidden', selectedType !== 'list');
+	recommendationsContainer.classList.toggle('hidden', selectedType !== 'recommendations');
+	populateRecommendationListSources('custom');
 	if (selectedType === 'list') updateListGuidance('custom');
 	document.getElementById('custom-create-button').disabled = !sources.length;
 	const customPeriod = document.getElementById('custom-period');
@@ -543,6 +552,7 @@
 
     // Update media type options based on supported media
     const supportedMedia = typeDef.supported_media || ['movie', 'show'];
+    const currentMedia = mediaSelect.value;
     mediaSelect.innerHTML = '';
     if (supportedMedia.includes('movie')) {
       mediaSelect.innerHTML += '<option value="movie">Movie</option>';
@@ -550,6 +560,8 @@
     if (supportedMedia.includes('show')) {
       mediaSelect.innerHTML += '<option value="show">TV Show</option>';
     }
+    if (supportedMedia.includes(currentMedia)) mediaSelect.value = currentMedia;
+    document.getElementById('custom-series-type-container').classList.toggle('hidden', mediaSelect.value !== 'show');
 
     // Show/hide period field
     if (typeDef.requires_period) {
@@ -634,7 +646,7 @@
 		  source: formData.get('source') || 'trakt',
           rule_set_id: formData.get('rule_set_id')
         };
-		if (selectedType === 'list') {
+        if (selectedType === 'list') {
 		  job.list = {
 			kind: formData.get('list_kind'),
 			owner: formData.get('list_owner'),
@@ -642,6 +654,11 @@
 			ordering: formData.get('list_ordering')
 		  };
 		}
+		if (selectedType === 'recommendations') {
+		  job.recommendation_seeds = parseTMDBSeeds(formData.get('recommendation_seeds'));
+		  job.recommendation_list = recommendationListFromForm('custom');
+		}
+		if (job.media === 'show') job.series_type = formData.get('series_type') || 'standard';
 
         // Add period if required
         if (typeDef?.requires_period) {
@@ -811,6 +828,11 @@
 	document.getElementById('modal-list-ordering').value = job.list?.ordering || 'source';
 	document.getElementById('modal-list-owner').value = job.list?.owner || '';
 	document.getElementById('modal-list-id').value = job.list?.list_id || job.list?.slug || '';
+	document.getElementById('modal-recommendation-seeds').value = (job.recommendation_seeds || []).join(', ');
+	document.getElementById('modal-recommendation-list-source').value = job.recommendation_list?.source || '';
+	document.getElementById('modal-recommendation-list-owner').value = job.recommendation_list?.list?.owner || '';
+	document.getElementById('modal-recommendation-list-id').value = job.recommendation_list?.list?.list_id || '';
+	document.getElementById('modal-series-type').value = job.series_type || 'standard';
 
     // Populate job type dropdown
     const typeSelect = document.getElementById('modal-type');
@@ -922,6 +944,7 @@
     const smartContainer = document.getElementById('modal-smart-container');
 	const sourceSelect = document.getElementById('modal-source');
 	const listContainer = document.getElementById('modal-list-container');
+	const recommendationsContainer = document.getElementById('modal-recommendations-container');
 
     const selectedType = typeSelect.value;
     const typeDef = jobTypes[selectedType];
@@ -937,6 +960,8 @@
 	  ? (sourceSelect.value === 'simkl' ? 'Simkl attribution will be shown with sourced results.' : 'Only configured discovery sources are shown.')
 	  : 'This job requires a discovery source that is not configured. Change its type or delete it.';
 	listContainer.classList.toggle('hidden', selectedType !== 'list');
+	recommendationsContainer.classList.toggle('hidden', selectedType !== 'recommendations');
+	populateRecommendationListSources('modal');
 	if (selectedType === 'list') updateListGuidance('modal');
 	const modalPeriod = document.getElementById('modal-period');
 	if (sourceSelect.value === 'simkl' && selectedType === 'watched') {
@@ -962,6 +987,7 @@
     if (supportedMedia.includes(currentMedia)) {
       mediaSelect.value = currentMedia;
     }
+    document.getElementById('modal-series-type-container').classList.toggle('hidden', mediaSelect.value !== 'show');
 
     // Update max limit based on job type
     const limitInput = document.getElementById('modal-limit');
@@ -1049,6 +1075,25 @@
 	listID.disabled = watchlist;
 	if (watchlist) listID.value = '';
 	document.getElementById(`${scope}-letterboxd-warning`)?.classList.toggle('hidden', source !== 'letterboxd');
+  }
+
+  function parseTMDBSeeds(value) {
+	return [...new Set(String(value || '').split(/[\s,]+/).filter(Boolean).map(Number).filter(Number.isInteger))];
+  }
+
+  function populateRecommendationListSources(scope) {
+	const select = document.getElementById(`${scope}-recommendation-list-source`);
+	if (!select) return;
+	const current = select.value;
+	const sources = jobTypes.list?.sources || [];
+	select.replaceChildren(new Option('No seed list', ''), ...sources.map(source => new Option(source === 'tmdb' ? 'TMDB list' : `${capitalize(source)} list`, source)));
+	if (sources.includes(current)) select.value = current;
+  }
+
+  function recommendationListFromForm(scope) {
+	const source = document.getElementById(`${scope}-recommendation-list-source`)?.value;
+	if (!source) return null;
+	return { source, list: { kind: 'public_list', owner: document.getElementById(`${scope}-recommendation-list-owner`).value, list_id: document.getElementById(`${scope}-recommendation-list-id`).value, ordering: 'source' } };
   }
 
   async function inspectList(scope, button) {
@@ -1215,6 +1260,11 @@
 	  list_id: document.getElementById('modal-list-id').value,
 	  ordering: document.getElementById('modal-list-ordering').value
 	} : null;
+	updatedJob.recommendation_seeds = selectedType === 'recommendations'
+	  ? parseTMDBSeeds(document.getElementById('modal-recommendation-seeds').value)
+	  : [];
+	updatedJob.recommendation_list = selectedType === 'recommendations' ? recommendationListFromForm('modal') : null;
+	updatedJob.series_type = selectedMedia === 'show' ? document.getElementById('modal-series-type').value : '';
 
     // Add period if applicable
     if (typeDef?.requires_period) {

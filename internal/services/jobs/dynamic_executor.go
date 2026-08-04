@@ -75,6 +75,7 @@ func (e *DynamicJobExecutor) Execute(ctx context.Context, job config.DynamicJob)
 		DeliveryLimit:       job.DeliveryLimit,
 		RepeatPolicy:        job.RepeatPolicy,
 		Period:              job.Period,
+		SeriesType:          job.SeriesType,
 	}
 
 	// Set default limit if not specified
@@ -216,6 +217,14 @@ func (e *DynamicJobExecutor) executeShowJob(ctx context.Context, job config.Dyna
 // getMovieFetcher returns the appropriate fetcher function for a movie job type
 func (e *DynamicJobExecutor) getMovieFetcher(job config.DynamicJob) MovieFetcher {
 	switch job.Type {
+	case string(enums.JobTypeRecommendations):
+		return func(ctx context.Context, discovery *DiscoveryClient, limit int, _ string) ([]integrations.Movie, error) {
+			seeds, err := e.recommendationSeedIDs(ctx, job)
+			if err != nil {
+				return nil, err
+			}
+			return discovery.GetMovieRecommendations(ctx, seeds, limit)
+		}
 	case string(enums.JobTypeList):
 		return func(ctx context.Context, discovery *DiscoveryClient, limit int, _ string) ([]integrations.Movie, error) {
 			return discovery.GetListMovies(ctx, *job.List, limit)
@@ -255,6 +264,14 @@ func (e *DynamicJobExecutor) getMovieFetcher(job config.DynamicJob) MovieFetcher
 // getShowFetcher returns the appropriate fetcher function for a show job type
 func (e *DynamicJobExecutor) getShowFetcher(job config.DynamicJob) ShowFetcher {
 	switch job.Type {
+	case string(enums.JobTypeRecommendations):
+		return func(ctx context.Context, discovery *DiscoveryClient, limit int, _ string) ([]integrations.Show, error) {
+			seeds, err := e.recommendationSeedIDs(ctx, job)
+			if err != nil {
+				return nil, err
+			}
+			return discovery.GetShowRecommendations(ctx, seeds, limit)
+		}
 	case string(enums.JobTypeList):
 		return func(ctx context.Context, discovery *DiscoveryClient, limit int, _ string) ([]integrations.Show, error) {
 			return discovery.GetListShows(ctx, *job.List, limit)
@@ -277,6 +294,59 @@ func (e *DynamicJobExecutor) getShowFetcher(job config.DynamicJob) ShowFetcher {
 		log.Warnf("Unknown show job type: %s", job.Type)
 		return nil
 	}
+}
+
+func (e *DynamicJobExecutor) recommendationSeedIDs(ctx context.Context, job config.DynamicJob) ([]int, error) {
+	seen := make(map[int]bool)
+	seeds := make([]int, 0, len(job.RecommendationSeeds))
+	for _, id := range job.RecommendationSeeds {
+		if id > 0 && !seen[id] {
+			seen[id] = true
+			seeds = append(seeds, id)
+		}
+	}
+	if job.RecommendationList != nil {
+		adapter := e.ListSources[job.RecommendationList.Source]
+		if e.ListSources == nil {
+			var err error
+			adapter, err = configuredListSource(e.Config, job.RecommendationList.Source)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if adapter == nil {
+			return nil, fmt.Errorf("%s seed-list adapter is unavailable", job.RecommendationList.Source)
+		}
+		result, err := adapter.FetchList(ctx, job.RecommendationList.List, 20)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read recommendation seed list: %w", err)
+		}
+		if job.MediaType == "movie" {
+			for _, item := range result.Movies {
+				if len(seeds) == 20 {
+					break
+				}
+				if item.IDs.TMDB > 0 && !seen[item.IDs.TMDB] {
+					seen[item.IDs.TMDB] = true
+					seeds = append(seeds, item.IDs.TMDB)
+				}
+			}
+		} else {
+			for _, item := range result.Shows {
+				if len(seeds) == 20 {
+					break
+				}
+				if item.IDs.TMDB > 0 && !seen[item.IDs.TMDB] {
+					seen[item.IDs.TMDB] = true
+					seeds = append(seeds, item.IDs.TMDB)
+				}
+			}
+		}
+	}
+	if len(seeds) == 0 {
+		return nil, fmt.Errorf("recommendation seeds contain no usable TMDB IDs")
+	}
+	return seeds, nil
 }
 
 func (e *DynamicJobExecutor) discoveryForJob(job config.DynamicJob) (*DiscoveryClient, error) {

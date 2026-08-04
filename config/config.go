@@ -107,30 +107,38 @@ type ListLocator struct {
 	Ordering string `mapstructure:"ordering" json:"ordering,omitempty" yaml:"ordering,omitempty"`
 }
 
+type RecommendationSeedList struct {
+	Source string      `mapstructure:"source" json:"source" yaml:"source"`
+	List   ListLocator `mapstructure:"list" json:"list" yaml:"list"`
+}
+
 // DynamicJob represents a user-defined job instance that can be created, modified, and deleted
 type DynamicJob struct {
-	ID                  string       `mapstructure:"id" json:"id" yaml:"id"`
-	Name                string       `mapstructure:"name" json:"name" yaml:"name"`
-	Enabled             bool         `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-	Type                string       `mapstructure:"type" json:"type" yaml:"type"`                                                           // Job type: trending, popular, watched, collected, favorited, played, anticipated, box_office, smart_popular
-	Source              string       `mapstructure:"source" json:"source" yaml:"source"`                                                     // Discovery source: trakt, tmdb, or simkl
-	MediaType           string       `mapstructure:"media" json:"media" yaml:"media"`                                                        // Media type: movie or show
-	Limit               int          `mapstructure:"limit" json:"limit" yaml:"limit"`                                                        // Number of items to fetch
-	Period              string       `mapstructure:"period" json:"period" yaml:"period,omitempty"`                                           // Time period for watched/collected/favorited/played: weekly, monthly, yearly, all
-	SyncInterval        string       `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`                      // Custom sync interval (overrides global)
-	Mode                string       `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`                                                 // Execution mode: direct or jellyseerr (overrides global)
-	MinimumAvailability string       `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"` // For Radarr: announced, in_cinemas, released
-	Monitor             string       `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`                                        // Monitor setting for Radarr/Sonarr
-	BaseMinRating       float64      `mapstructure:"base_min_rating" json:"base_min_rating" yaml:"base_min_rating,omitempty"`                // For smart jobs: base minimum rating
-	AdjustmentFactor    float64      `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor,omitempty"`          // For smart jobs: rating adjustment factor
-	DeliveryLimit       int          `mapstructure:"delivery_limit" json:"delivery_limit" yaml:"delivery_limit,omitempty"`                   // Maximum successful deliveries per run; zero is unlimited
-	SelectionCycle      bool         `mapstructure:"selection_cycle" json:"selection_cycle" yaml:"selection_cycle,omitempty"`
-	MinimumPicks        int          `mapstructure:"minimum_picks" json:"minimum_picks" yaml:"minimum_picks,omitempty"`
-	RepeatPolicy        string       `mapstructure:"repeat_policy" json:"repeat_policy" yaml:"repeat_policy,omitempty"`
-	UseCustomFilters    bool         `mapstructure:"use_custom_filters" json:"use_custom_filters" yaml:"use_custom_filters,omitempty"`
-	Filters             FilterConfig `mapstructure:"filters" json:"filters" yaml:"filters,omitempty"`
-	RuleSetID           string       `mapstructure:"rule_set_id" json:"rule_set_id" yaml:"rule_set_id,omitempty"`
-	List                *ListLocator `mapstructure:"list" json:"list,omitempty" yaml:"list,omitempty"`
+	ID                  string                  `mapstructure:"id" json:"id" yaml:"id"`
+	Name                string                  `mapstructure:"name" json:"name" yaml:"name"`
+	Enabled             bool                    `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+	Type                string                  `mapstructure:"type" json:"type" yaml:"type"`                                                           // Job type: trending, popular, watched, collected, favorited, played, anticipated, box_office, smart_popular
+	Source              string                  `mapstructure:"source" json:"source" yaml:"source"`                                                     // Discovery source: trakt, tmdb, or simkl
+	MediaType           string                  `mapstructure:"media" json:"media" yaml:"media"`                                                        // Media type: movie or show
+	Limit               int                     `mapstructure:"limit" json:"limit" yaml:"limit"`                                                        // Number of items to fetch
+	Period              string                  `mapstructure:"period" json:"period" yaml:"period,omitempty"`                                           // Time period for watched/collected/favorited/played: weekly, monthly, yearly, all
+	SyncInterval        string                  `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval,omitempty"`                      // Custom sync interval (overrides global)
+	Mode                string                  `mapstructure:"mode" json:"mode" yaml:"mode,omitempty"`                                                 // Execution mode: direct or jellyseerr (overrides global)
+	MinimumAvailability string                  `mapstructure:"minimum_availability" json:"minimum_availability" yaml:"minimum_availability,omitempty"` // For Radarr: announced, in_cinemas, released
+	Monitor             string                  `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`                                        // Monitor setting for Radarr/Sonarr
+	BaseMinRating       float64                 `mapstructure:"base_min_rating" json:"base_min_rating" yaml:"base_min_rating,omitempty"`                // For smart jobs: base minimum rating
+	AdjustmentFactor    float64                 `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor,omitempty"`          // For smart jobs: rating adjustment factor
+	DeliveryLimit       int                     `mapstructure:"delivery_limit" json:"delivery_limit" yaml:"delivery_limit,omitempty"`                   // Maximum successful deliveries per run; zero is unlimited
+	SelectionCycle      bool                    `mapstructure:"selection_cycle" json:"selection_cycle" yaml:"selection_cycle,omitempty"`
+	MinimumPicks        int                     `mapstructure:"minimum_picks" json:"minimum_picks" yaml:"minimum_picks,omitempty"`
+	RepeatPolicy        string                  `mapstructure:"repeat_policy" json:"repeat_policy" yaml:"repeat_policy,omitempty"`
+	UseCustomFilters    bool                    `mapstructure:"use_custom_filters" json:"use_custom_filters" yaml:"use_custom_filters,omitempty"`
+	Filters             FilterConfig            `mapstructure:"filters" json:"filters" yaml:"filters,omitempty"`
+	RuleSetID           string                  `mapstructure:"rule_set_id" json:"rule_set_id" yaml:"rule_set_id,omitempty"`
+	List                *ListLocator            `mapstructure:"list" json:"list,omitempty" yaml:"list,omitempty"`
+	RecommendationSeeds []int                   `mapstructure:"recommendation_seeds" json:"recommendation_seeds,omitempty" yaml:"recommendation_seeds,omitempty"`
+	RecommendationList  *RecommendationSeedList `mapstructure:"recommendation_list" json:"recommendation_list,omitempty" yaml:"recommendation_list,omitempty"`
+	SeriesType          string                  `mapstructure:"series_type" json:"series_type,omitempty" yaml:"series_type,omitempty"`
 }
 
 // Config represents the application configuration

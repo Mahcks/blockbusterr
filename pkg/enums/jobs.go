@@ -2,7 +2,10 @@ package enums
 
 type JobType string
 
-const JobTypeList JobType = "list"
+const (
+	JobTypeList            JobType = "list"
+	JobTypeRecommendations JobType = "recommendations"
+)
 
 type ListKind string
 

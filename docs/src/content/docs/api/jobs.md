@@ -10,6 +10,11 @@ All endpoints use `/v1` and return JSON unless noted otherwise.
 - `GET /v1/jobs/types` returns job definitions filtered to configured providers.
 - `GET /v1/jobs/templates` returns versioned recipes with readiness and missing-setup details.
 - `POST /v1/jobs/recipes/:id` creates a disabled recipe job and dedicated rule set.
+
+Recommendation jobs use `type: recommendations`, `source: tmdb`, and either
+`recommendation_seeds` (up to 20 TMDB IDs) or `recommendation_list` containing
+a list-provider `source` and normal list locator. Show jobs may set
+`series_type` to `standard`, `anime`, or `daily`.
 - `GET /v1/jobs/list` returns dynamic and readable legacy jobs.
 - `GET /v1/jobs/enabled` returns enabled jobs.
 

@@ -322,6 +322,27 @@
             </div>
           </div>
 
+          <div id="custom-recommendations-container" class="job-nested-panel hidden space-y-2 p-4">
+            <label for="custom-recommendation-seeds" class="block font-medium">TMDB seed IDs</label>
+            <input id="custom-recommendation-seeds" name="recommendation_seeds" class="w-full rounded-lg transition" placeholder="550, 680, 155" inputmode="numeric">
+            <p class="text-xs text-slate-400">Up to 20 IDs, or use a provider list below. Each seed is expanded once; recommendations never recurse.</p>
+            <div class="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3">
+              <select id="custom-recommendation-list-source" aria-label="Seed-list provider" class="rounded-lg transition"><option value="">No seed list</option></select>
+              <input id="custom-recommendation-list-owner" aria-label="Seed-list owner" class="rounded-lg transition" placeholder="Owner (optional)">
+              <input id="custom-recommendation-list-id" aria-label="Seed-list ID or slug" class="rounded-lg transition" placeholder="List ID or slug">
+            </div>
+          </div>
+
+          <div id="custom-series-type-container" class="hidden">
+            <label for="custom-series-type" class="block mb-2 font-medium">Sonarr series type</label>
+            <select id="custom-series-type" name="series_type" class="w-full rounded-lg transition">
+              <option value="standard">Standard</option>
+              <option value="anime">Anime</option>
+              <option value="daily">Daily</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Anime requires a provider-supplied TVDB identity that Sonarr recognizes.</p>
+          </div>
+
           <div>
             <label for="custom-rule-set" class="block mb-2 font-medium">Rule set</label>
             <select id="custom-rule-set" name="rule_set_id" class="w-full rounded-lg transition" required></select>
@@ -651,6 +672,27 @@
               <button type="button" class="job-secondary-button" data-action="inspect-list" data-scope="modal">Check source</button>
               <span id="modal-list-result" class="text-xs text-slate-400" aria-live="polite"></span>
             </div>
+          </div>
+
+          <div id="modal-recommendations-container" class="job-nested-panel hidden space-y-2 p-4">
+            <label for="modal-recommendation-seeds" class="block font-medium">TMDB seed IDs</label>
+            <input id="modal-recommendation-seeds" class="w-full rounded-lg transition" placeholder="550, 680, 155" inputmode="numeric">
+            <p class="text-xs text-slate-400">Up to 20 IDs. Results are deduplicated and expanded exactly one hop.</p>
+            <div class="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3">
+              <select id="modal-recommendation-list-source" aria-label="Seed-list provider" class="rounded-lg transition"><option value="">No seed list</option></select>
+              <input id="modal-recommendation-list-owner" aria-label="Seed-list owner" class="rounded-lg transition" placeholder="Owner (optional)">
+              <input id="modal-recommendation-list-id" aria-label="Seed-list ID or slug" class="rounded-lg transition" placeholder="List ID or slug">
+            </div>
+          </div>
+
+          <div id="modal-series-type-container" class="hidden">
+            <label for="modal-series-type" class="block mb-2 font-medium">Sonarr series type</label>
+            <select id="modal-series-type" class="w-full rounded-lg transition">
+              <option value="standard">Standard</option>
+              <option value="anime">Anime</option>
+              <option value="daily">Daily</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Anime requires a provider-supplied TVDB identity that Sonarr recognizes.</p>
           </div>
 
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

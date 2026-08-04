@@ -56,6 +56,9 @@ func IsJobSourceConfigured(cfg *config.Config, job config.DynamicJob) bool {
 	if job.Type == string(enums.JobTypeList) {
 		return slices.Contains(AvailableListSources(cfg), job.Source)
 	}
+	if job.Type == string(enums.JobTypeRecommendations) && job.RecommendationList != nil {
+		return IsProviderConfigured(cfg, job.Source) && slices.Contains(AvailableListSources(cfg), job.RecommendationList.Source)
+	}
 	return IsProviderConfigured(cfg, job.Source)
 }
 

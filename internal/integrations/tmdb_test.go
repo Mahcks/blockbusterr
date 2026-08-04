@@ -70,3 +70,28 @@ func TestTMDBShowEnrichmentIsBoundedAndConcurrent(t *testing.T) {
 		t.Fatalf("show was not enriched: %#v", shows[0])
 	}
 }
+
+func TestTMDBRecommendationsAreOneHopAndDeduplicated(t *testing.T) {
+	client := NewTMDB(TMDBConfig{APIKey: "key"})
+	requests := 0
+	client.httpClient.Transport = roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		requests++
+		switch request.URL.Path {
+		case "/3/movie/10/recommendations":
+			return jsonResponse(http.StatusOK, `{"page":1,"total_pages":1,"results":[{"id":10,"title":"Seed"},{"id":30,"title":"Shared"}]}`), nil
+		case "/3/movie/20/recommendations":
+			return jsonResponse(http.StatusOK, `{"page":1,"total_pages":1,"results":[{"id":30,"title":"Shared"},{"id":40,"title":"Unique"}]}`), nil
+		default:
+			t.Fatalf("unexpected recursive request: %s", request.URL.Path)
+			return nil, nil
+		}
+	})
+
+	movies, err := client.GetMovieRecommendations(t.Context(), []int{10, 20, 10}, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if requests != 2 || len(movies) != 2 || movies[0].IDs.TMDB != 30 || movies[1].IDs.TMDB != 40 {
+		t.Fatalf("requests=%d movies=%#v", requests, movies)
+	}
+}

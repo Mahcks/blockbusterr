@@ -148,6 +148,13 @@ func (d *DiscoveryClient) GetPopularMovies(ctx context.Context, limit int) ([]in
 	}
 }
 
+func (d *DiscoveryClient) GetMovieRecommendations(ctx context.Context, seeds []int, limit int) ([]integrations.Movie, error) {
+	if d.provider != enums.DiscoveryProviderTMDB {
+		return nil, unsupported(d.provider, "movie recommendations")
+	}
+	return d.tmdb.GetMovieRecommendations(ctx, seeds, limit)
+}
+
 func (d *DiscoveryClient) GetTrendingShows(ctx context.Context, limit int) ([]integrations.TrendingShow, error) {
 	switch d.provider {
 	case enums.DiscoveryProviderTrakt:
@@ -174,6 +181,13 @@ func (d *DiscoveryClient) GetPopularShows(ctx context.Context, limit int) ([]int
 	default:
 		return nil, unsupported(d.provider, "popular show")
 	}
+}
+
+func (d *DiscoveryClient) GetShowRecommendations(ctx context.Context, seeds []int, limit int) ([]integrations.Show, error) {
+	if d.provider != enums.DiscoveryProviderTMDB {
+		return nil, unsupported(d.provider, "show recommendations")
+	}
+	return d.tmdb.GetShowRecommendations(ctx, seeds, limit)
 }
 
 func (d *DiscoveryClient) GetWatchedMovies(ctx context.Context, period string, limit int) ([]integrations.WatchedMovie, error) {

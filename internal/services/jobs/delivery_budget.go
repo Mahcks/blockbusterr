@@ -7,6 +7,7 @@ import (
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/integrations"
+	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
 type deliveryBudget struct {
@@ -125,5 +126,22 @@ func (e *ShowJobExecutor) skipShowDelivery(jobConfig JobConfig, show integration
 		FilterDetails: e.getFilterDetailsForShow(show.IDs.TVDB),
 	}); err != nil {
 		slog.Error("Failed to log delivery budget skip", "title", show.Title, "err", err)
+	}
+}
+
+func (e *ShowJobExecutor) failShowDelivery(jobConfig JobConfig, show integrations.Show, scoreMap map[int]ScoreInfo, reason string) {
+	e.updateDecisionOutcome(show.IDs.TVDB, string(enums.ActivityStatusFailed), reason)
+	if e.Database == nil {
+		return
+	}
+	scoreInfo := scoreMap[show.IDs.TVDB]
+	if err := e.Database.LogActivity(database.ActivityLog{
+		Timestamp: time.Now(), JobID: jobConfig.JobID, RunID: e.currentRunID, JobType: jobConfig.JobName,
+		MediaType: "show", Title: show.Title, Year: show.Year, Language: show.Language,
+		TMDBID: show.IDs.TMDB, TVDBID: show.IDs.TVDB, IMDBID: show.IDs.IMDB, PosterURL: GetShowPosterURL(e.Config, show.IDs.TMDB, show.IDs.TVDB),
+		Score: scoreInfo.Score, Rank: scoreInfo.Rank, Status: string(enums.ActivityStatusFailed), Message: reason,
+		FilterDetails: e.getFilterDetailsForShow(show.IDs.TVDB),
+	}); err != nil {
+		slog.Error("Failed to log show delivery failure", "title", show.Title, "err", err)
 	}
 }

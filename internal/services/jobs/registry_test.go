@@ -48,7 +48,7 @@ func TestJobTemplatesAreValidRecipes(t *testing.T) {
 			t.Fatalf("marshal recipe %s: %v", recipe.ID, err)
 		}
 		var decoded AvailableJobTemplate
-		if err := json.Unmarshal(encoded, &decoded); err != nil || decoded.ID != recipe.ID || decoded.Source != recipe.Source || decoded.SyncInterval != recipe.SyncInterval || decoded.DeliveryLimit != recipe.DeliveryLimit {
+		if err := json.Unmarshal(encoded, &decoded); err != nil || decoded.ID != recipe.ID || decoded.Source != recipe.Source || decoded.SyncInterval != recipe.SyncInterval || decoded.DeliveryLimit != recipe.DeliveryLimit || decoded.SeriesType != recipe.SeriesType {
 			t.Fatalf("recipe %s JSON round trip: %+v, %v", recipe.ID, decoded, err)
 		}
 		if !recipe.DefaultRules {

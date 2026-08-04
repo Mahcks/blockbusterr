@@ -180,6 +180,13 @@ func (e *ShowJobExecutor) executeShowsDirect(
 	budget := newDeliveryBudget(e.Config, e.Database, jobConfig.JobID, e.currentRunID, jobConfig.DeliveryLimit, e.DryRun)
 
 	for _, show := range shows {
+		if jobConfig.SeriesType == "anime" && show.IDs.TVDB <= 0 {
+			message := "Anime could not be mapped to a TVDB series"
+			log.Errorf("%s: '%s (%d)'", message, show.Title, show.Year)
+			e.failShowDelivery(jobConfig, show, scoreMap, message)
+			failed++
+			continue
+		}
 		// Prefer the provider ID, but never trust Sonarr's first fuzzy result.
 		var series integrations.SonarrSeries
 		var found bool
@@ -193,6 +200,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 			lookupResults, lookupErr := sonarrClient.LookupSeries(ctx, show.Title)
 			if lookupErr != nil {
 				log.Errorf("Failed to lookup show '%s (%d)' in Sonarr: %v", show.Title, show.Year, lookupErr)
+				e.failShowDelivery(jobConfig, show, scoreMap, "Sonarr lookup failed: "+lookupErr.Error())
 				failed++
 				continue
 			}
@@ -200,6 +208,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 		}
 		if !found {
 			log.Errorf("Sonarr lookup returned no exact match for '%s (%d)'", show.Title, show.Year)
+			e.failShowDelivery(jobConfig, show, scoreMap, "Sonarr returned no exact identity match")
 			failed++
 			continue
 		}
@@ -298,6 +307,9 @@ func (e *ShowJobExecutor) executeShowsDirect(
 		series.QualityProfileID = e.Config.Sonarr.QualityProfile
 		series.Monitored = true
 		series.RootFolderPath = e.Config.Sonarr.RootFolder
+		if jobConfig.SeriesType != "" {
+			series.SeriesType = jobConfig.SeriesType
+		}
 		series.AddOptions = &integrations.SonarrAddOptions{
 			SearchForMissingEpisodes: true,
 			Monitor:                  monitor,

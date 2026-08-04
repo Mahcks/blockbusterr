@@ -256,7 +256,7 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			candidate.RuleSets = append(candidate.RuleSets, rules)
 			ruleSetID = rules.ID
 		}
-		job := config.DynamicJob{ID: uuid.NewString(), Name: recipe.Name, Enabled: false, Type: recipe.Type, Source: recipe.Source, MediaType: recipe.MediaType, Limit: recipe.Limit, DeliveryLimit: recipe.DeliveryLimit, Period: recipe.Period, SyncInterval: recipe.SyncInterval, Mode: recipe.Mode, RuleSetID: ruleSetID}
+		job := config.DynamicJob{ID: uuid.NewString(), Name: recipe.Name, Enabled: false, Type: recipe.Type, Source: recipe.Source, MediaType: recipe.MediaType, Limit: recipe.Limit, DeliveryLimit: recipe.DeliveryLimit, Period: recipe.Period, SyncInterval: recipe.SyncInterval, Mode: recipe.Mode, SeriesType: recipe.SeriesType, RuleSetID: ruleSetID}
 		if recipe.List != nil {
 			locator := *recipe.List
 			job.List = &locator
@@ -768,6 +768,27 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 			}
 		}
 	} else {
+		if job.Type == string(enums.JobTypeRecommendations) {
+			if len(job.RecommendationSeeds) == 0 && job.RecommendationList == nil {
+				return fmt.Errorf("TMDB seed IDs or a provider seed list are required")
+			}
+			if len(job.RecommendationSeeds) > 20 {
+				return fmt.Errorf("recommendation jobs support at most 20 seed IDs")
+			}
+			for _, seed := range job.RecommendationSeeds {
+				if seed <= 0 {
+					return fmt.Errorf("TMDB seed IDs must be positive numbers")
+				}
+			}
+			if job.RecommendationList != nil {
+				if err := jobs.ValidateListSourceLocator(job.RecommendationList.Source, job.RecommendationList.List); err != nil {
+					return fmt.Errorf("recommendation seed list: %w", err)
+				}
+				if !slices.Contains(jobs.AvailableListSources(cfg), job.RecommendationList.Source) {
+					return fmt.Errorf("%s seed-list adapter is unavailable", job.RecommendationList.Source)
+				}
+			}
+		}
 		if !jobs.SupportsSource(job.Type, job.Source) {
 			return fmt.Errorf("%s jobs do not support the %s source", job.Type, job.Source)
 		}
@@ -777,6 +798,12 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 		if job.Source == "simkl" && job.Limit > 500 {
 			return fmt.Errorf("simkl jobs cannot exceed 500 items")
 		}
+	}
+	if job.SeriesType != "" && !slices.Contains([]string{"standard", "daily", "anime"}, job.SeriesType) {
+		return fmt.Errorf("Sonarr series type must be standard, daily, or anime")
+	}
+	if job.MediaType != "show" && job.SeriesType != "" {
+		return fmt.Errorf("Sonarr series type is only valid for show jobs")
 	}
 
 	// Check period requirement

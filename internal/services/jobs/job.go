@@ -26,6 +26,7 @@ type JobConfig struct {
 	DeliveryLimit int
 	RepeatPolicy  string
 	Period        string // For watched/collected/played jobs
+	SeriesType    string // Sonarr series type: standard, daily, or anime
 }
 
 // FormatJobLabel returns a human-readable job label for logs.

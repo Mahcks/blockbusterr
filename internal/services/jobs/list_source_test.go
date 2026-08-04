@@ -87,6 +87,23 @@ func TestListSourceRequiresLetterboxdOwner(t *testing.T) {
 	}
 }
 
+func TestRecommendationSeedListProvidesDeduplicatedTMDBIDs(t *testing.T) {
+	source := &fakeListSource{result: ListResult{Movies: []integrations.Movie{
+		{IDs: integrations.IDs{TMDB: 20}},
+		{IDs: integrations.IDs{TMDB: 10}},
+		{Title: "Unmapped"},
+	}}}
+	executor := DynamicJobExecutor{Config: &config.Config{}, ListSources: ListSourceRegistry{"fake": source}}
+	job := config.DynamicJob{MediaType: "movie", RecommendationSeeds: []int{10}, RecommendationList: &config.RecommendationSeedList{Source: "fake", List: config.ListLocator{Kind: "public_list", ListID: "favorites"}}}
+	seeds, err := executor.recommendationSeedIDs(t.Context(), job)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(seeds) != 2 || seeds[0] != 10 || seeds[1] != 20 || source.limit != 20 {
+		t.Fatalf("seeds=%v limit=%d", seeds, source.limit)
+	}
+}
+
 func TestListSourcePropagatesProviderAndCancellationErrors(t *testing.T) {
 	providerErr := errors.New("provider unavailable")
 	source := &fakeListSource{err: providerErr}

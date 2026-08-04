@@ -205,6 +205,68 @@ func (t *TMDB) getShows(ctx context.Context, endpoint string, limit int) ([]Show
 	return result, nil
 }
 
+func (t *TMDB) GetMovieRecommendations(ctx context.Context, seeds []int, limit int) ([]Movie, error) {
+	result := make([]Movie, 0, limit)
+	seen := make(map[int]bool, len(seeds)+limit)
+	uniqueSeeds := make([]int, 0, len(seeds))
+	for _, seed := range seeds {
+		if seen[seed] {
+			continue
+		}
+		seen[seed] = true
+		uniqueSeeds = append(uniqueSeeds, seed)
+	}
+	for _, seed := range uniqueSeeds {
+		var response tmdbListResponse[tmdbMovieResult]
+		if err := t.get(ctx, fmt.Sprintf("/movie/%d/recommendations", seed), url.Values{"page": {"1"}, "language": {"en-US"}}, &response); err != nil {
+			return nil, err
+		}
+		for _, item := range response.Results {
+			if seen[item.ID] {
+				continue
+			}
+			seen[item.ID] = true
+			result = append(result, Movie{Title: item.Title, Year: yearFromDate(item.ReleaseDate), IDs: IDs{TMDB: item.ID}, Genres: genreNames(item.GenreIDs, tmdbMovieGenres), Language: item.OriginalLanguage, Overview: item.Overview, Rating: item.VoteAverage, Votes: item.VoteCount})
+			if len(result) == limit {
+				return result, nil
+			}
+		}
+	}
+	return result, nil
+}
+
+func (t *TMDB) GetShowRecommendations(ctx context.Context, seeds []int, limit int) ([]Show, error) {
+	result := make([]Show, 0, limit)
+	seen := make(map[int]bool, len(seeds)+limit)
+	uniqueSeeds := make([]int, 0, len(seeds))
+	for _, seed := range seeds {
+		if seen[seed] {
+			continue
+		}
+		seen[seed] = true
+		uniqueSeeds = append(uniqueSeeds, seed)
+	}
+	for _, seed := range uniqueSeeds {
+		var response tmdbListResponse[tmdbShowResult]
+		if err := t.get(ctx, fmt.Sprintf("/tv/%d/recommendations", seed), url.Values{"page": {"1"}, "language": {"en-US"}}, &response); err != nil {
+			return nil, err
+		}
+		for _, item := range response.Results {
+			if seen[item.ID] {
+				continue
+			}
+			seen[item.ID] = true
+			result = append(result, Show{Title: item.Name, Year: yearFromDate(item.FirstAirDate), IDs: IDs{TMDB: item.ID}, Genres: genreNames(item.GenreIDs, tmdbShowGenres), Language: item.OriginalLanguage, Country: strings.ToLower(strings.Join(item.OriginCountry, ",")), Overview: item.Overview, Rating: item.VoteAverage, Votes: item.VoteCount})
+			if len(result) == limit {
+				t.enrichShows(ctx, result)
+				return result, nil
+			}
+		}
+	}
+	t.enrichShows(ctx, result)
+	return result, nil
+}
+
 func (t *TMDB) enrichShows(ctx context.Context, shows []Show) {
 	semaphore := make(chan struct{}, 8)
 	var waitGroup sync.WaitGroup
