@@ -183,7 +183,7 @@ function renderRunOutcome(run) {
     const count = Number(value || 0);
     return `<span class="run-flow-node run-flow-${tone}${count === 0 ? ' run-flow-node-empty' : ''}"><small>${label}</small><b>${count}</b><em>${ratio}%</em></span>`;
   };
-  const passedOutcomes = outcomes.filter(([, , tone]) => tone !== 'rejected');
+  const passedOutcomes = outcomes.filter(([, value, tone]) => tone !== 'rejected' && Number(value || 0) > 0);
 
   // The tree above is already the single source of truth for every count and
   // percentage; this strip is purely a proportion-at-a-glance visual, so it
@@ -240,6 +240,7 @@ function renderTimelineRunRow(run) {
   const jobType = String(job.type || '');
   const outcome = (label, value, tone) => {
     const count = Number(value || 0);
+    if (tone !== 'all' && count === 0) return '';
     return `<button type="button" data-action="filter-run-entries" data-run-id="${run.id}" data-status="${tone}" class="run-entry-filter run-entry-filter-${tone}" aria-pressed="${tone === 'all'}" ${count === 0 ? 'data-empty="true"' : ''}><span>${label}</span><b>${count}</b></button>`;
   };
   const resultChip = (label, value, tone) => {
@@ -658,7 +659,7 @@ async function loadActivityChart() {
         labels: data.labels || [],
         datasets: [
           {
-            label: 'Added',
+            label: 'Delivered',
             data: data.added || [],
             borderColor: 'rgb(34, 197, 94)',
             backgroundColor: 'rgba(34, 197, 94, 0.1)',
@@ -755,13 +756,13 @@ htmx.on('htmx:afterSwap', function(evt) {
     evt.detail.target.innerHTML = `
       <div class="activity-metric">
         <div class="flex justify-between items-start mb-2">
-          <div class="text-sm text-green-100 font-medium">Total Added</div>
+          <div class="text-sm text-green-100 font-medium">Total Delivered</div>
           <svg class="w-8 h-8 text-green-200 opacity-75" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
           </svg>
         </div>
         <div class="text-4xl font-bold text-white mb-1">${stats.total_added || 0}</div>
-        <div class="text-xs text-green-100">Successfully processed</div>
+        <div class="text-xs text-green-100">Direct additions and requests</div>
       </div>
       <div class="activity-metric">
         <div class="flex justify-between items-start mb-2">

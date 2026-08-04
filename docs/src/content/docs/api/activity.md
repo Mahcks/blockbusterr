@@ -23,6 +23,8 @@ Each entry contains its job identity, media identity, outcome, decision message,
 
 Returns executions with start/finish timing and found, passed, added, requested, rejected, skipped, and failed totals. The response also includes recent ranked-selection cycle summaries when that opt-in feature is enabled.
 
+The UI reports direct Radarr/Sonarr additions as **Added**, Jellyseerr/Seerr submissions as **Requested**, and their combined global total as **Delivered**. The API preserves the separate `added` and `requested` fields.
+
 ## Supporting data
 
 - `GET /v1/activity/languages`
