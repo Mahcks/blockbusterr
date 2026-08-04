@@ -3,7 +3,7 @@ title: Smart Jobs
 description: Use adaptive rating thresholds with popularity-aware discovery.
 ---
 
-Smart Popular jobs adjust the rating threshold according to a candidate's popularity. Highly popular titles must clear a stronger quality bar, while less-visible titles receive a more forgiving threshold.
+Smart Popular jobs adjust the rating threshold according to a candidate's popularity. Highly popular titles may clear a lower quality bar, while less-visible titles must earn a stronger rating to pass.
 
 ## Settings
 
@@ -30,11 +30,11 @@ Avoid duplicating the adaptive threshold with an unnecessarily strict minimum-ra
 4. Change one setting at a time.
 5. Review the Job Run distribution after enabling it.
 
-A higher baseline is stricter everywhere. A higher adjustment factor creates a larger difference between highly popular and less-popular candidates.
+A higher baseline is stricter everywhere. A higher adjustment factor makes popular titles more forgiving and less-popular titles stricter.
 
 ## Troubleshooting
 
 - **Too many weak titles:** increase `base_min_rating`, add a minimum-votes boundary, or tighten the assigned rules.
-- **Only blockbusters pass:** lower `adjustment_factor`.
+- **Weak blockbusters pass:** lower `adjustment_factor` or raise `base_min_rating`.
 - **Too few results:** inspect whether the assigned rule set is rejecting candidates before changing smart settings.
 - **Unexpected delivery:** open the title's Activity Entry and inspect the complete decision details.

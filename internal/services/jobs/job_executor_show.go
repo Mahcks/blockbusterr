@@ -161,27 +161,29 @@ func (e *ShowJobExecutor) executeShowsDirect(
 	budget := newDeliveryBudget(e.Config, e.Database, jobConfig.JobID, e.currentRunID, jobConfig.DeliveryLimit, e.DryRun)
 
 	for _, show := range shows {
-		// Try to lookup series in Sonarr - prefer TVDB ID if available, otherwise use title
-		var lookupResults []integrations.SonarrSeries
-		var err error
-
+		// Prefer the provider ID, but never trust Sonarr's first fuzzy result.
+		var series integrations.SonarrSeries
+		var found bool
 		if show.IDs.TVDB > 0 {
-			lookupResults, err = sonarrClient.LookupSeries(ctx, fmt.Sprintf("tvdb:%d", show.IDs.TVDB))
-			if err != nil || len(lookupResults) == 0 {
-				log.Warnf("TVDB lookup failed for '%s (%d)', trying title search", show.Title, show.Year)
-				lookupResults, err = sonarrClient.LookupSeries(ctx, show.Title)
+			lookupResults, lookupErr := sonarrClient.LookupSeries(ctx, fmt.Sprintf("tvdb:%d", show.IDs.TVDB))
+			if lookupErr == nil {
+				series, found = matchingSonarrSeries(show, lookupResults)
 			}
-		} else {
-			lookupResults, err = sonarrClient.LookupSeries(ctx, show.Title)
 		}
-
-		if err != nil || len(lookupResults) == 0 {
-			log.Errorf("Failed to lookup show '%s (%d)' in Sonarr: %v", show.Title, show.Year, err)
+		if !found {
+			lookupResults, lookupErr := sonarrClient.LookupSeries(ctx, show.Title)
+			if lookupErr != nil {
+				log.Errorf("Failed to lookup show '%s (%d)' in Sonarr: %v", show.Title, show.Year, lookupErr)
+				failed++
+				continue
+			}
+			series, found = matchingSonarrSeries(show, lookupResults)
+		}
+		if !found {
+			log.Errorf("Sonarr lookup returned no exact match for '%s (%d)'", show.Title, show.Year)
 			failed++
 			continue
 		}
-
-		series := lookupResults[0]
 
 		// Check if lookup returned a series that's already in Sonarr (has an ID assigned)
 		if series.ID > 0 {
@@ -411,6 +413,25 @@ func (e *ShowJobExecutor) executeShowsDirect(
 
 	log.Infof("%s job completed - Added: %d, Skipped: %d, Failed: %d", jobConfig.JobName, added, skipped, failed)
 	return nil
+}
+
+func matchingSonarrSeries(show integrations.Show, results []integrations.SonarrSeries) (integrations.SonarrSeries, bool) {
+	for _, series := range results {
+		if show.IDs.TVDB > 0 && series.TvdbID == show.IDs.TVDB {
+			return series, true
+		}
+	}
+	for _, series := range results {
+		if show.IDs.TMDB > 0 && series.TmdbID == show.IDs.TMDB {
+			return series, true
+		}
+	}
+	for _, series := range results {
+		if strings.EqualFold(strings.TrimSpace(series.Title), strings.TrimSpace(show.Title)) && (show.Year == 0 || series.Year == 0 || series.Year == show.Year) {
+			return series, true
+		}
+	}
+	return integrations.SonarrSeries{}, false
 }
 
 // executeShowsJellyseerr requests shows via Jellyseerr

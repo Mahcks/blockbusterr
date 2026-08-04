@@ -149,6 +149,8 @@
         }
       });
     }
+
+    document.getElementById('import-job-file')?.addEventListener('change', importJobBundle);
   });
 
   function handleJobsAction(event) {
@@ -177,6 +179,7 @@
       'preview-job': () => previewJob(),
       'run-job': () => runJobNow(),
       'toggle-job': () => toggleJobEnabled(),
+      'export-job': () => exportCurrentJob(),
       'delete-current-job': () => deleteCurrentJob()
     };
     if (!actions[target.dataset.action]) return;
@@ -410,6 +413,33 @@
     closeDialog('add-job-modal');
     // Reset custom form
     document.getElementById('custom-job-form').reset();
+  }
+
+  function exportCurrentJob() {
+    if (!currentJob || currentJob.id.startsWith('legacy_')) return;
+    window.location.assign(`/config/jobs/${encodeURIComponent(currentJob.id)}/export`);
+  }
+
+  async function importJobBundle(event) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    const body = new FormData();
+    body.append('config', file);
+    try {
+      const response = await fetch('/config/jobs/import', { method: 'POST', body });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Could not import job');
+      await loadData();
+      renderJobsList();
+      closeAddJobModal();
+      showNotification(`${result.name} imported disabled. Preview it before enabling.`, 'success');
+      openJobModal(result.id);
+    } catch (error) {
+      showNotification(error.message, 'error');
+    } finally {
+      input.value = '';
+    }
   }
 
   function updateTabStyles(activeTab) {
@@ -796,8 +826,10 @@
     const deleteZone = document.getElementById('delete-job-zone');
     if (isLegacy) {
       deleteZone.classList.add('hidden');
+      document.getElementById('export-job-button').classList.add('hidden');
     } else {
       deleteZone.classList.remove('hidden');
+      document.getElementById('export-job-button').classList.remove('hidden');
     }
 
     openDialog('job-modal', trigger);

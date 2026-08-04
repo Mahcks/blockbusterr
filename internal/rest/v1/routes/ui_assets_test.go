@@ -192,7 +192,7 @@ func TestJobsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 			t.Errorf("jobs.js is missing %s", expected)
 		}
 	}
-	for _, expected := range []string{`id="modal-rule-set"`, "function populateJobFilters", "rule_set_id", "/v1/rule-sets", `id="modal-delivery-limit"`, "delivery_limit"} {
+	for _, expected := range []string{`id="modal-rule-set"`, "function populateJobFilters", "rule_set_id", "/v1/rule-sets", `id="modal-delivery-limit"`, "delivery_limit", `id="import-job-file"`, `data-action="export-job"`, "function importJobBundle", "function exportCurrentJob"} {
 		if !strings.Contains(jobs+script, expected) {
 			t.Errorf("per-job filter editor is missing %s", expected)
 		}

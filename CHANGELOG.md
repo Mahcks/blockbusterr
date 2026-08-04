@@ -15,6 +15,7 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 - Readiness checks, local compiled assets, configuration backup/restore, and improved shutdown behavior.
 - Automatic migration of legacy jobs and embedded custom filters.
 - Enforced per-job and global delivery budgets with rolling movie/show periods.
+- Versioned portable job bundles that include their reusable rules and import disabled with fresh IDs.
 
 ### Changed
 
@@ -22,6 +23,7 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 - Activity terminology is standardized as Activity Entries and Job Runs.
 - The application no longer requires Trakt when enabled jobs use another configured provider.
 - Documentation now describes Blockbusterr as the discovery and decision layer in a media automation stack.
+- Sonarr lookup results now require matching provider identity before a show is treated as already present.
 
 ### Removed
 

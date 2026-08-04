@@ -5,34 +5,49 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"gopkg.in/yaml.v3"
 )
 
-// ShareableConfig contains only the shareable parts of the config (no credentials)
+const shareableConfigVersion = 2
+
+// ShareableConfig contains only portable automation settings, never credentials.
 type ShareableConfig struct {
+	Version int `yaml:"schema_version"`
 	Scoring any `yaml:"scoring"`
 	Jobs    any `yaml:"jobs"`
 	Filters struct {
 		Movies config.MovieFilters `yaml:"movies"`
 		Shows  config.ShowFilters  `yaml:"shows"`
 	} `yaml:"filters"`
+	RuleSets        []config.RuleSet       `yaml:"rule_sets,omitempty"`
+	TitleExceptions config.TitleExceptions `yaml:"title_exceptions,omitempty"`
+}
+
+type jobBundle struct {
+	Version         int                    `yaml:"schema_version"`
+	Job             config.DynamicJob      `yaml:"job"`
+	RuleSet         config.RuleSet         `yaml:"rule_set"`
+	TitleExceptions config.TitleExceptions `yaml:"title_exceptions,omitempty"`
 }
 
 func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
-	// Export shareable configuration (filters, jobs, scoring only)
+	// Export portable automation without integration credentials.
 	router.Get("/config/export", func(c *fiber.Ctx) error {
 		cfg := gctx.Config()
-
-		// Create shareable config with only filters, jobs, and scoring
 		shareableData := map[string]any{
-			"scoring": cfg.Scoring,
-			"jobs":    cfg.Jobs,
-			"filters": cfg.Filters,
+			"schema_version":   shareableConfigVersion,
+			"scoring":          cfg.Scoring,
+			"jobs":             cfg.Jobs,
+			"filters":          cfg.Filters,
+			"rule_sets":        cfg.RuleSets,
+			"title_exceptions": cfg.TitleExceptions,
 		}
 
 		// Marshal shareable config to YAML
@@ -47,6 +62,25 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 		c.Set("Content-Type", "application/x-yaml")
 		c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=blockbusterr-shareable-%s.yaml", time.Now().Format("2006-01-02")))
 
+		return c.Send(data)
+	})
+
+	router.Get("/config/jobs/:id/export", func(c *fiber.Ctx) error {
+		cfg := gctx.Config()
+		job := cfg.GetDynamicJobByID(c.Params("id"))
+		if job == nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Job not found"})
+		}
+		rules, _, err := cfg.ResolveRuleSet(*job)
+		if err != nil {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
+		}
+		data, err := yaml.Marshal(jobBundle{Version: shareableConfigVersion, Job: *job, RuleSet: *rules, TitleExceptions: cfg.TitleExceptions})
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Failed to marshal job: %v", err)})
+		}
+		c.Set("Content-Type", "application/x-yaml")
+		c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=blockbusterr-job-%s.yaml", time.Now().Format("2006-01-02")))
 		return c.Send(data)
 	})
 
@@ -69,79 +103,48 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 		return c.Send(data)
 	})
 
-	// Import shareable configuration (filters, jobs, scoring only)
+	// Import a complete portable configuration while preserving credentials.
 	router.Post("/config/import", func(c *fiber.Ctx) error {
-		// Get uploaded file
-		file, err := c.FormFile("config")
+		data, err := uploadedConfig(c)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "No config file provided",
-			})
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
-
-		// Open the uploaded file
-		src, err := file.Open()
+		candidate, err := importedShareableConfig(gctx.Config(), data)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to open uploaded file: %v", err),
-			})
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
-		defer func() { _ = src.Close() }()
-
-		// Read file contents
-		data, err := io.ReadAll(src)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to read file: %v", err),
-			})
-		}
-
-		// Parse YAML as shareable config
-		var shareableConfig ShareableConfig
-		if err := yaml.Unmarshal(data, &shareableConfig); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": fmt.Sprintf("Invalid YAML format: %v", err),
-			})
-		}
-
-		// Get current config and merge shareable parts
-		cfg := gctx.Config()
-
-		// Update only the shareable sections
-		if err := yaml.Unmarshal(data, &struct {
-			Scoring any `yaml:"scoring"`
-			Jobs    any `yaml:"jobs"`
-			Filters struct {
-				Movies config.MovieFilters `yaml:"movies"`
-				Shows  config.ShowFilters  `yaml:"shows"`
-			} `yaml:"filters"`
-		}{
-			Scoring: &cfg.Scoring,
-			Jobs:    &cfg.Jobs,
-			Filters: struct {
-				Movies config.MovieFilters `yaml:"movies"`
-				Shows  config.ShowFilters  `yaml:"shows"`
-			}{
-				Movies: cfg.Filters.Movies,
-				Shows:  cfg.Filters.Shows,
-			},
-		}); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to parse config: %v", err),
-			})
-		}
-
-		// Save the updated config
-		if err := cfg.Save(); err != nil {
+		if err := candidate.Save(); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": fmt.Sprintf("Failed to save config: %v", err),
 			})
 		}
-
+		*gctx.Config() = *candidate
+		if err := gctx.ReloadConfig(); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Configuration saved but failed to reload: %v", err)})
+		}
 		return c.JSON(fiber.Map{
-			"message": "Shareable configuration imported successfully. Please restart the application for changes to take effect.",
-			"path":    cfg.ConfigFilePath,
+			"message": "Shareable configuration imported successfully.",
+			"path":    candidate.ConfigFilePath,
 		})
+	})
+
+	router.Post("/config/jobs/import", func(c *fiber.Ctx) error {
+		data, err := uploadedConfig(c)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		candidate, importedJob, err := importedJobBundle(gctx.Config(), data)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		if err := candidate.Save(); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Failed to save config: %v", err)})
+		}
+		*gctx.Config() = *candidate
+		if err := gctx.ReloadConfig(); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Job imported but configuration failed to reload: %v", err)})
+		}
+		return c.Status(fiber.StatusCreated).JSON(importedJob)
 	})
 
 	// Restore full configuration backup
@@ -216,4 +219,165 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 			"path":    configPath,
 		})
 	})
+}
+
+func uploadedConfig(c *fiber.Ctx) ([]byte, error) {
+	file, err := c.FormFile("config")
+	if err != nil {
+		return nil, fmt.Errorf("no config file provided")
+	}
+	src, err := file.Open()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open uploaded file: %w", err)
+	}
+	defer func() { _ = src.Close() }()
+	data, err := io.ReadAll(io.LimitReader(src, 2<<20))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read uploaded file: %w", err)
+	}
+	return data, nil
+}
+
+func importedShareableConfig(current *config.Config, data []byte) (*config.Config, error) {
+	var header struct {
+		Version int `yaml:"schema_version"`
+	}
+	if err := yaml.Unmarshal(data, &header); err != nil {
+		return nil, fmt.Errorf("invalid YAML format: %w", err)
+	}
+	if header.Version > shareableConfigVersion {
+		return nil, fmt.Errorf("shareable configuration version %d is newer than supported version %d", header.Version, shareableConfigVersion)
+	}
+	var imported config.Config
+	if err := yaml.Unmarshal(data, &imported); err != nil {
+		return nil, fmt.Errorf("invalid YAML format: %w", err)
+	}
+	candidate := *current
+	candidate.Scoring = imported.Scoring
+	candidate.Jobs = imported.Jobs
+	candidate.Filters = imported.Filters
+	candidate.RuleSets = imported.RuleSets
+	candidate.TitleExceptions = imported.TitleExceptions
+	candidate.MigrateRuleSets()
+	if err := validatePortableAutomation(&candidate); err != nil {
+		return nil, err
+	}
+	return &candidate, nil
+}
+
+func importedJobBundle(current *config.Config, data []byte) (*config.Config, config.DynamicJob, error) {
+	var bundle jobBundle
+	if err := yaml.Unmarshal(data, &bundle); err != nil {
+		return nil, config.DynamicJob{}, fmt.Errorf("invalid job bundle: %w", err)
+	}
+	if bundle.Version != shareableConfigVersion {
+		return nil, config.DynamicJob{}, fmt.Errorf("unsupported job bundle version %d", bundle.Version)
+	}
+	candidate := *current
+	rules := bundle.RuleSet
+	rules.ID = uuid.NewString()
+	rules.Revision = 1
+	rules.Name = availableRuleSetName(&candidate, strings.TrimSpace(rules.Name))
+	if err := candidate.ValidateRuleSet(rules, ""); err != nil {
+		return nil, config.DynamicJob{}, fmt.Errorf("invalid imported rule set: %w", err)
+	}
+	job := bundle.Job
+	job.ID = uuid.NewString()
+	job.Enabled = false
+	job.RuleSetID = rules.ID
+	candidate.RuleSets = append(candidate.RuleSets, rules)
+	candidate.Jobs.List = append(candidate.Jobs.List, job)
+	candidate.TitleExceptions = mergeTitleExceptions(candidate.TitleExceptions, bundle.TitleExceptions)
+	if err := validatePortableAutomation(&candidate); err != nil {
+		return nil, config.DynamicJob{}, err
+	}
+	return &candidate, job, nil
+}
+
+func validatePortableAutomation(candidate *config.Config) error {
+	if candidate.Jobs.GlobalLimitMovies < 0 || candidate.Jobs.GlobalLimitShows < 0 {
+		return fmt.Errorf("global delivery limits cannot be negative")
+	}
+	if candidate.Jobs.GlobalPeriod == "" || candidate.Jobs.GlobalPeriod == "sync" {
+		candidate.Jobs.GlobalPeriod = "daily"
+	}
+	if candidate.Jobs.GlobalPeriod != "daily" && candidate.Jobs.GlobalPeriod != "weekly" && candidate.Jobs.GlobalPeriod != "monthly" {
+		return fmt.Errorf("global delivery period must be daily, weekly, or monthly")
+	}
+	if candidate.Scoring.Enabled {
+		total := candidate.Scoring.RatingWeight + candidate.Scoring.PopularityWeight + candidate.Scoring.RecencyWeight
+		if total < 0.999 || total > 1.001 {
+			return fmt.Errorf("scoring weights must total 1.0")
+		}
+	}
+	for _, rules := range candidate.RuleSets {
+		if err := candidate.ValidateRuleSet(rules, rules.ID); err != nil {
+			return fmt.Errorf("invalid rule set %q: %w", rules.Name, err)
+		}
+	}
+	providerReady := *candidate
+	providerReady.Trakt.ClientID = "portable-validation"
+	providerReady.TMDB.APIKey = "portable-validation"
+	providerReady.Simkl.ClientID = "portable-validation"
+	for _, job := range candidate.Jobs.List {
+		if err := validateDynamicJob(&providerReady, job); err != nil {
+			return fmt.Errorf("invalid job %q: %w", job.Name, err)
+		}
+		if _, _, err := candidate.ResolveRuleSet(job); err != nil {
+			return fmt.Errorf("invalid job %q: %w", job.Name, err)
+		}
+	}
+	for _, ids := range [][]int{
+		candidate.TitleExceptions.AllowedMovieTMDBIDs,
+		candidate.TitleExceptions.BlockedMovieTMDBIDs,
+		candidate.TitleExceptions.AllowedShowTVDBIDs,
+		candidate.TitleExceptions.BlockedShowTVDBIDs,
+	} {
+		for _, id := range ids {
+			if id <= 0 {
+				return fmt.Errorf("title exception IDs must be positive")
+			}
+		}
+	}
+	return nil
+}
+
+func availableRuleSetName(cfg *config.Config, name string) string {
+	if name == "" {
+		name = "Imported Rules"
+	}
+	base := name
+	for suffix := 2; ; suffix++ {
+		duplicate := false
+		for _, rules := range cfg.RuleSets {
+			if rules.Media == "movie" || rules.Media == "show" {
+				duplicate = duplicate || strings.EqualFold(rules.Name, name)
+			}
+		}
+		if !duplicate {
+			return name
+		}
+		name = fmt.Sprintf("%s %d", base, suffix)
+	}
+}
+
+func mergeTitleExceptions(current, imported config.TitleExceptions) config.TitleExceptions {
+	merge := func(left, right []int) []int {
+		seen := make(map[int]bool, len(left)+len(right))
+		result := append([]int(nil), left...)
+		for _, id := range left {
+			seen[id] = true
+		}
+		for _, id := range right {
+			if id > 0 && !seen[id] {
+				result, seen[id] = append(result, id), true
+			}
+		}
+		return result
+	}
+	current.AllowedMovieTMDBIDs = merge(current.AllowedMovieTMDBIDs, imported.AllowedMovieTMDBIDs)
+	current.BlockedMovieTMDBIDs = merge(current.BlockedMovieTMDBIDs, imported.BlockedMovieTMDBIDs)
+	current.AllowedShowTVDBIDs = merge(current.AllowedShowTVDBIDs, imported.AllowedShowTVDBIDs)
+	current.BlockedShowTVDBIDs = merge(current.BlockedShowTVDBIDs, imported.BlockedShowTVDBIDs)
+	return current
 }

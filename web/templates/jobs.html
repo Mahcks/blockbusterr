@@ -144,6 +144,11 @@
             <p class="text-sm text-slate-400 mt-1">
               Choose a template or create a custom job
             </p>
+            <label class="job-secondary-button mt-3 inline-flex cursor-pointer items-center gap-2">
+              <i data-lucide="upload" class="h-4 w-4" aria-hidden="true"></i>
+              Import job
+              <input id="import-job-file" type="file" accept=".yaml,.yml" class="sr-only">
+            </label>
           </div>
 
           <button
@@ -846,6 +851,10 @@
             id="toggle-job-description"
             class="text-xs text-slate-400 text-center -mt-2"
           ></p>
+
+          <button type="button" id="export-job-button" data-action="export-job" class="job-secondary-button w-full">
+            Export job and rules
+          </button>
 
           <!-- Delete Job Button (only for dynamic jobs) -->
           <div id="delete-job-zone" class="job-danger-zone hidden">

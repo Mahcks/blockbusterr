@@ -5,6 +5,23 @@ description: API endpoints for testing integrations and fetching metadata
 
 The Configuration API allows you to test connections and retrieve metadata for configuring rules.
 
+## Portable configuration
+
+Portable exports contain automation settings only: scoring, jobs, legacy filter
+defaults, reusable rule sets, and title exceptions. Provider and destination
+credentials are never included, and importing preserves the credentials already
+stored on the receiving installation.
+
+- `GET /config/export` downloads the complete portable configuration.
+- `POST /config/import` accepts that YAML in a multipart field named `config`.
+- `GET /config/jobs/{id}/export` downloads one job with its assigned rule set.
+- `POST /config/jobs/import` accepts a job bundle in a multipart field named
+  `config`. Imported jobs and policies receive new IDs, and the job is disabled
+  until it is reviewed and previewed.
+
+Portable YAML uses `schema_version: 2`. Newer unsupported schema versions are
+rejected instead of being partially applied.
+
 ## Validate Radarr Connection
 
 Test connection to Radarr instance.
