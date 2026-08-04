@@ -97,6 +97,7 @@ type PreviewItem struct {
 	Genres         []string              `json:"genres,omitempty"`
 	Runtime        int                   `json:"runtime,omitempty"`
 	AlreadyExists  bool                  `json:"already_exists"`
+	RepeatBlocked  bool                  `json:"repeat_blocked,omitempty"`
 	FilteredOut    bool                  `json:"filtered_out,omitempty"`
 	FilterReason   string                `json:"filter_reason,omitempty"`
 	DecisionReason string                `json:"decision_reason,omitempty"`

@@ -340,9 +340,9 @@
               <p id="custom-limit-description" class="text-xs text-slate-400 mt-1">Candidates fetched per run</p>
             </div>
             <div>
-              <label for="custom-delivery-limit" class="block mb-2 font-medium">Delivery limit</label>
+              <label for="custom-delivery-limit" class="block mb-2 font-medium">Job delivery cap</label>
               <input type="number" id="custom-delivery-limit" name="delivery_limit" min="0" value="0" class="w-full rounded-lg transition" />
-              <p class="text-xs text-slate-400 mt-1">Successful additions or requests per run. Zero is unlimited.</p>
+              <p class="text-xs text-slate-400 mt-1">Maximum winners this job contributes per run or ranked cycle. Zero is unlimited.</p>
             </div>
           </div>
 
@@ -660,9 +660,9 @@
               <p class="text-xs text-slate-400 mt-1">Candidates fetched per run</p>
             </div>
             <div>
-              <label for="modal-delivery-limit" class="block mb-2 font-medium">Delivery limit</label>
+              <label for="modal-delivery-limit" class="block mb-2 font-medium">Job delivery cap</label>
               <input type="number" id="modal-delivery-limit" name="delivery_limit" min="0" class="w-full rounded-lg transition" />
-              <p class="text-xs text-slate-400 mt-1">Successful additions or requests per run. Zero is unlimited.</p>
+              <p class="text-xs text-slate-400 mt-1">Maximum winners this job contributes per run or ranked cycle. Zero is unlimited.</p>
             </div>
           </div>
 
@@ -804,7 +804,7 @@
                   placeholder="Leave empty to use default"
                   class="w-full rounded-lg transition"
                 />
-                <p class="text-xs text-slate-400 mt-1">
+                <p id="modal-interval-help" class="text-xs text-slate-400 mt-1">
                   Override default interval (e.g., 1h, 30m, 0 */2 * * *)
                 </p>
               </div>
@@ -954,6 +954,7 @@
             </button>
             <button
               type="button"
+              id="modal-run-button"
               data-action="run-job"
               class="job-run-button"
               title="Runs this job immediately, outside its schedule"

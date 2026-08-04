@@ -24,13 +24,11 @@
     </div>
   </div>
 
-  {{if ne .Readiness.Automation.State "ready"}}
-  <aside class="readiness-inline" aria-label="Activity setup status">
+  <aside id="activityEmptyState" class="readiness-inline hidden" aria-label="Activity status">
     <i data-lucide="route" aria-hidden="true"></i>
-    <span><strong>No automation history yet.</strong> Create, preview, then run a ready job. Its decisions and Job Runs will appear here.</span>
+    <span><strong>No activity yet.</strong> Create, preview, then run a ready job. Its decisions and Job Runs will appear here.</span>
     <a href="/jobs">Open Jobs</a>
   </aside>
-  {{end}}
 
   <!-- Statistics with Charts -->
   <div id="stats" hx-get="/v1/activity/stats" hx-trigger="load, statsUpdate from:body" class="activity-metrics">

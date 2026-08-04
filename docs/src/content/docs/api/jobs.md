@@ -53,7 +53,7 @@ Discovers and evaluates candidates without delivering them. Preview uses the sam
 
 `POST /v1/jobs/selection/preview`
 
-Fetches participating jobs and returns deduplicated movie/show winners, displaced candidates, merged source/job provenance, and provider errors without delivering anything.
+Fetches participating jobs and returns per-job stage counts, deduplicated movie/show winners, below-cutoff candidates, merged source/job provenance, delivery-limit exclusions, and provider errors without delivering anything.
 
 ## Trigger
 

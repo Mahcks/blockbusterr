@@ -51,10 +51,12 @@ func TestJobTemplatesAreValidRecipes(t *testing.T) {
 		if err := json.Unmarshal(encoded, &decoded); err != nil || decoded.ID != recipe.ID || decoded.Source != recipe.Source || decoded.SyncInterval != recipe.SyncInterval || decoded.DeliveryLimit != recipe.DeliveryLimit {
 			t.Fatalf("recipe %s JSON round trip: %+v, %v", recipe.ID, decoded, err)
 		}
-		rules := config.RuleSet{ID: recipe.ID, Name: recipe.RuleSetName, Media: recipe.MediaType, Revision: 1, Movies: recipe.Movies, Shows: recipe.Shows}
-		config.ApplyRuleSetDefaults(&rules)
-		if err := cfg.ValidateRuleSet(rules, ""); err != nil {
-			t.Fatalf("recipe %s rules: %v", recipe.ID, err)
+		if !recipe.DefaultRules {
+			rules := config.RuleSet{ID: recipe.ID, Name: recipe.RuleSetName, Media: recipe.MediaType, Revision: 1, Movies: recipe.Movies, Shows: recipe.Shows}
+			config.ApplyRuleSetDefaults(&rules)
+			if err := cfg.ValidateRuleSet(rules, ""); err != nil {
+				t.Fatalf("recipe %s rules: %v", recipe.ID, err)
+			}
 		}
 	}
 }

@@ -135,3 +135,22 @@ func TestConfigSaveValidatesRankedSelection(t *testing.T) {
 		t.Fatalf("expected scoring dependency rejection, got %d", rec.Code)
 	}
 }
+
+func TestConfigSaveUpdatesRankedSelectionMembership(t *testing.T) {
+	app, cfg := newConfigSaveTestApp(t)
+	cfg.Jobs.List = []config.DynamicJob{
+		{ID: "first", Name: "First", Enabled: true, MediaType: "movie", SelectionCycle: true},
+		{ID: "second", Name: "Second", Enabled: true, MediaType: "movie"},
+	}
+	fields := map[string]string{
+		"jobs.sync_interval": "2h", "jobs.selection.enabled": "true", "jobs.selection.sync_interval": "24h",
+		"jobs.selection.movie_limit": "5", "jobs.selection.show_limit": "0", "jobs.selection.members_present": "true", "jobs.selection.members": "second",
+		"scoring.enabled": "true", "scoring.rating_weight": "0.6", "scoring.popularity_weight": "0.3", "scoring.recency_weight": "0.1",
+	}
+	if rec, payload := postConfigSave(t, app, fields); rec.Code != fiber.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", rec.Code, payload)
+	}
+	if cfg.Jobs.List[0].SelectionCycle || !cfg.Jobs.List[1].SelectionCycle {
+		t.Fatalf("membership not applied: %+v", cfg.Jobs.List)
+	}
+}

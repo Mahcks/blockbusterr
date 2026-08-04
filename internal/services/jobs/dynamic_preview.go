@@ -102,7 +102,7 @@ func previewMovies(ctx context.Context, cfg *config.Config, db *database.Databas
 		} else if reason, err := repeatSkipReason(cfg, db, repeatPolicy, "movie", movie.IDs.TMDB, 0, time.Now()); err != nil {
 			return err
 		} else if reason != "" {
-			item.AlreadyExists, item.DecisionReason = true, "Skipped: "+reason
+			item.AlreadyExists, item.RepeatBlocked, item.DecisionReason = true, true, "Skipped: "+reason
 			response.AlreadyExists++
 		} else if mode == "direct" && existing[movie.IDs.TMDB] {
 			item.AlreadyExists = true
@@ -161,7 +161,7 @@ func previewShows(ctx context.Context, cfg *config.Config, db *database.Database
 		} else if reason, err := repeatSkipReason(cfg, db, repeatPolicy, "show", show.IDs.TMDB, show.IDs.TVDB, time.Now()); err != nil {
 			return err
 		} else if reason != "" {
-			item.AlreadyExists, item.DecisionReason = true, "Skipped: "+reason
+			item.AlreadyExists, item.RepeatBlocked, item.DecisionReason = true, true, "Skipped: "+reason
 			response.AlreadyExists++
 		} else if mode == "direct" && ((show.IDs.TVDB > 0 && existingTVDB[show.IDs.TVDB]) || (show.IDs.TMDB > 0 && existingTMDB[show.IDs.TMDB])) {
 			item.AlreadyExists = true

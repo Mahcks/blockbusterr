@@ -18,6 +18,7 @@ type SelectionCyclePlan struct {
 	Movies       SelectionAllocation    `json:"movies"`
 	Shows        SelectionAllocation    `json:"shows"`
 	Participants []SelectionParticipant `json:"participants,omitempty"`
+	Duplicates   int                    `json:"duplicates_merged,omitempty"`
 	Errors       map[string]string      `json:"errors,omitempty"`
 }
 
@@ -30,6 +31,8 @@ type SelectionParticipant struct {
 	Candidates    int    `json:"candidates"`
 	Rejected      int    `json:"rejected"`
 	AlreadyExists int    `json:"already_exists"`
+	RepeatBlocked int    `json:"repeat_blocked"`
+	Capped        int    `json:"capped"`
 	DeliveryLimit int    `json:"delivery_limit"`
 }
 
@@ -185,7 +188,11 @@ func planSelectionCycleWithPreview(cfg *config.Config, previewJob func(config.Dy
 				continue
 			}
 			if item.AlreadyExists {
-				plan.Participants[participantIndex].AlreadyExists++
+				if item.RepeatBlocked {
+					plan.Participants[participantIndex].RepeatBlocked++
+				} else {
+					plan.Participants[participantIndex].AlreadyExists++
+				}
 				continue
 			}
 			candidate := SelectionCandidate{JobID: job.ID, Source: job.Source, Title: item.Title, Year: item.Year, Score: item.Score, ProviderRank: item.ProviderRank}
@@ -207,8 +214,15 @@ func planSelectionCycleWithPreview(cfg *config.Config, previewJob func(config.Dy
 	if len(plan.Participants) == 0 {
 		return plan, fmt.Errorf("no enabled jobs are included in ranked selection")
 	}
+	for index := range plan.Participants {
+		participant := &plan.Participants[index]
+		if participant.DeliveryLimit > 0 && participant.Candidates > participant.DeliveryLimit {
+			participant.Capped = participant.Candidates - participant.DeliveryLimit
+		}
+	}
 	movieCandidates = limitSelectionCandidates(movieCandidates, jobLimits)
 	showCandidates = limitSelectionCandidates(showCandidates, jobLimits)
+	plan.Duplicates = duplicateSelectionCandidates(movieCandidates) + duplicateSelectionCandidates(showCandidates)
 	var err error
 	fullMovies, err := AllocateSelection(movieCandidates, cfg.Jobs.Selection.MovieLimit, movieMinima)
 	if err != nil {
@@ -230,6 +244,14 @@ func planSelectionCycleWithPreview(cfg *config.Config, previewJob func(config.Dy
 		markBudgetExclusions(plan.Shows.Excluded, fullShows.Winners)
 	}
 	return plan, err
+}
+
+func duplicateSelectionCandidates(candidates []SelectionCandidate) int {
+	seen := map[string]bool{}
+	for _, candidate := range candidates {
+		seen[candidate.Key] = true
+	}
+	return len(candidates) - len(seen)
 }
 
 func remainingSelectionCapacity(cfg *config.Config, db *database.Database, mediaType string, cycleLimit int) (int, error) {

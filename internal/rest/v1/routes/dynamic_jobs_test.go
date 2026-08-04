@@ -105,11 +105,53 @@ func TestCreateRecipeSeedsDisabledJobAndDedicatedRules(t *testing.T) {
 	}
 }
 
+func TestCreateRecipeReusesDefaultRulesWhenRecipeHasNoOverrides(t *testing.T) {
+	cfg := &config.Config{ConfigFilePath: filepath.Join(t.TempDir(), "config.yaml")}
+	cfg.TMDB.APIKey, cfg.TMDB.SessionID, cfg.TMDB.AccountID = "configured", "session", 1
+	cfg.Radarr.URL, cfg.Radarr.APIKey = "http://radarr", "key"
+	cfg.MigrateRuleSets()
+	ruleCount := len(cfg.RuleSets)
+	app := fiber.New()
+	AddDynamicJobsRoutes(app.Group("/v1"), dynamicJobsTestContext{Context: context.Background(), cfg: cfg})
+
+	response, err := app.Test(httptest.NewRequest("POST", "/v1/jobs/recipes/personal-watchlist", nil), -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != fiber.StatusCreated {
+		body, _ := io.ReadAll(response.Body)
+		t.Fatalf("status=%d body=%s", response.StatusCode, body)
+	}
+	var job config.DynamicJob
+	if err := json.NewDecoder(response.Body).Decode(&job); err != nil {
+		t.Fatal(err)
+	}
+	if job.RuleSetID != config.DefaultMoviesRuleSetID || len(cfg.RuleSets) != ruleCount {
+		t.Fatalf("recipe created redundant rules: job=%+v rules=%d want=%d", job, len(cfg.RuleSets), ruleCount)
+	}
+}
+
 func TestSelectionPreviewRequiresOptIn(t *testing.T) {
 	cfg := &config.Config{}
 	app := fiber.New()
 	AddDynamicJobsRoutes(app.Group("/v1"), dynamicJobsTestContext{Context: context.Background(), cfg: cfg})
 	response, err := app.Test(httptest.NewRequest("POST", "/v1/jobs/selection/preview", nil), -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != fiber.StatusConflict {
+		t.Fatalf("status = %d, want %d", response.StatusCode, fiber.StatusConflict)
+	}
+}
+
+func TestRankedSelectionJobCannotTriggerIndependently(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Jobs.Selection.Enabled = true
+	cfg.Jobs.List = []config.DynamicJob{{ID: "ranked", Name: "Ranked", Enabled: true, SelectionCycle: true, Source: "tmdb", Type: "trending", MediaType: "movie"}}
+	cfg.TMDB.APIKey = "configured"
+	app := fiber.New()
+	AddDynamicJobsRoutes(app.Group("/v1"), dynamicJobsTestContext{Context: context.Background(), cfg: cfg})
+	response, err := app.Test(httptest.NewRequest("POST", "/v1/jobs/ranked/trigger", nil), -1)
 	if err != nil {
 		t.Fatal(err)
 	}

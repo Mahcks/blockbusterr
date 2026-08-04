@@ -594,6 +594,20 @@
 	if (!minimum) return;
 	minimum.disabled = !enabled;
 	if (!enabled) minimum.value = '0';
+	if (scope === 'modal') {
+	  const interval = document.getElementById('modal-interval');
+	  const help = document.getElementById('modal-interval-help');
+	  interval.disabled = enabled;
+	  help.textContent = enabled
+	    ? 'Managed by the shared ranked-selection schedule in Settings.'
+	    : 'Override the default interval (e.g., 1h, 30m, 0 */2 * * *).';
+	  const runButton = document.getElementById('modal-run-button');
+	  const managedByCycle = enabled || currentJob?.selection_cycle === true;
+	  runButton.disabled = managedByCycle;
+	  runButton.title = managedByCycle
+	    ? 'Participating jobs run only through the shared ranked-selection cycle.'
+	    : 'Runs this job immediately, outside its schedule.';
+	}
   }
 
   // Custom job form submission
@@ -748,7 +762,7 @@
 
       closeAddJobModal();
       renderJobsList();
-	  showNotification(`${template.name} created disabled with dedicated rules.`, 'success');
+	  showNotification(`${template.name} created disabled ${template.default_rules ? 'using the shared default rules' : 'with dedicated rules'}.`, 'success');
 	  currentJob = newJob;
 	  previewJob();
     } catch (error) {
@@ -1252,6 +1266,7 @@
         allJobs[index] = savedJob;
       }
       currentJob = savedJob;
+	  updateSelectionFields('modal');
 
       renderJobsList();
       showNotification('Job saved successfully!', 'success');
@@ -1361,9 +1376,12 @@
   }
 
   function runJobNow() {
-    if (currentJob) {
-      triggerJob(currentJob.id);
+    if (!currentJob) return;
+    if (currentJob.selection_cycle === true) {
+      showNotification('This job runs through the shared ranked-selection cycle.', 'error');
+      return;
     }
+    triggerJob(currentJob.id);
   }
 
   // Preview functionality

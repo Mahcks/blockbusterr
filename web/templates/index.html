@@ -555,15 +555,36 @@
                 <span class="svc-help">Duration or cron expression</span>
               </div>
               <div class="svc-field">
-                <label for="selection-movie-limit">Movies selected</label>
+                <label for="selection-movie-limit">Movie winner slots</label>
                 <input type="number" id="selection-movie-limit" name="jobs.selection.movie_limit" value="{{.Config.Jobs.Selection.MovieLimit}}" min="0">
                 <span class="svc-help">Per cycle; zero is unlimited</span>
               </div>
               <div class="svc-field">
-                <label for="selection-show-limit">Shows selected</label>
+                <label for="selection-show-limit">Show winner slots</label>
                 <input type="number" id="selection-show-limit" name="jobs.selection.show_limit" value="{{.Config.Jobs.Selection.ShowLimit}}" min="0">
                 <span class="svc-help">Per cycle; zero is unlimited</span>
               </div>
+            </fieldset>
+
+            <fieldset class="selection-members" data-selection-controls>
+              <legend>Participating jobs</legend>
+              <input type="hidden" name="jobs.selection.members_present" value="true">
+              {{range .Config.Jobs.List}}
+                {{if ne .Type "smart_popular"}}
+                <div class="selection-member">
+                  <label>
+                    <input type="checkbox" name="jobs.selection.members" value="{{.ID}}" {{if .SelectionCycle}}checked{{end}}>
+                    <span>
+                      <strong>{{.Name}}</strong>
+                      <small>{{.Source}} · {{.MediaType}}{{if not .Enabled}} · job disabled{{end}}{{if gt .MinimumPicks 0}} · {{.MinimumPicks}} minimum{{end}}</small>
+                    </span>
+                  </label>
+                  <a href="/jobs?job={{.ID}}">Edit job</a>
+                </div>
+                {{end}}
+              {{else}}
+                <p class="selection-members-empty">Create a job before enabling ranked selection.</p>
+              {{end}}
             </fieldset>
 
             <div class="selection-actions">
@@ -608,11 +629,11 @@
             <p class="settings-inline-help">Current rolling usage: <strong>{{.BudgetUsage.Movies}} movies</strong>, <strong>{{.BudgetUsage.Shows}} shows</strong>.</p>
             <div class="limit-fields">
               <div class="svc-field">
-                <label for="global-limit-movies">Movies per period</label>
+                <label for="global-limit-movies">Global movie ceiling</label>
                 <input type="number" id="global-limit-movies" name="jobs.global_limit_movies" value="{{.Config.Jobs.GlobalLimitMovies}}" min="0" placeholder="0">
               </div>
               <div class="svc-field">
-                <label for="global-limit-shows">Shows per period</label>
+                <label for="global-limit-shows">Global show ceiling</label>
                 <input type="number" id="global-limit-shows" name="jobs.global_limit_shows" value="{{.Config.Jobs.GlobalLimitShows}}" min="0" placeholder="0">
               </div>
               <div class="svc-field">

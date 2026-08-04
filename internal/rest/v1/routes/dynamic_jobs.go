@@ -235,21 +235,28 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 		candidate := *cfg
 		candidate.RuleSets = append([]config.RuleSet(nil), cfg.RuleSets...)
 		candidate.Jobs.List = append([]config.DynamicJob(nil), cfg.Jobs.List...)
-		rules := config.RuleSet{ID: uuid.NewString(), Name: availableRecipeRuleName(&candidate, recipe.RuleSetName, recipe.MediaType), Media: recipe.MediaType, Revision: 1}
-		if recipe.Movies != nil {
-			filters := *recipe.Movies
-			rules.Movies = &filters
+		ruleSetID := config.DefaultMoviesRuleSetID
+		if recipe.MediaType == "show" {
+			ruleSetID = config.DefaultShowsRuleSetID
 		}
-		if recipe.Shows != nil {
-			filters := *recipe.Shows
-			rules.Shows = &filters
+		if !recipe.DefaultRules {
+			rules := config.RuleSet{ID: uuid.NewString(), Name: availableRecipeRuleName(&candidate, recipe.RuleSetName, recipe.MediaType), Media: recipe.MediaType, Revision: 1}
+			if recipe.Movies != nil {
+				filters := *recipe.Movies
+				rules.Movies = &filters
+			}
+			if recipe.Shows != nil {
+				filters := *recipe.Shows
+				rules.Shows = &filters
+			}
+			config.ApplyRuleSetDefaults(&rules)
+			if err := candidate.ValidateRuleSet(rules, ""); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Recipe rules are invalid: " + err.Error()})
+			}
+			candidate.RuleSets = append(candidate.RuleSets, rules)
+			ruleSetID = rules.ID
 		}
-		config.ApplyRuleSetDefaults(&rules)
-		if err := candidate.ValidateRuleSet(rules, ""); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Recipe rules are invalid: " + err.Error()})
-		}
-		candidate.RuleSets = append(candidate.RuleSets, rules)
-		job := config.DynamicJob{ID: uuid.NewString(), Name: recipe.Name, Enabled: false, Type: recipe.Type, Source: recipe.Source, MediaType: recipe.MediaType, Limit: recipe.Limit, DeliveryLimit: recipe.DeliveryLimit, Period: recipe.Period, SyncInterval: recipe.SyncInterval, Mode: recipe.Mode, RuleSetID: rules.ID}
+		job := config.DynamicJob{ID: uuid.NewString(), Name: recipe.Name, Enabled: false, Type: recipe.Type, Source: recipe.Source, MediaType: recipe.MediaType, Limit: recipe.Limit, DeliveryLimit: recipe.DeliveryLimit, Period: recipe.Period, SyncInterval: recipe.SyncInterval, Mode: recipe.Mode, RuleSetID: ruleSetID}
 		if recipe.List != nil {
 			locator := *recipe.List
 			job.List = &locator
@@ -478,6 +485,11 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 		if !targetJob.Enabled {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": "Job is disabled",
+			})
+		}
+		if cfg.Jobs.Selection.Enabled && targetJob.SelectionCycle {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+				"error": "This job is managed by ranked selection and cannot run independently",
 			})
 		}
 		if !jobs.IsJobSourceConfigured(cfg, *targetJob) {

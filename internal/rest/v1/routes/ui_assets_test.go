@@ -97,6 +97,12 @@ func TestActivityUsesExternalScriptAndDelegatedActions(t *testing.T) {
 			t.Errorf("activity.js is missing %s", expected)
 		}
 	}
+	if !strings.Contains(activity, `id="activityEmptyState" class="readiness-inline hidden"`) || !strings.Contains(script, "function updateActivityEmptyState") {
+		t.Error("Activity empty state must be driven by loaded entries and Job Runs")
+	}
+	if strings.Contains(activity, `.Readiness.Automation.State`) {
+		t.Error("Activity history empty state must not depend on current automation readiness")
+	}
 }
 
 func TestSharedUIFunctionsAndDynamicStylesAreCompiled(t *testing.T) {
@@ -157,7 +163,7 @@ func TestSettingsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 		"sonarr.url", "sonarr.api_key", "sonarr.quality_profile", "sonarr.root_folder", "sonarr.monitor",
 		"jellyseerr.url", "jellyseerr.api_key", "jellyseerr.user_id", "jellyseerr.request_credentials.email", "jellyseerr.request_credentials.password",
 		"jobs.mode", "jobs.sync_interval", "jobs.global_limit_movies", "jobs.global_limit_shows", "jobs.global_period",
-		"jobs.selection.enabled", "jobs.selection.sync_interval", "jobs.selection.movie_limit", "jobs.selection.show_limit",
+		"jobs.selection.enabled", "jobs.selection.sync_interval", "jobs.selection.movie_limit", "jobs.selection.show_limit", "jobs.selection.members_present", "jobs.selection.members",
 		"scoring.enabled", "scoring.rating_weight", "scoring.popularity_weight", "scoring.recency_weight", "scoring.rating_scale", "scoring.popularity_metric", "scoring.recency_days",
 	} {
 		if !strings.Contains(index, `name="`+field+`"`) {

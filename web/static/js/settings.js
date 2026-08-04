@@ -34,8 +34,6 @@ function init() {
   const form = document.getElementById('settings-form');
   if (!form) return;
 
-  baselineSnapshot = serializeForm(form);
-
   renderServiceStatuses();
   renderModeReadiness();
   updateWeightTotal();
@@ -44,6 +42,8 @@ function init() {
   updateSelectionControls();
   renderLimitsSummary();
   renderRepeatSummary();
+  baselineSnapshot = serializeForm(form);
+  updateSelectionControls();
   updateSaveBar();
 
   form.addEventListener('input', onFormChange);
@@ -243,15 +243,16 @@ function renderSelectionSummary() {
   }
   const movies = Number(document.getElementById('selection-movie-limit')?.value) || 0;
   const shows = Number(document.getElementById('selection-show-limit')?.value) || 0;
-  el.textContent = `${movies} movies, ${shows} shows per cycle`;
+  const jobs = document.querySelectorAll('input[name="jobs.selection.members"]:checked').length;
+  el.textContent = `${jobs} job${jobs === 1 ? '' : 's'} · ${movies} movie, ${shows} show slots`;
 }
 
 function updateSelectionControls() {
   const enabled = Boolean(document.getElementById('selection-enabled')?.checked);
   const dirty = isDirty();
-  const controls = document.querySelector('[data-selection-controls]');
+  const controls = document.querySelectorAll('[data-selection-controls]');
   const preview = document.querySelector('[data-action="preview-selection"]');
-  if (controls) controls.disabled = !enabled;
+  controls.forEach((control) => { control.disabled = !enabled; });
   if (preview) preview.disabled = !enabled || dirty;
 
   const status = document.getElementById('selection-preview-status');
@@ -692,12 +693,12 @@ async function previewSelection(button) {
     const participants = result.participants || [];
     const candidateCount = participants.reduce((total, job) => total + (job.candidates || 0), 0);
     panel.innerHTML = `<div class="selection-preview-head"><strong>Next cycle</strong><span>${result.movies.winners?.length || 0} movies · ${result.shows.winners?.length || 0} shows</span></div>
-      <div class="selection-preview-jobs">${participants.map((job) => `<div><span><strong>${escapeHTML(job.name)}</strong><small>${escapeHTML(job.source)} · ${escapeHTML(job.media_type)}</small></span><span>${job.found || 0} found · ${job.candidates || 0} eligible${job.rejected ? ` · ${job.rejected} rejected` : ''}${job.already_exists ? ` · ${job.already_exists} already present` : ''}${job.delivery_limit ? ` · cap ${job.delivery_limit}` : ''}</span></div>`).join('')}</div>
+      <div class="selection-preview-jobs">${participants.map((job) => `<div><span><strong>${escapeHTML(job.name)}</strong><small>${escapeHTML(job.source)} · ${escapeHTML(job.media_type)}</small></span><span>${job.found || 0} found · ${job.candidates || 0} eligible${job.rejected ? ` · ${job.rejected} rejected` : ''}${job.already_exists ? ` · ${job.already_exists} already present` : ''}${job.repeat_blocked ? ` · ${job.repeat_blocked} repeat-blocked` : ''}${job.capped ? ` · ${job.capped} over job cap` : ''}</span></div>`).join('')}</div>
       ${winners.length ? winners.slice(0, 10).map((winner, index) => `<div class="selection-preview-row"><span>${index + 1}. ${escapeHTML(winner.candidate.title || winner.candidate.key)} <small class="selection-preview-meta">${winner.reason === 'minimum' ? 'Minimum pick' : 'Ranked pick'}</small></span><span class="selection-preview-score">${Math.round((winner.candidate.score || 0) * 100)}%</span></div>`).join('') : `<div class="selection-preview-empty">${participants.length} participating job${participants.length === 1 ? '' : 's'} produced ${candidateCount} eligible candidates. Check their rules, source connectivity, and repeat handling.</div>`}
       ${errors.length ? `<div class="selection-preview-errors">${errors.length} job${errors.length === 1 ? '' : 's'} unavailable: ${errors.map(([jobID, message]) => `${escapeHTML(jobID)} — ${escapeHTML(message)}`).join(' · ')}</div>` : ''}`;
     panel.classList.remove('hidden');
     status.dataset.state = 'success';
-    status.textContent = `${participants.length} jobs · ${candidateCount} eligible candidates · ${excluded.length - budgetExcluded} displaced · ${budgetExcluded} blocked by delivery limits. Nothing delivered.`;
+    status.textContent = `${participants.length} jobs · ${candidateCount} eligible · ${result.duplicates_merged || 0} duplicates merged · ${excluded.length - budgetExcluded} below cutoff · ${budgetExcluded} over global ceiling. Nothing delivered.`;
   } catch (error) {
     panel.classList.add('hidden');
     status.dataset.state = 'error';

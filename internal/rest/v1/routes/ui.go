@@ -258,6 +258,34 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		}
 		selectionMovieLimit := parseNonNegativeInt("Ranked movie limit", "jobs.selection.movie_limit", cfg.Jobs.Selection.MovieLimit)
 		selectionShowLimit := parseNonNegativeInt("Ranked show limit", "jobs.selection.show_limit", cfg.Jobs.Selection.ShowLimit)
+		selectionMembers := map[string]bool{}
+		selectionMembersSubmitted := c.FormValue("jobs.selection.members_present") == "true"
+		if selectionMembersSubmitted {
+			form, err := c.MultipartForm()
+			if err != nil {
+				fieldErrors = append(fieldErrors, "Ranked selection membership could not be read")
+			}
+			knownJobs := map[string]config.DynamicJob{}
+			for _, job := range cfg.Jobs.List {
+				knownJobs[job.ID] = job
+			}
+			var memberIDs []string
+			if form != nil {
+				memberIDs = form.Value["jobs.selection.members"]
+			}
+			for _, id := range memberIDs {
+				job, ok := knownJobs[id]
+				if !ok {
+					fieldErrors = append(fieldErrors, "Ranked selection contains an unknown job")
+					continue
+				}
+				if job.Type == "smart_popular" {
+					fieldErrors = append(fieldErrors, "Adaptive smart jobs cannot join ranked selection")
+					continue
+				}
+				selectionMembers[id] = true
+			}
+		}
 		if selectionEnabled && (selectionMovieLimit == 0 && selectionShowLimit == 0) {
 			fieldErrors = append(fieldErrors, "Ranked selection needs a movie or show limit")
 		}
@@ -300,7 +328,11 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		if selectionEnabled {
 			movieMinima, showMinima := 0, 0
 			for _, job := range cfg.Jobs.List {
-				if !job.Enabled || !job.SelectionCycle {
+				participates := job.SelectionCycle
+				if selectionMembersSubmitted {
+					participates = selectionMembers[job.ID]
+				}
+				if !job.Enabled || !participates {
 					continue
 				}
 				if job.MediaType == "show" {
@@ -358,6 +390,14 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Jobs.Selection.SyncInterval = selectionInterval
 		cfg.Jobs.Selection.MovieLimit = selectionMovieLimit
 		cfg.Jobs.Selection.ShowLimit = selectionShowLimit
+		if selectionMembersSubmitted {
+			for index := range cfg.Jobs.List {
+				cfg.Jobs.List[index].SelectionCycle = selectionMembers[cfg.Jobs.List[index].ID]
+				if !cfg.Jobs.List[index].SelectionCycle {
+					cfg.Jobs.List[index].MinimumPicks = 0
+				}
+			}
+		}
 		cfg.Scoring.Enabled = scoringEnabled
 		cfg.Scoring.RatingWeight = ratingWeight
 		cfg.Scoring.PopularityWeight = popularityWeight

@@ -6,6 +6,13 @@ let activityChart = null;
 let recentRuns = [];
 let jobsByID = new Map();
 let activityViewMode = 'items';
+let hasActivityEntries = null;
+let hasJobRuns = null;
+
+function updateActivityEmptyState() {
+  if (hasActivityEntries === null || hasJobRuns === null) return;
+  document.getElementById('activityEmptyState')?.classList.toggle('hidden', hasActivityEntries || hasJobRuns);
+}
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
@@ -692,7 +699,10 @@ async function loadJobRuns() {
       jobsByID = new Map((Array.isArray(jobs) ? jobs : []).map((job) => [job.id, job]));
     }
     recentRuns = sortRunsNewestFirst((data && data.runs) ? data.runs : []);
-	  renderSelectionCycles((data && data.cycles) ? data.cycles : []);
+	  const cycles = (data && data.cycles) ? data.cycles : [];
+	  hasJobRuns = recentRuns.length > 0 || cycles.length > 0;
+	  updateActivityEmptyState();
+	  renderSelectionCycles(cycles);
 
     renderActivityTimeline();
   } catch (err) {
@@ -722,6 +732,9 @@ function renderSelectionCycles(cycles) {
 htmx.on('htmx:afterSwap', function(evt) {
   if (evt.detail.target.id === 'stats') {
     const stats = JSON.parse(evt.detail.xhr.response);
+    hasActivityEntries = ['total_added', 'total_rejected', 'total_skipped', 'total_failed']
+      .some((key) => Number(stats[key]) > 0);
+    updateActivityEmptyState();
     evt.detail.target.innerHTML = `
       <div class="activity-metric">
         <div class="flex justify-between items-start mb-2">

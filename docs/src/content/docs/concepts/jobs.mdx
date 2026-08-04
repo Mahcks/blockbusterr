@@ -13,7 +13,7 @@ You can run one job or combine several providers and strategies. Each job remain
 
 1. Open **Jobs** and select **New job**.
 2. Choose a ready recipe or open **Custom Job**.
-3. Recipes create a disabled job with an explicit provider, cadence, delivery limit, and dedicated rule set.
+3. Recipes create a disabled job with an explicit provider, cadence, and job delivery cap. Recipes with meaningful filtering create dedicated rules; recipes without overrides reuse the media default.
 4. Review the automatic preview, adjust the job or its rules, then enable it.
 
 Unavailable recipes remain visible and identify the connection they need. Recipes never silently select a different configured provider.
@@ -73,7 +73,7 @@ Letterboxd or IMDb.
 - **Source:** TMDB, Simkl, Trakt, or MDBList when supported.
 - **Media:** Movie or show.
 - **Content limit:** Maximum candidates fetched before rules are evaluated.
-- **Delivery limit:** Maximum successful additions or requests in one run; `0` is unlimited.
+- **Job delivery cap:** Maximum winners a job contributes in one standalone run or ranked cycle; `0` is unlimited.
 - **Period:** Weekly, monthly, yearly, or all time for period-based types.
 - **Rule set:** The reusable policy used by preview and execution.
 - **Sync interval:** Optional Go duration or five-field cron override.
@@ -86,13 +86,13 @@ Letterboxd or IMDb.
 
 Jobs reference one media-compatible rule set. Reuse a rule set when jobs should stay synchronized, or use **Make job-specific copy** to clone the effective policy for one job. See [Rules](/concepts/filters/).
 
-Delivery limits are separate from discovery limits. The discovery limit controls how many candidates are evaluated. The delivery limit controls how many successful additions or requests the job may make after rules, scoring, and duplicate checks. Global rolling movie and show budgets are configured under **Settings → Automation**.
+The discovery limit controls how many candidates are evaluated. The job delivery cap controls how many winners one job can contribute. Ranked-selection winner slots cap the shared cycle, while global movie and show ceilings remain the final rolling safety limit. Configure shared membership and ceilings under **Settings → Automation**.
 
 ## Ranked selection cycles
 
-Ranked selection is opt-in under **Settings → Automation** and requires content scoring. At each shared cadence, Blockbusterr fetches every participating job, applies its assigned rules, merges duplicate media by canonical provider ID, and selects the highest normalized scores up to the movie and show cycle limits.
+Ranked selection is opt-in under **Settings → Automation** and requires content scoring. Membership can be managed there or from an individual job. Participating jobs use the shared cycle cadence instead of their own schedule. At each cycle, Blockbusterr fetches every participating job, applies its assigned rules, merges duplicate media by canonical provider ID, and selects the highest normalized scores up to the movie and show winner slots.
 
-Optional job minimums are allocated first and are validated against the cycle capacity. Remaining slots go to the highest scores with provider rank and stable IDs used as deterministic tie-breakers. A provider failure is shown for that job while successful providers still compete. Global rolling delivery limits remain hard ceilings, and all participating jobs retain their normal Activity Entries and Job Runs. The latest cycle summary appears above Job Runs.
+Optional job minimums are allocated first and are validated against cycle capacity. Remaining slots go to the highest scores with provider rank and stable IDs used as deterministic tie-breakers. Preview reports found, rule-rejected, already-present, repeat-blocked, job-capped, duplicate, below-cutoff, and globally blocked candidates. A provider failure is shown for that job while successful providers still compete. Global rolling delivery ceilings remain final safeguards, and all participating jobs retain their normal Activity Entries and Job Runs.
 
 ## Preview, run, and schedule
 
@@ -101,7 +101,7 @@ Optional job minimums are allocated first and are validated against the cycle ca
 - **Enable/Disable** controls scheduled execution without deleting the job.
 - **Delete** removes the dynamic job after confirmation.
 
-Manual runs ignore the schedule but use the same provider, rules, scoring, and delivery configuration.
+Manual runs ignore the schedule but use the same provider, rules, scoring, and delivery configuration. Participating ranked-selection jobs cannot run independently because doing so would bypass shared competition and cycle limits.
 
 ## Delivery modes
 
