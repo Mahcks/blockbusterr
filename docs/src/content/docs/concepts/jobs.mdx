@@ -42,15 +42,23 @@ URL. They use the same preview, rules, scoring, duplicate checks, Activity
 Entries, and delivery limits as every other job. Removing an item from the
 source list never deletes media that Blockbusterr already delivered.
 
-Public Trakt and TMDB lists need only the provider application credentials in
-Settings. Personal watchlists require connecting that provider account in
-Settings. A public Trakt user's watchlist can instead use the account name in
+Public Trakt and TMDB lists need their provider application credentials.
+MDBList lists and the personal MDBList watchlist use an MDBList API key.
+Personal Trakt and TMDB watchlists require connecting that provider account in
+Settings; a public Trakt user's watchlist can instead use the account name in
 the job. Use **Check source** before saving to verify the identifier and see a
 movie/show sample without delivering anything.
 
+Letterboxd public lists and watchlists are available only after explicitly
+enabling experimental scraping in Settings. Its official API requires selective
+approval, so this fallback may be blocked or break whenever Letterboxd changes
+its pages. It never accesses private content and fails instead of guessing a
+title match. MDBList remains the reliable bridge for lists imported from
+Letterboxd or IMDb.
+
 ## Job settings
 
-- **Source:** TMDB, Simkl, or Trakt when supported.
+- **Source:** TMDB, Simkl, Trakt, or MDBList when supported.
 - **Media:** Movie or show.
 - **Content limit:** Maximum candidates fetched before rules are evaluated.
 - **Delivery limit:** Maximum successful additions or requests in one run; `0` is unlimited.

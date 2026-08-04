@@ -142,7 +142,7 @@ func TestSettingsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 	// Every form field name the /config/save handler parses must still be
 	// present so the redesign never silently drops a setting.
 	for _, field := range []string{
-		"trakt.client_id", "trakt.client_secret", "tmdb.api_key", "simkl.client_id",
+		"trakt.client_id", "trakt.client_secret", "tmdb.api_key", "simkl.client_id", "mdblist.api_key", "letterboxd.experimental_scraping",
 		"radarr.url", "radarr.api_key", "radarr.quality_profile", "radarr.root_folder", "radarr.minimum_availability", "radarr.monitor",
 		"sonarr.url", "sonarr.api_key", "sonarr.quality_profile", "sonarr.root_folder", "sonarr.monitor",
 		"jellyseerr.url", "jellyseerr.api_key", "jellyseerr.user_id", "jellyseerr.request_credentials.email", "jellyseerr.request_credentials.password",

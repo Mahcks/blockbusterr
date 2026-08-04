@@ -1008,14 +1008,17 @@
 	const listID = document.getElementById(`${scope}-list-id`);
 	if (!owner || !listID) return;
 	const watchlist = kind === 'watchlist';
-	const ownerNeeded = source === 'trakt';
-	owner.placeholder = watchlist ? (source === 'trakt' ? 'Blank for connected account, or public username' : 'Connected TMDB account') : (source === 'trakt' ? 'Optional Trakt username' : 'Not needed for TMDB');
+	const ownerNeeded = source === 'trakt' || source === 'letterboxd' || (source === 'mdblist' && !watchlist);
+	owner.placeholder = watchlist
+	  ? (source === 'trakt' ? 'Blank for connected account, or public username' : source === 'letterboxd' ? 'Required public Letterboxd member' : `Connected ${source === 'mdblist' ? 'MDBList' : 'TMDB'} account`)
+	  : (source === 'trakt' ? 'Optional Trakt username' : source === 'letterboxd' ? 'Required Letterboxd member' : source === 'mdblist' ? 'Optional MDBList username' : 'Not needed for TMDB');
 	owner.disabled = !ownerNeeded;
 	if (!ownerNeeded) owner.value = '';
 	listID.placeholder = watchlist ? 'Not needed for watchlists' : 'Provider list ID or slug';
 	listID.required = !watchlist;
 	listID.disabled = watchlist;
 	if (watchlist) listID.value = '';
+	document.getElementById(`${scope}-letterboxd-warning`)?.classList.toggle('hidden', source !== 'letterboxd');
   }
 
   async function inspectList(scope, button) {

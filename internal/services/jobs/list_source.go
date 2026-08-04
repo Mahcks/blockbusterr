@@ -61,7 +61,7 @@ func configuredListSource(cfg *config.Config, provider string) (ListSource, erro
 }
 
 func InspectListSource(ctx context.Context, cfg *config.Config, provider string, locator config.ListLocator) (ListInspection, error) {
-	if err := ValidateListLocator(locator); err != nil {
+	if err := ValidateListSourceLocator(provider, locator); err != nil {
 		return ListInspection{}, err
 	}
 	adapter, err := configuredListSource(cfg, provider)
@@ -74,6 +74,16 @@ func InspectListSource(ctx context.Context, cfg *config.Config, provider string,
 	}
 	result = normalizeListResult(result)
 	return ListInspection{Source: provider, Name: result.Name, Movies: len(result.Movies), Shows: len(result.Shows)}, nil
+}
+
+func ValidateListSourceLocator(provider string, locator config.ListLocator) error {
+	if err := ValidateListLocator(locator); err != nil {
+		return err
+	}
+	if provider == "letterboxd" && strings.TrimSpace(locator.Owner) == "" {
+		return fmt.Errorf("Letterboxd requires a public member name")
+	}
+	return nil
 }
 
 func ValidateListLocator(locator config.ListLocator) error {

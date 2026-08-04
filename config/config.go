@@ -143,6 +143,14 @@ type Config struct {
 		ClientID string `mapstructure:"client_id" json:"client_id" yaml:"client_id"`
 	} `mapstructure:"simkl" json:"simkl" yaml:"simkl"`
 
+	MDBList struct {
+		APIKey string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+	} `mapstructure:"mdblist" json:"mdblist" yaml:"mdblist"`
+
+	Letterboxd struct {
+		ExperimentalScraping bool `mapstructure:"experimental_scraping" json:"experimental_scraping" yaml:"experimental_scraping"`
+	} `mapstructure:"letterboxd" json:"letterboxd" yaml:"letterboxd"`
+
 	Radarr struct {
 		URL                 string `mapstructure:"url" json:"url" yaml:"url"`
 		APIKey              string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`

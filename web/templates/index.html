@@ -161,6 +161,62 @@
             </div>
           </details>
 
+          <details class="svc-row" id="svc-mdblist" data-service="mdblist">
+            <summary>
+              <span class="svc-icon"><i data-lucide="list-video" aria-hidden="true"></i></span>
+              <span class="svc-name-block">
+                <span class="svc-name">MDBList</span>
+                <span class="svc-role">Lists &middot; watchlist</span>
+              </span>
+              <span class="svc-status" data-service-status="mdblist"></span>
+              <i data-lucide="chevron-down" class="svc-chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="svc-body">
+              <a href="https://mdblist.com/preferences/" target="_blank" rel="noopener" class="svc-doc-link">Get a free API key at mdblist.com &rarr;</a>
+              <div class="svc-fields">
+                <div class="svc-field svc-field-wide">
+                  <label for="mdblist-api-key">API key<span class="optional">(optional)</span></label>
+                  <div class="svc-password-field">
+                    <input type="password" id="mdblist-api-key" name="mdblist.api_key" value="{{.Config.MDBList.APIKey}}" placeholder="Enter MDBList API key" autocomplete="off">
+                    <button type="button" class="svc-password-toggle" data-action="toggle-password" data-target="mdblist-api-key" aria-label="Show API key" aria-pressed="false">
+                      <svg class="eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                      <svg class="eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                    </button>
+                  </div>
+                  <p class="svc-help">Used only for MDBList list and watchlist jobs. Free accounts include 1,000 API requests per day.</p>
+                </div>
+              </div>
+              <div class="svc-test-row">
+                <button type="button" class="job-secondary-button" data-action="test-connection" data-service="mdblist">Test connection</button>
+                <span class="svc-test-result" data-test-result="mdblist"></span>
+              </div>
+            </div>
+          </details>
+
+          <details class="svc-row" id="svc-letterboxd" data-service="letterboxd">
+            <summary>
+              <span class="svc-icon"><i data-lucide="scan-line" aria-hidden="true"></i></span>
+              <span class="svc-name-block">
+                <span class="svc-name">Letterboxd</span>
+                <span class="svc-role">Experimental public lists</span>
+              </span>
+              <span class="svc-status" data-service-status="letterboxd"></span>
+              <i data-lucide="chevron-down" class="svc-chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="svc-body">
+              <div class="job-nested-panel border-amber-700/60 bg-amber-950/30 p-3 text-xs text-amber-200">
+                Letterboxd does not provide generally available API access. This feature scrapes public pages and may be blocked or stop working whenever Letterboxd changes its site. Private lists are never supported. Prefer MDBList when reliability matters.
+              </div>
+              <label class="mt-3 flex items-start gap-3" for="letterboxd-experimental-scraping">
+                <input type="checkbox" id="letterboxd-experimental-scraping" name="letterboxd.experimental_scraping" value="true" {{if .Config.Letterboxd.ExperimentalScraping}}checked{{end}}>
+                <span>
+                  <span class="block font-medium text-slate-100">Enable experimental scraping</span>
+                  <span class="svc-help">I understand this integration is brittle and unsupported by Letterboxd.</span>
+                </span>
+              </label>
+            </div>
+          </details>
+
         </div>
 
         <div class="settings-subheading">Delivery</div>

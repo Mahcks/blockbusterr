@@ -1,10 +1,10 @@
 # Blockbusterr
 
-**Automate your media library with smart content discovery from TMDB, Simkl, or Trakt.**
+**Automate your media library with smart content discovery from TMDB, Simkl, Trakt, or MDBList.**
 
 Blockbusterr discovers movies and shows worth watching, evaluates them with reusable rules, and delivers accepted titles to Radarr, Sonarr, Jellyseerr, or Seerr on a schedule.
 
-**Trakt is optional.** A single supported discovery provider—TMDB, Simkl, or Trakt—is enough to run Blockbusterr.
+**Trakt is optional.** A single supported discovery provider—TMDB, Simkl, Trakt, or MDBList—is enough to run Blockbusterr.
 
 [![GitHub release](https://img.shields.io/github/v/release/Mahcks/blockbusterr)](https://github.com/Mahcks/blockbusterr/releases)
 [![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-ghcr.io-blue)](https://github.com/mahcks/blockbusterr/pkgs/container/blockbusterr)
@@ -16,11 +16,11 @@ Blockbusterr discovers movies and shows worth watching, evaluates them with reus
 
 ## Where Blockbusterr Fits
 
-Blockbusterr is the discovery and decision layer in your media stack. It watches TMDB, Simkl, or Trakt for content that matches your scheduled jobs, applies the assigned rules and scoring, then sends qualifying movies and shows into the tools you already use.
+Blockbusterr is the discovery and decision layer in your media stack. It watches TMDB, Simkl, Trakt, or MDBList for content that matches your scheduled jobs, applies the assigned rules and scoring, then sends qualifying movies and shows into the tools you already use.
 
 ```mermaid
 flowchart LR
-    A[TMDB / Simkl / Trakt] --> B[Blockbusterr<br/>Discover · Evaluate · Score]
+    A[TMDB / Simkl / Trakt / MDBList] --> B[Blockbusterr<br/>Discover · Evaluate · Score]
     B --> C[Radarr / Sonarr]
     B --> D[Seerr / Jellyseerr<br/>Optional approval]
     D --> C
@@ -70,7 +70,8 @@ Then open `http://localhost:9090` and configure your services.
 ## Features
 
 - **Flexible Discovery Jobs** - Trending, popular, anticipated, favorited, box office, and more
-- **Multiple Discovery Sources** - Use TMDB, Simkl, or Trakt per job
+- **Multiple Discovery Sources** - Use TMDB, Simkl, Trakt, or MDBList per job
+- **Lists and Watchlists** - Follow public lists or your watchlist from Trakt, TMDB, and MDBList
 - **Reusable Rules** - Share policies between jobs or create a job-specific copy
 - **Title Exceptions** - Always allow or block a provider title across every job
 - **Weighted Scoring** - Rank candidates by rating, popularity, and recency
@@ -163,7 +164,7 @@ Blockbusterr can be configured via:
 ## How It Works
 
 1. **Jobs run on schedule** (cron) - e.g., "Trending Movies" every 6 hours
-2. **Fetch content from your selected source** - TMDB, Simkl, or Trakt
+2. **Fetch content from your selected source** - TMDB, Simkl, Trakt, or MDBList
 3. **Evaluate assigned rules** - Allow, require, block, and boundary checks
 4. **Calculate scores** - Rank candidates by configurable rating, popularity, and recency weights
 5. **Check threshold** - Only content scoring above threshold proceeds

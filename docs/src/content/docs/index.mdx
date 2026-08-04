@@ -3,7 +3,7 @@ title: Welcome to Blockbusterr
 description: Automated media discovery with reusable rules and observable delivery.
 template: splash
 hero:
-  tagline: Discover movies and shows from TMDB, Simkl, or Trakt, evaluate them with your rules, and deliver accepted titles to the rest of your media stack.
+  tagline: Discover movies and shows from TMDB, Simkl, Trakt, or MDBList, evaluate them with your rules, and deliver accepted titles to the rest of your media stack.
   image:
     file: ../../assets/banner.png
   actions:
@@ -22,7 +22,7 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 Blockbusterr sits between discovery providers and delivery applications:
 
-`TMDB / Simkl / Trakt → Blockbusterr → Radarr / Sonarr / Jellyseerr / Seerr`
+`TMDB / Simkl / Trakt / MDBList → Blockbusterr → Radarr / Sonarr / Jellyseerr / Seerr`
 
 It does not replace your request manager, `*arr` applications, download client, or media server. It automates the decision about what should enter that workflow.
 
@@ -43,7 +43,7 @@ It does not replace your request manager, `*arr` applications, download client, 
 
 ## One provider is enough
 
-Configure TMDB, Simkl, or Trakt, then create a supported job using that source. Multiple providers improve coverage but are not required.
+Configure TMDB, Simkl, Trakt, or MDBList, then create a supported job using that source. Multiple providers improve coverage but are not required.
 
 Accepted movies can go directly to Radarr and accepted shows to Sonarr, or both can become Jellyseerr or Seerr requests for an approval-first workflow.
 

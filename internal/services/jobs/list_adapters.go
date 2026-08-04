@@ -31,6 +31,28 @@ func (source tmdbListSource) FetchList(ctx context.Context, locator config.ListL
 	return ListResult{Source: "tmdb", Name: items.Name, Movies: items.Movies, Shows: items.Shows}, err
 }
 
+type mdbListSource struct{ client *integrations.MDBList }
+
+func (source mdbListSource) FetchList(ctx context.Context, locator config.ListLocator, limit int) (ListResult, error) {
+	listID := locator.ListID
+	if listID == "" {
+		listID = locator.Slug
+	}
+	items, err := source.client.GetListItems(ctx, locator.Owner, listID, enums.ListKind(locator.Kind) == enums.ListKindWatchlist, limit)
+	return ListResult{Source: "mdblist", Name: items.Name, Movies: items.Movies, Shows: items.Shows}, err
+}
+
+type letterboxdListSource struct{ client *integrations.Letterboxd }
+
+func (source letterboxdListSource) FetchList(ctx context.Context, locator config.ListLocator, limit int) (ListResult, error) {
+	listID := locator.ListID
+	if listID == "" {
+		listID = locator.Slug
+	}
+	items, err := source.client.GetListItems(ctx, locator.Owner, listID, enums.ListKind(locator.Kind) == enums.ListKindWatchlist, limit)
+	return ListResult{Source: "letterboxd", Name: items.Name, Movies: items.Movies, Shows: items.Shows}, err
+}
+
 func init() {
 	RegisterListSource("trakt", func(cfg *config.Config) (ListSource, error) {
 		if cfg.Trakt.ClientID == "" {
@@ -47,5 +69,17 @@ func init() {
 			return nil, fmt.Errorf("TMDB API key is not configured")
 		}
 		return tmdbListSource{client: integrations.NewTMDB(integrations.TMDBConfig{APIKey: cfg.TMDB.APIKey, SessionID: cfg.TMDB.SessionID, AccountID: cfg.TMDB.AccountID})}, nil
+	})
+	RegisterListSource("mdblist", func(cfg *config.Config) (ListSource, error) {
+		if cfg.MDBList.APIKey == "" {
+			return nil, fmt.Errorf("MDBList API key is not configured")
+		}
+		return mdbListSource{client: integrations.NewMDBList(integrations.MDBListConfig{APIKey: cfg.MDBList.APIKey})}, nil
+	})
+	RegisterListSource("letterboxd", func(cfg *config.Config) (ListSource, error) {
+		if !cfg.Letterboxd.ExperimentalScraping {
+			return nil, fmt.Errorf("Letterboxd experimental scraping is disabled")
+		}
+		return letterboxdListSource{client: integrations.NewLetterboxd(integrations.LetterboxdConfig{TMDBAPIKey: cfg.TMDB.APIKey})}, nil
 	})
 }

@@ -73,7 +73,7 @@ func (d *DiscoveryClient) GetListShows(ctx context.Context, locator config.ListL
 }
 
 func (d *DiscoveryClient) getList(ctx context.Context, locator config.ListLocator, limit int) (ListResult, error) {
-	if err := ValidateListLocator(locator); err != nil {
+	if err := ValidateListSourceLocator(d.Source(), locator); err != nil {
 		return ListResult{}, err
 	}
 	if d.list == nil {

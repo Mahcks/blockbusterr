@@ -282,7 +282,7 @@ func (e *DynamicJobExecutor) discoveryForJob(job config.DynamicJob) (*DiscoveryC
 	if job.List == nil {
 		return nil, fmt.Errorf("list locator is required")
 	}
-	if err := ValidateListLocator(*job.List); err != nil {
+	if err := ValidateListSourceLocator(job.Source, *job.List); err != nil {
 		return nil, err
 	}
 	adapter := e.ListSources[job.Source]

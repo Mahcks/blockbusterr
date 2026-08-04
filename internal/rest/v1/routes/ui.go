@@ -44,14 +44,14 @@ func plural(count int) string {
 
 func assessReadiness(cfg *config.Config) systemReadiness {
 	discoveryCount := 0
-	for _, configured := range []bool{cfg.TMDB.APIKey != "", cfg.Simkl.ClientID != "", cfg.Trakt.ClientID != ""} {
+	for _, configured := range []bool{cfg.TMDB.APIKey != "", cfg.Simkl.ClientID != "", cfg.Trakt.ClientID != "", cfg.MDBList.APIKey != "", cfg.Letterboxd.ExperimentalScraping} {
 		if configured {
 			discoveryCount++
 		}
 	}
 	discovery := readinessItem{State: readinessReady, Title: "Discovery ready", Message: fmt.Sprintf("%d provider%s configured", discoveryCount, plural(discoveryCount)), Href: "/config#connections"}
 	if discoveryCount == 0 {
-		discovery = readinessItem{State: readinessNotStarted, Title: "Connect discovery", Message: "Add TMDB, Simkl, or Trakt", Href: "/config#connections"}
+		discovery = readinessItem{State: readinessNotStarted, Title: "Connect discovery", Message: "Add TMDB, Simkl, Trakt, or MDBList", Href: "/config#connections"}
 	}
 
 	radarrReady := cfg.Radarr.URL != "" && cfg.Radarr.APIKey != ""
@@ -282,6 +282,8 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Trakt.ClientSecret = c.FormValue("trakt.client_secret")
 		cfg.TMDB.APIKey = c.FormValue("tmdb.api_key")
 		cfg.Simkl.ClientID = c.FormValue("simkl.client_id")
+		cfg.MDBList.APIKey = c.FormValue("mdblist.api_key")
+		cfg.Letterboxd.ExperimentalScraping = c.FormValue("letterboxd.experimental_scraping") == "true"
 		cfg.Radarr.URL = c.FormValue("radarr.url")
 		cfg.Radarr.APIKey = c.FormValue("radarr.api_key")
 		cfg.Radarr.RootFolder = c.FormValue("radarr.root_folder")

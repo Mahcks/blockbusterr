@@ -69,8 +69,9 @@ function serializeForm(form) {
   const data = new FormData(form);
   // Unchecked checkboxes are absent from FormData entirely, so represent
   // scoring.enabled explicitly rather than relying on its presence/absence.
-  const entries = [...data.entries()].filter(([key]) => key !== 'scoring.enabled');
-  entries.push(['scoring.enabled', String(document.getElementById('scoring-enabled')?.checked)]);
+	const entries = [...data.entries()].filter(([key]) => key !== 'scoring.enabled' && key !== 'letterboxd.experimental_scraping');
+	entries.push(['scoring.enabled', String(document.getElementById('scoring-enabled')?.checked)]);
+	entries.push(['letterboxd.experimental_scraping', String(document.getElementById('letterboxd-experimental-scraping')?.checked)]);
   entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   return JSON.stringify(entries);
 }
@@ -90,8 +91,14 @@ function serviceState(service) {
   const form = document.getElementById('settings-form');
   const tested = sessionTestResults[service];
 
-  if (service === 'tmdb' || service === 'simkl') {
-    const value = fieldValue(form, service === 'tmdb' ? 'tmdb.api_key' : 'simkl.client_id');
+	if (service === 'letterboxd') {
+	  return document.getElementById('letterboxd-experimental-scraping')?.checked
+	    ? { state: 'needs-attention', label: 'Experimental' }
+	    : { state: 'not-configured', label: 'Disabled' };
+	}
+  if (service === 'tmdb' || service === 'simkl' || service === 'mdblist') {
+	const field = service === 'tmdb' ? 'tmdb.api_key' : service === 'simkl' ? 'simkl.client_id' : 'mdblist.api_key';
+	const value = fieldValue(form, field);
     return value ? { state: 'configured', label: 'Configured' } : { state: 'not-configured', label: 'Not configured' };
   }
 
@@ -269,7 +276,8 @@ async function saveSettings() {
   setSaveStatus('Saving…');
 
   const formData = new FormData(form);
-  formData.set('scoring.enabled', document.getElementById('scoring-enabled')?.checked ? 'true' : 'false');
+	formData.set('scoring.enabled', document.getElementById('scoring-enabled')?.checked ? 'true' : 'false');
+	formData.set('letterboxd.experimental_scraping', document.getElementById('letterboxd-experimental-scraping')?.checked ? 'true' : 'false');
 
   try {
     const response = await fetch('/config/save', { method: 'POST', body: formData });
@@ -313,6 +321,7 @@ function discardChanges() {
 // ---- Connection testing ---------------------------------------------------
 
 const TEST_ENDPOINTS = {
+	mdblist: { path: '/v1/mdblist/validate', first: 'mdblist.api_key', params: (key) => ({ api_key: key }) },
   trakt: { path: '/v1/trakt/validate', first: 'trakt.client_id', second: 'trakt.client_secret', params: (a, b) => ({ client_id: a, client_secret: b, test: 'true' }) },
   radarr: { path: '/v1/radarr/validate', first: 'radarr.url', second: 'radarr.api_key', params: (a, b) => ({ url: a, api_key: b, test: 'true' }) },
   sonarr: { path: '/v1/sonarr/validate', first: 'sonarr.url', second: 'sonarr.api_key', params: (a, b) => ({ url: a, api_key: b, test: 'true' }) },
@@ -327,7 +336,7 @@ async function testConnection(service, button) {
   const second = fieldValue(form, config.second);
   const resultEl = document.querySelector(`[data-test-result="${service}"]`);
 
-  if (!first || (service !== 'trakt' && !second)) {
+  if (!first || (config.second && service !== 'trakt' && !second)) {
     writeTestResult(resultEl, 'error', 'Fill in the required fields first.');
     return;
   }

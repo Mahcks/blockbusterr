@@ -77,6 +77,16 @@ func TestListSourceRejectsInvalidLocatorBeforeFetch(t *testing.T) {
 	}
 }
 
+func TestListSourceRequiresLetterboxdOwner(t *testing.T) {
+	locator := config.ListLocator{Kind: "public_list", ListID: "favorites"}
+	if err := ValidateListSourceLocator("letterboxd", locator); err == nil {
+		t.Fatal("expected Letterboxd owner error")
+	}
+	if err := ValidateListSourceLocator("trakt", locator); err != nil {
+		t.Fatalf("Trakt locator rejected: %v", err)
+	}
+}
+
 func TestListSourcePropagatesProviderAndCancellationErrors(t *testing.T) {
 	providerErr := errors.New("provider unavailable")
 	source := &fakeListSource{err: providerErr}
@@ -114,7 +124,9 @@ func TestListSourceRegistryOnlyReportsConfiguredAdapters(t *testing.T) {
 	}
 	cfg := &config.Config{}
 	cfg.Trakt.ClientID = "configured"
-	if got := AvailableListSources(cfg); len(got) != 2 || got[0] != "fake" || got[1] != "trakt" {
+	cfg.MDBList.APIKey = "configured"
+	cfg.Letterboxd.ExperimentalScraping = true
+	if got := AvailableListSources(cfg); len(got) != 4 || got[0] != "fake" || got[1] != "letterboxd" || got[2] != "mdblist" || got[3] != "trakt" {
 		t.Fatalf("configured sources = %v", got)
 	}
 }

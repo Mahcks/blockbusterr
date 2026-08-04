@@ -99,6 +99,7 @@ export default defineConfig({
 						{ label: 'Jellyseerr', slug: 'integrations/jellyseerr' },
 						{ label: 'TMDB (Optional)', slug: 'integrations/tmdb' },
 						{ label: 'Simkl (Optional)', slug: 'integrations/simkl' },
+						{ label: 'MDBList (Optional)', slug: 'integrations/mdblist' },
 					],
 				},
 				{

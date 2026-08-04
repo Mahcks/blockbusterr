@@ -29,6 +29,8 @@ func TestValidateDynamicJobSources(t *testing.T) {
 	cfg.Trakt.ClientID = "configured"
 	cfg.TMDB.APIKey = "configured"
 	cfg.Simkl.ClientID = "configured"
+	cfg.MDBList.APIKey = "configured"
+	cfg.Letterboxd.ExperimentalScraping = true
 	tests := []struct {
 		name    string
 		job     config.DynamicJob
@@ -41,6 +43,9 @@ func TestValidateDynamicJobSources(t *testing.T) {
 		{name: "Simkl limit", job: config.DynamicJob{Name: "Trending", Type: "trending", Source: "simkl", MediaType: "movie", Limit: 501}, wantErr: true},
 		{name: "Negative delivery limit", job: config.DynamicJob{Name: "Trending", Type: "trending", Source: "tmdb", MediaType: "movie", Limit: 50, DeliveryLimit: -1}, wantErr: true},
 		{name: "List URL rejected", job: config.DynamicJob{Name: "Unsafe", Type: "list", Source: "trakt", MediaType: "movie", Limit: 50, List: &config.ListLocator{Kind: "public_list", ListID: "https://example.com/list"}}, wantErr: true},
+		{name: "MDBList public list", job: config.DynamicJob{Name: "MDBList", Type: "list", Source: "mdblist", MediaType: "movie", Limit: 50, List: &config.ListLocator{Kind: "public_list", ListID: "123"}}},
+		{name: "Letterboxd public list", job: config.DynamicJob{Name: "Letterboxd", Type: "list", Source: "letterboxd", MediaType: "movie", Limit: 50, List: &config.ListLocator{Kind: "public_list", Owner: "max", ListID: "weekend"}}},
+		{name: "Letterboxd owner required", job: config.DynamicJob{Name: "Letterboxd", Type: "list", Source: "letterboxd", MediaType: "movie", Limit: 50, List: &config.ListLocator{Kind: "public_list", ListID: "weekend"}}, wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

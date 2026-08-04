@@ -57,7 +57,7 @@ rule_sets:
       min_votes: 1000
 ```
 
-You only need one configured discovery provider and the integrations required by enabled jobs. Trakt is optional when all enabled jobs use TMDB or Simkl.
+You only need one configured discovery provider and the integrations required by enabled jobs. Trakt is optional when all enabled jobs use TMDB, Simkl, or MDBList.
 
 ## Discovery providers
 
@@ -67,6 +67,7 @@ You only need one configured discovery provider and the integrations required by
 | `trakt.client_secret` | Optional Trakt application secret |
 | `tmdb.api_key` | Enables TMDB discovery and poster enrichment |
 | `simkl.client_id` | Enables Simkl discovery |
+| `mdblist.api_key` | Enables MDBList lists and the account watchlist |
 
 The Jobs editor and `GET /v1/jobs/types` report which sources each job type supports.
 

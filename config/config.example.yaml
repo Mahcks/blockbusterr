@@ -17,6 +17,14 @@ tmdb:
 simkl:
   client_id: ""
 
+# Optional list and watchlist discovery provider.
+mdblist:
+  api_key: ""
+
+# Experimental: scrapes public pages and may stop working without notice.
+letterboxd:
+  experimental_scraping: false
+
 # Direct delivery targets. Configure Radarr for movies and Sonarr for shows.
 radarr:
   url: "" # Example: http://radarr:7878

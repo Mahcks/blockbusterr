@@ -16,6 +16,17 @@ import (
 
 // AddDynamicJobsRoutes adds the dynamic job management API endpoints
 func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
+	router.Get("/mdblist/validate", func(c *fiber.Ctx) error {
+		apiKey := c.Query("api_key")
+		if apiKey == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "API key is required"})
+		}
+		if err := integrations.NewMDBList(integrations.MDBListConfig{APIKey: apiKey}).Validate(c.Context()); err != nil {
+			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"connected": true, "message": "Connected to MDBList."})
+	})
+
 	router.Post("/jobs/lists/inspect", func(c *fiber.Ctx) error {
 		var request struct {
 			Source string             `json:"source"`
@@ -23,6 +34,9 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 		}
 		if err := c.BodyParser(&request); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+		}
+		if err := jobs.ValidateListSourceLocator(request.Source, request.List); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
 		inspection, err := jobs.InspectListSource(c.Context(), gctx.Config(), request.Source, request.List)
 		if err != nil {
@@ -635,7 +649,7 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 		if job.List == nil {
 			return fmt.Errorf("list locator is required")
 		}
-		if err := jobs.ValidateListLocator(*job.List); err != nil {
+		if err := jobs.ValidateListSourceLocator(job.Source, *job.List); err != nil {
 			return err
 		}
 		if !slices.Contains(jobs.AvailableListSources(cfg), job.Source) {
@@ -650,6 +664,10 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 			case "tmdb":
 				if cfg.TMDB.SessionID == "" || cfg.TMDB.AccountID == 0 {
 					return fmt.Errorf("connect a TMDB account to use its watchlist")
+				}
+			case "mdblist":
+				if cfg.MDBList.APIKey == "" {
+					return fmt.Errorf("configure an MDBList API key to use its watchlist")
 				}
 			}
 		}
