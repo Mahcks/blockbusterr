@@ -98,12 +98,13 @@ func (e *SmartShowJobExecutor) Execute(
 
 	// Convert to regular JobConfig for execution
 	regularJobConfig := JobConfig{
-		JobID:     jobConfig.JobID,
-		JobName:   jobConfig.JobName,
-		Source:    jobConfig.Source,
-		MediaType: jobConfig.MediaType,
-		Mode:      jobConfig.Mode,
-		Limit:     jobConfig.Limit,
+		JobID:         jobConfig.JobID,
+		JobName:       jobConfig.JobName,
+		Source:        jobConfig.Source,
+		MediaType:     jobConfig.MediaType,
+		Mode:          jobConfig.Mode,
+		Limit:         jobConfig.Limit,
+		DeliveryLimit: jobConfig.DeliveryLimit,
 	}
 
 	// Route to appropriate handler based on mode

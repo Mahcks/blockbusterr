@@ -105,6 +105,7 @@ type DynamicJob struct {
 	Monitor             string       `mapstructure:"monitor" json:"monitor" yaml:"monitor,omitempty"`                                        // Monitor setting for Radarr/Sonarr
 	BaseMinRating       float64      `mapstructure:"base_min_rating" json:"base_min_rating" yaml:"base_min_rating,omitempty"`                // For smart jobs: base minimum rating
 	AdjustmentFactor    float64      `mapstructure:"adjustment_factor" json:"adjustment_factor" yaml:"adjustment_factor,omitempty"`          // For smart jobs: rating adjustment factor
+	DeliveryLimit       int          `mapstructure:"delivery_limit" json:"delivery_limit" yaml:"delivery_limit,omitempty"`                   // Maximum successful deliveries per run; zero is unlimited
 	UseCustomFilters    bool         `mapstructure:"use_custom_filters" json:"use_custom_filters" yaml:"use_custom_filters,omitempty"`
 	Filters             FilterConfig `mapstructure:"filters" json:"filters" yaml:"filters,omitempty"`
 	RuleSetID           string       `mapstructure:"rule_set_id" json:"rule_set_id" yaml:"rule_set_id,omitempty"`
@@ -165,8 +166,11 @@ type Config struct {
 	} `mapstructure:"scoring" json:"scoring" yaml:"scoring"`
 
 	Jobs struct {
-		SyncInterval string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval"` // Default/fallback interval
-		Mode         string `mapstructure:"mode" json:"mode" yaml:"mode"`                            // Default/fallback mode: "direct" or "jellyseerr"
+		SyncInterval      string `mapstructure:"sync_interval" json:"sync_interval" yaml:"sync_interval"` // Default/fallback interval
+		Mode              string `mapstructure:"mode" json:"mode" yaml:"mode"`                            // Default/fallback mode: "direct" or "jellyseerr"
+		GlobalLimitMovies int    `mapstructure:"global_limit_movies" json:"global_limit_movies" yaml:"global_limit_movies,omitempty"`
+		GlobalLimitShows  int    `mapstructure:"global_limit_shows" json:"global_limit_shows" yaml:"global_limit_shows,omitempty"`
+		GlobalPeriod      string `mapstructure:"global_period" json:"global_period" yaml:"global_period,omitempty"` // daily, weekly, monthly
 
 		// Dynamic job list (new format - allows multiple instances of same job type)
 		List []DynamicJob `mapstructure:"list" json:"list" yaml:"list,omitempty"`
@@ -403,6 +407,9 @@ func New(version string) (*Config, error) {
 		c.Scoring.RatingWeight = 0.6
 		c.Scoring.PopularityWeight = 0.3
 		c.Scoring.RecencyWeight = 0.1
+	}
+	if c.Jobs.GlobalPeriod != "daily" && c.Jobs.GlobalPeriod != "weekly" && c.Jobs.GlobalPeriod != "monthly" {
+		c.Jobs.GlobalPeriod = "daily"
 	}
 	c.MigrateRuleSets()
 

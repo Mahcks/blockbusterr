@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/mahcks/blockbusterr/config"
+	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/services/jobs"
 	"github.com/mahcks/blockbusterr/pkg/structures"
 )
@@ -148,16 +149,21 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		alert := structures.AlertInfo{
 			ID:      "welcome-info",
 			Title:   "Getting Started",
-			Content: "Choose TMDB, Simkl, or Trakt for discovery jobs, then connect Radarr, Sonarr, or Jellyseerr for delivery.",
+			Content: "Choose TMDB, Simkl, or Trakt for discovery jobs, then connect Radarr, Sonarr, Jellyseerr, or Seerr for delivery.",
 			Class:   "mb-4",
 		}
 		cfg := rg.gctx.Config()
+		budgetUsage := database.DeliveryBudgetUsage{}
+		if db := rg.gctx.Database(); db != nil {
+			budgetUsage, _ = db.GetDeliveryBudgetUsage(cfg.Jobs.GlobalPeriod)
+		}
 		return c.Render("index", fiber.Map{
-			"Title":     "Blockbusterr - Configuration",
-			"Config":    cfg,
-			"Version":   rg.gctx.Metadata().Version,
-			"AlertInfo": alert,
-			"Readiness": assessReadiness(cfg),
+			"Title":       "Blockbusterr - Configuration",
+			"Config":      cfg,
+			"Version":     rg.gctx.Metadata().Version,
+			"AlertInfo":   alert,
+			"Readiness":   assessReadiness(cfg),
+			"BudgetUsage": budgetUsage,
 		}, "base")
 	})
 
@@ -238,6 +244,18 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 
 		radarrQualityProfile := parseInt("Radarr quality profile", "radarr.quality_profile", cfg.Radarr.QualityProfile)
 		sonarrQualityProfile := parseInt("Sonarr quality profile", "sonarr.quality_profile", cfg.Sonarr.QualityProfile)
+		globalLimitMovies := parseNonNegativeInt("Movie delivery limit", "jobs.global_limit_movies", cfg.Jobs.GlobalLimitMovies)
+		globalLimitShows := parseNonNegativeInt("Show delivery limit", "jobs.global_limit_shows", cfg.Jobs.GlobalLimitShows)
+		globalPeriod := c.FormValue("jobs.global_period")
+		if globalPeriod == "" {
+			globalPeriod = cfg.Jobs.GlobalPeriod
+		}
+		if globalPeriod == "" {
+			globalPeriod = "daily"
+		}
+		if globalPeriod != "daily" && globalPeriod != "weekly" && globalPeriod != "monthly" {
+			fieldErrors = append(fieldErrors, "Delivery limit period must be daily, weekly, or monthly")
+		}
 		scoringEnabled := c.FormValue("scoring.enabled") == "true"
 		ratingWeight := parseFloat("Rating weight", "scoring.rating_weight", 0.6)
 		popularityWeight := parseFloat("Popularity weight", "scoring.popularity_weight", 0.3)
@@ -286,6 +304,9 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		if syncInterval := c.FormValue("jobs.sync_interval"); syncInterval != "" {
 			cfg.Jobs.SyncInterval = syncInterval
 		}
+		cfg.Jobs.GlobalLimitMovies = globalLimitMovies
+		cfg.Jobs.GlobalLimitShows = globalLimitShows
+		cfg.Jobs.GlobalPeriod = globalPeriod
 		cfg.Scoring.Enabled = scoringEnabled
 		cfg.Scoring.RatingWeight = ratingWeight
 		cfg.Scoring.PopularityWeight = popularityWeight

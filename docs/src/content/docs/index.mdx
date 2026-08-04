@@ -1,9 +1,9 @@
 ---
 title: Welcome to Blockbusterr
-description: Automate your media library with smart filters and scoring
+description: Automated media discovery with reusable rules and observable delivery.
 template: splash
 hero:
-  tagline: Stop manually managing Trakt lists. Let Blockbusterr automatically add trending, popular, and highly-rated content to your media library.
+  tagline: Discover movies and shows from TMDB, Simkl, or Trakt, evaluate them with your rules, and deliver accepted titles to the rest of your media stack.
   image:
     file: ../../assets/banner.png
   actions:
@@ -14,67 +14,56 @@ hero:
     - text: View on GitHub
       link: https://github.com/mahcks/blockbusterr
       icon: external
-    - text: Join the Discord
-      link: https://discord.com/invite/c8vb3VZqmg
-      icon: discord
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Why Blockbusterr?
+## Your media discovery layer
+
+Blockbusterr sits between discovery providers and delivery applications:
+
+`TMDB / Simkl / Trakt → Blockbusterr → Radarr / Sonarr / Jellyseerr / Seerr`
+
+It does not replace your request manager, `*arr` applications, download client, or media server. It automates the decision about what should enter that workflow.
 
 <CardGrid stagger>
-	<Card title="Smart Automation" icon="rocket">
-		Automatically pulls supported content from Trakt, TMDB, or Simkl. Set it and forget it.
-	</Card>
-	<Card title="Intelligent Filtering" icon="setting">
-		Advanced filters ensure you only get quality content. Filter by rating, votes, runtime, genres, and more.
-	</Card>
-	<Card title="Adaptive Learning" icon="star">
-		Smart jobs learn from your preferences and adjust scoring over time.
-	</Card>
-	<Card title="Multiple Integrations" icon="puzzle">
-		Works with Radarr, Sonarr, Jellyseerr, Trakt, and TMDB.
-	</Card>
+  <Card title="Discovery jobs" icon="rocket">
+    Combine providers, discovery strategies, schedules, media types, and delivery modes.
+  </Card>
+  <Card title="Reusable rules" icon="setting">
+    Share movie or show policies across jobs, or make an independent copy for one job.
+  </Card>
+  <Card title="Safe previews" icon="eye">
+    Evaluate candidates without delivering anything before enabling automation.
+  </Card>
+  <Card title="Explainable activity" icon="list-format">
+    Inspect individual Activity Entries and aggregate Job Run flow and outcomes.
+  </Card>
 </CardGrid>
 
-## Quick Example
+## One provider is enough
 
-```yaml
-jobs:
-  trending_movies:
-    enabled: true
-    sync_interval: "6h"
-    limit: 20
+Configure TMDB, Simkl, or Trakt, then create a supported job using that source. Multiple providers improve coverage but are not required.
 
-filters:
-  movies:
-    min_rating: 6.5
-    min_votes: 1000
-    blacklisted_genres: ["documentary"]
-```
+Accepted movies can go directly to Radarr and accepted shows to Sonarr, or both can become Jellyseerr or Seerr requests for an approval-first workflow.
 
-This configuration checks trending movies every six hours and applies the global movie filters to every movie job.
-
-## Features at a Glance
-
-- **Automated Job Scheduling**: Set up recurring jobs to fetch content
-- **Preview Mode**: See what will be added before committing
-- **Filter System**: Min/max ratings, votes, runtime, genres, keywords
-- **Scoring Engine**: Rank content by multiple weighted factors
-- **Web UI**: Manage configuration and view activity from your browser
-- **REST API**: Integrate with other tools
-- **Docker Ready**: Single container deployment
-
-## Next Steps
+## Start here
 
 <CardGrid>
-	<Card title="Quick Start Guide" icon="document">
-		Get Blockbusterr running in under 5 minutes.
-		[Start here →](/getting-started/quickstart/)
-	</Card>
-	<Card title="Learn About Jobs" icon="list-format">
-		Understand how jobs work and what types are available.
-		[Read more →](/concepts/jobs/)
-	</Card>
+  <Card title="Quick Start" icon="document">
+    Install Blockbusterr and run a safe first preview.
+    [Start here →](/getting-started/quickstart/)
+  </Card>
+  <Card title="Jobs" icon="list-format">
+    Understand discovery types, schedules, sources, and delivery.
+    [Read about jobs →](/concepts/jobs/)
+  </Card>
+  <Card title="Rules" icon="approve-check">
+    Build reusable policies and universal title exceptions.
+    [Read about rules →](/concepts/filters/)
+  </Card>
+  <Card title="Upgrade to v2" icon="refresh">
+    Migrate legacy jobs and filters safely.
+    [Read the upgrade guide →](/getting-started/upgrading-to-v2/)
+  </Card>
 </CardGrid>

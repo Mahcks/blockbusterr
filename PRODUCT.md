@@ -23,7 +23,7 @@ Restrained, operational, and dependable. The interface keeps Activity's dark vis
 
 1. Confirm configuration and integration health.
 2. Create jobs and preview their results before enabling automation.
-3. Apply filters and reusable policies to discovery strategies.
+3. Apply reusable rules to each discovery strategy.
 4. Understand outcomes through Activity Entries and Job Runs.
 
 ## Strategic principles

@@ -509,6 +509,9 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 	if job.Limit > typeDef.MaxLimit {
 		return fmt.Errorf("limit cannot exceed %d for %s jobs", typeDef.MaxLimit, job.Type)
 	}
+	if job.DeliveryLimit < 0 {
+		return fmt.Errorf("delivery limit cannot be negative")
+	}
 
 	// Check media type support
 	if !jobs.SupportsMediaType(job.Type, job.MediaType) {

@@ -65,6 +65,11 @@ type ActivityDailyCount struct {
 	Skipped  int    `json:"skipped"`
 }
 
+type DeliveryBudgetUsage struct {
+	Movies int
+	Shows  int
+}
+
 func New(dataDir string) (*Database, error) {
 	// Ensure data directory exists
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
@@ -142,10 +147,24 @@ func (d *Database) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_job_runs_job_id ON job_runs(job_id);
 	CREATE INDEX IF NOT EXISTS idx_job_runs_status ON job_runs(status);
 
+	CREATE TABLE IF NOT EXISTS delivery_budget_reservations (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		reserved_at DATETIME NOT NULL,
+		run_id INTEGER NOT NULL,
+		job_id TEXT NOT NULL,
+		media_type TEXT NOT NULL
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_delivery_budget_media_time ON delivery_budget_reservations(media_type, reserved_at);
+	CREATE INDEX IF NOT EXISTS idx_delivery_budget_run ON delivery_budget_reservations(run_id);
+
 	`
 
 	_, err := d.db.Exec(schema)
 	if err != nil {
+		return err
+	}
+	if _, err = d.db.Exec("DELETE FROM delivery_budget_reservations WHERE reserved_at < datetime('now', '-31 days')"); err != nil {
 		return err
 	}
 
@@ -291,6 +310,89 @@ func (d *Database) ensureActivityIdentityColumns() error {
 		return err
 	}
 	return nil
+}
+
+// TryReserveDelivery atomically claims one delivery slot. Zero means unlimited.
+// The caller releases the reservation when the downstream delivery does not succeed.
+func (d *Database) TryReserveDelivery(runID int64, jobID, mediaType string, perRunLimit, globalLimit int, since time.Time) (int64, string, error) {
+	if perRunLimit <= 0 && globalLimit <= 0 {
+		return 0, "", nil
+	}
+
+	tx, err := d.db.Begin()
+	if err != nil {
+		return 0, "", err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if perRunLimit > 0 {
+		var count int
+		if err := tx.QueryRow("SELECT COUNT(*) FROM delivery_budget_reservations WHERE run_id = ?", runID).Scan(&count); err != nil {
+			return 0, "", err
+		}
+		if count >= perRunLimit {
+			return 0, "Job delivery limit reached", nil
+		}
+	}
+
+	if globalLimit > 0 {
+		var count int
+		if err := tx.QueryRow("SELECT COUNT(*) FROM delivery_budget_reservations WHERE media_type = ? AND reserved_at >= ?", mediaType, since).Scan(&count); err != nil {
+			return 0, "", err
+		}
+		if count >= globalLimit {
+			return 0, "Global delivery limit reached", nil
+		}
+	}
+
+	result, err := tx.Exec(
+		"INSERT INTO delivery_budget_reservations (reserved_at, run_id, job_id, media_type) VALUES (?, ?, ?, ?)",
+		time.Now(), runID, jobID, mediaType,
+	)
+	if err != nil {
+		return 0, "", err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, "", err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, "", err
+	}
+	return id, "", nil
+}
+
+func (d *Database) ReleaseDeliveryReservation(id int64) error {
+	if id == 0 {
+		return nil
+	}
+	_, err := d.db.Exec("DELETE FROM delivery_budget_reservations WHERE id = ?", id)
+	return err
+}
+
+func (d *Database) CountDeliveriesSince(mediaType string, since time.Time) (int, error) {
+	var count int
+	err := d.db.QueryRow(
+		"SELECT COUNT(*) FROM delivery_budget_reservations WHERE media_type = ? AND reserved_at >= ?",
+		mediaType, since,
+	).Scan(&count)
+	return count, err
+}
+
+func (d *Database) GetDeliveryBudgetUsage(period string) (DeliveryBudgetUsage, error) {
+	window := 24 * time.Hour
+	if period == "weekly" {
+		window = 7 * 24 * time.Hour
+	} else if period == "monthly" {
+		window = 30 * 24 * time.Hour
+	}
+	since := time.Now().Add(-window)
+	movies, err := d.CountDeliveriesSince("movie", since)
+	if err != nil {
+		return DeliveryBudgetUsage{}, err
+	}
+	shows, err := d.CountDeliveriesSince("show", since)
+	return DeliveryBudgetUsage{Movies: movies, Shows: shows}, err
 }
 
 func (d *Database) Close() error {

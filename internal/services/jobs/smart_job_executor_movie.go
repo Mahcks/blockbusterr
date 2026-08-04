@@ -23,6 +23,7 @@ type SmartJobConfig struct {
 	MinimumAvailability string // Radarr only
 	Monitor             string // For Radarr: "movieOnly", "movieAndCollection", "none"; For Sonarr: "all", "future", "missing", "existing", "pilot", "firstSeason", "latestSeason", "none"
 	Limit               int
+	DeliveryLimit       int
 	BaseMinRating       float64
 	AdjustmentFactor    float64
 }
@@ -120,6 +121,7 @@ func (e *SmartMovieJobExecutor) Execute(
 		MinimumAvailability: jobConfig.MinimumAvailability,
 		Monitor:             jobConfig.Monitor,
 		Limit:               jobConfig.Limit,
+		DeliveryLimit:       jobConfig.DeliveryLimit,
 	}
 
 	// Route to appropriate handler based on mode

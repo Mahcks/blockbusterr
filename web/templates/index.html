@@ -295,7 +295,7 @@
                 <div class="svc-field">
                   <label for="jellyseerr-api-key">API key<span class="optional">(optional)</span></label>
                   <div class="svc-password-field">
-                    <input type="password" id="jellyseerr-api-key" name="jellyseerr.api_key" value="{{.Config.Jellyseerr.APIKey}}" placeholder="Enter Jellyseerr API key" autocomplete="off">
+                    <input type="password" id="jellyseerr-api-key" name="jellyseerr.api_key" value="{{.Config.Jellyseerr.APIKey}}" placeholder="Enter Jellyseerr / Seerr API key" autocomplete="off">
                     <button type="button" class="svc-password-toggle" data-action="toggle-password" data-target="jellyseerr-api-key" aria-label="Show API key" aria-pressed="false">
                       <svg class="eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                       <svg class="eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
@@ -435,6 +435,35 @@
               <div class="svc-field">
                 <label for="recency-days">Recency window (days)</label>
                 <input type="number" id="recency-days" name="scoring.recency_days" value="{{if .Config.Scoring.RecencyDays}}{{.Config.Scoring.RecencyDays}}{{end}}" min="1" placeholder="365">
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="settings-disclosure" {{if or (gt .Config.Jobs.GlobalLimitMovies 0) (gt .Config.Jobs.GlobalLimitShows 0)}}open{{end}}>
+          <summary>
+            <span class="settings-disclosure-title"><i data-lucide="gauge" aria-hidden="true"></i>Delivery limits</span>
+            <span class="settings-disclosure-summary" data-limits-summary></span>
+          </summary>
+          <div class="settings-disclosure-body">
+            <p class="settings-inline-help">Cap successful additions and requests across every job. Rejected, skipped, failed, and previewed titles do not count. Zero means unlimited.</p>
+            <p class="settings-inline-help">Current rolling usage: <strong>{{.BudgetUsage.Movies}} movies</strong>, <strong>{{.BudgetUsage.Shows}} shows</strong>.</p>
+            <div class="limit-fields">
+              <div class="svc-field">
+                <label for="global-limit-movies">Movies per period</label>
+                <input type="number" id="global-limit-movies" name="jobs.global_limit_movies" value="{{.Config.Jobs.GlobalLimitMovies}}" min="0" placeholder="0">
+              </div>
+              <div class="svc-field">
+                <label for="global-limit-shows">Shows per period</label>
+                <input type="number" id="global-limit-shows" name="jobs.global_limit_shows" value="{{.Config.Jobs.GlobalLimitShows}}" min="0" placeholder="0">
+              </div>
+              <div class="svc-field">
+                <label for="global-period">Rolling period</label>
+                <select id="global-period" name="jobs.global_period">
+                  <option value="daily" {{if eq .Config.Jobs.GlobalPeriod "daily"}}selected{{end}}>24 hours</option>
+                  <option value="weekly" {{if eq .Config.Jobs.GlobalPeriod "weekly"}}selected{{end}}>7 days</option>
+                  <option value="monthly" {{if eq .Config.Jobs.GlobalPeriod "monthly"}}selected{{end}}>30 days</option>
+                </select>
               </div>
             </div>
           </div>

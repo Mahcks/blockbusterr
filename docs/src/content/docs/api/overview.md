@@ -39,6 +39,7 @@ All endpoints return JSON unless otherwise specified.
 | 200 | Success |
 | 400 | Bad Request - Invalid parameters |
 | 404 | Not Found - Resource doesn't exist |
+| 409 | Conflict - Stale revision or resource still in use |
 | 500 | Internal Server Error |
 
 ## Authentication
@@ -51,7 +52,7 @@ Do not expose port 9090 directly to the public internet. If remote access is req
 
 ## Rate Limiting
 
-Currently, no rate limiting is enforced. Please use the API responsibly.
+The HTTP API does not impose request rate limiting. Delivery budgets configured for jobs still apply to successful automated additions and requests.
 
 ## API Sections
 
@@ -65,11 +66,20 @@ Manage and trigger jobs, preview content before adding.
 
 ### [Activity API](/api/activity/)
 
-View and manage activity logs.
+View and manage Activity Entries and Job Runs.
 
-- Get activity logs
+- Query title-level Activity Entries
+- Inspect aggregate Job Runs
 - Get activity statistics
 - Clear old logs
+
+### [Rules API](/api/rules/)
+
+Manage reusable movie/show rules and universal title exceptions.
+
+- Create and revise rule sets
+- Inspect assignment counts
+- Create job-specific rule copies
 
 ### [Configuration API](/api/config/)
 
@@ -108,5 +118,6 @@ curl "http://localhost:9090/v1/trakt/trending/movies?limit=10"
 ## Next Steps
 
 - Explore [Jobs API](/api/jobs/)
+- Manage [Rules API](/api/rules/)
 - Check [Activity API](/api/activity/)
 - Review [Configuration API](/api/config/)

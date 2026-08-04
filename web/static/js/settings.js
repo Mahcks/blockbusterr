@@ -33,6 +33,7 @@ function init() {
   renderModeReadiness();
   updateWeightTotal();
   renderScoringSummary();
+  renderLimitsSummary();
   updateSaveBar();
 
   form.addEventListener('input', onFormChange);
@@ -59,6 +60,7 @@ function onFormChange() {
   renderModeReadiness();
   updateWeightTotal();
   renderScoringSummary();
+  renderLimitsSummary();
   updateSaveBar();
 }
 
@@ -134,8 +136,8 @@ function renderModeReadiness() {
   }
   if (jelly) {
     const ready = serviceState('jellyseerr').state === 'configured' || serviceState('jellyseerr').state === 'connected';
-    if (ready) writeReadiness(jelly, 'ready', 'Ready — Jellyseerr configured');
-    else writeReadiness(jelly, 'blocked', 'Needs Jellyseerr connection', '#svc-jellyseerr');
+    if (ready) writeReadiness(jelly, 'ready', 'Ready — request server configured');
+    else writeReadiness(jelly, 'blocked', 'Needs Jellyseerr / Seerr connection', '#svc-jellyseerr');
   }
 }
 
@@ -209,6 +211,19 @@ function renderScoringSummary() {
   }
   const { rating, popularity, recency } = weightValues();
   el.textContent = `Enabled — ${rating.toFixed(1)}/${popularity.toFixed(1)}/${recency.toFixed(1)}`;
+}
+
+function renderLimitsSummary() {
+  const el = document.querySelector('[data-limits-summary]');
+  if (!el) return;
+  const movies = Number(document.getElementById('global-limit-movies')?.value) || 0;
+  const shows = Number(document.getElementById('global-limit-shows')?.value) || 0;
+  if (!movies && !shows) {
+    el.textContent = 'Unlimited';
+    return;
+  }
+  const period = document.getElementById('global-period')?.selectedOptions[0]?.textContent || 'period';
+  el.textContent = `${movies || 'Unlimited'} movies, ${shows || 'Unlimited'} shows per ${period.toLowerCase()}`;
 }
 
 function applyPreset(event) {

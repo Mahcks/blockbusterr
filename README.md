@@ -2,7 +2,9 @@
 
 **Automate your media library with smart content discovery from TMDB, Simkl, or Trakt.**
 
-Blockbusterr automatically adds trending, popular, and highly-rated movies and TV shows to your Radarr/Sonarr library. Choose a discovery source per job, configure once, and let it run on a schedule.
+Blockbusterr discovers movies and shows worth watching, evaluates them with reusable rules, and delivers accepted titles to Radarr, Sonarr, Jellyseerr, or Seerr on a schedule.
+
+**Trakt is optional.** A single supported discovery provider—TMDB, Simkl, or Trakt—is enough to run Blockbusterr.
 
 [![GitHub release](https://img.shields.io/github/v/release/Mahcks/blockbusterr)](https://github.com/Mahcks/blockbusterr/releases)
 [![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-ghcr.io-blue)](https://github.com/mahcks/blockbusterr/pkgs/container/blockbusterr)
@@ -14,11 +16,11 @@ Blockbusterr automatically adds trending, popular, and highly-rated movies and T
 
 ## Where Blockbusterr Fits
 
-Blockbusterr is the discovery and decision layer in your media stack. It watches TMDB, Simkl, or Trakt for content that matches your scheduled jobs, applies your filters, scoring rules, and limits, then sends qualifying movies and shows into the tools you already use.
+Blockbusterr is the discovery and decision layer in your media stack. It watches TMDB, Simkl, or Trakt for content that matches your scheduled jobs, applies the assigned rules and scoring, then sends qualifying movies and shows into the tools you already use.
 
 ```mermaid
 flowchart LR
-    A[TMDB / Simkl / Trakt] --> B[Blockbusterr<br/>Discover · Filter · Score]
+    A[TMDB / Simkl / Trakt] --> B[Blockbusterr<br/>Discover · Evaluate · Score]
     B --> C[Radarr / Sonarr]
     B --> D[Seerr / Jellyseerr<br/>Optional approval]
     D --> C
@@ -40,7 +42,8 @@ Blockbusterr does not replace your request manager, `*arr` apps, download client
 - [Installation Methods](https://blockbusterr.dev/getting-started/installation/)
 - [Configuration](https://blockbusterr.dev/getting-started/configuration/)
 - [Jobs Overview](https://blockbusterr.dev/concepts/jobs/)
-- [Filters & Scoring](https://blockbusterr.dev/concepts/filters/)
+- [Rules](https://blockbusterr.dev/concepts/filters/)
+- [Upgrading to v2](https://blockbusterr.dev/getting-started/upgrading-to-v2/)
 - [Real-World Examples](https://blockbusterr.dev/examples/use-cases/)
 - [API Reference](https://blockbusterr.dev/api/overview/)
 
@@ -66,19 +69,21 @@ Then open `http://localhost:9090` and configure your services.
 
 ## Features
 
-- **17 Job Types** - Trending, popular, anticipated, favorited, box office, and more
+- **Flexible Discovery Jobs** - Trending, popular, anticipated, favorited, box office, and more
 - **Multiple Discovery Sources** - Use TMDB, Simkl, or Trakt per job
-- **Smart Filtering** - Genre, certification, runtime, year, language, country, keywords
-- **Weighted Scoring** - Combine IMDb, Trakt, TMDB, and Metacritic ratings
-- **Two Integration Modes** - Direct to Radarr/Sonarr or via Jellyseerr for approval
-- **Activity Tracking** - See what was added, when, and why with visual logs
+- **Reusable Rules** - Share policies between jobs or create a job-specific copy
+- **Title Exceptions** - Always allow or block a provider title across every job
+- **Weighted Scoring** - Rank candidates by rating, popularity, and recency
+- **Delivery Budgets** - Cap successful deliveries per job and across rolling time periods
+- **Two Integration Modes** - Direct to Radarr/Sonarr or through Jellyseerr/Seerr for approval
+- **Explainable Activity** - Inspect Activity Entries and complete Job Run outcomes
 - **Job Preview** - Test configurations before enabling to avoid surprises
 - **Unified Dashboard** - Manage movies and TV shows in one place
 - **Smart Jobs** - Adaptive scoring that balances popularity with quality
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 ### Dashboard & Configuration
 ![Settings](docs/src/assets/settings.png)
@@ -86,23 +91,26 @@ Then open `http://localhost:9090` and configure your services.
 ### Job Preview & Management
 ![Jobs Preview](docs/src/assets/jobs.png)
 
-### Activity Log
-![Activity Log](docs/src/assets/activity_log_preview.png)
+### Reusable Rules
+![Reusable Rules](docs/src/assets/rules.png)
+
+### Activity Entries and Job Runs
+![Activity Entries and Job Runs](docs/src/assets/activity_log_preview.png)
 
 ---
 
 ## Why Blockbusterr?
 
-**The Problem:** Managing Trakt lists in Radarr/Sonarr is tedious - configure each list separately, no filtering, no limits, no unified tracking.
+**The Problem:** Native discovery lists are fragmented across providers and delivery tools, with limited policy control and no unified explanation of each decision.
 
-**The Solution:** One dashboard to rule them all. Set filters once, configure jobs with limits, see everything that's added in one activity log.
+**The Solution:** Build discovery jobs from the providers you prefer, assign reusable rules, preview the result, and understand every run from one interface.
 
 | Feature | Manual Trakt Lists | Blockbusterr |
 |---------|-------------------|--------------|
 | Setup | Configure in each *arr app | One unified dashboard |
-| Limits | All or nothing | Top N items per job |
-| Filters | None | Genre, rating, runtime, language, etc. |
-| Activity Log | Check each app separately | Unified log with posters |
+| Limits | All or nothing | Discovery limits plus enforced delivery budgets |
+| Rules | Limited or provider-specific | Reusable allow, require, block, and boundary policies |
+| Activity | Check each app separately | Activity Entries and Job Runs |
 | Preview | No preview capability | Test before enabling |
 
 ---
@@ -156,13 +164,13 @@ Blockbusterr can be configured via:
 
 1. **Jobs run on schedule** (cron) - e.g., "Trending Movies" every 6 hours
 2. **Fetch content from your selected source** - TMDB, Simkl, or Trakt
-3. **Apply filters** - Genre, rating, runtime, certification, language
-4. **Calculate scores** - Weighted average of IMDb/Trakt/TMDB ratings
+3. **Evaluate assigned rules** - Allow, require, block, and boundary checks
+4. **Calculate scores** - Rank candidates by configurable rating, popularity, and recency weights
 5. **Check threshold** - Only content scoring above threshold proceeds
-6. **Add to library** - Direct to Radarr/Sonarr or create Jellyseerr request
-7. **Log activity** - Track what was added with posters and metadata
+6. **Add to library** - Direct to Radarr/Sonarr or create a Jellyseerr/Seerr request
+7. **Record outcomes** - Explain every title and summarize the complete job run
 
-**[→ Learn About Jobs](https://blockbusterr.dev/concepts/jobs/)** | **[→ Filters & Scoring](https://blockbusterr.dev/concepts/filters/)**
+**[→ Learn About Jobs](https://blockbusterr.dev/concepts/jobs/)** | **[→ Learn About Rules](https://blockbusterr.dev/concepts/filters/)**
 
 ---
 

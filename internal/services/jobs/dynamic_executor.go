@@ -65,6 +65,7 @@ func (e *DynamicJobExecutor) Execute(ctx context.Context, job config.DynamicJob)
 		MinimumAvailability: job.MinimumAvailability,
 		Monitor:             job.Monitor,
 		Limit:               job.Limit,
+		DeliveryLimit:       job.DeliveryLimit,
 		Period:              job.Period,
 	}
 
@@ -125,6 +126,7 @@ func (e *DynamicJobExecutor) executeMovieJob(ctx context.Context, job config.Dyn
 			MinimumAvailability: jobConfig.MinimumAvailability,
 			Monitor:             jobConfig.Monitor,
 			Limit:               jobConfig.Limit,
+			DeliveryLimit:       jobConfig.DeliveryLimit,
 			BaseMinRating:       job.BaseMinRating,
 			AdjustmentFactor:    job.AdjustmentFactor,
 		}
@@ -174,6 +176,7 @@ func (e *DynamicJobExecutor) executeShowJob(ctx context.Context, job config.Dyna
 			Mode:             jobConfig.Mode,
 			Monitor:          jobConfig.Monitor,
 			Limit:            jobConfig.Limit,
+			DeliveryLimit:    jobConfig.DeliveryLimit,
 			BaseMinRating:    job.BaseMinRating,
 			AdjustmentFactor: job.AdjustmentFactor,
 		}

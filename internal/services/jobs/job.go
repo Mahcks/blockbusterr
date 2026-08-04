@@ -21,9 +21,10 @@ type JobConfig struct {
 
 		For Sonarr: "all", "future", "missing", "existing", "pilot", "firstSeason", "latestSeason", "none"
 	*/
-	Monitor string
-	Limit   int
-	Period  string // For watched/collected/played jobs
+	Monitor       string
+	Limit         int
+	DeliveryLimit int
+	Period        string // For watched/collected/played jobs
 }
 
 // FormatJobLabel returns a human-readable job label for logs.

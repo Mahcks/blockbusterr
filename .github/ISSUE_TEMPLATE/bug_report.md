@@ -33,7 +33,7 @@ If applicable, add screenshots to help explain your problem.
 
 - **OS**: [e.g., Ubuntu 22.04, Windows 11, macOS 13]
 - **Installation Method**: [Docker, Binary, Docker Compose]
-- **Blockbusterr Version**: [e.g., v1.0.0 or latest]
+- **Blockbusterr Version**: [e.g., v2.0.0 or latest]
 - **Go Version** (if building from source): [e.g., 1.21.0]
 - **Docker Version** (if using Docker): [e.g., 24.0.0]
 
@@ -57,7 +57,7 @@ Paste logs here
 ## Additional Context
 
 Add any other context about the problem here:
-- Are you using any custom filters or scoring?
+- Which rule set and scoring settings does the affected job use?
 - Which integrations are you using (Radarr, Sonarr, Jellyseerr, etc.)?
 - Has this ever worked before?
 - Did this start after an update?

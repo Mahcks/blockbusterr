@@ -9,7 +9,7 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: 'Blockbusterr',
-			description: 'Automate your media library with smart filters and scoring',
+			description: 'Automate media discovery with reusable rules and observable delivery',
 			tagline: 'Smart content discovery for your media server',
 			
 			// Logo (optional - add logo file to public/)
@@ -55,7 +55,7 @@ export default defineConfig({
 			
 			// Edit link (optional - links to GitHub)
 			editLink: {
-				baseUrl: 'https://github.com/mahcks/blockbusterr/edit/master/docs/',
+				baseUrl: 'https://github.com/mahcks/blockbusterr/edit/main/docs/',
 			},
 			
 			// Last updated timestamp
@@ -72,13 +72,14 @@ export default defineConfig({
 						{ label: 'Quick Start', slug: 'getting-started/quickstart' },
 						{ label: 'Installation', slug: 'getting-started/installation' },
 						{ label: 'Configuration', slug: 'getting-started/configuration' },
+						{ label: 'Upgrading to v2', slug: 'getting-started/upgrading-to-v2' },
 					],
 				},
 				{
 					label: 'Core Concepts',
 					items: [
 						{ label: 'Jobs Overview', slug: 'concepts/jobs' },
-						{ label: 'Filters & Scoring', slug: 'concepts/filters' },
+						{ label: 'Rules', slug: 'concepts/filters' },
 						{ label: 'Smart Jobs', slug: 'concepts/smart-jobs' },
 						{ label: 'Integration Modes', slug: 'concepts/integration-modes' },
 					],
@@ -105,6 +106,7 @@ export default defineConfig({
 					items: [
 						{ label: 'Overview', slug: 'api/overview' },
 						{ label: 'Jobs API', slug: 'api/jobs' },
+						{ label: 'Rules API', slug: 'api/rules' },
 						{ label: 'Activity API', slug: 'api/activity' },
 						{ label: 'Configuration API', slug: 'api/config' },
 					],

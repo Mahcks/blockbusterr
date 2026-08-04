@@ -158,6 +158,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 	added := 0
 	skipped := 0
 	failed := 0
+	budget := newDeliveryBudget(e.Config, e.Database, jobConfig.JobID, e.currentRunID, jobConfig.DeliveryLimit, e.DryRun)
 
 	for _, movie := range movies {
 		// Skip if movie already exists in Radarr
@@ -229,6 +230,13 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 			},
 		}
 
+		reservationID, allowed, reason := budget.reserve("movie")
+		if !allowed {
+			e.skipMovieForBudget(jobConfig, movie, scoreMap, reason)
+			skipped++
+			continue
+		}
+
 		// Add movie to Radarr (or simulate in dry-run mode)
 		if e.DryRun {
 			log.Infof("[DRY RUN] Would add %s movie '%s (%d)' to Radarr", jobLabel, movie.Title, movie.Year)
@@ -263,6 +271,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 		} else {
 			addedMovie, err := radarrClient.AddMovie(ctx, radarrMovie)
 			if err != nil {
+				budget.release(reservationID)
 				// Check if it's a duplicate error
 				if strings.Contains(err.Error(), "already") || strings.Contains(err.Error(), "exists") {
 					log.Debugf("Movie '%s (%d)' already exists in Radarr", movie.Title, movie.Year)
@@ -380,6 +389,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 	requested := 0
 	skipped := 0
 	failed := 0
+	budget := newDeliveryBudget(e.Config, e.Database, jobConfig.JobID, e.currentRunID, jobConfig.DeliveryLimit, e.DryRun)
 
 	for _, movie := range movies {
 		if ctx.Err() != nil {
@@ -422,6 +432,13 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 			continue
 		}
 
+		reservationID, allowed, reason := budget.reserve("movie")
+		if !allowed {
+			e.skipMovieForBudget(jobConfig, movie, scoreMap, reason)
+			skipped++
+			continue
+		}
+
 		// Request movie via Jellyseerr (or simulate in dry-run mode)
 		if e.DryRun {
 			log.Infof("[DRY RUN] Would request %s movie '%s (%d)' via Jellyseerr", jobConfig.JobName, movie.Title, movie.Year)
@@ -456,6 +473,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 		} else {
 			result, err := jellyseerrClient.RequestMovieContext(ctx, movie.IDs.TMDB)
 			if err != nil {
+				budget.release(reservationID)
 				// Check if it's a duplicate error
 				if strings.Contains(err.Error(), "already") || strings.Contains(err.Error(), "exists") || strings.Contains(err.Error(), "requested") {
 					log.Debugf("Movie '%s (%d)' already requested in Jellyseerr", movie.Title, movie.Year)
@@ -521,6 +539,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 			}
 
 			if result.IsAlreadyRequested() {
+				budget.release(reservationID)
 				log.Debugf("Movie '%s (%d)' already requested in Jellyseerr", movie.Title, movie.Year)
 				e.updateDecisionOutcome(movie.IDs.TMDB, "skipped", "Already requested")
 				if e.Database != nil {

@@ -158,6 +158,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 	added := 0
 	skipped := 0
 	failed := 0
+	budget := newDeliveryBudget(e.Config, e.Database, jobConfig.JobID, e.currentRunID, jobConfig.DeliveryLimit, e.DryRun)
 
 	for _, show := range shows {
 		// Try to lookup series in Sonarr - prefer TVDB ID if available, otherwise use title
@@ -272,6 +273,13 @@ func (e *ShowJobExecutor) executeShowsDirect(
 			Monitor:                  monitor,
 		}
 
+		reservationID, allowed, reason := budget.reserve("show")
+		if !allowed {
+			e.skipShowForBudget(jobConfig, show, scoreMap, reason)
+			skipped++
+			continue
+		}
+
 		// Add series to Sonarr (or simulate in dry-run mode)
 		if e.DryRun {
 			log.Infof("[DRY RUN] Would add %s show '%s (%d)' to Sonarr", jobLabel, show.Title, show.Year)
@@ -306,6 +314,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 		} else {
 			addedSeries, err := sonarrClient.AddSeries(ctx, series)
 			if err != nil {
+				budget.release(reservationID)
 				// Check if it's a duplicate error
 				if strings.Contains(err.Error(), "already") || strings.Contains(err.Error(), "exists") {
 					log.Debugf("Show '%s (%d)' already exists in Sonarr", show.Title, show.Year)
@@ -423,6 +432,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 	requested := 0
 	skipped := 0
 	failed := 0
+	budget := newDeliveryBudget(e.Config, e.Database, jobConfig.JobID, e.currentRunID, jobConfig.DeliveryLimit, e.DryRun)
 
 	for _, show := range shows {
 		if ctx.Err() != nil {
@@ -466,6 +476,13 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 			continue
 		}
 
+		reservationID, allowed, reason := budget.reserve("show")
+		if !allowed {
+			e.skipShowForBudget(jobConfig, show, scoreMap, reason)
+			skipped++
+			continue
+		}
+
 		// Request show via Jellyseerr (or simulate in dry-run mode)
 		if e.DryRun {
 			log.Infof("[DRY RUN] Would request %s show '%s (%d)' via Jellyseerr", jobConfig.JobName, show.Title, show.Year)
@@ -500,6 +517,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 		} else {
 			result, err := jellyseerrClient.RequestShowContext(ctx, show.IDs.TMDB)
 			if err != nil {
+				budget.release(reservationID)
 				// Check if it's a duplicate error
 				if strings.Contains(err.Error(), "already") || strings.Contains(err.Error(), "exists") || strings.Contains(err.Error(), "requested") {
 					log.Debugf("Show '%s (%d)' already requested in Jellyseerr", show.Title, show.Year)
@@ -565,6 +583,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 			}
 
 			if result.IsAlreadyRequested() {
+				budget.release(reservationID)
 				log.Debugf("Show '%s (%d)' already requested in Jellyseerr", show.Title, show.Year)
 				e.updateDecisionOutcome(show.IDs.TVDB, "skipped", "Already requested")
 				if e.Database != nil {

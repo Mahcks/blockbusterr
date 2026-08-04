@@ -89,6 +89,9 @@ func TestConfigSaveAcceptsValidSubmission(t *testing.T) {
 		"jobs.mode":                 "direct",
 		"radarr.url":                "http://localhost:7878",
 		"radarr.api_key":            "secret",
+		"jobs.global_limit_movies":  "12",
+		"jobs.global_limit_shows":   "8",
+		"jobs.global_period":        "weekly",
 		"scoring.enabled":           "true",
 		"scoring.rating_weight":     "0.6",
 		"scoring.popularity_weight": "0.3",
@@ -106,5 +109,8 @@ func TestConfigSaveAcceptsValidSubmission(t *testing.T) {
 	}
 	if cfg.Radarr.URL != "http://localhost:7878" {
 		t.Errorf("radarr url not applied: %q", cfg.Radarr.URL)
+	}
+	if cfg.Jobs.GlobalLimitMovies != 12 || cfg.Jobs.GlobalLimitShows != 8 || cfg.Jobs.GlobalPeriod != "weekly" {
+		t.Errorf("delivery limits not applied: %+v", cfg.Jobs)
 	}
 }

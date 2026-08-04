@@ -132,6 +132,7 @@ func TestSettingsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 		"function testConnection",
 		"function renderServiceStatuses",
 		"function updateWeightTotal",
+		"function renderLimitsSummary",
 		"[data-action]",
 	} {
 		if !strings.Contains(script, expected) {
@@ -145,7 +146,7 @@ func TestSettingsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 		"radarr.url", "radarr.api_key", "radarr.quality_profile", "radarr.root_folder", "radarr.minimum_availability", "radarr.monitor",
 		"sonarr.url", "sonarr.api_key", "sonarr.quality_profile", "sonarr.root_folder", "sonarr.monitor",
 		"jellyseerr.url", "jellyseerr.api_key", "jellyseerr.user_id", "jellyseerr.request_credentials.email", "jellyseerr.request_credentials.password",
-		"jobs.mode", "jobs.sync_interval",
+		"jobs.mode", "jobs.sync_interval", "jobs.global_limit_movies", "jobs.global_limit_shows", "jobs.global_period",
 		"scoring.enabled", "scoring.rating_weight", "scoring.popularity_weight", "scoring.recency_weight", "scoring.rating_scale", "scoring.popularity_metric", "scoring.recency_days",
 	} {
 		if !strings.Contains(index, `name="`+field+`"`) {
@@ -191,7 +192,7 @@ func TestJobsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 			t.Errorf("jobs.js is missing %s", expected)
 		}
 	}
-	for _, expected := range []string{`id="modal-rule-set"`, "function populateJobFilters", "rule_set_id", "/v1/rule-sets"} {
+	for _, expected := range []string{`id="modal-rule-set"`, "function populateJobFilters", "rule_set_id", "/v1/rule-sets", `id="modal-delivery-limit"`, "delivery_limit"} {
 		if !strings.Contains(jobs+script, expected) {
 			t.Errorf("per-job filter editor is missing %s", expected)
 		}

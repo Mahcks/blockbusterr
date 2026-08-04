@@ -1,386 +1,74 @@
 ---
 title: Quick Start
-description: Get Blockbusterr running in under 5 minutes
+description: Install Blockbusterr, connect one provider and delivery target, then preview your first job.
 ---
 
-import { Tabs, TabItem, Steps, Badge, Card, CardGrid } from '@astrojs/starlight/components';
+import { Aside, Steps } from '@astrojs/starlight/components';
 
-Get Blockbusterr up and running in 3 simple steps.
-
-## Prerequisites
-
-<CardGrid>
-<Card title="Docker" icon="seti:docker">
-Docker installed on your system
-</Card>
-<Card title="Trakt Account" icon="star">
-Free account at [trakt.tv](https://trakt.tv/auth/join)
-</Card>
-<Card title="*arr Stack" icon="laptop">
-Radarr/Sonarr (optional for testing)
-</Card>
-</CardGrid>
-
-## Step 1: Launch Blockbusterr
-
-<Tabs>
-<TabItem label="Docker Run" icon="seti:docker">
+## Start the container
 
 ```bash
 docker run -d \
   --name blockbusterr \
   -p 9090:9090 \
-  -v $(pwd)/data:/app/data \
+  -v "$(pwd)/data:/app/data" \
+  --restart unless-stopped \
   ghcr.io/mahcks/blockbusterr:latest
 ```
 
-</TabItem>
-<TabItem label="Docker Compose" icon="seti:yml">
+Open `http://localhost:9090`.
 
-```yaml
-version: '3.8'
-services:
-  blockbusterr:
-    image: ghcr.io/mahcks/blockbusterr:latest
-    container_name: blockbusterr
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./data:/app/data
-    restart: unless-stopped
-```
+<Aside type="caution">
+Blockbusterr has no built-in authentication. Keep it on a trusted network or place it behind an authenticated reverse proxy or VPN.
+</Aside>
 
-Then run:
-
-```bash
-docker-compose up -d
-```
-
-</TabItem>
-<TabItem label="With Full Stack" icon="puzzle">
-
-```yaml
-version: '3.8'
-
-networks:
-  media:
-
-services:
-  blockbusterr:
-    image: ghcr.io/mahcks/blockbusterr:latest
-    container_name: blockbusterr
-    networks:
-      - media
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./data:/app/data
-    restart: unless-stopped
-  
-  radarr:
-    # ... radarr config
-    networks:
-      - media
-  
-  sonarr:
-    # ... sonarr config
-    networks:
-      - media
-```
-
-</TabItem>
-</Tabs>
-
-**Verify it's running:**
-
-```bash
-docker logs blockbusterr
-```
-
-You should see output indicating the server started on port 9090.
-
-## Step 2: Create Trakt Application
+## Configure the first pipeline
 
 <Steps>
+1. **Choose a discovery provider**
 
-1. Go to [Trakt API Applications](https://trakt.tv/oauth/applications/new)
+   In Settings, configure at least one of TMDB, Simkl, or Trakt. Only providers supported by a selected job type appear in the Jobs editor.
 
-2. Fill in the application details:
-   - **Name**: Blockbusterr  
-   - **Redirect URI**: `urn:ietf:wg:oauth:2.0:oob`  
-   - **Permissions**: `/checkin`, `/scrobble`
+2. **Choose delivery**
 
-3. Click **Save App** and copy your **Client ID** and **Client Secret**
+   Configure Radarr for direct movie delivery, Sonarr for direct show delivery, or Jellyseerr/Seerr for request-based delivery. Test the connection and load any required profiles or root folders.
 
+3. **Save Settings**
+
+   Correct any validation errors before leaving the page. Credentials are stored in your local configuration; protect the mounted data directory.
+
+4. **Create a job**
+
+   Open Jobs, choose **New job**, select a discovery type, media type, source, candidate limit, and compatible rule set. Keep the job disabled until its preview looks correct.
+
+5. **Review Rules**
+
+   Default Movies and Default Shows are created automatically. Edit the appropriate default or create a reusable rule set for this job. Use a job-specific copy when only one job should change.
+
+6. **Preview**
+
+   Open the job and select **Preview**. Review accepted, rejected, skipped, and already-present titles. Decision details identify the exact rule or delivery check involved.
+
+7. **Enable and run**
+
+   Save the job, enable it, and use **Run now** for the first live execution.
+
+8. **Verify Activity**
+
+   Use Activity Entries for title-level outcomes and Job Runs for found, passed, delivered, rejected, skipped, and failed totals.
 </Steps>
 
-## Step 3: Configure Blockbusterr
+## Recommended first setup
 
-<Tabs>
-<TabItem label="Web UI" icon="laptop">
+- One TMDB or Simkl Trending Movies job
+- Default Movies rules with a language and reasonable year/rating boundary
+- Jellyseerr/Seerr mode if you want approval before download
+- A manual preview and one live run before relying on the schedule
 
-Navigate to `http://localhost:9090` and fill in:
+## Next steps
 
-- **Trakt Client ID** & **Client Secret** (from Step 2)
-- Click **Authorize Trakt** to connect your account
-- Configure Radarr/Sonarr URLs and API keys (optional)
-
-</TabItem>
-<TabItem label="Manual Config" icon="pencil">
-
-Create `data/config.yaml`:
-
-```yaml
-trakt:
-  client_id: "your_client_id"
-  client_secret: "your_client_secret"
-
-# Optional: Add *arr integrations
-radarr:
-  api_url: "http://radarr:7878"
-  api_key: "your_radarr_api_key"
-
-sonarr:
-  api_url: "http://sonarr:8989"
-  api_key: "your_sonarr_api_key"
-```
-
-Restart the container:
-
-```bash
-docker restart blockbusterr
-```
-
-</TabItem>
-</Tabs>
-
-## What's Next?
-
-<CardGrid>
-<Card title="Set Up Scoring" icon="star" href="/concepts/filters">
-Configure how movies/shows are scored
-</Card>
-<Card title="Configure Filters" icon="setting" href="/concepts/filters">
-Define what content to block or allow
-</Card>
-<Card title="Create Jobs" icon="rocket" href="/concepts/jobs">
-Automate your library management
-</Card>
-</CardGrid>
-
-## Step 2: Configure Integrations
-
-<Steps>
-
-1. Open your browser and navigate to `http://localhost:9090`
-
-   ![Configuration Interface](../../../assets/settings.png)
-
-2. **Connect Trakt** (Required)
-
-   <Tabs>
-     <TabItem label="Via Web UI" icon="laptop">
-       1. Click **Configuration** tab
-       2. Scroll to **Trakt** section
-       3. Enter your Client ID and Client Secret ([Get them here](https://trakt.tv/oauth/applications))
-       4. Click **"Authorize with Trakt"**
-       5. Log in to Trakt and approve
-       
-       <Badge text="OAuth Complete" variant="success" />
-     </TabItem>
-     
-     <TabItem label="Via Config File" icon="seti:yml">
-       Edit `config/config.yaml`:
-       ```yaml
-       trakt:
-         client_id: "your_client_id"
-         client_secret: "your_client_secret"
-       ```
-       
-       Then authorize via the Web UI to get tokens.
-     </TabItem>
-   </Tabs>
-
-3. **Connect Radarr** (Optional)
-
-   <Tabs>
-     <TabItem label="Basic Setup" icon="rocket">
-       ```yaml
-       radarr:
-         url: "http://radarr:7878"  # Use container name
-         api_key: "your_radarr_api_key"
-         quality_profile: 1
-         root_folder: "/movies"
-       ```
-     </TabItem>
-     
-     <TabItem label="Advanced Options" icon="setting">
-       ```yaml
-       radarr:
-         url: "http://radarr:7878"
-         api_key: "your_radarr_api_key"
-         quality_profile: 4  # HD-1080p
-         root_folder: "/movies"
-         monitor: "movieOnly"
-         minimum_availability: "released"
-       ```
-       
-       **Availability Options:**
-       - `announced` - As soon as announced
-       - `in_cinemas` - When in theaters
-       - `released` - When available (recommended)
-     </TabItem>
-     
-     <TabItem label="Test Connection" icon="approve-check">
-       Click **"Test Connection"** in the UI
-       
-       Or via API:
-       ```bash
-       curl "http://localhost:9090/v1/radarr/validate"
-       ```
-       
-       Expected response:
-       ```json
-       {
-         "valid": true,
-         "message": "Connection successful",
-         "version": "4.7.5"
-       }
-       ```
-     </TabItem>
-   </Tabs>
-
-4. **Connect Sonarr** (Optional) - Similar to Radarr setup
-
-</Steps>
-
-## Step 3: Configure Your First Job
-
-<Steps>
-
-1. **Choose a Job Type**
-
-   <CardGrid>
-     <Card title="Trending" icon="rocket">
-       What's hot right now
-       
-       <Badge text="Best for: Current buzz" variant="tip" />
-     </Card>
-     <Card title="Popular" icon="star">
-       Most watched this week
-       
-       <Badge text="Best for: Mainstream hits" variant="note" />
-     </Card>
-     <Card title="Smart Popular" icon="approve-check">
-       Adaptive rating thresholds
-       
-       <Badge text="Best for: Balanced quality" variant="success" />
-     </Card>
-   </CardGrid>
-
-2. **Configure Jobs**
-
-   <Tabs>
-     <TabItem label="Beginner" icon="rocket">
-       Start conservative - high quality only:
-       
-       ```yaml
-       jobs:
-         trending_movies:
-           enabled: true
-           sync_interval: "6h"
-           limit: 10
-       ```
-       
-       <Badge text="~5-8 movies per run" variant="note" />
-     </TabItem>
-     
-     <TabItem label="Moderate" icon="star">
-       Balanced quality and quantity:
-       
-       ```yaml
-       jobs:
-         trending_movies:
-           enabled: true
-           sync_interval: "6h"
-           limit: 20
-       ```
-       
-       <Badge text="~12-16 movies per run" variant="success" />
-     </TabItem>
-     
-     <TabItem label="Advanced" icon="setting">
-       Full control with scoring:
-       
-       ```yaml
-       jobs:
-         smart_popular_movies:
-           enabled: true
-           sync_interval: "6h"
-           limit: 25
-           base_min_rating: 7.0
-           adjustment_factor: 2.0
-       ```
-       
-       <Badge text="~18-23 movies per run" variant="tip" />
-     </TabItem>
-   </Tabs>
-
-3. **Preview Before Enabling**
-
-   ![Jobs Preview](../../../assets/jobs.png)
-
-   <Tabs>
-     <TabItem label="Via Web UI" icon="laptop">
-       1. Go to **Jobs** tab
-       2. Click **"Preview"** button
-       3. Review what would be added
-       4. Check filter reasons for rejected items
-       5. Adjust filters if needed
-     </TabItem>
-     
-     <TabItem label="Via API" icon="rocket">
-       ```bash
-       curl -X POST http://localhost:9090/v1/jobs/preview/trending-movies
-       ```
-       
-       Get only items that will be added:
-       ```bash
-       curl -s -X POST http://localhost:9090/v1/jobs/preview/trending-movies \
-         | jq '.items[] | select(.filtered_out == false and .already_exists == false)'
-       ```
-     </TabItem>
-   </Tabs>
-
-4. **Enable and Monitor**
-
-   - Save your configuration
-   - Enable the job
-   - Check the **Activity** tab to see what gets added
-   
-   ![Activity Log](../../../assets/activity_log_preview.png)
-
-</Steps>
-
-## What's Next?
-
-- Learn about [different job types](/concepts/jobs/)
-- Configure [advanced filters and scoring](/concepts/filters/)
-- Set up [smart jobs](/concepts/smart-jobs/) for adaptive content discovery
-- Explore the [API reference](/api/overview/)
-
-## Troubleshooting
-
-**Container won't start?**
-- Check Docker logs: `docker logs blockbusterr`
-- Ensure port 9090 is not already in use
-
-**Can't connect to Radarr/Sonarr?**
-- Verify the URL is accessible from within the Docker container
-- Use container names if using Docker networking (e.g., `http://radarr:7878`)
-- Check API keys are correct
-
-**Jobs not running?**
-- Verify the job is enabled in the configuration
-- Check the schedule format is valid (cron syntax)
-- View logs for errors
+- [Understand Jobs](/concepts/jobs/)
+- [Build Rules](/concepts/filters/)
+- [Choose an Integration Mode](/concepts/integration-modes/)
+- [Upgrade an existing installation](/getting-started/upgrading-to-v2/)
+- [Review the API](/api/overview/)

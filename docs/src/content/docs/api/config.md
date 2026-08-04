@@ -3,7 +3,7 @@ title: Configuration API
 description: API endpoints for testing integrations and fetching metadata
 ---
 
-The Configuration API allows you to test connections and retrieve metadata for configuring filters.
+The Configuration API allows you to test connections and retrieve metadata for configuring rules.
 
 ## Validate Radarr Connection
 
@@ -102,7 +102,7 @@ Usage is identical to Radarr endpoints.
 
 ## Get Trakt Metadata
 
-Retrieve metadata for configuring filters.
+Retrieve metadata for configuring rules.
 
 ### Get Movie Genres
 

@@ -37,9 +37,9 @@ func Explain(result FilterResult) string {
 		}
 		return "Accepted: Passed all configured rules"
 	}
-	for i := len(result.Checks) - 1; i >= 0; i-- {
-		if !result.Checks[i].Passed && result.Checks[i].Message != "" {
-			return "Rejected: " + result.Checks[i].Message
+	for _, check := range slices.Backward(result.Checks) {
+		if !check.Passed && check.Message != "" {
+			return "Rejected: " + check.Message
 		}
 	}
 	if result.Reason != "" {
