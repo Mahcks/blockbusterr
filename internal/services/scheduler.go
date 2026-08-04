@@ -269,7 +269,7 @@ func (s *Scheduler) executeAllJobs() {
 	cycleJobs, enabledJobs := splitSelectionJobs(cfg, enabledJobs)
 
 	log.Infof("Found %d enabled jobs to execute", len(enabledJobs)+len(cycleJobs))
-	if len(cycleJobs) > 0 {
+	if len(cycleJobs) > 0 && runsAtStartup(cfg.Jobs.Selection.SyncInterval) {
 		if _, err := jobs.RunSelectionCycle(s.ctx, cfg, s.db, dryRun); err != nil && !errors.Is(err, context.Canceled) {
 			log.Errorf("Failed to run ranked selection: %v", err)
 		}
@@ -277,6 +277,9 @@ func (s *Scheduler) executeAllJobs() {
 
 	// Run each enabled job
 	for _, job := range enabledJobs {
+		if !runsAtStartup(getJobInterval(job.SyncInterval, cfg.Jobs.SyncInterval)) {
+			continue
+		}
 		log.Infof("Executing job: %s (%s %s)", formatJobLabel(job.Name, job.ID), job.Type, job.MediaType)
 		if err := jobs.RunDynamicJob(s.ctx, cfg, s.db, job, dryRun); err != nil && !errors.Is(err, context.Canceled) {
 			log.Errorf("Failed to run job %s: %v", formatJobLabel(job.Name, job.ID), err)
@@ -334,6 +337,11 @@ func getJobMode(jobMode, defaultMode string) string {
 		return jobMode
 	}
 	return defaultMode
+}
+
+func runsAtStartup(interval string) bool {
+	_, cronSchedule, _ := parseSyncInterval(interval)
+	return cronSchedule == nil
 }
 
 func parseSyncInterval(interval string) (time.Duration, *cron.Schedule, error) {

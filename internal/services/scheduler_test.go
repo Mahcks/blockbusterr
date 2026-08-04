@@ -29,3 +29,12 @@ func TestSplitSelectionJobs(t *testing.T) {
 		t.Fatalf("cycle=%+v standalone=%+v", cycle, standalone)
 	}
 }
+
+func TestRunsAtStartupOnlyForDurationSchedules(t *testing.T) {
+	if !runsAtStartup("24h") {
+		t.Fatal("duration schedule should run at startup")
+	}
+	if runsAtStartup("0 8 * * *") {
+		t.Fatal("cron schedule should wait for its next occurrence")
+	}
+}

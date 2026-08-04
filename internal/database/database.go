@@ -501,7 +501,7 @@ func (d *Database) LatestSuccessfulDelivery(mediaType string, tmdbID, tvdbID int
 }
 
 // GetRecentActivityFiltered retrieves recent activity logs with optional filters
-func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobType, language string) ([]ActivityLog, error) {
+func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, job, language string) ([]ActivityLog, error) {
 	if err := d.ensureActivityIdentityColumns(); err != nil {
 		return nil, err
 	}
@@ -521,9 +521,9 @@ func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobTy
 		query += " AND media_type = ?"
 		args = append(args, mediaType)
 	}
-	if jobType != "" {
-		query += " AND job_type = ?"
-		args = append(args, jobType)
+	if job != "" {
+		query += " AND (job_id = ? OR job_type = ?)"
+		args = append(args, job, job)
 	}
 	if language != "" {
 		query += " AND language = ?"

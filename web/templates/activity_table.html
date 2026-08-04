@@ -12,7 +12,7 @@
   {{$log := $group.Log}}
   {{$count := $group.Count}}
   {{$history := $group.History}}
-  <article class="activity-ledger-row" id="activity-card-{{$index}}" data-job-type="{{$log.JobType}}" data-status="{{$log.Status}}">
+  <article class="activity-ledger-row" id="activity-card-{{$index}}" data-job-id="{{$log.JobID}}" data-status="{{$log.Status}}">
     <div class="activity-poster">
       {{if $log.PosterURL}}
       <img src="{{$log.PosterURL}}" alt="" loading="lazy">
@@ -27,9 +27,9 @@
         {{if $log.Year}}<span class="shrink-0 text-xs text-slate-500">{{$log.Year}}</span>{{end}}
         {{if $log.Language}}<span class="shrink-0 text-xs uppercase text-slate-600">{{$log.Language}}</span>{{end}}
       </div>
-      <button type="button" data-action="filter-job" data-job-type="{{$log.JobType}}" class="mt-1 truncate text-left text-xs text-slate-500 hover:text-slate-200">
+      {{if $log.JobID}}<button type="button" data-action="filter-job" data-job-id="{{$log.JobID}}" class="mt-1 truncate text-left text-xs text-slate-500 hover:text-slate-200">
         {{$log.JobType}}{{if $log.Source}} · {{$log.Source}}{{end}}{{if gt $count 1}} · {{$count}} occurrences{{end}}
-      </button>
+      </button>{{else}}<p class="mt-1 truncate text-xs text-slate-500">{{$log.JobType}}{{if $log.Source}} · {{$log.Source}}{{end}}{{if gt $count 1}} · {{$count}} occurrences{{end}}</p>{{end}}
       {{if $log.Message}}<p class="activity-reason activity-reason-{{$log.Status}}" title="{{$log.Message}}">{{if or (eq $log.Status "rejected") (eq $log.Status "failed")}}<i data-lucide="alert-triangle" class="h-3 w-3 shrink-0" aria-hidden="true"></i>{{end}}<span class="truncate">{{$log.Message}}</span></p>{{end}}
     </div>
 

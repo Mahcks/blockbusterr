@@ -85,6 +85,27 @@ func TestActivityLanguageFiltering(t *testing.T) {
 	}
 }
 
+func TestActivityJobFilteringUsesStableID(t *testing.T) {
+	t.Parallel()
+	db, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	for _, entry := range []ActivityLog{
+		{Timestamp: time.Now(), JobID: "box-office", JobType: "Box Office", MediaType: "movie", Title: "A", Status: "added"},
+		{Timestamp: time.Now(), JobID: "smart-popular", JobType: "Smart Popular Movies", MediaType: "movie", Title: "B", Status: "added"},
+	} {
+		if err := db.LogActivity(entry); err != nil {
+			t.Fatal(err)
+		}
+	}
+	logs, err := db.GetRecentActivityFiltered(10, "", "", "box-office", "")
+	if err != nil || len(logs) != 1 || logs[0].JobID != "box-office" {
+		t.Fatalf("filtered logs = %#v, err = %v", logs, err)
+	}
+}
+
 func TestGetActivityDailyCountsAggregatesStatuses(t *testing.T) {
 	t.Parallel()
 

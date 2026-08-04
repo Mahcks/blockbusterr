@@ -103,6 +103,9 @@ func TestActivityUsesExternalScriptAndDelegatedActions(t *testing.T) {
 	if strings.Contains(activity, `.Readiness.Automation.State`) {
 		t.Error("Activity history empty state must not depend on current automation readiness")
 	}
+	if strings.Contains(activity, `value="box_office"`) || !strings.Contains(script, "/v1/jobs/enabled") {
+		t.Error("Activity job filter must use enabled jobs instead of hard-coded job types")
+	}
 }
 
 func TestJobsExposesRecommendationSeedsAndSonarrSeriesType(t *testing.T) {

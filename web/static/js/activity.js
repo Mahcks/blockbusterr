@@ -19,7 +19,8 @@ document.addEventListener('DOMContentLoaded', function() {
   setupAutoRefresh();
   loadActivityChart();
   loadJobRuns();
-	  loadActivityLanguages();
+  loadActivityJobs();
+  loadActivityLanguages();
   setActivityView('items');
   const timelineSearch = document.getElementById('timelineRunSearchInput');
   const timelineStatus = document.getElementById('timelineRunStatusFilter');
@@ -54,7 +55,7 @@ document.addEventListener('click', function(event) {
   if (actions[action]) return actions[action]();
   if (action === 'set-activity-view') return setActivityView(trigger.dataset.view);
   if (action === 'filter-status') return quickFilterStatus(trigger.dataset.status || '');
-  if (action === 'filter-job') return quickFilterJob(trigger.dataset.jobType);
+  if (action === 'filter-job') return quickFilterJob(trigger.dataset.jobId);
   if (action === 'sort') return sortBy(trigger.dataset.sort);
   if (action === 'toggle-timeline-run') return toggleTimelineRun(Number(trigger.dataset.runId));
   if (action === 'filter-run-entries') return filterRunEntries(trigger);
@@ -73,6 +74,20 @@ async function loadActivityLanguages() {
     (data.languages || []).forEach((language) => select.add(new Option(language.toUpperCase(), language)));
   } catch (_) {
     // Language filtering is optional; the remaining Activity view stays usable.
+  }
+}
+
+async function loadActivityJobs() {
+  const select = document.getElementById('jobFilter');
+  if (!select) return;
+  try {
+    const response = await fetch('/v1/jobs/enabled');
+    if (!response.ok) return;
+    const jobs = await response.json();
+    jobs.sort((a, b) => a.name.localeCompare(b.name));
+    jobs.forEach((job) => select.add(new Option(job.name, job.id)));
+  } catch (_) {
+    // Activity remains usable when job metadata cannot be loaded.
   }
 }
 
@@ -448,8 +463,8 @@ function applyFilters() {
   let url = `/v1/activity/logs?page=${currentPage}&pageSize=${pageSize}`;
   if (status) url += `&status=${status}`;
   if (media) url += `&media=${media}`;
-  if (job) url += `&job=${job}`;
-	  if (language) url += `&language=${encodeURIComponent(language)}`;
+  if (job) url += `&job=${encodeURIComponent(job)}`;
+  if (language) url += `&language=${encodeURIComponent(language)}`;
   if (dateRange) url += `&date_range=${dateRange}`;
   if (search) url += `&search=${encodeURIComponent(search)}`;
   if (currentSort.field) url += `&sort=${currentSort.field}&order=${currentSort.direction}`;
@@ -494,11 +509,11 @@ function quickFilterStatus(status) {
   applyFilters();
 }
 
-// Allow filtering by job type from activity_table.html
-function quickFilterJob(jobType) {
+// Allow filtering by job from activity_table.html
+function quickFilterJob(jobID) {
   const jobFilter = document.getElementById('jobFilter');
   if (jobFilter) {
-    jobFilter.value = jobType;
+    jobFilter.value = jobID;
     applyFilters();
   }
 }

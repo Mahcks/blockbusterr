@@ -104,6 +104,8 @@ Optional job minimums are allocated first and are validated against cycle capaci
 
 ## Preview, run, and schedule
 
+Duration schedules run once when Blockbusterr starts and then repeat at the configured interval. Cron schedules wait for their next matching time and do not run at startup.
+
 - **Preview** discovers and evaluates candidates without delivering them.
 - **Run now** executes the complete pipeline immediately.
 - **Enable/Disable** controls scheduled execution without deleting the job.
