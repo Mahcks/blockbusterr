@@ -18,7 +18,7 @@ Visit `http://localhost:4321/` to view the docs locally.
 npm run build
 ```
 
-Build the v2 release-candidate path locally with:
+Build the v2 beta path locally with:
 
 ```bash
 DOCS_BASE=/v2/ npm run build
@@ -31,7 +31,7 @@ Built files will be in `dist/`.
 Documentation is automatically deployed to GitHub Pages when documentation changes are pushed to `main` or `release/v2.0.0`. The deployment combines both branches:
 
 - `/` serves the stable v1 documentation from `main`.
-- `/v2/` serves the release-candidate documentation from `release/v2.0.0`.
+- `/v2/` serves the beta documentation from `release/v2.0.0`.
 
 When v2 becomes stable, archive the final v1 documentation under `/v1/`, make
 `main` the unversioned v2 source, and redirect `/v2/` to `/`.

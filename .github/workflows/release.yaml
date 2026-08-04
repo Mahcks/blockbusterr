@@ -38,7 +38,9 @@ jobs:
         shell: bash
         run: |
           tags="ghcr.io/${{ env.repo }}:${{ steps.version.outputs.version }}"
-          if [[ "${{ github.event.release.prerelease }}" == "false" ]]; then
+          if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+            tags="$tags"$'\n'"ghcr.io/${{ env.repo }}:latest-beta"
+          else
             tags="$tags"$'\n'"ghcr.io/${{ env.repo }}:latest"
           fi
           echo "tags<<EOF" >> "$GITHUB_OUTPUT"
