@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: V2 Beta Documentation
+    url: https://blockbusterr.dev/v2/
+    about: Read the v2 guides before reporting a beta issue
   - name: Documentation
     url: https://blockbusterr.dev
     about: Check the documentation for guides and examples
