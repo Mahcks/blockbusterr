@@ -597,6 +597,7 @@
           enabled: true,
           limit: parseInt(formData.get('limit')),
 		  delivery_limit: parseInt(formData.get('delivery_limit')) || 0,
+		  repeat_policy: formData.get('repeat_policy') || '',
 		  source: formData.get('source') || 'trakt',
           rule_set_id: formData.get('rule_set_id')
         };
@@ -775,6 +776,7 @@
     document.getElementById('modal-name').value = job.name;
     document.getElementById('modal-limit').value = job.limit;
     document.getElementById('modal-delivery-limit').value = job.delivery_limit || 0;
+	document.getElementById('modal-repeat-policy').value = job.repeat_policy || '';
     document.getElementById('modal-interval').value = job.sync_interval || '';
     document.getElementById('modal-mode').value = job.mode || '';
     document.getElementById('modal-source').value = job.source || 'trakt';
@@ -1170,6 +1172,7 @@
       source: document.getElementById('modal-source').value || 'trakt',
       limit: parseInt(document.getElementById('modal-limit').value),
 	  delivery_limit: parseInt(document.getElementById('modal-delivery-limit').value) || 0,
+	  repeat_policy: document.getElementById('modal-repeat-policy').value || '',
       sync_interval: document.getElementById('modal-interval').value || '',
       mode: document.getElementById('modal-mode').value || ''
     };

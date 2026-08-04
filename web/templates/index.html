@@ -525,6 +525,27 @@
           </div>
         </details>
 
+        <details class="settings-disclosure" {{if ne .Config.Jobs.RepeatPolicy "90_days"}}open{{end}}>
+          <summary>
+            <span class="settings-disclosure-title"><i data-lucide="history" aria-hidden="true"></i>Repeat handling</span>
+            <span class="settings-disclosure-summary" data-repeat-summary>{{if eq .Config.Jobs.RepeatPolicy "never"}}Never re-add{{else if eq .Config.Jobs.RepeatPolicy "immediate"}}Immediately eligible{{else if eq .Config.Jobs.RepeatPolicy "30_days"}}30-day cooldown{{else if eq .Config.Jobs.RepeatPolicy "180_days"}}180-day cooldown{{else}}90-day cooldown{{end}}</span>
+          </summary>
+          <div class="settings-disclosure-body">
+            <p class="settings-inline-help">Titles already present in Radarr, Sonarr, Jellyseerr, or Seerr are always skipped. This controls when a previously delivered title becomes eligible after it is removed.</p>
+            <div class="svc-field">
+              <label for="repeat-policy">Previously delivered, now absent</label>
+              <select id="repeat-policy" name="jobs.repeat_policy">
+                <option value="immediate" {{if eq .Config.Jobs.RepeatPolicy "immediate"}}selected{{end}}>Re-add immediately</option>
+                <option value="30_days" {{if eq .Config.Jobs.RepeatPolicy "30_days"}}selected{{end}}>Wait 30 days</option>
+                <option value="90_days" {{if or (eq .Config.Jobs.RepeatPolicy "") (eq .Config.Jobs.RepeatPolicy "90_days")}}selected{{end}}>Wait 90 days (recommended)</option>
+                <option value="180_days" {{if eq .Config.Jobs.RepeatPolicy "180_days"}}selected{{end}}>Wait 180 days</option>
+                <option value="never" {{if eq .Config.Jobs.RepeatPolicy "never"}}selected{{end}}>Never re-add</option>
+              </select>
+              <span class="svc-help">Use a cooldown when another tool removes unwatched content.</span>
+            </div>
+          </div>
+        </details>
+
         <details class="settings-disclosure" {{if or (gt .Config.Jobs.GlobalLimitMovies 0) (gt .Config.Jobs.GlobalLimitShows 0)}}open{{end}}>
           <summary>
             <span class="settings-disclosure-title"><i data-lucide="gauge" aria-hidden="true"></i>Delivery limits</span>

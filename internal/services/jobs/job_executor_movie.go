@@ -199,6 +199,15 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 			skipped++
 			continue
 		}
+		repeatReason, repeatErr := repeatSkipReason(e.Config, e.Database, jobConfig.RepeatPolicy, "movie", movie.IDs.TMDB, 0, time.Now())
+		if repeatErr != nil {
+			return fmt.Errorf("failed to check movie delivery history: %w", repeatErr)
+		}
+		if repeatReason != "" {
+			e.skipMovieDelivery(jobConfig, movie, scoreMap, repeatReason)
+			skipped++
+			continue
+		}
 
 		minAvail := jobConfig.MinimumAvailability
 		if minAvail == "" {
@@ -237,7 +246,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 
 		reservationID, allowed, reason := budget.reserve("movie")
 		if !allowed {
-			e.skipMovieForBudget(jobConfig, movie, scoreMap, reason)
+			e.skipMovieDelivery(jobConfig, movie, scoreMap, reason)
 			skipped++
 			continue
 		}
@@ -436,10 +445,20 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 			skipped++
 			continue
 		}
+		repeatReason, repeatErr := repeatSkipReason(e.Config, e.Database, jobConfig.RepeatPolicy, "movie", movie.IDs.TMDB, 0, time.Now())
+		if repeatErr != nil {
+			log.Errorf("Failed to check movie delivery history: %v", repeatErr)
+			return
+		}
+		if repeatReason != "" {
+			e.skipMovieDelivery(jobConfig, movie, scoreMap, repeatReason)
+			skipped++
+			continue
+		}
 
 		reservationID, allowed, reason := budget.reserve("movie")
 		if !allowed {
-			e.skipMovieForBudget(jobConfig, movie, scoreMap, reason)
+			e.skipMovieDelivery(jobConfig, movie, scoreMap, reason)
 			skipped++
 			continue
 		}

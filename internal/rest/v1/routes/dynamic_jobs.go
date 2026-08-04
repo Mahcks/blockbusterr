@@ -425,11 +425,7 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 				"error": "Job is disabled",
 			})
 		}
-		sourceReady := jobs.IsProviderConfigured(cfg, targetJob.Source)
-		if targetJob.Type == string(enums.JobTypeList) {
-			sourceReady = slices.Contains(jobs.AvailableListSources(cfg), targetJob.Source)
-		}
-		if !sourceReady {
+		if !jobs.IsJobSourceConfigured(cfg, *targetJob) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 				"error": fmt.Sprintf("%s is not configured", targetJob.Source),
 			})
@@ -641,6 +637,9 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 	}
 	if job.DeliveryLimit < 0 {
 		return fmt.Errorf("delivery limit cannot be negative")
+	}
+	if !enums.RepeatPolicy(job.RepeatPolicy).IsValid(true) {
+		return fmt.Errorf("repeat handling policy is invalid")
 	}
 
 	// Check media type support

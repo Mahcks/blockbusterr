@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/global"
+	"github.com/mahcks/blockbusterr/pkg/enums"
 	"gopkg.in/yaml.v3"
 )
 
@@ -297,6 +298,17 @@ func importedJobBundle(current *config.Config, data []byte) (*config.Config, con
 func validatePortableAutomation(candidate *config.Config) error {
 	if candidate.Jobs.GlobalLimitMovies < 0 || candidate.Jobs.GlobalLimitShows < 0 {
 		return fmt.Errorf("global delivery limits cannot be negative")
+	}
+	if candidate.Jobs.RepeatPolicy == "" {
+		candidate.Jobs.RepeatPolicy = string(enums.RepeatPolicy90Days)
+	}
+	if !enums.RepeatPolicy(candidate.Jobs.RepeatPolicy).IsValid(false) {
+		return fmt.Errorf("repeat handling policy is invalid")
+	}
+	for _, job := range candidate.Jobs.List {
+		if !enums.RepeatPolicy(job.RepeatPolicy).IsValid(true) {
+			return fmt.Errorf("job %q has an invalid repeat handling policy", job.Name)
+		}
 	}
 	if candidate.Jobs.GlobalPeriod == "" || candidate.Jobs.GlobalPeriod == "sync" {
 		candidate.Jobs.GlobalPeriod = "daily"

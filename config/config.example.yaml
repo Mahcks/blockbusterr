@@ -60,6 +60,9 @@ scoring:
   recency_days: 365
 
 jobs:
+  # Wait before redelivering media that Blockbusterr previously added or requested and is now absent.
+  # Options: immediate, 30_days, 90_days, 180_days, never
+  repeat_policy: 90_days
   sync_interval: 24h
   mode: direct # direct or jellyseerr
   global_limit_movies: 0 # Successful deliveries in the rolling period; zero is unlimited

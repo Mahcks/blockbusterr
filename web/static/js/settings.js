@@ -35,6 +35,7 @@ function init() {
   updateWeightTotal();
   renderScoringSummary();
   renderLimitsSummary();
+  renderRepeatSummary();
   updateSaveBar();
 
   form.addEventListener('input', onFormChange);
@@ -62,6 +63,7 @@ function onFormChange() {
   updateWeightTotal();
   renderScoringSummary();
   renderLimitsSummary();
+  renderRepeatSummary();
   updateSaveBar();
 }
 
@@ -232,6 +234,12 @@ function renderLimitsSummary() {
   }
   const period = document.getElementById('global-period')?.selectedOptions[0]?.textContent || 'period';
   el.textContent = `${movies || 'Unlimited'} movies, ${shows || 'Unlimited'} shows per ${period.toLowerCase()}`;
+}
+
+function renderRepeatSummary() {
+  const el = document.querySelector('[data-repeat-summary]');
+  const select = document.getElementById('repeat-policy');
+  if (el && select) el.textContent = select.selectedOptions[0]?.textContent.replace(' (recommended)', '') || '';
 }
 
 function applyPreset(event) {

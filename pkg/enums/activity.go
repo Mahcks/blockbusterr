@@ -63,6 +63,29 @@ func IsSuccessLikeActivityStatus(s ActivityStatus) bool {
 	return s == ActivityStatusAdded || s == ActivityStatusRequested
 }
 
+type RepeatPolicy string
+
+const (
+	RepeatPolicyInherit   RepeatPolicy = ""
+	RepeatPolicyImmediate RepeatPolicy = "immediate"
+	RepeatPolicy30Days    RepeatPolicy = "30_days"
+	RepeatPolicy90Days    RepeatPolicy = "90_days"
+	RepeatPolicy180Days   RepeatPolicy = "180_days"
+	RepeatPolicyNever     RepeatPolicy = "never"
+)
+
+func (p RepeatPolicy) IsValid(allowInherit bool) bool {
+	if allowInherit && p == RepeatPolicyInherit {
+		return true
+	}
+	switch p {
+	case RepeatPolicyImmediate, RepeatPolicy30Days, RepeatPolicy90Days, RepeatPolicy180Days, RepeatPolicyNever:
+		return true
+	default:
+		return false
+	}
+}
+
 type JobRunStatus string
 
 const (

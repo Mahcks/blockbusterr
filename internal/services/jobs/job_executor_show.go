@@ -257,6 +257,15 @@ func (e *ShowJobExecutor) executeShowsDirect(
 			skipped++
 			continue
 		}
+		repeatReason, repeatErr := repeatSkipReason(e.Config, e.Database, jobConfig.RepeatPolicy, "show", show.IDs.TMDB, show.IDs.TVDB, time.Now())
+		if repeatErr != nil {
+			return fmt.Errorf("failed to check show delivery history: %w", repeatErr)
+		}
+		if repeatReason != "" {
+			e.skipShowDelivery(jobConfig, show, scoreMap, repeatReason)
+			skipped++
+			continue
+		}
 
 		// Warn if TVDB ID is missing
 		if series.TvdbID == 0 {
@@ -282,7 +291,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 
 		reservationID, allowed, reason := budget.reserve("show")
 		if !allowed {
-			e.skipShowForBudget(jobConfig, show, scoreMap, reason)
+			e.skipShowDelivery(jobConfig, show, scoreMap, reason)
 			skipped++
 			continue
 		}
@@ -501,10 +510,20 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 			skipped++
 			continue
 		}
+		repeatReason, repeatErr := repeatSkipReason(e.Config, e.Database, jobConfig.RepeatPolicy, "show", show.IDs.TMDB, show.IDs.TVDB, time.Now())
+		if repeatErr != nil {
+			log.Errorf("Failed to check show delivery history: %v", repeatErr)
+			return
+		}
+		if repeatReason != "" {
+			e.skipShowDelivery(jobConfig, show, scoreMap, repeatReason)
+			skipped++
+			continue
+		}
 
 		reservationID, allowed, reason := budget.reserve("show")
 		if !allowed {
-			e.skipShowForBudget(jobConfig, show, scoreMap, reason)
+			e.skipShowDelivery(jobConfig, show, scoreMap, reason)
 			skipped++
 			continue
 		}

@@ -94,7 +94,7 @@ func deliveryBudgetWindow(period string) time.Duration {
 	}
 }
 
-func (e *MovieJobExecutor) skipMovieForBudget(jobConfig JobConfig, movie integrations.Movie, scoreMap map[int]ScoreInfo, reason string) {
+func (e *MovieJobExecutor) skipMovieDelivery(jobConfig JobConfig, movie integrations.Movie, scoreMap map[int]ScoreInfo, reason string) {
 	e.updateDecisionOutcome(movie.IDs.TMDB, "skipped", reason)
 	if e.Database == nil {
 		return
@@ -111,7 +111,7 @@ func (e *MovieJobExecutor) skipMovieForBudget(jobConfig JobConfig, movie integra
 	}
 }
 
-func (e *ShowJobExecutor) skipShowForBudget(jobConfig JobConfig, show integrations.Show, scoreMap map[int]ScoreInfo, reason string) {
+func (e *ShowJobExecutor) skipShowDelivery(jobConfig JobConfig, show integrations.Show, scoreMap map[int]ScoreInfo, reason string) {
 	e.updateDecisionOutcome(show.IDs.TVDB, "skipped", reason)
 	if e.Database == nil {
 		return

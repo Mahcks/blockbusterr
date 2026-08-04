@@ -24,6 +24,7 @@ radarr:
 jobs:
   sync_interval: 24h
   mode: direct
+  repeat_policy: 90_days
   global_limit_movies: 20
   global_limit_shows: 10
   global_period: weekly
@@ -102,6 +103,7 @@ Jobs created in the UI are stored under `jobs.list`.
 | `monitor` | Optional Radarr/Sonarr override |
 | `base_min_rating` | Smart Popular baseline rating |
 | `adjustment_factor` | Smart Popular adjustment |
+| `repeat_policy` | Optional repeat-handling override; empty uses the global default |
 | `rule_set_id` | Assigned media-compatible rule set |
 
 The global `jobs.sync_interval` and `jobs.mode` values are defaults. Job-level values override them.
@@ -116,6 +118,10 @@ Delivery budgets are enforced immediately before Blockbusterr calls Radarr, Sona
 - Each job's `delivery_limit` caps successful deliveries within that run.
 
 Zero means unlimited. Only successful additions and requests consume a slot. Rejected, skipped, duplicate, failed, and previewed titles do not count. When both limits apply, the first exhausted budget skips that delivery and records the reason in Activity Entries.
+
+## Repeat handling
+
+Blockbusterr always skips titles currently present in Radarr, Sonarr, Jellyseerr, or Seerr. `jobs.repeat_policy` controls when a title becomes eligible after Blockbusterr previously delivered it and it is later removed. The recommended default is `90_days`; alternatives are `immediate`, `30_days`, `180_days`, and `never`. Each job may override the global policy. Dry runs and previews never start a cooldown.
 
 ## Rule sets
 

@@ -24,6 +24,7 @@ type JobConfig struct {
 	Monitor       string
 	Limit         int
 	DeliveryLimit int
+	RepeatPolicy  string
 	Period        string // For watched/collected/played jobs
 }
 

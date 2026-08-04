@@ -456,6 +456,24 @@ func (d *Database) LogActivity(log ActivityLog) error {
 	return err
 }
 
+// LatestSuccessfulDelivery returns the most recent time Blockbusterr delivered a title.
+func (d *Database) LatestSuccessfulDelivery(mediaType string, tmdbID, tvdbID int) (time.Time, bool, error) {
+	column, id := "tmdb_id", tmdbID
+	if mediaType == string(enums.MediaTypeShow) {
+		column, id = "tvdb_id", tvdbID
+	}
+	if id <= 0 {
+		return time.Time{}, false, nil
+	}
+	var deliveredAt time.Time
+	err := d.db.QueryRow(`SELECT timestamp FROM activity_logs WHERE media_type = ? AND `+column+` = ? AND status IN (?, ?) AND COALESCE(message, '') NOT LIKE '[DRY RUN]%' ORDER BY timestamp DESC LIMIT 1`,
+		mediaType, id, enums.ActivityStatusAdded, enums.ActivityStatusRequested).Scan(&deliveredAt)
+	if err == sql.ErrNoRows {
+		return time.Time{}, false, nil
+	}
+	return deliveredAt, err == nil, err
+}
+
 // GetRecentActivityFiltered retrieves recent activity logs with optional filters
 func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobType, language string) ([]ActivityLog, error) {
 	if err := d.ensureActivityIdentityColumns(); err != nil {

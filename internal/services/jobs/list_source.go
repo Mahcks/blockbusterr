@@ -52,6 +52,13 @@ func AvailableListSources(cfg *config.Config) []string {
 	return providers
 }
 
+func IsJobSourceConfigured(cfg *config.Config, job config.DynamicJob) bool {
+	if job.Type == string(enums.JobTypeList) {
+		return slices.Contains(AvailableListSources(cfg), job.Source)
+	}
+	return IsProviderConfigured(cfg, job.Source)
+}
+
 func configuredListSource(cfg *config.Config, provider string) (ListSource, error) {
 	factory := listSourceFactories[provider]
 	if factory == nil {

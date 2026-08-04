@@ -10,6 +10,7 @@ import (
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/services/jobs"
+	"github.com/mahcks/blockbusterr/pkg/enums"
 	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
@@ -82,7 +83,7 @@ func assessReadiness(cfg *config.Config) systemReadiness {
 			continue
 		}
 		enabled++
-		if !jobs.IsProviderConfigured(cfg, job.Source) {
+		if !jobs.IsJobSourceConfigured(cfg, job) {
 			invalid++
 			continue
 		}
@@ -256,6 +257,16 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		if globalPeriod != "daily" && globalPeriod != "weekly" && globalPeriod != "monthly" {
 			fieldErrors = append(fieldErrors, "Delivery limit period must be daily, weekly, or monthly")
 		}
+		repeatPolicy := enums.RepeatPolicy(c.FormValue("jobs.repeat_policy"))
+		if repeatPolicy == enums.RepeatPolicyInherit {
+			repeatPolicy = enums.RepeatPolicy(cfg.Jobs.RepeatPolicy)
+		}
+		if repeatPolicy == enums.RepeatPolicyInherit {
+			repeatPolicy = enums.RepeatPolicy90Days
+		}
+		if !repeatPolicy.IsValid(false) {
+			fieldErrors = append(fieldErrors, "Repeat handling policy is invalid")
+		}
 		scoringEnabled := c.FormValue("scoring.enabled") == "true"
 		ratingWeight := parseFloat("Rating weight", "scoring.rating_weight", 0.6)
 		popularityWeight := parseFloat("Popularity weight", "scoring.popularity_weight", 0.3)
@@ -309,6 +320,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		cfg.Jobs.GlobalLimitMovies = globalLimitMovies
 		cfg.Jobs.GlobalLimitShows = globalLimitShows
 		cfg.Jobs.GlobalPeriod = globalPeriod
+		cfg.Jobs.RepeatPolicy = string(repeatPolicy)
 		cfg.Scoring.Enabled = scoringEnabled
 		cfg.Scoring.RatingWeight = ratingWeight
 		cfg.Scoring.PopularityWeight = popularityWeight

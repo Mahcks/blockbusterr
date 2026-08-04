@@ -346,6 +346,19 @@
             </div>
           </div>
 
+          <div>
+            <label for="custom-repeat-policy" class="block mb-2 font-medium">Repeat handling</label>
+            <select id="custom-repeat-policy" name="repeat_policy" class="w-full rounded-lg transition">
+              <option value="">Use global default</option>
+              <option value="immediate">Re-add immediately</option>
+              <option value="30_days">Wait 30 days</option>
+              <option value="90_days">Wait 90 days</option>
+              <option value="180_days">Wait 180 days</option>
+              <option value="never">Never re-add</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Applies only after previously delivered media is removed from its destination.</p>
+          </div>
+
           <!-- Period (shown only for period-based jobs) -->
           <div id="custom-period-container" class="hidden">
             <label for="custom-period" class="block mb-2 font-medium">
@@ -785,6 +798,19 @@
                 <p class="text-xs text-slate-400 mt-1">
                   Override default interval (e.g., 1h, 30m, 0 */2 * * *)
                 </p>
+              </div>
+
+              <div>
+                <label for="modal-repeat-policy" class="block mb-2 font-medium">Repeat handling</label>
+                <select id="modal-repeat-policy" name="repeat_policy" class="w-full rounded-lg transition">
+                  <option value="">Use global default</option>
+                  <option value="immediate">Re-add immediately</option>
+                  <option value="30_days">Wait 30 days</option>
+                  <option value="90_days">Wait 90 days</option>
+                  <option value="180_days">Wait 180 days</option>
+                  <option value="never">Never re-add</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Current destination duplicates are always skipped.</p>
               </div>
 
               <div>

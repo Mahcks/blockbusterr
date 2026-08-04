@@ -72,6 +72,7 @@ func (e *DynamicJobExecutor) Execute(ctx context.Context, job config.DynamicJob)
 		Monitor:             job.Monitor,
 		Limit:               job.Limit,
 		DeliveryLimit:       job.DeliveryLimit,
+		RepeatPolicy:        job.RepeatPolicy,
 		Period:              job.Period,
 	}
 
