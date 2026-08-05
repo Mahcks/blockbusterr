@@ -111,9 +111,10 @@ func (t *TMDB) getWatchlist(ctx context.Context, mediaType string, limit int) (T
 }
 
 func keepRequestedListMedia(mediaType string, movies *[]Movie, shows *[]Show) {
-	if mediaType == "movie" {
+	switch mediaType {
+	case "movie":
 		*shows = nil
-	} else if mediaType == "show" {
+	case "show":
 		*movies = nil
 	}
 }

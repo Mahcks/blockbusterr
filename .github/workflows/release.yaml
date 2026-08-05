@@ -19,13 +19,31 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25.6"
+          go-version: "1.25.12"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.6
+          args: --timeout=5m
+
+      - name: Check for modernization opportunities
+        run: go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest ./...
+
+      - name: Scan reachable Go vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+      - name: Audit application assets
+        run: npm audit
+
+      - name: Audit and build documentation
+        run: npm ci --prefix docs && npm audit --prefix docs && npm run build --prefix docs
 
       - name: Verify release commit
         run: |
@@ -75,6 +93,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tags.outputs.tags }}
           build-args: |
-            GOLANG_TAG=1.25.6-alpine
+            GOLANG_TAG=1.25.12-alpine
             VERSION=${{ steps.version.outputs.version }}
             COMMIT=${{ github.sha }}

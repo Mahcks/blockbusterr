@@ -495,7 +495,7 @@ func applyEnvironment(value reflect.Value, path []string) error {
 	typeOfValue := value.Type()
 	for i := 0; i < value.NumField(); i++ {
 		field, fieldType := value.Field(i), typeOfValue.Field(i)
-		name := strings.Split(fieldType.Tag.Get("yaml"), ",")[0]
+		name, _, _ := strings.Cut(fieldType.Tag.Get("yaml"), ",")
 		if name == "" || name == "-" || !field.CanSet() {
 			continue
 		}
