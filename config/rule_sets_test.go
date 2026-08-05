@@ -69,7 +69,7 @@ func TestResolveRuleSetFailsClosedOnMediaMismatch(t *testing.T) {
 	}
 }
 
-func TestSaveReplacesConfigAndPreservesMode(t *testing.T) {
+func TestSaveReplacesConfigWithPrivateMode(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yaml")
 	if err := os.WriteFile(path, []byte("version: old\n"), 0o640); err != nil {
 		t.Fatal(err)
@@ -82,8 +82,8 @@ func TestSaveReplacesConfigAndPreservesMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o640 {
-		t.Fatalf("mode = %o, want 640", info.Mode().Perm())
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("mode = %o, want 600", info.Mode().Perm())
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -91,5 +91,51 @@ func TestSaveReplacesConfigAndPreservesMode(t *testing.T) {
 	}
 	if len(data) == 0 {
 		t.Fatal("saved config is empty")
+	}
+}
+
+func TestSavePreservesStricterModeAndRestoreKeepsRecoveryCopy(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	old := []byte("version: 1.5.0\njobs: {}\nfilters: {}\n")
+	if err := os.WriteFile(path, old, 0o400); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &Config{Version: "2.0.0", ConfigFilePath: path}
+	if err := cfg.Restore(); err != nil {
+		t.Fatal(err)
+	}
+	for _, check := range []struct {
+		path string
+		mode os.FileMode
+	}{{path, 0o400}, {path + ".backup", 0o600}} {
+		info, err := os.Stat(check.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != check.mode {
+			t.Fatalf("%s mode=%v", check.path, info.Mode().Perm())
+		}
+	}
+	backup, err := os.ReadFile(path + ".backup")
+	if err != nil || string(backup) != string(old) {
+		t.Fatalf("backup=%q err=%v", backup, err)
+	}
+}
+
+func TestRestoreBackupFailureLeavesActiveConfigUntouched(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	old := []byte("version: 1.5.0\njobs: {}\nfilters: {}\n")
+	if err := os.WriteFile(path, old, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(path+".backup", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&Config{Version: "2.0.0", ConfigFilePath: path}).Restore(); err == nil {
+		t.Fatal("expected backup failure")
+	}
+	got, err := os.ReadFile(path)
+	if err != nil || string(got) != string(old) {
+		t.Fatalf("active config=%q err=%v", got, err)
 	}
 }

@@ -5,6 +5,8 @@ description: Configure v2 providers, delivery integrations, jobs, scoring, and r
 
 Blockbusterr reads `config/config.yaml` in release builds and `config/config.dev.yaml` in development. The web UI writes the same model and is recommended for normal administration.
 
+Configuration files contain API keys and other credentials. Blockbusterr writes them with owner-only permissions; keep downloaded configuration backups private as well. The Settings page backup contains YAML configuration only—it does not include SQLite Activity history or repeat state. Back up the complete `data` directory when you need a recoverable installation snapshot.
+
 ## Minimal v2 example
 
 ```yaml

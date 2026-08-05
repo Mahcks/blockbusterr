@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -46,7 +47,7 @@ func uploadConfig(t *testing.T, app *fiber.App, path string, data []byte) *http.
 
 func portableTestConfig(t *testing.T) *config.Config {
 	t.Helper()
-	cfg := &config.Config{ConfigFilePath: filepath.Join(t.TempDir(), "config.yaml")}
+	cfg := &config.Config{Version: "2.0.0", ConfigFilePath: filepath.Join(t.TempDir(), "config.yaml")}
 	cfg.TMDB.APIKey = "configured-tmdb-secret"
 	cfg.Radarr.APIKey = "configured-radarr-secret"
 	cfg.Filters.Movies.MinRating = 7
@@ -56,6 +57,107 @@ func portableTestConfig(t *testing.T) *config.Config {
 	cfg.Jobs.List = []config.DynamicJob{{ID: "job-1", Name: "Quality Movies", Enabled: true, Type: "popular", Source: "tmdb", MediaType: "movie", Limit: 20, RuleSetID: rules.ID}}
 	cfg.TitleExceptions.BlockedMovieTMDBIDs = []int{123}
 	return cfg
+}
+
+func TestConfigurationBackupIsPrivateAndRestorable(t *testing.T) {
+	cfg := portableTestConfig(t)
+	if err := cfg.Save(); err != nil {
+		t.Fatal(err)
+	}
+	app := configRoutesTestApp(cfg)
+	response, err := app.Test(httptest.NewRequest("GET", "/config/backup", nil), -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	backup, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Header.Get(fiber.HeaderCacheControl) != "no-store, private" || response.Header.Get(fiber.HeaderPragma) != "no-cache" || response.Header.Get(fiber.HeaderExpires) != "0" {
+		t.Fatalf("unsafe backup cache headers: %v", response.Header)
+	}
+	cfg.TMDB.APIKey = "changed-secret"
+	response = uploadConfig(t, app, "/config/restore", backup)
+	if response.StatusCode != fiber.StatusOK {
+		body, _ := io.ReadAll(response.Body)
+		t.Fatalf("status=%d body=%s", response.StatusCode, body)
+	}
+	if cfg.TMDB.APIKey != "configured-tmdb-secret" {
+		t.Fatal("restored configuration was not published")
+	}
+	info, err := os.Stat(cfg.ConfigFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("restored mode=%v", info.Mode().Perm())
+	}
+	if _, err := os.Stat(cfg.ConfigFilePath + ".backup"); err != nil {
+		t.Fatalf("recovery copy missing: %v", err)
+	}
+}
+
+func TestFullRestoreValidation(t *testing.T) {
+	valid := portableTestConfig(t)
+	validYAML, err := yaml.Marshal(valid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dangling := portableTestConfig(t)
+	dangling.Jobs.List[0].RuleSetID = "missing"
+	danglingYAML, err := yaml.Marshal(dangling)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v1 := []byte("version: 1.5.0\njobs:\n  sync_interval: 1h\n  trending_movies:\n    enabled: true\n    limit: 25\nfilters:\n  movies:\n    blacklisted_genres: [Horror]\n  shows: {}\n")
+	tests := []struct {
+		name    string
+		data    []byte
+		wantErr bool
+	}{
+		{name: "current backup", data: validYAML},
+		{name: "documented v1 backup", data: v1},
+		{name: "empty YAML", data: nil, wantErr: true},
+		{name: "unrelated YAML", data: []byte("hello: world\n"), wantErr: true},
+		{name: "unknown version", data: []byte("version: 9.0.0\njobs: {}\nfilters: {}\n"), wantErr: true},
+		{name: "dangling rules", data: danglingYAML, wantErr: true},
+		{name: "invalid interval", data: []byte("version: 2.0.0\njobs:\n  sync_interval: tomorrow\nfilters: {}\n"), wantErr: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := importedFullConfig(test.data, filepath.Join(t.TempDir(), "config.yaml"))
+			if (err != nil) != test.wantErr {
+				t.Fatalf("error=%v wantErr=%t", err, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestRejectedFullRestoreDoesNotChangeActiveFile(t *testing.T) {
+	cfg := portableTestConfig(t)
+	if err := cfg.Save(); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(cfg.ConfigFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := configRoutesTestApp(cfg)
+	for name, data := range map[string][]byte{
+		"oversized":        bytes.Repeat([]byte("x"), maxConfigUploadSize+1),
+		"invalid interval": []byte("version: 2.0.0\njobs:\n  sync_interval: tomorrow\nfilters: {}\n"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			response := uploadConfig(t, app, "/config/restore", data)
+			if response.StatusCode != fiber.StatusBadRequest {
+				t.Fatalf("status=%d", response.StatusCode)
+			}
+			after, err := os.ReadFile(cfg.ConfigFilePath)
+			if err != nil || !bytes.Equal(before, after) {
+				t.Fatal("rejected restore changed the active configuration")
+			}
+		})
+	}
 }
 
 func TestShareableConfigRoundTripIncludesPoliciesAndPreservesCredentials(t *testing.T) {

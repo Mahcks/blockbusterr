@@ -442,7 +442,28 @@ func New(version string) (*Config, error) {
 		return nil, fmt.Errorf("config environment: %w", err)
 	}
 
-	// Set default scoring values if not configured
+	c.applyDefaults()
+
+	return c, nil
+}
+
+// Parse loads configuration bytes using the same defaults and migrations as startup.
+func Parse(data []byte, path string) (*Config, error) {
+	c := &Config{ConfigFilePath: path}
+	if err := yaml.Unmarshal(data, c); err != nil {
+		return nil, fmt.Errorf("config load error: %w", err)
+	}
+	c.applyDefaults()
+	return c, nil
+}
+
+func (c *Config) applyDefaults() {
+	if c.Jobs.SyncInterval == "" {
+		c.Jobs.SyncInterval = "24h"
+	}
+	if c.Jobs.Mode == "" {
+		c.Jobs.Mode = "direct"
+	}
 	if c.Scoring.RatingScale == 0 {
 		c.Scoring.RatingScale = 10
 	}
@@ -468,8 +489,6 @@ func New(version string) (*Config, error) {
 		c.Jobs.Selection.SyncInterval = "24h"
 	}
 	c.MigrateRuleSets()
-
-	return c, nil
 }
 
 func applyEnvironment(value reflect.Value, path []string) error {
@@ -529,17 +548,43 @@ func (c *Config) Save() error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	dir := filepath.Dir(c.ConfigFilePath)
+	mode := os.FileMode(0o600)
+	if info, statErr := os.Stat(c.ConfigFilePath); statErr == nil {
+		mode = info.Mode().Perm() & 0o600
+		if mode&0o400 == 0 {
+			mode |= 0o400
+		}
+	}
+	if err := writeFileAtomic(c.ConfigFilePath, data, mode); err != nil {
+		return fmt.Errorf("failed to replace config file: %w", err)
+	}
+	return nil
+}
+
+// Restore creates an owner-only recovery copy before atomically replacing the configuration.
+func (c *Config) Restore() error {
+	if c.ConfigFilePath == "" {
+		return fmt.Errorf("no config file path set, cannot restore")
+	}
+	data, err := os.ReadFile(c.ConfigFilePath)
+	if err == nil {
+		if err := writeFileAtomic(c.ConfigFilePath+".backup", data, 0o600); err != nil {
+			return fmt.Errorf("failed to create configuration backup: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to read current configuration: %w", err)
+	}
+	return c.Save()
+}
+
+func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
+	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".blockbusterr-config-*")
 	if err != nil {
-		return fmt.Errorf("failed to create temporary config: %w", err)
+		return fmt.Errorf("create temporary file: %w", err)
 	}
 	tmpName := tmp.Name()
 	defer func() { _ = os.Remove(tmpName) }()
-	mode := os.FileMode(0o644)
-	if info, statErr := os.Stat(c.ConfigFilePath); statErr == nil {
-		mode = info.Mode().Perm()
-	}
 	if err = tmp.Chmod(mode); err == nil {
 		_, err = tmp.Write(data)
 	}
@@ -550,10 +595,10 @@ func (c *Config) Save() error {
 		err = closeErr
 	}
 	if err != nil {
-		return fmt.Errorf("failed to write temporary config: %w", err)
+		return fmt.Errorf("write temporary file: %w", err)
 	}
-	if err := os.Rename(tmpName, c.ConfigFilePath); err != nil {
-		return fmt.Errorf("failed to replace config file: %w", err)
+	if err := os.Rename(tmpName, path); err != nil {
+		return fmt.Errorf("rename temporary file: %w", err)
 	}
 	return nil
 }

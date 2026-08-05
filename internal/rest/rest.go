@@ -79,13 +79,14 @@ func New(gctx global.Context) error {
 	})
 
 	ownerToken := strings.TrimSpace(os.Getenv("BLOCKBUSTERR_AUTH_TOKEN"))
+	app.Use(middleware.SameOriginMutations())
 	if ownerToken == "" {
 		log.Warn("Owner authentication is disabled; keep Blockbusterr on a trusted network")
 	} else {
 		if len(ownerToken) < 32 {
 			return errors.New("BLOCKBUSTERR_AUTH_TOKEN must contain at least 32 characters")
 		}
-		app.Use(middleware.OwnerAccess(ownerToken), middleware.SameOriginMutations())
+		app.Use(middleware.OwnerAccess(ownerToken))
 	}
 
 	// Conditionally enable UI routes

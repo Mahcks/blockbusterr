@@ -674,8 +674,8 @@
         </div>
         <div class="data-row">
           <div class="data-row-text">
-            <h3>Full backup</h3>
-            <p>Everything, including <strong>API keys and credentials</strong>. Keep this file secure.</p>
+            <h3>Configuration backup</h3>
+            <p>Settings, jobs, rules, and <strong>API keys and credentials</strong>. Activity history and repeat state in SQLite are not included. Keep this file secure.</p>
           </div>
           <div class="data-row-actions">
             <a href="/config/backup" class="job-secondary-button">Download backup</a>
@@ -706,8 +706,8 @@
 <div id="restore-confirm" class="job-dialog hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="restore-confirm-title">
   <div class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg">
     <div class="p-5">
-      <h2 id="restore-confirm-title" class="text-base font-semibold text-slate-100">Restore full backup?</h2>
-      <p class="mt-2 text-sm text-slate-400">This replaces your <strong class="text-slate-200">entire configuration</strong>, including every credential, with the contents of <strong id="restore-confirm-filename" class="text-slate-200"></strong>. A backup of the current configuration is created first.</p>
+      <h2 id="restore-confirm-title" class="text-base font-semibold text-slate-100">Restore configuration backup?</h2>
+      <p class="mt-2 text-sm text-slate-400">This replaces your <strong class="text-slate-200">configuration</strong>, including every credential, with the contents of <strong id="restore-confirm-filename" class="text-slate-200"></strong>. Activity history and repeat state are unchanged. A recovery copy of the current configuration is created first.</p>
       <div class="mt-5 flex justify-end gap-2">
         <button type="button" class="job-secondary-button" data-action="cancel-restore">Cancel</button>
         <button type="button" class="job-delete-button" data-action="confirm-restore">Restore and replace</button>

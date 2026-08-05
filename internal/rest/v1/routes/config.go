@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,10 +15,14 @@ import (
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/pkg/enums"
+	"github.com/robfig/cron/v3"
 	"gopkg.in/yaml.v3"
 )
 
-const shareableConfigVersion = 2
+const (
+	shareableConfigVersion = 2
+	maxConfigUploadSize    = 2 << 20
+)
 
 // ShareableConfig contains only portable automation settings, never credentials.
 type ShareableConfig struct {
@@ -94,6 +100,9 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 	// Backup full configuration (including credentials)
 	router.Get("/config/backup", func(c *fiber.Ctx) error {
 		cfg := gctx.Config()
+		if cfg.Version == "" {
+			cfg.Version = gctx.Metadata().Version
+		}
 
 		// Marshal full config to YAML
 		data, err := yaml.Marshal(cfg)
@@ -106,6 +115,9 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 		// Set headers for file download
 		c.Set("Content-Type", "application/x-yaml")
 		c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=blockbusterr-backup-%s.yaml", time.Now().Format("2006-01-02")))
+		c.Set(fiber.HeaderCacheControl, "no-store, private")
+		c.Set(fiber.HeaderPragma, "no-cache")
+		c.Set(fiber.HeaderExpires, "0")
 
 		return c.Send(data)
 	})
@@ -161,73 +173,33 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 
 	// Restore full configuration backup
 	router.Post("/config/restore", func(c *fiber.Ctx) error {
-		// Get uploaded file
-		file, err := c.FormFile("config")
+		data, err := uploadedConfig(c)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "No config file provided",
-			})
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		// Open the uploaded file
-		src, err := file.Open()
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to open uploaded file: %v", err),
-			})
-		}
-		defer func() { _ = src.Close() }()
-
-		// Read file contents
-		data, err := io.ReadAll(src)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to read file: %v", err),
-			})
-		}
-
-		// Parse YAML to validate it
-		var newConfig config.Config
-		if err := yaml.Unmarshal(data, &newConfig); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": fmt.Sprintf("Invalid YAML format: %v", err),
-			})
-		}
-
-		// Get current config file path
 		cfg := gctx.Config()
 		configPath := cfg.ConfigFilePath
-
 		if configPath == "" {
-			// If no config path is set, try to create one in the default location
 			configPath = "./config/config.yaml"
-
-			// Ensure directory exists
 			if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 					"error": fmt.Sprintf("Failed to create config directory: %v", err),
 				})
 			}
 		}
-
-		// Create backup of existing config if it exists
-		if _, err := os.Stat(configPath); err == nil {
-			backupPath := fmt.Sprintf("%s.backup-%s", configPath, time.Now().Format("2006-01-02-150405"))
-			if err := os.Rename(configPath, backupPath); err != nil {
-				// Just log warning, don't fail
-				fmt.Printf("Warning: Failed to create backup: %v\n", err)
-			}
+		candidate, err := importedFullConfig(data, configPath)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
-
-		// Write new config to file
-		if err := os.WriteFile(configPath, data, 0o644); err != nil {
+		if err := global.RestoreConfig(gctx, candidate); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to write config file: %v", err),
+				"error": fmt.Sprintf("Failed to restore configuration: %v", err),
 			})
 		}
 
 		return c.JSON(fiber.Map{
-			"message": "Full configuration restored successfully. Please restart the application for changes to take effect.",
+			"message": "Configuration restored successfully.",
 			"path":    configPath,
 		})
 	})
@@ -238,16 +210,55 @@ func uploadedConfig(c *fiber.Ctx) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("no config file provided")
 	}
+	if file.Size > maxConfigUploadSize {
+		return nil, fmt.Errorf("configuration file exceeds the %d MiB limit", maxConfigUploadSize>>20)
+	}
 	src, err := file.Open()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open uploaded file: %w", err)
 	}
 	defer func() { _ = src.Close() }()
-	data, err := io.ReadAll(io.LimitReader(src, 2<<20))
+	data, err := io.ReadAll(io.LimitReader(src, maxConfigUploadSize+1))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read uploaded file: %w", err)
 	}
+	if len(data) > maxConfigUploadSize {
+		return nil, fmt.Errorf("configuration file exceeds the %d MiB limit", maxConfigUploadSize>>20)
+	}
 	return data, nil
+}
+
+func importedFullConfig(data []byte, path string) (*config.Config, error) {
+	var document map[string]yaml.Node
+	if err := yaml.Unmarshal(data, &document); err != nil {
+		return nil, fmt.Errorf("invalid YAML format: %w", err)
+	}
+	if len(document) == 0 || document["version"].Kind == 0 || document["jobs"].Kind == 0 {
+		return nil, fmt.Errorf("file is not a Blockbusterr configuration backup")
+	}
+	var header struct {
+		Version string `yaml:"version"`
+	}
+	if err := yaml.Unmarshal(data, &header); err != nil || !supportedRestoreVersion(header.Version) {
+		return nil, fmt.Errorf("unsupported configuration version %q", header.Version)
+	}
+	candidate, err := config.Parse(data, path)
+	if err != nil {
+		return nil, err
+	}
+	if err := validatePortableAutomation(candidate); err != nil {
+		return nil, err
+	}
+	return candidate, nil
+}
+
+func supportedRestoreVersion(version string) bool {
+	version = strings.TrimPrefix(strings.TrimSpace(version), "v")
+	if version == "dev" {
+		return true
+	}
+	major, err := strconv.Atoi(strings.SplitN(version, ".", 2)[0])
+	return err == nil && (major == 1 || major == 2)
 }
 
 func importedShareableConfig(current *config.Config, data []byte) (*config.Config, error) {
@@ -310,6 +321,9 @@ func validatePortableAutomation(candidate *config.Config) error {
 	if candidate.Jobs.GlobalLimitMovies < 0 || candidate.Jobs.GlobalLimitShows < 0 {
 		return fmt.Errorf("global delivery limits cannot be negative")
 	}
+	if candidate.Jobs.Mode != "" && candidate.Jobs.Mode != "direct" && candidate.Jobs.Mode != "jellyseerr" {
+		return fmt.Errorf("default delivery mode must be direct or jellyseerr")
+	}
 	if candidate.Jobs.RepeatPolicy == "" {
 		candidate.Jobs.RepeatPolicy = string(enums.RepeatPolicy90Days)
 	}
@@ -328,6 +342,14 @@ func validatePortableAutomation(candidate *config.Config) error {
 		return fmt.Errorf("global delivery period must be daily, weekly, or monthly")
 	}
 	if candidate.Scoring.Enabled {
+		if candidate.Scoring.RatingScale <= 0 || candidate.Scoring.RecencyDays < 0 || !slices.Contains([]string{"votes", "views", "watchers"}, candidate.Scoring.PopularityMetric) {
+			return fmt.Errorf("scoring normalization settings are invalid")
+		}
+		for _, weight := range []float64{candidate.Scoring.RatingWeight, candidate.Scoring.PopularityWeight, candidate.Scoring.RecencyWeight} {
+			if weight < 0 || weight > 1 {
+				return fmt.Errorf("scoring weights must be between 0 and 1")
+			}
+		}
 		total := candidate.Scoring.RatingWeight + candidate.Scoring.PopularityWeight + candidate.Scoring.RecencyWeight
 		if total < 0.999 || total > 1.001 {
 			return fmt.Errorf("scoring weights must total 1.0")
@@ -340,11 +362,19 @@ func validatePortableAutomation(candidate *config.Config) error {
 		if candidate.Jobs.Selection.MovieLimit < 0 || candidate.Jobs.Selection.ShowLimit < 0 {
 			return fmt.Errorf("ranked selection limits are invalid")
 		}
-		if duration, err := time.ParseDuration(candidate.Jobs.Selection.SyncInterval); err != nil || duration <= 0 {
-			return fmt.Errorf("ranked selection interval must be a positive duration")
-		}
 	}
+	if err := validateAutomationInterval("default job", candidate.Jobs.SyncInterval); err != nil {
+		return err
+	}
+	if err := validateAutomationInterval("ranked selection", candidate.Jobs.Selection.SyncInterval); err != nil {
+		return err
+	}
+	ruleIDs := make(map[string]bool, len(candidate.RuleSets))
 	for _, rules := range candidate.RuleSets {
+		if ruleIDs[rules.ID] {
+			return fmt.Errorf("duplicate rule set ID %q", rules.ID)
+		}
+		ruleIDs[rules.ID] = true
 		if err := candidate.ValidateRuleSet(rules, rules.ID); err != nil {
 			return fmt.Errorf("invalid rule set %q: %w", rules.Name, err)
 		}
@@ -353,7 +383,23 @@ func validatePortableAutomation(candidate *config.Config) error {
 	providerReady.Trakt.ClientID = "portable-validation"
 	providerReady.TMDB.APIKey = "portable-validation"
 	providerReady.Simkl.ClientID = "portable-validation"
+	providerReady.MDBList.APIKey = "portable-validation"
+	providerReady.Letterboxd.ExperimentalScraping = true
+	providerReady.Trakt.AccessToken = "portable-validation"
+	providerReady.TMDB.SessionID = "portable-validation"
+	providerReady.TMDB.AccountID = 1
+	jobIDs := make(map[string]bool, len(candidate.Jobs.List))
 	for _, job := range candidate.Jobs.List {
+		if job.ID == "" || jobIDs[job.ID] {
+			return fmt.Errorf("job IDs must be present and unique")
+		}
+		jobIDs[job.ID] = true
+		if job.Mode != "" && job.Mode != "direct" && job.Mode != "jellyseerr" {
+			return fmt.Errorf("job %q has an invalid delivery mode", job.Name)
+		}
+		if err := validateAutomationInterval(fmt.Sprintf("job %q", job.Name), job.SyncInterval); err != nil {
+			return err
+		}
 		if err := validateDynamicJob(&providerReady, job); err != nil {
 			return fmt.Errorf("invalid job %q: %w", job.Name, err)
 		}
@@ -374,6 +420,20 @@ func validatePortableAutomation(candidate *config.Config) error {
 		}
 	}
 	return nil
+}
+
+func validateAutomationInterval(label, interval string) error {
+	if interval == "" {
+		return nil
+	}
+	if duration, err := time.ParseDuration(interval); err == nil && duration > 0 {
+		return nil
+	}
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	if _, err := parser.Parse(interval); err == nil {
+		return nil
+	}
+	return fmt.Errorf("%s interval must be a positive duration or five-field cron expression", label)
 }
 
 func availableRuleSetName(cfg *config.Config, name string) string {

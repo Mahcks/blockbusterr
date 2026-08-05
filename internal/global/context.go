@@ -87,6 +87,21 @@ func (g *gCtx) UpdateConfig(update func(*config.Config) error) error {
 	return nil
 }
 
+func (g *gCtx) RestoreConfig(candidate *config.Config) error {
+	g.cfgMu.Lock()
+	defer g.cfgMu.Unlock()
+
+	if candidate.ConfigFilePath == "" {
+		candidate.ConfigFilePath = g.cfg.ConfigFilePath
+	}
+	if err := candidate.Restore(); err != nil {
+		return err
+	}
+	g.bindConfigCallbacks(candidate)
+	g.cfg = candidate
+	return nil
+}
+
 // UpdateConfig uses the production context's atomic updater and keeps test contexts compatible.
 func UpdateConfig(ctx Context, update func(*config.Config) error) error {
 	if updater, ok := ctx.(interface {
@@ -107,6 +122,23 @@ func UpdateConfig(ctx Context, update func(*config.Config) error) error {
 	}
 	*cfg = *candidate
 	return ctx.ReloadConfig()
+}
+
+func RestoreConfig(ctx Context, candidate *config.Config) error {
+	if restorer, ok := ctx.(interface {
+		RestoreConfig(*config.Config) error
+	}); ok {
+		return restorer.RestoreConfig(candidate)
+	}
+	current := ctx.Config()
+	if candidate.ConfigFilePath == "" {
+		candidate.ConfigFilePath = current.ConfigFilePath
+	}
+	if err := candidate.Restore(); err != nil {
+		return err
+	}
+	*current = *candidate
+	return nil
 }
 
 func New(

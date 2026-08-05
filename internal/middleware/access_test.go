@@ -40,3 +40,29 @@ func TestOwnerAccessAndSameOriginMutations(t *testing.T) {
 		t.Fatalf("authenticated same-origin mutation status = %d", status)
 	}
 }
+
+func TestSameOriginMutationsWithoutAuthentication(t *testing.T) {
+	app := fiber.New()
+	app.Use(SameOriginMutations())
+	app.Post("/change", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) })
+
+	request := func(origin string) int {
+		req := httptest.NewRequest(fiber.MethodPost, "http://blockbusterr.local/change", nil)
+		req.Host = "blockbusterr.local"
+		if origin != "" {
+			req.Header.Set(fiber.HeaderOrigin, origin)
+		}
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return resp.StatusCode
+	}
+
+	if status := request("http://evil.local"); status != fiber.StatusForbidden {
+		t.Fatalf("cross-origin mutation status = %d", status)
+	}
+	if status := request(""); status != fiber.StatusNoContent {
+		t.Fatalf("headerless API mutation status = %d", status)
+	}
+}
