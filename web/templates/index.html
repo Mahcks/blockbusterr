@@ -204,14 +204,14 @@
               <i data-lucide="chevron-down" class="svc-chevron" aria-hidden="true"></i>
             </summary>
             <div class="svc-body">
-              <div class="readiness-inline" role="note">
-                <i data-lucide="triangle-alert" aria-hidden="true"></i>
+              <div class="svc-warning mb-3" role="note">
+                <i data-lucide="triangle-alert" class="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true"></i>
                 <span><strong>Public-list scraping can break.</strong> Letterboxd has no general API, so site changes may interrupt this integration. Private lists are not supported; prefer MDBList when reliability matters.</span>
               </div>
-              <label class="mode-choice" for="letterboxd-experimental-scraping">
+              <label class="svc-checkbox-field" for="letterboxd-experimental-scraping">
                 <input type="checkbox" id="letterboxd-experimental-scraping" name="letterboxd.experimental_scraping" value="true" {{if .Config.Letterboxd.ExperimentalScraping}}checked{{end}}>
                 <span>
-                  <span class="mode-choice-name">Enable experimental scraping</span>
+                  <span class="svc-checkbox-title">Enable experimental scraping</span>
                   <span class="svc-help">Use public Letterboxd lists and watchlists as discovery sources.</span>
                 </span>
               </label>

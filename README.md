@@ -1,11 +1,14 @@
 # Blockbusterr
 
+**Automated media discovery with rule-based decision making for self-hosted libraries.**
+
+Blockbusterr follows trends, lists, and watchlists from the providers you already use. It evaluates every movie or show against your rules, ranks the candidates, and sends the winners to Radarr, Sonarr, Jellyseerr, or Seerr.
+
+Rather than importing everything from a trending list or watchlist, Blockbusterr evaluates every candidate using reusable rules, scoring, repeat handling, delivery limits, and title exceptions before deciding whether it belongs in your library. Every decision is recorded so you can see exactly why a title was accepted, skipped, or rejected.
+
 > [!IMPORTANT]
 > **Blockbusterr v2 is available for public beta testing.** Read the [v2 documentation](https://blockbusterr.dev/v2/) and [v2.0.0-beta.2 release notes](https://github.com/Mahcks/blockbusterr/releases/tag/v2.0.0-beta.2). Use `latest-beta` to follow beta updates; the stable `latest` image remains on v1.
 
-**Automated content discovery for self-hosted media libraries.**
-
-Blockbusterr follows trends, lists, and watchlists from the providers you already use. It evaluates every movie or show against your rules, ranks the candidates, and sends the winners to Radarr, Sonarr, Jellyseerr, or Seerr.
 
 New here? Start with the **[60-second quick start](https://blockbusterr.dev/v2/getting-started/quickstart/)** or browse the **[complete documentation](https://blockbusterr.dev/v2/)**.
 
@@ -17,9 +20,13 @@ New here? Start with the **[60-second quick start](https://blockbusterr.dev/v2/g
 
 ![A completed Blockbusterr job run showing its decision flow and media results](docs/src/assets/job_runs.png)
 
+Blockbusterr is designed to automate discovery without turning your library into a firehose. Every candidate passes through the same repeatable decision process before anything is delivered.
+
 ## Where it fits
 
 Blockbusterr is the discovery and decision layer in a homelab media stack. It does not replace your request manager, `*arr` applications, download client, or media server.
+
+Instead, it sits between discovery and delivery, deciding which titles should reach the rest of your stack.
 
 ```mermaid
 flowchart LR
@@ -36,18 +43,18 @@ One discovery provider is enough. Mix providers when you want different jobs to 
 
 Pair Blockbusterr with [Maintainerr](https://github.com/Maintainerr/Maintainerr) to create a complete library lifecycle. Blockbusterr discovers suitable content; Maintainerr can remove or unmonitor stale and unwatched media. Repeat handling and title exceptions prevent removed titles from immediately returning.
 
-## What v2 gives you
+## Features
 
 - **[Preview-first jobs](https://blockbusterr.dev/v2/concepts/jobs/#preview-run-and-schedule):** inspect candidates and rule decisions before enabling delivery.
 - **[Reusable rules](https://blockbusterr.dev/v2/concepts/rules/#the-v2-model):** assign a movie or show policy to many jobs, or create a job-specific copy.
 - **[Lists and watchlists](https://blockbusterr.dev/v2/concepts/jobs/#discovery-types):** follow Trakt, TMDB, MDBList, and experimental public Letterboxd sources.
 - **[Recipes and custom jobs](https://blockbusterr.dev/v2/concepts/jobs/#built-in-recipes):** start from a safe built-in recipe or configure the complete discovery flow yourself.
-- **Explainable automation:** every title has an outcome, reason, score, source, and Job Run.
+- **Decision history:** every title has an outcome, reason, score, source, and Job Run.
 - **[Ranked selection](https://blockbusterr.dev/v2/concepts/jobs/#ranked-selection-cycles):** let participating jobs compete for a shared number of movie or show slots.
 - **Delivery safeguards:** combine [delivery budgets](https://blockbusterr.dev/v2/getting-started/configuration/#delivery-budgets), [previews](https://blockbusterr.dev/v2/concepts/jobs/#preview-run-and-schedule), [repeat handling](https://blockbusterr.dev/v2/getting-started/configuration/#repeat-handling), and [title exceptions](https://blockbusterr.dev/v2/concepts/rules/#title-exceptions).
 - **[Two delivery paths](https://blockbusterr.dev/v2/concepts/integration-modes/):** add directly to Radarr and Sonarr, or request through Jellyseerr or Seerr.
 - **[Portable configuration](https://blockbusterr.dev/v2/api/config/#portable-configuration):** export shareable jobs and rules separately from credentialed backups.
-- **Single-container operation:** local compiled assets, SQLite persistence, optional owner authentication, and no required external database.
+- **Single-container deployment:** compiled frontend assets, the API, and SQLite are bundled together in one lightweight Docker image with no required external database.
 
 ## Supported services
 
@@ -58,7 +65,7 @@ Pair Blockbusterr with [Maintainerr](https://github.com/Maintainerr/Maintainerr)
 | Experimental lists | [Letterboxd](https://blockbusterr.dev/v2/integrations/mdblist/) | Public lists only; scraping is opt-in and may break when Letterboxd changes its site |
 | Direct delivery | [Radarr](https://blockbusterr.dev/v2/integrations/radarr/), [Sonarr](https://blockbusterr.dev/v2/integrations/sonarr/) | Movies and shows are added with your selected quality profile, root folder, and monitoring settings |
 | Request delivery | [Jellyseerr and Seerr](https://blockbusterr.dev/v2/integrations/jellyseerr/) | Requests use the configured user or optional request credentials |
-| Downstream playback | Any media server using the Radarr/Sonarr-managed library | Plex, Jellyfin, and Emby are common examples; Blockbusterr does not communicate with media servers directly |
+| Media servers | Any media server using the Radarr/Sonarr-managed library | Plex, Jellyfin, and Emby are common examples; Blockbusterr does not communicate with media servers directly |
 
 Trakt is optional. Personal Trakt and TMDB watchlists require account authorization; public discovery only needs the provider's application credentials.
 
@@ -101,7 +108,7 @@ Movie and show rule sets can require or block countries, languages, genres, keyw
 
 ### Activity Entries
 
-Activity Entries show the actual media considered by automation, including posters, source, outcome, score, rank, timestamp, and the reason behind the decision.
+Every automated decision is recorded in Activity Entries, including the title, source, outcome, score, rank, timestamp, and the reason behind the decision.
 
 ![Blockbusterr Activity Entries with posters and outcomes](docs/src/assets/activity_log_preview.png)
 
@@ -111,7 +118,7 @@ Settings keeps provider health, delivery targets, scoring, ranked selection, rep
 
 ![Blockbusterr connection settings and system readiness](docs/src/assets/settings.png)
 
-## How a job runs
+## Job lifecycle
 
 1. Fetch candidates from the job's selected source.
 2. Normalize provider data to a movie or show identity.

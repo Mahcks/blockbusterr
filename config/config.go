@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/mahcks/blockbusterr/pkg/enums"
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -393,53 +394,36 @@ type Config struct {
 
 // New creates a new Config instance with the given settings
 func New(version string) (*Config, error) {
-	v := viper.New()
-	v.SetConfigType("yaml")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AutomaticEnv()
-
-	// Check if CONFIG_PATH environment variable is set
-	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
-		v.AddConfigPath(configPath)
-	}
-
-	// Default config search paths
-	v.AddConfigPath("./config")
-	v.AddConfigPath("../config")
-	v.AddConfigPath("../../config")
-	v.AddConfigPath("/home/nonroot/config")
-	v.AddConfigPath("/app/config")
-	v.AddConfigPath("/app/data")
-	v.AddConfigPath(".")
-	v.AddConfigPath("..")
-	v.AddConfigPath("../data")
-
-	var configFileName string
+	configFileName := "config.yaml"
 	if version == "dev" {
 		configFileName = "config.dev.yaml"
-		v.SetConfigName(configFileName)
-	} else {
-		configFileName = "config.yaml"
-		v.SetConfigName(configFileName)
 	}
 
-	var configFilePath string
-	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			fmt.Println("No config file found, using only ENV variables")
-			configFilePath = "" // No file found
-		} else {
+	paths := []string{"./config", "../config", "../../config", "/home/nonroot/config", "/app/config", "/app/data", ".", "..", "../data"}
+	if configPath := strings.TrimSpace(os.Getenv("CONFIG_PATH")); configPath != "" {
+		paths = append([]string{configPath}, paths...)
+	}
+
+	c := &Config{}
+	for _, dir := range paths {
+		path := filepath.Join(dir, configFileName)
+		data, err := os.ReadFile(path)
+		if err == nil {
+			if err := yaml.Unmarshal(data, c); err != nil {
+				return nil, fmt.Errorf("config load error: %w", err)
+			}
+			c.ConfigFilePath = path
+			break
+		}
+		if !os.IsNotExist(err) {
 			return nil, fmt.Errorf("config load error: %w", err)
 		}
-	} else {
-		configFilePath = v.ConfigFileUsed()
 	}
-
-	c := &Config{
-		ConfigFilePath: configFilePath,
+	if c.ConfigFilePath == "" {
+		fmt.Println("No config file found, using only ENV variables")
 	}
-	if err := v.Unmarshal(c); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	if err := applyEnvironment(reflect.ValueOf(c).Elem(), nil); err != nil {
+		return nil, fmt.Errorf("config environment: %w", err)
 	}
 
 	// Set default scoring values if not configured
@@ -470,6 +454,51 @@ func New(version string) (*Config, error) {
 	c.MigrateRuleSets()
 
 	return c, nil
+}
+
+func applyEnvironment(value reflect.Value, path []string) error {
+	typeOfValue := value.Type()
+	for i := 0; i < value.NumField(); i++ {
+		field, fieldType := value.Field(i), typeOfValue.Field(i)
+		name := strings.Split(fieldType.Tag.Get("yaml"), ",")[0]
+		if name == "" || name == "-" || !field.CanSet() {
+			continue
+		}
+		fieldPath := append(path, name)
+		if field.Kind() == reflect.Struct {
+			if err := applyEnvironment(field, fieldPath); err != nil {
+				return err
+			}
+			continue
+		}
+		raw, ok := os.LookupEnv(strings.ToUpper(strings.Join(fieldPath, "_")))
+		if !ok {
+			continue
+		}
+		var err error
+		switch field.Kind() {
+		case reflect.String:
+			field.SetString(raw)
+		case reflect.Bool:
+			var parsed bool
+			parsed, err = strconv.ParseBool(raw)
+			field.SetBool(parsed)
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			var parsed int64
+			parsed, err = strconv.ParseInt(raw, 10, field.Type().Bits())
+			field.SetInt(parsed)
+		case reflect.Float32, reflect.Float64:
+			var parsed float64
+			parsed, err = strconv.ParseFloat(raw, field.Type().Bits())
+			field.SetFloat(parsed)
+		default:
+			err = yaml.Unmarshal([]byte(raw), field.Addr().Interface())
+		}
+		if err != nil {
+			return fmt.Errorf("%s: %w", strings.ToUpper(strings.Join(fieldPath, "_")), err)
+		}
+	}
+	return nil
 }
 
 // Save writes the current config back to the config file
