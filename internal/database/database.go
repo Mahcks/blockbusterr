@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +10,7 @@ import (
 	"time"
 
 	"github.com/mahcks/blockbusterr/pkg/enums"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 )
 
 type Database struct {
@@ -104,12 +105,18 @@ func (identity DeliveryIdentity) Key() string {
 func New(dataDir string) (*Database, error) {
 	// Ensure data directory exists
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		if isDatabaseWritePermissionError(err) {
+			return nil, databaseWritePermissionError(dataDir, err)
+		}
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
 
 	dbPath := filepath.Join(dataDir, "blockbusterr.db")
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
+		if isDatabaseWritePermissionError(err) {
+			return nil, databaseWritePermissionError(dataDir, err)
+		}
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
@@ -125,10 +132,25 @@ func New(dataDir string) (*Database, error) {
 		if closeErr := db.Close(); closeErr != nil {
 			return nil, fmt.Errorf("failed to initialize schema (%v) and close db: %w", schemaErr, closeErr)
 		}
+		if isDatabaseWritePermissionError(schemaErr) {
+			return nil, databaseWritePermissionError(dataDir, schemaErr)
+		}
 		return nil, fmt.Errorf("failed to initialize schema: %w", schemaErr)
 	}
 
 	return database, nil
+}
+
+func isDatabaseWritePermissionError(err error) bool {
+	if errors.Is(err, os.ErrPermission) {
+		return true
+	}
+	var sqliteErr sqlite3.Error
+	return errors.As(err, &sqliteErr) && (sqliteErr.Code == sqlite3.ErrPerm || sqliteErr.Code == sqlite3.ErrReadonly || sqliteErr.Code == sqlite3.ErrCantOpen)
+}
+
+func databaseWritePermissionError(dataDir string, err error) error {
+	return fmt.Errorf("database storage at %q is not writable by Blockbusterr (UID/GID 10001:10001); on the Docker host, stop Blockbusterr, run `sudo chown -R 10001:10001 <mounted-data-directory>`, then start Blockbusterr again: %w", dataDir, err)
 }
 
 func (d *Database) initSchema() error {
