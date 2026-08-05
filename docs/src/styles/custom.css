@@ -17,14 +17,16 @@
 	--sl-color-accent-high: #c4b5fd;
 }
 
-/* Enhanced cards with hover effects */
-.sl-card {
+/* Enhanced cards with hover effects (Starlight's Card.astro renders class="card", not "sl-card") */
+.card {
 	border-radius: 0.75rem;
-	transition: all 0.3s ease;
-	border: 1px solid var(--sl-color-gray-5);
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease,
+		border-color 0.2s ease;
 }
 
-.sl-card:hover {
+.card:hover {
 	transform: translateY(-4px);
 	box-shadow: 0 12px 24px rgba(139, 92, 246, 0.15);
 	border-color: var(--sl-color-accent);
@@ -129,10 +131,57 @@ a:not(.sl-link-card):not(.action):hover {
 
 /* Hero section (homepage) improvements */
 .hero {
+	position: relative;
 	text-align: center;
+	isolation: isolate;
+}
+
+.hero::before {
+	content: '';
+	position: absolute;
+	top: -7rem;
+	left: 50%;
+	width: 100vw;
+	height: 36rem;
+	transform: translateX(-50%);
+	z-index: -1;
+	background: radial-gradient(45% 60% at 68% 20%, rgba(139, 92, 246, 0.24), transparent 68%),
+		radial-gradient(32% 46% at 18% 42%, rgba(167, 139, 250, 0.13), transparent 68%);
+	filter: blur(48px);
+	pointer-events: none;
 }
 
 .hero .tagline {
 	font-size: 1.25rem;
 	color: var(--sl-color-gray-3);
+}
+
+/* Frame the hero screenshot like an app window instead of a bare, cropped image */
+.hero > img {
+	border-radius: 0.75rem;
+	border: 1px solid var(--sl-color-gray-5);
+	box-shadow:
+		0 30px 60px -20px rgba(139, 92, 246, 0.25),
+		0 12px 28px -8px rgba(0, 0, 0, 0.55);
+	background: var(--sl-color-gray-6);
+}
+
+@media (min-width: 50rem) {
+	.hero > img {
+		width: min(100%, 30rem);
+	}
+}
+
+/* Give homepage sections real breathing room and a visible (but subtle) divider,
+   instead of Starlight's default 1.5rem docs-page padding everywhere. */
+[data-has-hero] .content-panel {
+	padding-block: clamp(2.5rem, 1.5rem + 4vw, 4.5rem);
+}
+
+[data-has-hero] .content-panel + .content-panel {
+	border-top-color: var(--sl-color-gray-6);
+}
+
+[data-has-hero] .content-panel h2 {
+	font-size: var(--sl-text-h3);
 }
