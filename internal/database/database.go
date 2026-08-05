@@ -166,6 +166,10 @@ func (d *Database) initSchema() error {
 		status TEXT NOT NULL,
 		movie_winners INTEGER NOT NULL DEFAULT 0,
 		show_winners INTEGER NOT NULL DEFAULT 0,
+		movie_delivered INTEGER NOT NULL DEFAULT 0,
+		show_delivered INTEGER NOT NULL DEFAULT 0,
+		failed_items INTEGER NOT NULL DEFAULT 0,
+		accounting_complete INTEGER NOT NULL DEFAULT 0,
 		error_message TEXT
 	);
 
@@ -179,6 +183,7 @@ func (d *Database) initSchema() error {
 		score REAL NOT NULL,
 		rank INTEGER NOT NULL,
 		reason TEXT NOT NULL,
+		snapshot TEXT NOT NULL DEFAULT '{}',
 		FOREIGN KEY(cycle_id) REFERENCES selection_cycles(id)
 	);
 
@@ -304,12 +309,24 @@ func (d *Database) initSchema() error {
 	if err != nil {
 		return err
 	}
+	for _, definition := range []string{"movie_delivered INTEGER NOT NULL DEFAULT 0", "show_delivered INTEGER NOT NULL DEFAULT 0", "failed_items INTEGER NOT NULL DEFAULT 0", "accounting_complete INTEGER NOT NULL DEFAULT 0"} {
+		if err := d.ensureTableColumn("selection_cycles", definition); err != nil {
+			return err
+		}
+	}
+	if err := d.ensureTableColumn("selection_cycle_items", "snapshot TEXT NOT NULL DEFAULT '{}'"); err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func (d *Database) ensureActivityLogsColumn(definition string) error {
-	_, err := d.db.Exec("ALTER TABLE activity_logs ADD COLUMN " + definition)
+	return d.ensureTableColumn("activity_logs", definition)
+}
+
+func (d *Database) ensureTableColumn(table, definition string) error {
+	_, err := d.db.Exec("ALTER TABLE " + table + " ADD COLUMN " + definition)
 	if err != nil {
 		// SQLite returns "duplicate column name: <name>" when it already exists.
 		if strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {

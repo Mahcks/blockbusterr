@@ -6,18 +6,24 @@ import (
 	"math"
 	"slices"
 
+	"github.com/mahcks/blockbusterr/internal/filters"
+	"github.com/mahcks/blockbusterr/internal/integrations"
 	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
 // SelectionCandidate is one rule-approved candidate from one job.
 type SelectionCandidate struct {
-	Key          string  `json:"key"`
-	JobID        string  `json:"job_id"`
-	Source       string  `json:"source"`
-	Title        string  `json:"title"`
-	Year         int     `json:"year,omitempty"`
-	Score        float64 `json:"score"`
-	ProviderRank int     `json:"provider_rank"`
+	Key            string                `json:"key"`
+	JobID          string                `json:"job_id"`
+	Source         string                `json:"source"`
+	Title          string                `json:"title"`
+	Year           int                   `json:"year,omitempty"`
+	Score          float64               `json:"score"`
+	ProviderRank   int                   `json:"provider_rank"`
+	Movie          *integrations.Movie   `json:"movie,omitempty"`
+	Show           *integrations.Show    `json:"show,omitempty"`
+	FilterChecks   []filters.FilterCheck `json:"filter_checks,omitempty"`
+	DecisionReason string                `json:"decision_reason,omitempty"`
 }
 
 type SelectionResult struct {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/integrations"
 	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
@@ -38,6 +39,20 @@ type SelectionParticipant struct {
 
 var selectionCycleMutex sync.Mutex
 
+type selectionExecution struct {
+	scores map[string]ScoreInfo
+	movies []integrations.Movie
+	shows  []integrations.Show
+}
+
+type selectionJobRunner func(context.Context, *config.Config, *database.Database, config.DynamicJob, bool, map[string]ScoreInfo, []integrations.Movie, []integrations.Show) (JobExecutionSummary, error)
+
+type selectionCycleOutcome struct {
+	movieDelivered int
+	showDelivered  int
+	failedItems    int
+}
+
 func PreviewSelectionCycle(cfg *config.Config, db *database.Database) (SelectionCyclePlan, error) {
 	return planSelectionCycle(cfg, db)
 }
@@ -59,57 +74,97 @@ func RunSelectionCycle(ctx context.Context, cfg *config.Config, db *database.Dat
 	plan, err := planSelectionCycle(cfg, db)
 	if err != nil {
 		if db != nil {
-			_ = db.CompleteSelectionCycle(cycleID, enums.SelectionCycleFailed, 0, 0, err.Error())
+			_ = db.CompleteSelectionCycle(cycleID, enums.SelectionCycleFailed, 0, 0, 0, 0, 0, err.Error())
 		}
 		return plan, err
 	}
 	if db != nil {
 		if err := db.SaveSelectionCycleItems(cycleID, selectionCycleItems(plan)); err != nil {
-			_ = db.CompleteSelectionCycle(cycleID, enums.SelectionCycleFailed, 0, 0, err.Error())
+			_ = db.CompleteSelectionCycle(cycleID, enums.SelectionCycleFailed, 0, 0, 0, 0, 0, err.Error())
 			return plan, err
 		}
 	}
-	jobsByID := map[string]config.DynamicJob{}
-	for _, job := range cfg.Jobs.List {
-		jobsByID[job.ID] = job
-	}
-	selected := map[string]map[string]ScoreInfo{}
-	jobOrder := []string{}
-	appendWinners := func(winners []SelectionResult) {
-		for rank, winner := range winners {
-			jobID := winner.Candidate.JobID
-			if selected[jobID] == nil {
-				selected[jobID] = map[string]ScoreInfo{}
-				jobOrder = append(jobOrder, jobID)
-			}
-			selected[jobID][winner.Candidate.Key] = ScoreInfo{Score: winner.Candidate.Score, Rank: rank + 1}
-		}
-	}
-	appendWinners(plan.Movies.Winners)
-	appendWinners(plan.Shows.Winners)
-	for _, jobID := range jobOrder {
-		winners := selected[jobID]
-		job, ok := jobsByID[jobID]
-		if !ok || ctx.Err() != nil {
-			continue
-		}
-		if err := RunSelectedDynamicJob(ctx, cfg, db, job, dryRun, winners); err != nil {
-			plan.Errors[jobID] = err.Error()
-		}
-	}
+	outcome := executeSelectionPlan(ctx, cfg, db, dryRun, &plan, RunSelectedDynamicJob)
 	if db != nil {
 		messages := make([]string, 0, len(plan.Errors))
 		for jobID, message := range plan.Errors {
 			messages = append(messages, jobID+": "+message)
 		}
 		slices.Sort(messages)
-		status := enums.SelectionCycleCompleted
-		if len(selected) == 0 && len(plan.Errors) > 0 {
-			status = enums.SelectionCycleFailed
-		}
-		_ = db.CompleteSelectionCycle(cycleID, status, len(plan.Movies.Winners), len(plan.Shows.Winners), strings.Join(messages, "; "))
+		planned := len(plan.Movies.Winners) + len(plan.Shows.Winners)
+		status := selectionCycleStatus(planned, outcome.movieDelivered+outcome.showDelivered, outcome.failedItems, len(plan.Errors), ctx.Err())
+		_ = db.CompleteSelectionCycle(cycleID, status, len(plan.Movies.Winners), len(plan.Shows.Winners), outcome.movieDelivered, outcome.showDelivered, outcome.failedItems, strings.Join(messages, "; "))
 	}
 	return plan, ctx.Err()
+}
+
+func executeSelectionPlan(ctx context.Context, cfg *config.Config, db *database.Database, dryRun bool, plan *SelectionCyclePlan, run selectionJobRunner) selectionCycleOutcome {
+	jobsByID := map[string]config.DynamicJob{}
+	for _, job := range cfg.Jobs.List {
+		jobsByID[job.ID] = job
+	}
+	selected := map[string]*selectionExecution{}
+	jobOrder := []string{}
+	appendWinners := func(winners []SelectionResult) {
+		for rank, winner := range winners {
+			jobID := winner.Candidate.JobID
+			if selected[jobID] == nil {
+				selected[jobID] = &selectionExecution{scores: map[string]ScoreInfo{}}
+				jobOrder = append(jobOrder, jobID)
+			}
+			execution := selected[jobID]
+			execution.scores[winner.Candidate.Key] = ScoreInfo{Score: winner.Candidate.Score, Rank: rank + 1}
+			if winner.Candidate.Movie != nil {
+				execution.movies = append(execution.movies, *winner.Candidate.Movie)
+			}
+			if winner.Candidate.Show != nil {
+				execution.shows = append(execution.shows, *winner.Candidate.Show)
+			}
+		}
+	}
+	appendWinners(plan.Movies.Winners)
+	appendWinners(plan.Shows.Winners)
+	outcome := selectionCycleOutcome{}
+	for _, jobID := range jobOrder {
+		execution := selected[jobID]
+		job, ok := jobsByID[jobID]
+		planned := len(execution.scores)
+		if !ok || !job.Enabled || !job.SelectionCycle {
+			plan.Errors[jobID] = "job was deleted, disabled, or removed from ranked selection after planning"
+			outcome.failedItems += planned
+			continue
+		}
+		if ctx.Err() != nil {
+			plan.Errors[jobID] = ctx.Err().Error()
+			outcome.failedItems += planned
+			continue
+		}
+		if len(execution.movies)+len(execution.shows) != len(execution.scores) {
+			plan.Errors[jobID] = "ranked selection winner snapshot is incomplete"
+			outcome.failedItems += planned
+			continue
+		}
+		summary, err := run(ctx, cfg, db, job, dryRun, execution.scores, execution.movies, execution.shows)
+		if job.MediaType == "show" {
+			outcome.showDelivered += summary.Delivered()
+		} else {
+			outcome.movieDelivered += summary.Delivered()
+		}
+		outcome.failedItems += summary.Failed
+		if err != nil {
+			plan.Errors[jobID] = err.Error()
+			unaccounted := planned - summary.Delivered() - summary.Skipped - summary.Failed
+			outcome.failedItems += max(unaccounted, 0)
+		}
+	}
+	return outcome
+}
+
+func selectionCycleStatus(planned, delivered, failedItems, errorCount int, executionErr error) enums.SelectionCycleStatus {
+	if executionErr != nil || (planned == 0 && errorCount > 0) || (planned > 0 && delivered == 0 && failedItems >= planned) {
+		return enums.SelectionCycleFailed
+	}
+	return enums.SelectionCycleCompleted
 }
 
 func selectionCycleItems(plan SelectionCyclePlan) []database.SelectionCycleItem {
@@ -120,7 +175,7 @@ func selectionCycleItems(plan SelectionCyclePlan) []database.SelectionCycleItem 
 			if winner {
 				rank = index + 1
 			}
-			items = append(items, database.SelectionCycleItem{MediaKey: result.Candidate.Key, JobID: result.Candidate.JobID, JobIDs: result.JobIDs, Sources: result.Sources, Score: result.Candidate.Score, Rank: rank, Reason: result.Reason})
+			items = append(items, database.SelectionCycleItem{MediaKey: result.Candidate.Key, JobID: result.Candidate.JobID, JobIDs: result.JobIDs, Sources: result.Sources, Score: result.Candidate.Score, Rank: rank, Reason: result.Reason, Snapshot: result.Candidate})
 		}
 	}
 	appendResults(plan.Movies.Winners, true)
@@ -195,15 +250,17 @@ func planSelectionCycleWithPreview(cfg *config.Config, previewJob func(config.Dy
 				}
 				continue
 			}
-			candidate := SelectionCandidate{JobID: job.ID, Source: job.Source, Title: item.Title, Year: item.Year, Score: item.Score, ProviderRank: item.ProviderRank}
+			candidate := SelectionCandidate{JobID: job.ID, Source: job.Source, Title: item.Title, Year: item.Year, Score: item.Score, ProviderRank: item.ProviderRank, FilterChecks: item.FilterChecks, DecisionReason: item.DecisionReason}
 			if job.MediaType == "show" {
 				candidate.Key = showSelectionKey(item.TVDBID, item.TMDBID, item.IMDBID)
+				candidate.Show = item.show
 				if candidate.Key != "" {
 					showCandidates = append(showCandidates, candidate)
 					plan.Participants[participantIndex].Candidates++
 				}
 			} else {
 				candidate.Key = movieSelectionKey(item.TMDBID, item.IMDBID)
+				candidate.Movie = item.movie
 				if candidate.Key != "" {
 					movieCandidates = append(movieCandidates, candidate)
 					plan.Participants[participantIndex].Candidates++

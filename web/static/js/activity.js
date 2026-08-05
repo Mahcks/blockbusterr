@@ -753,11 +753,14 @@ function renderSelectionCycles(cycles) {
   }
   const latest = cycles[0];
   const statusClass = latest.status === 'completed' ? 'text-green-400' : latest.status === 'failed' ? 'text-red-400' : 'text-blue-400';
+  const accounting = latest.accounting_complete
+    ? `${(latest.movie_winners || 0) + (latest.show_winners || 0)} planned · ${(latest.movie_delivered || 0) + (latest.show_delivered || 0)} delivered · ${latest.failed_items || 0} failed`
+    : `${(latest.movie_winners || 0) + (latest.show_winners || 0)} planned · delivery outcome unavailable`;
   container.classList.remove('hidden');
   container.innerHTML = `
     <div class="job-nested-panel mb-3 flex flex-wrap items-center justify-between gap-3 p-3 text-xs">
       <span><strong class="text-slate-100">Latest ranked selection</strong> · ${escapeHTML(new Date(latest.started_at).toLocaleString())}</span>
-      <span>${latest.movie_winners || 0} movie winners · ${latest.show_winners || 0} show winners · <span class="${statusClass}">${escapeHTML(latest.status)}</span></span>
+      <span>${accounting} · <span class="${statusClass}">${escapeHTML(latest.status)}</span></span>
     </div>`;
 }
 

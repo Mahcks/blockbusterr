@@ -1,6 +1,8 @@
 package jobs
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"reflect"
 	"testing"
@@ -8,6 +10,7 @@ import (
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/integrations"
 	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
@@ -84,5 +87,61 @@ func TestRunSelectionCycleRejectsConcurrentRun(t *testing.T) {
 	defer selectionCycleMutex.Unlock()
 	if _, err := RunSelectionCycle(t.Context(), &config.Config{}, nil, true); err == nil {
 		t.Fatal("expected concurrent cycle to be rejected")
+	}
+}
+
+func TestSelectionCandidateRoundTripPreservesShowIdentityWithoutTVDB(t *testing.T) {
+	want := SelectionCandidate{Key: "show:tmdb:42", JobID: "shows", Source: "tmdb", Score: .9, Show: &integrations.Show{Title: "Exact Show", IDs: integrations.IDs{TMDB: 42, IMDB: "tt42"}}}
+	encoded, err := json.Marshal(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got SelectionCandidate
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Key != want.Key || got.Show == nil || got.Show.IDs.TMDB != 42 || got.Show.IDs.TVDB != 0 || got.Show.IDs.IMDB != "tt42" {
+		t.Fatalf("round trip candidate = %+v", got)
+	}
+}
+
+func TestExecuteSelectionPlanUsesStoredWinnerAndTruthfulOutcome(t *testing.T) {
+	movie := integrations.Movie{Title: "Planned", IDs: integrations.IDs{TMDB: 42}}
+	plan := SelectionCyclePlan{Errors: map[string]string{}, Movies: SelectionAllocation{Winners: []SelectionResult{{Candidate: SelectionCandidate{Key: "movie:tmdb:42", JobID: "job", Movie: &movie, Score: .8}}}}}
+	cfg := &config.Config{}
+	cfg.Jobs.List = []config.DynamicJob{{ID: "job", Enabled: true, SelectionCycle: true, MediaType: "movie"}}
+	calls := 0
+	outcome := executeSelectionPlan(t.Context(), cfg, nil, false, &plan, func(_ context.Context, _ *config.Config, _ *database.Database, _ config.DynamicJob, _ bool, scores map[string]ScoreInfo, movies []integrations.Movie, shows []integrations.Show) (JobExecutionSummary, error) {
+		calls++
+		if len(movies) != 1 || movies[0].IDs.TMDB != 42 || len(shows) != 0 || scores["movie:tmdb:42"].Score != .8 {
+			t.Fatalf("execution snapshot: scores=%v movies=%+v shows=%+v", scores, movies, shows)
+		}
+		return JobExecutionSummary{Added: 1}, nil
+	})
+	if calls != 1 || outcome.movieDelivered != 1 || outcome.failedItems != 0 || selectionCycleStatus(1, 1, 0, 0, nil) != enums.SelectionCycleCompleted {
+		t.Fatalf("calls=%d outcome=%+v", calls, outcome)
+	}
+
+	disabled := plan
+	disabled.Errors = map[string]string{}
+	cfg.Jobs.List[0].Enabled = false
+	outcome = executeSelectionPlan(t.Context(), cfg, nil, false, &disabled, func(context.Context, *config.Config, *database.Database, config.DynamicJob, bool, map[string]ScoreInfo, []integrations.Movie, []integrations.Show) (JobExecutionSummary, error) {
+		t.Fatal("disabled job executed")
+		return JobExecutionSummary{}, nil
+	})
+	if outcome.failedItems != 1 || disabled.Errors["job"] == "" || selectionCycleStatus(1, 0, 1, 1, nil) != enums.SelectionCycleFailed {
+		t.Fatalf("disabled outcome=%+v errors=%v", outcome, disabled.Errors)
+	}
+}
+
+func TestSelectionCycleStatusCoversPartialFailureAndCancellation(t *testing.T) {
+	if got := selectionCycleStatus(2, 1, 1, 1, nil); got != enums.SelectionCycleCompleted {
+		t.Fatalf("partial status = %s", got)
+	}
+	if got := selectionCycleStatus(2, 0, 2, 1, nil); got != enums.SelectionCycleFailed {
+		t.Fatalf("all-failed status = %s", got)
+	}
+	if got := selectionCycleStatus(2, 1, 0, 0, context.Canceled); got != enums.SelectionCycleFailed {
+		t.Fatalf("cancelled status = %s", got)
 	}
 }

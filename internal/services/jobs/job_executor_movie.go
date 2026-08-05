@@ -362,6 +362,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 			}
 
 			log.Infof("Added %s movie '%s (%d)' to Radarr (ID: %d)", jobLabel, addedMovie.Title, addedMovie.Year, addedMovie.ID)
+			e.updateDecisionOutcome(movie.IDs.TMDB, "added", "Added to Radarr")
 			added++
 
 			// Log success to database

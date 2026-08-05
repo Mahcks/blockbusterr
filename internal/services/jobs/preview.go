@@ -61,6 +61,7 @@ func createMoviePreviewItem(cfg *config.Config, movie integrations.Movie, popula
 		Popularity: popularity,
 		Genres:     movie.Genres,
 		Runtime:    movie.Runtime,
+		movie:      &movie,
 	}
 }
 
@@ -79,6 +80,7 @@ func createShowPreviewItem(cfg *config.Config, show integrations.Show, popularit
 		Popularity: popularity,
 		Genres:     show.Genres,
 		Runtime:    show.Runtime,
+		show:       &show,
 	}
 }
 
@@ -105,6 +107,8 @@ type PreviewItem struct {
 	Rank           int                   `json:"rank,omitempty"`
 	ProviderRank   int                   `json:"provider_rank,omitempty"`
 	FilterChecks   []filters.FilterCheck `json:"filter_checks,omitempty"`
+	movie          *integrations.Movie
+	show           *integrations.Show
 }
 
 // PreviewResponse represents the response for a job preview

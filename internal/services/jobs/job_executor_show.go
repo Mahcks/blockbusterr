@@ -419,6 +419,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 			}
 
 			log.Infof("Added %s show '%s (%d)' to Sonarr (ID: %d)", jobConfig.JobName, addedSeries.Title, addedSeries.Year, addedSeries.ID)
+			e.updateDecisionOutcome(show.IDs.TVDB, "added", "Added to Sonarr")
 			added++
 
 			// Log successful activity

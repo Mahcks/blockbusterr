@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -19,13 +20,29 @@ type DynamicJobExecutor struct {
 	DryRun      bool
 	ListSources ListSourceRegistry
 	Selection   map[string]ScoreInfo
+	Movies      []integrations.Movie
+	Shows       []integrations.Show
 }
+
+type JobExecutionSummary struct {
+	Added     int
+	Requested int
+	Skipped   int
+	Failed    int
+}
+
+func (s JobExecutionSummary) Delivered() int { return s.Added + s.Requested }
 
 // Execute runs a dynamic job, routing to the appropriate executor based on job type and media
 func (e *DynamicJobExecutor) Execute(ctx context.Context, job config.DynamicJob) error {
+	_, err := e.execute(ctx, job)
+	return err
+}
+
+func (e *DynamicJobExecutor) execute(ctx context.Context, job config.DynamicJob) (JobExecutionSummary, error) {
 	effectiveConfig, err := configForJob(e.Config, job)
 	if err != nil {
-		return err
+		return JobExecutionSummary{}, err
 	}
 	effectiveExecutor := *e
 	effectiveExecutor.Config = effectiveConfig
@@ -34,25 +51,25 @@ func (e *DynamicJobExecutor) Execute(ctx context.Context, job config.DynamicJob)
 	// Validate job type
 	typeDef, ok := GetJobTypeDefinition(job.Type)
 	if !ok {
-		return fmt.Errorf("unknown job type: %s", job.Type)
+		return JobExecutionSummary{}, fmt.Errorf("unknown job type: %s", job.Type)
 	}
 
 	// Validate media type support
 	if !SupportsMediaType(job.Type, job.MediaType) {
-		return fmt.Errorf("job type %s does not support media type %s", job.Type, job.MediaType)
+		return JobExecutionSummary{}, fmt.Errorf("job type %s does not support media type %s", job.Type, job.MediaType)
 	}
 	if job.Type != string(enums.JobTypeList) && !SupportsSource(job.Type, job.Source) {
-		return fmt.Errorf("job type %s does not support source %s", job.Type, job.Source)
+		return JobExecutionSummary{}, fmt.Errorf("job type %s does not support source %s", job.Type, job.Source)
 	}
 	discovery, err := e.discoveryForJob(job)
 	if err != nil {
-		return err
+		return JobExecutionSummary{}, err
 	}
 	if job.Source == "simkl" && job.Type == "watched" && job.Period != "weekly" && job.Period != "monthly" {
-		return fmt.Errorf("simkl most watched jobs support weekly or monthly periods")
+		return JobExecutionSummary{}, fmt.Errorf("simkl most watched jobs support weekly or monthly periods")
 	}
 	if job.Source == "simkl" && job.Limit > 500 {
-		return fmt.Errorf("simkl jobs cannot exceed 500 items")
+		return JobExecutionSummary{}, fmt.Errorf("simkl jobs cannot exceed 500 items")
 	}
 
 	// Determine effective mode
@@ -95,7 +112,7 @@ func (e *DynamicJobExecutor) Execute(ctx context.Context, job config.DynamicJob)
 	case "show":
 		return e.executeShowJob(ctx, job, jobConfig, discovery)
 	default:
-		return fmt.Errorf("unsupported media type: %s", job.MediaType)
+		return JobExecutionSummary{}, fmt.Errorf("unsupported media type: %s", job.MediaType)
 	}
 }
 
@@ -110,11 +127,16 @@ func configForJob(cfg *config.Config, job config.DynamicJob) (*config.Config, er
 }
 
 // executeMovieJob executes a movie job using the appropriate executor
-func (e *DynamicJobExecutor) executeMovieJob(ctx context.Context, job config.DynamicJob, jobConfig JobConfig, discovery *DiscoveryClient) error {
+func (e *DynamicJobExecutor) executeMovieJob(ctx context.Context, job config.DynamicJob, jobConfig JobConfig, discovery *DiscoveryClient) (JobExecutionSummary, error) {
 	// Get the appropriate fetcher based on job type
 	fetcher := e.getMovieFetcher(job)
+	if e.Movies != nil {
+		fetcher = func(context.Context, *DiscoveryClient, int, string) ([]integrations.Movie, error) {
+			return slices.Clone(e.Movies), nil
+		}
+	}
 	if fetcher == nil {
-		return fmt.Errorf("no fetcher available for job type: %s", job.Type)
+		return JobExecutionSummary{}, fmt.Errorf("no fetcher available for job type: %s", job.Type)
 	}
 
 	if job.Type == "smart_popular" {
@@ -148,7 +170,8 @@ func (e *DynamicJobExecutor) executeMovieJob(ctx context.Context, job config.Dyn
 			smartConfig.AdjustmentFactor = 0.5
 		}
 
-		return executor.Execute(ctx, smartConfig, fetcher)
+		err := executor.Execute(ctx, smartConfig, fetcher)
+		return summarizeJobDecisions(executor.lastDecisions), err
 	} else {
 		// Use standard MovieJobExecutor
 		executor := &MovieJobExecutor{
@@ -158,16 +181,22 @@ func (e *DynamicJobExecutor) executeMovieJob(ctx context.Context, job config.Dyn
 			discovery: discovery,
 			selection: e.Selection,
 		}
-		return executor.Execute(ctx, jobConfig, fetcher)
+		err := executor.Execute(ctx, jobConfig, fetcher)
+		return summarizeJobDecisions(executor.lastDecisions), err
 	}
 }
 
 // executeShowJob executes a show job using the appropriate executor
-func (e *DynamicJobExecutor) executeShowJob(ctx context.Context, job config.DynamicJob, jobConfig JobConfig, discovery *DiscoveryClient) error {
+func (e *DynamicJobExecutor) executeShowJob(ctx context.Context, job config.DynamicJob, jobConfig JobConfig, discovery *DiscoveryClient) (JobExecutionSummary, error) {
 	// Get the appropriate fetcher based on job type
 	fetcher := e.getShowFetcher(job)
+	if e.Shows != nil {
+		fetcher = func(context.Context, *DiscoveryClient, int, string) ([]integrations.Show, error) {
+			return slices.Clone(e.Shows), nil
+		}
+	}
 	if fetcher == nil {
-		return fmt.Errorf("no fetcher available for job type: %s", job.Type)
+		return JobExecutionSummary{}, fmt.Errorf("no fetcher available for job type: %s", job.Type)
 	}
 
 	if job.Type == "smart_popular" {
@@ -200,7 +229,8 @@ func (e *DynamicJobExecutor) executeShowJob(ctx context.Context, job config.Dyna
 			smartConfig.AdjustmentFactor = 0.5
 		}
 
-		return executor.Execute(ctx, smartConfig, fetcher)
+		err := executor.Execute(ctx, smartConfig, fetcher)
+		return summarizeJobDecisions(executor.lastDecisions), err
 	} else {
 		// Use standard ShowJobExecutor
 		executor := &ShowJobExecutor{
@@ -210,8 +240,16 @@ func (e *DynamicJobExecutor) executeShowJob(ctx context.Context, job config.Dyna
 			discovery: discovery,
 			selection: e.Selection,
 		}
-		return executor.Execute(ctx, jobConfig, fetcher)
+		err := executor.Execute(ctx, jobConfig, fetcher)
+		return summarizeJobDecisions(executor.lastDecisions), err
 	}
+}
+
+func summarizeJobDecisions(decisions *JobRunDecisions) JobExecutionSummary {
+	if decisions == nil {
+		return JobExecutionSummary{}
+	}
+	return JobExecutionSummary{Added: decisions.Added, Requested: decisions.Requested, Skipped: decisions.Skipped, Failed: decisions.Failed}
 }
 
 // getMovieFetcher returns the appropriate fetcher function for a movie job type
@@ -383,6 +421,6 @@ func RunDynamicJob(ctx context.Context, cfg *config.Config, db *database.Databas
 	return executor.Execute(ctx, job)
 }
 
-func RunSelectedDynamicJob(ctx context.Context, cfg *config.Config, db *database.Database, job config.DynamicJob, dryRun bool, selection map[string]ScoreInfo) error {
-	return (&DynamicJobExecutor{Config: cfg, Database: db, DryRun: dryRun, Selection: selection}).Execute(ctx, job)
+func RunSelectedDynamicJob(ctx context.Context, cfg *config.Config, db *database.Database, job config.DynamicJob, dryRun bool, selection map[string]ScoreInfo, movies []integrations.Movie, shows []integrations.Show) (JobExecutionSummary, error) {
+	return (&DynamicJobExecutor{Config: cfg, Database: db, DryRun: dryRun, Selection: selection, Movies: movies, Shows: shows}).execute(ctx, job)
 }
