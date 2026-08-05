@@ -146,6 +146,7 @@ func TestSharedUIFunctionsAndDynamicStylesAreCompiled(t *testing.T) {
 func TestSettingsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 	root := filepath.Join("..", "..", "..", "..")
 	index := readUIFile(t, filepath.Join(root, "web", "templates", "index.html"))
+	base := readUIFile(t, filepath.Join(root, "web", "templates", "base.html"))
 	script := readUIFile(t, filepath.Join(root, "web", "static", "js", "settings.js"))
 
 	if strings.Contains(index, "onclick=") || strings.Contains(index, "onchange=") || strings.Contains(index, "onkeyup=") || strings.Contains(index, "<script>") {
@@ -160,6 +161,9 @@ func TestSettingsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 		if !strings.Contains(index, expected) {
 			t.Errorf("index.html is missing %s", expected)
 		}
+	}
+	if !strings.Contains(index, `href="https://blockbusterr.dev/v2/"`) || !strings.Contains(base, `href="https://blockbusterr.dev/v2/"`) {
+		t.Error("settings and primary Docs links must point to the v2 documentation")
 	}
 	for _, expected := range []string{
 		"function saveSettings",

@@ -76,6 +76,7 @@
 }
 
 .preview-decision-accepted { color: rgb(74 222 128); }
+.preview-decision-requested { color: rgb(167 139 250); }
 .preview-decision-skipped { color: rgb(250 204 21); }
 .preview-decision-rejected { color: rgb(248 113 113); }
 
@@ -105,7 +106,7 @@
 
 .preview-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-top: 14px;
   overflow: hidden;
   border: 1px solid rgb(63 63 70);
@@ -120,8 +121,33 @@
 .preview-stats > div:last-child { border-right: 0; }
 .preview-stats b { display: block; color: rgb(244 244 245); font-size: 17px; font-variant-numeric: tabular-nums; }
 .preview-stats span { color: rgb(113 113 122); font-size: 11px; }
+.preview-stats .preview-stat-passed b { color: rgb(56 189 248); }
 .preview-stats .preview-stat-add b { color: rgb(74 222 128); }
-.preview-stats .preview-stat-filtered b { color: rgb(248 113 113); }
+.preview-stats .preview-stat-request b { color: rgb(167 139 250); }
+.preview-stats .preview-stat-skipped b { color: rgb(250 204 21); }
+.preview-stats .preview-stat-rejected b { color: rgb(248 113 113); }
+
+.preview-loading {
+  display: grid;
+  min-height: 300px;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  color: rgb(161 161 170);
+  text-align: center;
+}
+
+.preview-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid rgb(63 63 70);
+  border-top-color: rgb(96 165 250);
+  border-radius: 999px;
+  animation: spin 1s linear infinite;
+}
+
+.preview-loading strong { color: rgb(228 228 231); font-size: 13px; }
+.preview-loading p { max-width: 360px; font-size: 12px; }
 
 .preview-tabs {
   display: flex;
@@ -211,12 +237,13 @@
 
 .preview-badge svg { width: 10px; height: 10px; }
 .preview-badge-add { border-color: rgb(22 101 52 / 60%); background: rgb(20 83 45 / 22%); color: rgb(74 222 128); }
+.preview-badge-request { border-color: rgb(109 40 217 / 60%); background: rgb(76 29 149 / 22%); color: rgb(167 139 250); }
 .preview-badge-exists { border-color: rgb(63 63 70); background: rgb(39 39 42); color: rgb(161 161 170); }
 .preview-badge-filtered { border-color: rgb(153 27 27 / 55%); background: rgb(127 29 29 / 20%); color: rgb(248 113 113); }
 
 @media (max-width: 640px) {
   .preview-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .preview-stats > div:nth-child(2) { border-right: 0; }
+  .preview-stats > div:nth-child(2n) { border-right: 0; }
   .preview-row { flex-wrap: wrap; }
   .preview-row-aside { flex-direction: row; align-items: center; gap: 10px; width: 100%; text-align: left; }
 }

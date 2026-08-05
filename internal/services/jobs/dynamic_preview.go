@@ -125,10 +125,11 @@ func previewMovies(ctx context.Context, cfg *config.Config, db *database.Databas
 				item.DecisionReason = "Skipped: Already in Jellyseerr / Seerr"
 				response.AlreadyExists++
 			} else {
+				item.DecisionReason = previewDeliveryReason(mode, result)
 				response.WillAdd++
 			}
 		} else {
-			item.DecisionReason = "Will add: " + strings.TrimPrefix(filters.Explain(result), "Accepted: ")
+			item.DecisionReason = previewDeliveryReason(mode, result)
 			response.WillAdd++
 		}
 		response.Items = append(response.Items, item)
@@ -190,15 +191,24 @@ func previewShows(ctx context.Context, cfg *config.Config, db *database.Database
 				item.DecisionReason = "Skipped: Already in Jellyseerr / Seerr"
 				response.AlreadyExists++
 			} else {
+				item.DecisionReason = previewDeliveryReason(mode, result)
 				response.WillAdd++
 			}
 		} else {
-			item.DecisionReason = "Will add: " + strings.TrimPrefix(filters.Explain(result), "Accepted: ")
+			item.DecisionReason = previewDeliveryReason(mode, result)
 			response.WillAdd++
 		}
 		response.Items = append(response.Items, item)
 	}
 	return nil
+}
+
+func previewDeliveryReason(mode string, result filters.FilterResult) string {
+	verb := "add"
+	if mode == "jellyseerr" {
+		verb = "request"
+	}
+	return "Will " + verb + ": " + strings.TrimPrefix(filters.Explain(result), "Accepted: ")
 }
 
 func previewDeliveryHistory(db *database.Database, identities []database.DeliveryIdentity) (map[string]time.Time, error) {

@@ -1447,9 +1447,33 @@
       document.getElementById('preview-title').textContent = job.name;
       openDialog('preview-modal');
 
-      document.getElementById('preview-content').innerHTML = `
-        <div class="flex items-center justify-center py-12">
-          <div class="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-400"></div>
+      const previewContent = document.getElementById('preview-content');
+      previewData = null;
+      document.getElementById('preview-stats').innerHTML = '';
+      document.getElementById('preview-tabs').classList.add('hidden');
+      const startedAt = performance.now();
+      const previousDuration = Number(localStorage.getItem(`preview-duration:${job.id}`)) || 0;
+      let estimateInterval;
+      const slowTimer = setTimeout(() => {
+        const updateEstimate = () => {
+          const elapsed = Math.ceil((performance.now() - startedAt) / 1000);
+          const estimate = document.getElementById('preview-loading-estimate');
+          if (!estimate) return;
+          estimate.textContent = previousDuration > elapsed
+            ? `About ${Math.ceil(previousDuration - elapsed)} seconds remaining, based on the last preview.`
+            : previousDuration
+              ? `Taking longer than the last preview (${Math.ceil(previousDuration)} seconds).`
+              : 'Checking the provider and your library can take up to a minute.';
+        };
+        updateEstimate();
+        estimateInterval = setInterval(updateEstimate, 1000);
+      }, 3000);
+
+      previewContent.innerHTML = `
+        <div class="preview-loading" role="status" aria-live="polite">
+          <div class="preview-loading-spinner" aria-hidden="true"></div>
+          <strong>Building decision preview</strong>
+          <p id="preview-loading-estimate">Fetching candidates and checking your library…</p>
         </div>
       `;
 
@@ -1460,9 +1484,10 @@
 
         previewData = await response.json();
 		if (!response.ok) throw new Error(previewData.error || 'Preview failed');
+        localStorage.setItem(`preview-duration:${job.id}`, String((performance.now() - startedAt) / 1000));
         renderPreview(previewData);
       } catch (error) {
-        document.getElementById('preview-content').innerHTML = `
+        previewContent.innerHTML = `
           <div class="text-center py-12">
             <svg class="w-16 h-16 mx-auto mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -1471,6 +1496,9 @@
             <p class="text-slate-400 text-sm mt-2">${escapeHTML(error.message)}</p>
           </div>
         `;
+      } finally {
+        clearTimeout(slowTimer);
+        clearInterval(estimateInterval);
       }
     }, 150);
   }
@@ -1508,13 +1536,18 @@
 	document.getElementById('preview-source').innerHTML = source === 'simkl'
 	  ? `Most Watched on <a class="text-blue-400 hover:underline" href="${simklMostWatchedURL}" target="_blank" rel="noopener">Simkl</a>`
 	  : `Preview of what this job will fetch from ${sourceLabel}`;
-    const willAdd = data.total_found - data.already_exists - data.filtered_out;
+    const deliveryLabel = data.mode === 'jellyseerr' ? 'request' : 'add';
+    const readyLabel = `Will ${deliveryLabel}`;
+    const passedFilters = data.total_found - data.filtered_out;
     document.getElementById('preview-stats').innerHTML = `
       <div><b>${data.total_found}</b><span>Found</span></div>
-      <div class="preview-stat-add"><b>${willAdd}</b><span>Will add</span></div>
-      <div><b>${data.already_exists}</b><span>Already exists</span></div>
-      <div class="preview-stat-filtered"><b>${data.filtered_out}</b><span>Filtered out</span></div>
+      <div class="preview-stat-passed"><b>${passedFilters}</b><span>Passed filters</span></div>
+      <div class="preview-stat-${deliveryLabel}"><b>${data.will_add}</b><span>${readyLabel}</span></div>
+      <div class="preview-stat-skipped"><b>${data.already_exists}</b><span>Skipped</span></div>
+      <div class="preview-stat-rejected"><b>${data.filtered_out}</b><span>Rejected</span></div>
     `;
+    document.getElementById('filter-will_add').textContent = readyLabel;
+    document.getElementById('preview-tabs').classList.remove('hidden');
 
     let filteredItems;
     if (data.items && Array.isArray(data.items)) {
@@ -1547,12 +1580,12 @@
       let badge;
       let rowClass = '';
       if (item.filtered_out) {
-        badge = '<span class="preview-badge preview-badge-filtered"><i data-lucide="x" aria-hidden="true"></i>Filtered</span>';
+        badge = '<span class="preview-badge preview-badge-filtered"><i data-lucide="x" aria-hidden="true"></i>Rejected</span>';
         rowClass = 'preview-row-muted';
       } else if (item.already_exists) {
-        badge = '<span class="preview-badge preview-badge-exists"><i data-lucide="check" aria-hidden="true"></i>Exists</span>';
+        badge = '<span class="preview-badge preview-badge-exists"><i data-lucide="circle-minus" aria-hidden="true"></i>Skipped</span>';
       } else {
-        badge = '<span class="preview-badge preview-badge-add"><i data-lucide="plus" aria-hidden="true"></i>Will add</span>';
+        badge = `<span class="preview-badge preview-badge-${deliveryLabel}"><i data-lucide="arrow-right" aria-hidden="true"></i>${readyLabel}</span>`;
       }
 
       const posterHtml = data.has_posters && item.poster_url
@@ -1564,7 +1597,7 @@
       if (item.tmdb_id) metaParts.push(`<a href="https://www.themoviedb.org/${item.tvdb_id ? 'tv' : 'movie'}/${item.tmdb_id}" target="_blank" rel="noopener">TMDB</a>`);
       if (item.tvdb_id) metaParts.push(`<a href="https://www.thetvdb.com/dereferrer/series/${item.tvdb_id}" target="_blank" rel="noopener">TVDB</a>`);
 
-      const decisionTone = item.filtered_out ? 'rejected' : item.already_exists ? 'skipped' : 'accepted';
+      const decisionTone = item.filtered_out ? 'rejected' : item.already_exists ? 'skipped' : data.mode === 'jellyseerr' ? 'requested' : 'accepted';
 
       return `
         <div class="preview-row ${rowClass}">

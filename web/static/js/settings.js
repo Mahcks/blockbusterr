@@ -592,14 +592,25 @@ function setupNavActiveTracking() {
   if (!sections.length) return;
 
   const setActive = (id) => links.forEach((link) => link.setAttribute('aria-current', String(link.getAttribute('href') === `#${id}`)));
+  const activateLastSectionAtPageEnd = () => {
+    if (window.scrollY > 0 && Math.ceil(window.scrollY + window.innerHeight) >= document.documentElement.scrollHeight - 2) {
+      setActive(sections[sections.length - 1].id);
+      return true;
+    }
+    return false;
+  };
   setActive(sections[0].id);
 
   const observer = new IntersectionObserver((entries) => {
+    if (activateLastSectionAtPageEnd()) return;
     const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
     if (visible[0]) setActive(visible[0].target.id);
   }, { rootMargin: '-15% 0px -70% 0px' });
 
   sections.forEach((section) => observer.observe(section));
+  window.addEventListener('scroll', activateLastSectionAtPageEnd, { passive: true });
+  window.addEventListener('resize', activateLastSectionAtPageEnd);
+  activateLastSectionAtPageEnd();
 }
 
 function handleKeydown(event) {

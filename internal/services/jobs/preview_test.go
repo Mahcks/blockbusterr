@@ -6,8 +6,19 @@ import (
 	"testing"
 
 	"github.com/mahcks/blockbusterr/config"
+	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
+
+func TestPreviewDeliveryReasonMatchesMode(t *testing.T) {
+	result := filters.FilterResult{Passed: true}
+	if got := previewDeliveryReason("direct", result); got != "Will add: Passed all configured rules" {
+		t.Fatalf("direct reason = %q", got)
+	}
+	if got := previewDeliveryReason("jellyseerr", result); got != "Will request: Passed all configured rules" {
+		t.Fatalf("Jellyseerr reason = %q", got)
+	}
+}
 
 func TestPreviewMoviesReturnsRadarrLookupError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
