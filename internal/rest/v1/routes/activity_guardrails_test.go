@@ -55,7 +55,14 @@ func TestClearAllActivityHistoryRequiresConfirmationAndClearsRuns(t *testing.T) 
 	if err := db.LogActivity(database.ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "movie", Title: "Test", Status: "skipped"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.StartJobRun("job-a", "Job A", "movie", "direct", time.Now()); err != nil {
+	completedRun, err := db.StartJobRun("job-a", "Job A", "movie", "direct", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.CompleteJobRun(completedRun, time.Now(), "completed", 0, 0, 0, 0, 0, 0, 0, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.StartJobRun("job-running", "Running Job", "movie", "direct", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -67,8 +74,8 @@ func TestClearAllActivityHistoryRequiresConfirmationAndClearsRuns(t *testing.T) 
 	if err != nil || resp.StatusCode != fiber.StatusOK {
 		t.Fatalf("confirmed clear status = %d, error = %v", resp.StatusCode, err)
 	}
-	if runs, err := db.GetRecentJobRuns(10, ""); err != nil || len(runs) != 0 {
-		t.Fatalf("remaining runs = %d, error = %v", len(runs), err)
+	if runs, err := db.GetRecentJobRuns(10, ""); err != nil || len(runs) != 1 || runs[0].Status != "running" {
+		t.Fatalf("remaining runs = %#v, error = %v", runs, err)
 	}
 	stats, err := db.GetActivityStats()
 	if err != nil || stats["total_skipped"] != 0 {
@@ -232,6 +239,39 @@ func TestActivityLogsYesterdayExcludesToday(t *testing.T) {
 		if item.Log.Title == "Today Movie" {
 			t.Fatal("today log should not be included for date_range=yesterday")
 		}
+	}
+}
+
+func TestActivityLogsApplyCombinedSQLFiltersAndSorting(t *testing.T) {
+	t.Parallel()
+	app, db := setupActivityTestApp(t)
+	runID := int64(77)
+	for _, log := range []database.ActivityLog{
+		{Timestamp: time.Now().Add(-2 * time.Hour), RunID: runID, JobID: "target", JobType: "Target", MediaType: "movie", Title: "Needle Low", Language: "fr", Score: .2, Status: "rejected"},
+		{Timestamp: time.Now().Add(-time.Hour), RunID: runID, JobID: "target", JobType: "Target", MediaType: "movie", Title: "Needle High", Language: "fr", Score: .9, Status: "rejected"},
+		{Timestamp: time.Now(), RunID: runID, JobID: "other", JobType: "Other", MediaType: "movie", Title: "Needle Other", Language: "fr", Score: 1, Status: "rejected"},
+	} {
+		if err := db.LogActivity(log); err != nil {
+			t.Fatal(err)
+		}
+	}
+	req := httptest.NewRequest("GET", "/v1/activity/logs?status=rejected&media=movie&job=target&language=fr&search=needle&run_id=77&sort=score&order=asc&dedupe=false&pageSize=1&page=2", nil)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body struct {
+		Logs []struct {
+			Log database.ActivityLog `json:"Log"`
+		} `json:"logs"`
+		Total int `json:"total_records"`
+		Page  int `json:"page"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Total != 2 || body.Page != 2 || len(body.Logs) != 1 || body.Logs[0].Log.Title != "Needle High" {
+		t.Fatalf("response=%+v", body)
 	}
 }
 

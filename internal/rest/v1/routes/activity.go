@@ -17,62 +17,25 @@ import (
 	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
-type activityLogGroup struct {
-	Log     database.ActivityLog
-	Count   int
-	History []database.ActivityLog
-}
+type activityLogGroup = database.ActivityLogGroup
 
-func activityLogGroupKey(log database.ActivityLog) string {
-	idPart := ""
-	switch log.MediaType {
-	case string(enums.MediaTypeMovie):
-		if log.TMDBID > 0 {
-			idPart = fmt.Sprintf("tmdb:%d", log.TMDBID)
-		}
-	case string(enums.MediaTypeShow):
-		if log.TVDBID > 0 {
-			idPart = fmt.Sprintf("tvdb:%d", log.TVDBID)
-		} else if log.TMDBID > 0 {
-			idPart = fmt.Sprintf("tmdb:%d", log.TMDBID)
-		}
+func activityDateBounds(dateRange string, now time.Time) (*time.Time, *time.Time) {
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	switch dateRange {
+	case "today":
+		return &today, nil
+	case "yesterday":
+		start := today.AddDate(0, 0, -1)
+		return &start, &today
+	case "week":
+		start := now.AddDate(0, 0, -7)
+		return &start, nil
+	case "month":
+		start := now.AddDate(0, 0, -30)
+		return &start, nil
+	default:
+		return nil, nil
 	}
-	if idPart == "" {
-		idPart = strings.ToLower(log.Title) + ":" + strconv.Itoa(log.Year)
-	}
-
-	parts := []string{log.MediaType, idPart, log.Status, log.JobType}
-	if log.RunID > 0 {
-		parts = append(parts, fmt.Sprintf("run:%d", log.RunID))
-	}
-	return strings.Join(parts, "|")
-}
-
-func groupActivityLogs(logs []database.ActivityLog) []activityLogGroup {
-	if len(logs) == 0 {
-		return []activityLogGroup{}
-	}
-
-	groups := make([]activityLogGroup, 0, len(logs))
-	indexByKey := make(map[string]int)
-
-	for _, log := range logs {
-		key := activityLogGroupKey(log)
-		if idx, ok := indexByKey[key]; ok {
-			groups[idx].Count++
-			groups[idx].History = append(groups[idx].History, log)
-			continue
-		}
-
-		indexByKey[key] = len(groups)
-		groups = append(groups, activityLogGroup{
-			Log:     log,
-			Count:   1,
-			History: []database.ActivityLog{log},
-		})
-	}
-
-	return groups
 }
 
 func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
@@ -107,7 +70,6 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			defaultPageSize = 50
 			maxPageSize     = 200
 			maxLegacyLimit  = 10000
-			maxFetchLimit   = 50000
 		)
 
 		db := gctx.Database()
@@ -150,8 +112,8 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		search := c.Query("search")        // search by title
 		dateRange := c.Query("date_range") // "today", "yesterday", "week", "month"
 		runIDStr := c.Query("run_id")
-		_ = c.Query("sort")  // Reserved for future use
-		_ = c.Query("order") // Reserved for future use
+		sortField := c.Query("sort")
+		order := c.Query("order")
 
 		if status != "" {
 			parsedStatus, ok := enums.ParseActivityStatus(status)
@@ -172,86 +134,15 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			mediaType = string(parsedMediaType)
 		}
 
-		// Fetch more logs than needed to apply filters and calculate total
-		fetchLimit := min(pageSize*100, maxFetchLimit) // Fetch enough for filtering
-		logs, err := db.GetRecentActivityFiltered(fetchLimit, status, mediaType, jobType, language)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to retrieve activity logs",
-			})
-		}
-		sources := make(map[string]string)
-		for _, job := range gctx.Config().GetAllJobs() {
-			sources[job.ID] = job.Source
-		}
-		for index := range logs {
-			logs[index].Source = sources[logs[index].JobID]
-		}
-
-		// Apply search filter
-		if search != "" {
-			filtered := []database.ActivityLog{}
-			searchLower := strings.ToLower(search)
-			for _, log := range logs {
-				if strings.Contains(strings.ToLower(log.Title), searchLower) {
-					filtered = append(filtered, log)
-				}
-			}
-			logs = filtered
-		}
-
-		// Apply date range filter
-		if dateRange != "" {
-			filtered := []database.ActivityLog{}
-			now := time.Now()
-			var cutoffStart *time.Time
-			var cutoffEnd *time.Time
-
-			switch dateRange {
-			case "today":
-				start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-				cutoffStart = &start
-			case "yesterday":
-				yesterday := now.AddDate(0, 0, -1)
-				start := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, now.Location())
-				end := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-				cutoffStart = &start
-				cutoffEnd = &end
-			case "week":
-				start := now.AddDate(0, 0, -7)
-				cutoffStart = &start
-			case "month":
-				start := now.AddDate(0, 0, -30)
-				cutoffStart = &start
-			}
-
-			for _, log := range logs {
-				if cutoffStart != nil && log.Timestamp.Before(*cutoffStart) {
-					continue
-				}
-				if cutoffEnd != nil && !log.Timestamp.Before(*cutoffEnd) {
-					continue
-				}
-				filtered = append(filtered, log)
-			}
-			logs = filtered
-		}
-
-		// Optional filter by run ID
+		var runID *int64
 		if runIDStr != "" {
-			runID, err := strconv.ParseInt(runIDStr, 10, 64)
+			parsedRunID, err := strconv.ParseInt(runIDStr, 10, 64)
 			if err != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 					"error": fmt.Sprintf("invalid run_id: %s", runIDStr),
 				})
 			}
-			filtered := []database.ActivityLog{}
-			for _, log := range logs {
-				if log.RunID == runID {
-					filtered = append(filtered, log)
-				}
-			}
-			logs = filtered
+			runID = &parsedRunID
 		}
 
 		// Optional grouping (dedupe) for cleaner activity views
@@ -260,50 +151,38 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			dedupe = dedupeStr != "false" && dedupeStr != "0" && dedupeStr != "no"
 		}
 
-		var groupedLogs []activityLogGroup
-		if dedupe {
-			groupedLogs = groupActivityLogs(logs)
-		} else {
-			groupedLogs = make([]activityLogGroup, 0, len(logs))
-			for _, log := range logs {
-				groupedLogs = append(groupedLogs, activityLogGroup{
-					Log:     log,
-					Count:   1,
-					History: []database.ActivityLog{log},
-				})
+		start, end := activityDateBounds(dateRange, time.Now())
+		result, err := db.QueryActivity(database.ActivityQuery{
+			Status: status, MediaType: mediaType, Job: jobType, Language: language,
+			Search: search, Start: start, End: end, RunID: runID, Dedupe: dedupe,
+			Sort: sortField, Order: order, Limit: pageSize, Offset: (page - 1) * pageSize,
+		})
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve activity logs"})
+		}
+		sources := make(map[string]string)
+		for _, job := range gctx.Config().GetAllJobs() {
+			sources[job.ID] = job.Source
+		}
+		for index := range result.Groups {
+			result.Groups[index].Log.Source = sources[result.Groups[index].Log.JobID]
+			for historyIndex := range result.Groups[index].History {
+				result.Groups[index].History[historyIndex].Source = sources[result.Groups[index].History[historyIndex].JobID]
 			}
 		}
 
-		// Calculate pagination (on grouped results)
-		totalRecords := len(groupedLogs)
+		totalRecords := result.Total
 		totalPages := (totalRecords + pageSize - 1) / pageSize
 		if totalPages == 0 {
 			totalPages = 1
 		}
-		if page > totalPages {
-			page = totalPages
-		}
-
-		// Apply pagination
-		startIdx := (page - 1) * pageSize
-		endIdx := startIdx + pageSize
-		if startIdx >= totalRecords {
-			startIdx = 0
-		}
-		if endIdx > totalRecords {
-			endIdx = totalRecords
-		}
-
-		paginatedLogs := groupedLogs
-		if totalRecords > 0 {
-			paginatedLogs = groupedLogs[startIdx:endIdx]
-		}
+		page = result.Offset/pageSize + 1
 
 		// Check if this is an HTMX request (wants HTML)
 		if c.Get("HX-Request") == "true" {
 			// For HTMX, return the table with pagination controls
 			return c.Render("activity_table", fiber.Map{
-				"Logs":         paginatedLogs,
+				"Logs":         result.Groups,
 				"Page":         page,
 				"PageSize":     pageSize,
 				"TotalRecords": totalRecords,
@@ -313,7 +192,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 
 		// Otherwise return JSON (for API clients)
 		return c.JSON(fiber.Map{
-			"logs":          paginatedLogs,
+			"logs":          result.Groups,
 			"grouped":       dedupe,
 			"page":          page,
 			"page_size":     pageSize,
@@ -448,53 +327,11 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			})
 		}
 
-		// Get all rejected count for accurate total
-		stats, err := db.GetActivityStats()
+		totalRejected, reasonCounts, err := db.GetRejectionBreakdown()
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to retrieve rejection data",
 			})
-		}
-		totalRejected, _ := stats["total_rejected"].(int)
-
-		// Get recent rejected items to analyze filter reasons (sample up to 1000)
-		logs, err := db.GetRecentActivityFiltered(1000, string(enums.ActivityStatusRejected), "", "", "")
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to retrieve rejection data",
-			})
-		}
-
-		// Count rejection reasons from messages
-		reasonCounts := make(map[string]int)
-		for _, log := range logs {
-			if log.Message != "" {
-				reason := strings.ToLower(log.Message)
-				// Categorize common reasons
-				if strings.Contains(reason, "certification") {
-					reasonCounts["Content Rating"]++
-				} else if strings.Contains(reason, "rating") {
-					reasonCounts["Low Rating"]++
-				} else if strings.Contains(reason, "country") {
-					reasonCounts["Wrong Country"]++
-				} else if strings.Contains(reason, "language") {
-					reasonCounts["Wrong Language"]++
-				} else if strings.Contains(reason, "genre") {
-					reasonCounts["Blacklisted Genre"]++
-				} else if strings.Contains(reason, "keyword") {
-					reasonCounts["Blacklisted Keyword"]++
-				} else if strings.Contains(reason, "runtime") {
-					reasonCounts["Runtime Out of Range"]++
-				} else if strings.Contains(reason, "year") {
-					reasonCounts["Year Out of Range"]++
-				} else if strings.Contains(reason, "votes") {
-					reasonCounts["Insufficient Votes"]++
-				} else if strings.Contains(reason, "network") {
-					reasonCounts["Blacklisted Network"]++
-				} else {
-					reasonCounts["Other"]++
-				}
-			}
 		}
 
 		return c.JSON(fiber.Map{
@@ -516,7 +353,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			if c.Query("confirm") != "CLEAR" {
 				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Type CLEAR to confirm deletion"})
 			}
-			count, err := db.ClearActivityHistory()
+			count, err := db.ClearActivityHistory(c.QueryBool("clear_delivery_memory", false))
 			if err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to clear activity history"})
 			}

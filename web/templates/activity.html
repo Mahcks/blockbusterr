@@ -227,7 +227,7 @@
   <div id="clearLogsModal" class="job-dialog hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="clear-logs-title">
     <div class="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl border border-slate-700">
       <h3 id="clear-logs-title" class="mb-2 text-xl font-semibold text-red-400">Clear activity history</h3>
-      <p class="mb-4 text-sm text-slate-300">Delete old Activity Entries, or permanently clear all Activity Entries, Job Runs, and ranked-selection history.</p>
+      <p class="mb-4 text-sm text-slate-300">Delete old Activity Entries and completed runs, or clear all completed history. Anything currently running is preserved.</p>
       <div class="mb-6">
         <label class="block text-sm font-medium mb-2">Delete logs older than:</label>
         <select id="clearLogsDays" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2">
@@ -240,7 +240,11 @@
         </select>
       </div>
       <div id="clearAllConfirmation" class="mb-6 hidden rounded-md border border-red-900/70 bg-red-950/30 p-3">
-        <p class="mb-3 text-sm text-red-200">This also erases delivery memory. Removed titles may become eligible to be added again.</p>
+        <p class="mb-3 text-sm text-slate-300">Repeat protection is preserved when history is cleared.</p>
+        <label class="mb-3 flex items-start gap-2 text-sm text-red-200">
+          <input id="clearDeliveryMemory" type="checkbox" class="mt-0.5" />
+          <span><strong>Also clear delivery memory.</strong> Previously delivered titles may become eligible again.</span>
+        </label>
         <label for="clearLogsConfirmation" class="mb-2 block text-sm font-medium text-slate-200">Type <strong>CLEAR</strong> to confirm</label>
         <input id="clearLogsConfirmation" type="text" autocomplete="off" class="w-full rounded-md border border-red-900 bg-zinc-950 px-3 py-2 text-sm" />
       </div>

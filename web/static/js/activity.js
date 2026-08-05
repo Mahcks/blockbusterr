@@ -559,6 +559,7 @@ function showClearLogsModal() {
 function closeClearLogsModal() {
   document.getElementById('clearLogsModal').classList.add('hidden');
   document.getElementById('clearLogsConfirmation').value = '';
+  document.getElementById('clearDeliveryMemory').checked = false;
   updateClearLogsConfirmation();
 }
 
@@ -580,14 +581,15 @@ async function clearOldLogs() {
   const confirmation = document.getElementById('clearLogsConfirmation').value;
   if (clearAll && confirmation !== 'CLEAR') return;
   try {
-    const query = clearAll ? 'scope=all&confirm=CLEAR' : `days=${encodeURIComponent(days)}`;
+    const clearDeliveryMemory = document.getElementById('clearDeliveryMemory')?.checked === true;
+    const query = clearAll ? `scope=all&confirm=CLEAR&clear_delivery_memory=${clearDeliveryMemory}` : `days=${encodeURIComponent(days)}`;
     const response = await fetch(`/v1/activity/logs?${query}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error(`Request failed (${response.status})`);
     const data = await response.json();
     closeClearLogsModal();
-    window.showNotification(clearAll ? 'Cleared all activity history' : `Cleared ${data.count} old activity entries`, 'success');
+    window.showNotification(clearAll ? 'Cleared completed activity history' : `Cleared ${data.count} old activity entries and completed runs`, 'success');
     applyFilters();
     htmx.trigger('#stats', 'statsUpdate');
     loadJobRuns();

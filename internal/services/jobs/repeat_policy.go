@@ -42,20 +42,24 @@ func repeatSkipReason(cfg *config.Config, db *database.Database, jobPolicy, medi
 	if err != nil || !found {
 		return "", err
 	}
+	return repeatSkipReasonForDelivery(policy, deliveredAt, now), nil
+}
+
+func repeatSkipReasonForDelivery(policy enums.RepeatPolicy, deliveredAt, now time.Time) string {
 	if policy == enums.RepeatPolicyNever {
-		return "Previously delivered; repeat handling is set to never", nil
+		return "Previously delivered; repeat handling is set to never"
 	}
 	remaining := time.Until(deliveredAt.Add(repeatCooldown(policy)))
 	if !now.IsZero() {
 		remaining = deliveredAt.Add(repeatCooldown(policy)).Sub(now)
 	}
 	if remaining <= 0 {
-		return "", nil
+		return ""
 	}
 	days := int((remaining + 24*time.Hour - 1) / (24 * time.Hour))
 	unit := "days"
 	if days == 1 {
 		unit = "day"
 	}
-	return fmt.Sprintf("Previously delivered; eligible again in %d %s", days, unit), nil
+	return fmt.Sprintf("Previously delivered; eligible again in %d %s", days, unit)
 }

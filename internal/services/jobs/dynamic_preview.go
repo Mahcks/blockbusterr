@@ -10,6 +10,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
+	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
 // PreviewDynamicJob uses the same provider selection and fetchers as job execution.
@@ -89,6 +90,11 @@ func previewMovies(ctx context.Context, cfg *config.Config, db *database.Databas
 	if mode == "jellyseerr" {
 		jellyseerr = previewJellyseerr(cfg)
 	}
+	deliveries, err := previewDeliveryHistory(db, movieDeliveryIdentities(movies))
+	if err != nil {
+		return err
+	}
+	policy := effectiveRepeatPolicy(repeatPolicy, cfg.Jobs.RepeatPolicy)
 	for index, movie := range movies {
 		item := createMoviePreviewItem(cfg, movie, len(movies)-index)
 		item.Score, item.Rank = scores[movie.IDs.TMDB].Score, scores[movie.IDs.TMDB].Rank
@@ -99,9 +105,7 @@ func previewMovies(ctx context.Context, cfg *config.Config, db *database.Databas
 		if !result.Passed {
 			item.FilteredOut, item.FilterReason = true, item.DecisionReason
 			response.FilteredOut++
-		} else if reason, err := repeatSkipReason(cfg, db, repeatPolicy, "movie", movie.IDs.TMDB, 0, time.Now()); err != nil {
-			return err
-		} else if reason != "" {
+		} else if reason := previewRepeatReason(policy, deliveries, database.DeliveryIdentity{MediaType: "movie", TMDBID: movie.IDs.TMDB, IMDBID: movie.IDs.IMDB}, time.Now()); reason != "" {
 			item.AlreadyExists, item.RepeatBlocked, item.DecisionReason = true, true, "Skipped: "+reason
 			response.AlreadyExists++
 		} else if mode == "direct" && existing[movie.IDs.TMDB] {
@@ -148,6 +152,11 @@ func previewShows(ctx context.Context, cfg *config.Config, db *database.Database
 	if mode == "jellyseerr" {
 		jellyseerr = previewJellyseerr(cfg)
 	}
+	deliveries, err := previewDeliveryHistory(db, showDeliveryIdentities(shows))
+	if err != nil {
+		return err
+	}
+	policy := effectiveRepeatPolicy(repeatPolicy, cfg.Jobs.RepeatPolicy)
 	for index, show := range shows {
 		item := createShowPreviewItem(cfg, show, len(shows)-index)
 		item.Score, item.Rank = scores[show.IDs.TVDB].Score, scores[show.IDs.TVDB].Rank
@@ -158,9 +167,7 @@ func previewShows(ctx context.Context, cfg *config.Config, db *database.Database
 		if !result.Passed {
 			item.FilteredOut, item.FilterReason = true, item.DecisionReason
 			response.FilteredOut++
-		} else if reason, err := repeatSkipReason(cfg, db, repeatPolicy, "show", show.IDs.TMDB, show.IDs.TVDB, time.Now()); err != nil {
-			return err
-		} else if reason != "" {
+		} else if reason := previewRepeatReason(policy, deliveries, database.DeliveryIdentity{MediaType: "show", TMDBID: show.IDs.TMDB, TVDBID: show.IDs.TVDB, IMDBID: show.IDs.IMDB}, time.Now()); reason != "" {
 			item.AlreadyExists, item.RepeatBlocked, item.DecisionReason = true, true, "Skipped: "+reason
 			response.AlreadyExists++
 		} else if mode == "direct" && ((show.IDs.TVDB > 0 && existingTVDB[show.IDs.TVDB]) || (show.IDs.TMDB > 0 && existingTMDB[show.IDs.TMDB])) {
@@ -186,6 +193,40 @@ func previewShows(ctx context.Context, cfg *config.Config, db *database.Database
 		response.Items = append(response.Items, item)
 	}
 	return nil
+}
+
+func previewDeliveryHistory(db *database.Database, identities []database.DeliveryIdentity) (map[string]time.Time, error) {
+	if db == nil {
+		return map[string]time.Time{}, nil
+	}
+	return db.LatestSuccessfulDeliveries(identities)
+}
+
+func previewRepeatReason(policy enums.RepeatPolicy, deliveries map[string]time.Time, identity database.DeliveryIdentity, now time.Time) string {
+	if policy == enums.RepeatPolicyImmediate {
+		return ""
+	}
+	deliveredAt, ok := deliveries[identity.Key()]
+	if !ok {
+		return ""
+	}
+	return repeatSkipReasonForDelivery(policy, deliveredAt, now)
+}
+
+func movieDeliveryIdentities(movies []integrations.Movie) []database.DeliveryIdentity {
+	identities := make([]database.DeliveryIdentity, 0, len(movies))
+	for _, movie := range movies {
+		identities = append(identities, database.DeliveryIdentity{MediaType: "movie", TMDBID: movie.IDs.TMDB, IMDBID: movie.IDs.IMDB})
+	}
+	return identities
+}
+
+func showDeliveryIdentities(shows []integrations.Show) []database.DeliveryIdentity {
+	identities := make([]database.DeliveryIdentity, 0, len(shows))
+	for _, show := range shows {
+		identities = append(identities, database.DeliveryIdentity{MediaType: "show", TMDBID: show.IDs.TMDB, TVDBID: show.IDs.TVDB, IMDBID: show.IDs.IMDB})
+	}
+	return identities
 }
 
 func previewJellyseerr(cfg *config.Config) *integrations.Jellyseerr {
