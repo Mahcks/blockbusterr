@@ -2270,17 +2270,6 @@
     font-size: 10px;
   }
 
-  .filter-save-message {
-    padding: 9px 11px;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    background: var(--surface);
-    font-size: 12px;
-  }
-
-  .filter-save-success { border-color: rgb(22 101 52); color: rgb(134 239 172); }
-  .filter-save-error { border-color: rgb(153 27 27); color: rgb(252 165 165); }
-
   .filter-boundary-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));

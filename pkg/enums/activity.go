@@ -59,10 +59,6 @@ func ParseActivityStatus(value string) (ActivityStatus, bool) {
 	return "", false
 }
 
-func IsSuccessLikeActivityStatus(s ActivityStatus) bool {
-	return s == ActivityStatusAdded || s == ActivityStatusRequested
-}
-
 type RepeatPolicy string
 
 const (

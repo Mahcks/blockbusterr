@@ -16,27 +16,5 @@ module.exports = {
     "run-entry-filter-added", "run-entry-filter-requested", "run-entry-filter-rejected",
     "run-entry-filter-skipped", "run-entry-filter-failed",
     "run-row-added", "run-row-requested", "run-row-rejected", "run-row-skipped", "run-row-failed"
-  ],
-  theme: {
-    extend: {
-      colors: {
-        primary: "#3b82f6",
-        secondary: "#1e293b"
-      },
-      animation: {
-        "slide-in": "slide-in 0.3s ease-out",
-        "fade-in": "fade-in 0.2s ease-out"
-      },
-      keyframes: {
-        "slide-in": {
-          "0%": { transform: "translateX(100%)", opacity: "0" },
-          "100%": { transform: "translateX(0)", opacity: "1" }
-        },
-        "fade-in": {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" }
-        }
-      }
-    }
-  }
+  ]
 };

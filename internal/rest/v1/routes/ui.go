@@ -207,11 +207,6 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 		}, "base")
 	})
 
-	// Legacy experimental activity route (redirect to canonical activity page)
-	app.Get("/activity-experimental", func(c *fiber.Ctx) error {
-		return c.Redirect("/activity", fiber.StatusMovedPermanently)
-	})
-
 	// Config save route. Validates every value before mutating the live
 	// config, so a bad submission never leaves partially-applied state in
 	// memory even though the save itself failed.

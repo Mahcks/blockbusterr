@@ -73,18 +73,3 @@ func New(
 		db: db,
 	}
 }
-
-func WithCancel(ctx Context) (Context, context.CancelFunc) {
-	metadata := ctx.Metadata()
-	cfg := ctx.Config()
-	db := ctx.Database()
-
-	c, cancel := context.WithCancel(ctx)
-
-	return &gCtx{
-		Context:  c,
-		cfg:      cfg,
-		metadata: metadata,
-		db:       db,
-	}, cancel
-}
