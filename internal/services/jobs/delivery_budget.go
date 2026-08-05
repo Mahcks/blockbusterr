@@ -95,52 +95,52 @@ func deliveryBudgetWindow(period string) time.Duration {
 	}
 }
 
-func (e *MovieJobExecutor) skipMovieDelivery(jobConfig JobConfig, movie integrations.Movie, scoreMap map[int]ScoreInfo, reason string) {
-	e.updateDecisionOutcome(movie.IDs.TMDB, "skipped", reason)
+func (e *MovieJobExecutor) skipMovieDelivery(jobConfig JobConfig, movie integrations.Movie, scoreMap map[string]ScoreInfo, reason string) {
+	e.updateDecisionOutcome(movie.IDs, "skipped", reason)
 	if e.Database == nil {
 		return
 	}
-	scoreInfo := scoreMap[movie.IDs.TMDB]
+	scoreInfo := scoreMap[integrations.MovieKey(movie.IDs)]
 	if err := e.Database.LogActivity(database.ActivityLog{
 		Timestamp: time.Now(), JobID: jobConfig.JobID, RunID: e.currentRunID, JobType: jobConfig.JobName,
 		MediaType: "movie", Title: movie.Title, Year: movie.Year, Language: movie.Language,
 		TMDBID: movie.IDs.TMDB, IMDBID: movie.IDs.IMDB, PosterURL: GetTMDBPosterURL(e.Config, movie.IDs.TMDB, "movie"),
 		Score: scoreInfo.Score, Rank: scoreInfo.Rank, Status: "skipped", Message: reason,
-		FilterDetails: e.getFilterDetailsForMovie(movie.IDs.TMDB),
+		FilterDetails: e.getFilterDetailsForMovie(movie.IDs),
 	}); err != nil {
 		slog.Error("Failed to log delivery budget skip", "title", movie.Title, "err", err)
 	}
 }
 
-func (e *ShowJobExecutor) skipShowDelivery(jobConfig JobConfig, show integrations.Show, scoreMap map[int]ScoreInfo, reason string) {
-	e.updateDecisionOutcome(show.IDs.TVDB, "skipped", reason)
+func (e *ShowJobExecutor) skipShowDelivery(jobConfig JobConfig, show integrations.Show, scoreMap map[string]ScoreInfo, reason string) {
+	e.updateDecisionOutcome(show.IDs, "skipped", reason)
 	if e.Database == nil {
 		return
 	}
-	scoreInfo := scoreMap[show.IDs.TVDB]
+	scoreInfo := scoreMap[integrations.ShowKey(show.IDs)]
 	if err := e.Database.LogActivity(database.ActivityLog{
 		Timestamp: time.Now(), JobID: jobConfig.JobID, RunID: e.currentRunID, JobType: jobConfig.JobName,
 		MediaType: "show", Title: show.Title, Year: show.Year, Language: show.Language,
 		TMDBID: show.IDs.TMDB, TVDBID: show.IDs.TVDB, IMDBID: show.IDs.IMDB, PosterURL: GetShowPosterURL(e.Config, show.IDs.TMDB, show.IDs.TVDB),
 		Score: scoreInfo.Score, Rank: scoreInfo.Rank, Status: "skipped", Message: reason,
-		FilterDetails: e.getFilterDetailsForShow(show.IDs.TVDB),
+		FilterDetails: e.getFilterDetailsForShow(show.IDs),
 	}); err != nil {
 		slog.Error("Failed to log delivery budget skip", "title", show.Title, "err", err)
 	}
 }
 
-func (e *ShowJobExecutor) failShowDelivery(jobConfig JobConfig, show integrations.Show, scoreMap map[int]ScoreInfo, reason string) {
-	e.updateDecisionOutcome(show.IDs.TVDB, string(enums.ActivityStatusFailed), reason)
+func (e *ShowJobExecutor) failShowDelivery(jobConfig JobConfig, show integrations.Show, scoreMap map[string]ScoreInfo, reason string) {
+	e.updateDecisionOutcome(show.IDs, string(enums.ActivityStatusFailed), reason)
 	if e.Database == nil {
 		return
 	}
-	scoreInfo := scoreMap[show.IDs.TVDB]
+	scoreInfo := scoreMap[integrations.ShowKey(show.IDs)]
 	if err := e.Database.LogActivity(database.ActivityLog{
 		Timestamp: time.Now(), JobID: jobConfig.JobID, RunID: e.currentRunID, JobType: jobConfig.JobName,
 		MediaType: "show", Title: show.Title, Year: show.Year, Language: show.Language,
 		TMDBID: show.IDs.TMDB, TVDBID: show.IDs.TVDB, IMDBID: show.IDs.IMDB, PosterURL: GetShowPosterURL(e.Config, show.IDs.TMDB, show.IDs.TVDB),
 		Score: scoreInfo.Score, Rank: scoreInfo.Rank, Status: string(enums.ActivityStatusFailed), Message: reason,
-		FilterDetails: e.getFilterDetailsForShow(show.IDs.TVDB),
+		FilterDetails: e.getFilterDetailsForShow(show.IDs),
 	}); err != nil {
 		slog.Error("Failed to log show delivery failure", "title", show.Title, "err", err)
 	}

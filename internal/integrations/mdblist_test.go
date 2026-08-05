@@ -23,7 +23,7 @@ func TestMDBListPaginatesAndNormalizes(t *testing.T) {
 		}
 		return jsonResponse(http.StatusOK, `{"shows":[{"id":20,"title":"Show","tvdb_id":30,"release_year":2024}],"pagination":{}}`), nil
 	})
-	items, err := client.GetListItems(t.Context(), "max", "weekend", false, 10)
+	items, err := client.GetListItems(t.Context(), "max", "weekend", false, "", 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestMDBListWatchlistAndErrors(t *testing.T) {
 		}
 		return jsonResponse(http.StatusOK, `{"movies":[],"shows":[]}`), nil
 	})
-	if _, err := client.GetListItems(t.Context(), "", "", true, 10); err != nil {
+	if _, err := client.GetListItems(t.Context(), "", "", true, "", 10); err != nil {
 		t.Fatal(err)
 	}
 
@@ -52,7 +52,7 @@ func TestMDBListWatchlistAndErrors(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			client := NewMDBList(MDBListConfig{APIKey: "key"})
 			client.httpClient.Transport = roundTripFunc(func(*http.Request) (*http.Response, error) { return response, nil })
-			if _, err := client.GetListItems(t.Context(), "", "1", false, 10); err == nil {
+			if _, err := client.GetListItems(t.Context(), "", "1", false, "", 10); err == nil {
 				t.Fatal("expected error")
 			}
 		})
@@ -62,7 +62,21 @@ func TestMDBListWatchlistAndErrors(t *testing.T) {
 	client.httpClient.Transport = roundTripFunc(func(request *http.Request) (*http.Response, error) { return nil, request.Context().Err() })
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := client.GetListItems(ctx, "", "1", false, 10); err == nil || !strings.Contains(err.Error(), "canceled") {
+	if _, err := client.GetListItems(ctx, "", "1", false, "", 10); err == nil || !strings.Contains(err.Error(), "canceled") {
 		t.Fatalf("cancellation error = %v", err)
+	}
+}
+
+func TestMDBListLimitAppliesToRequestedMedia(t *testing.T) {
+	client := NewMDBList(MDBListConfig{APIKey: "key"})
+	client.httpClient.Transport = roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if request.URL.Query().Get("cursor") == "" {
+			return jsonResponse(http.StatusOK, `{"shows":[{"id":1}],"next_cursor":"next"}`), nil
+		}
+		return jsonResponse(http.StatusOK, `{"movies":[{"id":2},{"id":3}]}`), nil
+	})
+	items, err := client.GetListItems(t.Context(), "", "1", false, "movie", 2)
+	if err != nil || len(items.Movies) != 2 {
+		t.Fatalf("movies=%d err=%v", len(items.Movies), err)
 	}
 }

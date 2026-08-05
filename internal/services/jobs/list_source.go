@@ -13,21 +13,23 @@ import (
 
 // ListResult is the provider-neutral output consumed by the existing job pipeline.
 type ListResult struct {
-	Source string
-	Name   string
-	Movies []integrations.Movie
-	Shows  []integrations.Show
+	Source   string
+	Name     string
+	Movies   []integrations.Movie
+	Shows    []integrations.Show
+	Warnings []string
 }
 
 type ListInspection struct {
-	Source string `json:"source"`
-	Name   string `json:"name,omitempty"`
-	Movies int    `json:"movies"`
-	Shows  int    `json:"shows"`
+	Source   string   `json:"source"`
+	Name     string   `json:"name,omitempty"`
+	Movies   int      `json:"movies"`
+	Shows    int      `json:"shows"`
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 type ListSource interface {
-	FetchList(context.Context, config.ListLocator, int) (ListResult, error)
+	FetchList(context.Context, config.ListLocator, string, int) (ListResult, error)
 }
 
 type ListSourceRegistry map[string]ListSource
@@ -78,12 +80,12 @@ func InspectListSource(ctx context.Context, cfg *config.Config, provider string,
 	if err != nil {
 		return ListInspection{}, err
 	}
-	result, err := adapter.FetchList(ctx, locator, 5)
+	result, err := adapter.FetchList(ctx, locator, "", 5)
 	if err != nil {
 		return ListInspection{}, err
 	}
 	result = normalizeListResult(result)
-	return ListInspection{Source: provider, Name: result.Name, Movies: len(result.Movies), Shows: len(result.Shows)}, nil
+	return ListInspection{Source: provider, Name: result.Name, Movies: len(result.Movies), Shows: len(result.Shows), Warnings: result.Warnings}, nil
 }
 
 func ValidateListSourceLocator(provider string, locator config.ListLocator) error {
@@ -116,19 +118,20 @@ func ValidateListLocator(locator config.ListLocator) error {
 }
 
 func normalizeListResult(result ListResult) ListResult {
-	movieIDs, showIDs := map[int]bool{}, map[[2]int]bool{}
+	movieIDs, showIDs := map[string]bool{}, map[string]bool{}
 	movies := make([]integrations.Movie, 0, len(result.Movies))
 	shows := make([]integrations.Show, 0, len(result.Shows))
 	for _, movie := range result.Movies {
-		if movie.IDs.TMDB <= 0 || movieIDs[movie.IDs.TMDB] {
+		key := integrations.MovieKey(movie.IDs)
+		if key == "" || movieIDs[key] {
 			continue
 		}
-		movieIDs[movie.IDs.TMDB] = true
+		movieIDs[key] = true
 		movies = append(movies, movie)
 	}
 	for _, show := range result.Shows {
-		key := [2]int{show.IDs.TVDB, show.IDs.TMDB}
-		if key == [2]int{} || showIDs[key] {
+		key := integrations.ShowKey(show.IDs)
+		if key == "" || showIDs[key] {
 			continue
 		}
 		showIDs[key] = true

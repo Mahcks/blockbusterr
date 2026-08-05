@@ -25,9 +25,12 @@ type Trakt struct {
 	refreshToken string
 	tokenExpires int64
 	onToken      func(TraktToken) error
+	loadToken    func() TraktToken
 	httpClient   *http.Client
-	tokenMu      sync.Mutex
 }
+
+// ponytail: one process-wide lock is sufficient; use per-account locks only if refresh contention becomes measurable.
+var traktTokenMu sync.Mutex
 
 // TraktConfig holds configuration for Trakt client
 type TraktConfig struct {
@@ -37,6 +40,7 @@ type TraktConfig struct {
 	RefreshToken string
 	TokenExpires int64
 	OnToken      func(TraktToken) error
+	LoadToken    func() TraktToken
 }
 
 // NewTrakt creates a new Trakt API client
@@ -48,6 +52,7 @@ func NewTrakt(config TraktConfig) *Trakt {
 		refreshToken: config.RefreshToken,
 		tokenExpires: config.TokenExpires,
 		onToken:      config.OnToken,
+		loadToken:    config.LoadToken,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -56,10 +61,9 @@ func NewTrakt(config TraktConfig) *Trakt {
 
 // doRequest performs an HTTP request to the Trakt API
 func (t *Trakt) doRequest(ctx context.Context, method, endpoint string, body io.Reader) (*http.Response, error) {
-	if t.refreshToken != "" && t.tokenExpires > 0 && time.Now().Unix() >= t.tokenExpires-60 {
-		if err := t.refreshAccessToken(ctx); err != nil {
-			return nil, err
-		}
+	accessToken, err := t.accessTokenForRequest(ctx)
+	if err != nil {
+		return nil, err
 	}
 	url := fmt.Sprintf("%s%s", TraktAPIBaseURL, endpoint)
 
@@ -72,8 +76,8 @@ func (t *Trakt) doRequest(ctx context.Context, method, endpoint string, body io.
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("trakt-api-version", TraktAPIVersion)
 	req.Header.Set("trakt-api-key", t.clientID)
-	if t.accessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+t.accessToken)
+	if accessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+accessToken)
 	}
 
 	resp, err := t.httpClient.Do(req)
@@ -110,9 +114,9 @@ func (t *Trakt) doRequestPaginated(ctx context.Context, endpoint string, limit i
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
+			err := newAPIError("Trakt", resp)
 			_ = resp.Body.Close()
-			return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+			return nil, err
 		}
 
 		body, err := io.ReadAll(resp.Body)
@@ -354,8 +358,7 @@ func (t *Trakt) Search(ctx context.Context, query string, searchType string, lim
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Trakt", resp)
 	}
 
 	var results []SearchResult
@@ -377,8 +380,7 @@ func (t *Trakt) GetBoxOfficeMovies(ctx context.Context, limit int) ([]BoxOfficeM
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Trakt", resp)
 	}
 
 	var results []BoxOfficeMovie
@@ -685,8 +687,7 @@ func (t *Trakt) GetLanguages(ctx context.Context, mediaType string) ([]Language,
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Trakt", resp)
 	}
 
 	var languages []Language
@@ -708,8 +709,7 @@ func (t *Trakt) GetGenres(ctx context.Context, mediaType string) ([]Genre, error
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Trakt", resp)
 	}
 
 	var genres []Genre
@@ -731,8 +731,7 @@ func (t *Trakt) GetCountries(ctx context.Context, mediaType string) ([]Country, 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Trakt", resp)
 	}
 
 	var countries []Country
@@ -754,8 +753,7 @@ func (t *Trakt) GetNetworks(ctx context.Context) ([]Network, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Trakt", resp)
 	}
 
 	var networks []Network

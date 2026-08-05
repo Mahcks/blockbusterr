@@ -22,7 +22,7 @@ func TestTMDBPublicListPaginatesMixedMedia(t *testing.T) {
 		}
 		return jsonResponse(http.StatusOK, `{"name":"Weekend","page":2,"total_pages":2,"results":[{"media_type":"tv","id":20,"name":"Show","first_air_date":"2024-01-01"}]}`), nil
 	})
-	items, err := client.GetListItems(t.Context(), "55", false, 10)
+	items, err := client.GetListItems(t.Context(), "55", false, "", 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestTMDBPublicListPaginatesMixedMedia(t *testing.T) {
 
 func TestTMDBWatchlistRequiresAuthorization(t *testing.T) {
 	client := NewTMDB(TMDBConfig{APIKey: "key"})
-	if _, err := client.GetListItems(t.Context(), "", true, 10); err == nil {
+	if _, err := client.GetListItems(t.Context(), "", true, "", 10); err == nil {
 		t.Fatal("expected authorization error")
 	}
 }
@@ -47,7 +47,7 @@ func TestTMDBListErrors(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			client := NewTMDB(TMDBConfig{APIKey: "key"})
 			client.httpClient.Transport = roundTripFunc(func(*http.Request) (*http.Response, error) { return response, nil })
-			if _, err := client.GetListItems(t.Context(), "1", false, 10); err == nil {
+			if _, err := client.GetListItems(t.Context(), "1", false, "", 10); err == nil {
 				t.Fatal("expected error")
 			}
 		})
@@ -56,7 +56,7 @@ func TestTMDBListErrors(t *testing.T) {
 	client.httpClient.Transport = roundTripFunc(func(request *http.Request) (*http.Response, error) { return nil, request.Context().Err() })
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := client.GetListItems(ctx, "1", false, 10); err == nil {
+	if _, err := client.GetListItems(ctx, "1", false, "", 10); err == nil {
 		t.Fatal("expected cancellation error")
 	}
 }
@@ -73,8 +73,22 @@ func TestTMDBConnectedWatchlist(t *testing.T) {
 		t.Fatalf("path = %s", request.URL.Path)
 		return nil, nil
 	})
-	items, err := client.GetListItems(t.Context(), "", true, 10)
+	items, err := client.GetListItems(t.Context(), "", true, "", 10)
 	if err != nil || len(items.Movies) != 1 || items.Movies[0].IDs.TMDB != 7 {
 		t.Fatalf("items=%#v err=%v", items, err)
+	}
+}
+
+func TestTMDBListLimitAppliesToRequestedMedia(t *testing.T) {
+	client := NewTMDB(TMDBConfig{APIKey: "key"})
+	client.httpClient.Transport = roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if request.URL.Query().Get("page") == "1" {
+			return jsonResponse(http.StatusOK, `{"page":1,"total_pages":2,"results":[{"media_type":"tv","id":1}]}`), nil
+		}
+		return jsonResponse(http.StatusOK, `{"page":2,"total_pages":2,"results":[{"media_type":"movie","id":2},{"media_type":"movie","id":3}]}`), nil
+	})
+	items, err := client.GetListItems(t.Context(), "1", false, "movie", 2)
+	if err != nil || len(items.Movies) != 2 {
+		t.Fatalf("movies=%d err=%v", len(items.Movies), err)
 	}
 }

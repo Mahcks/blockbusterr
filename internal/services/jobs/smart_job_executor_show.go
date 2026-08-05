@@ -49,7 +49,6 @@ func (e *SmartShowJobExecutor) Execute(
 		log.Errorf("Failed to configure discovery source for %s: %v", jobConfig.JobName, err)
 		return err
 	}
-
 	// Fetch shows using the provided fetcher
 	shows, err := fetcher(ctx, discoveryClient, jobConfig.Limit, "")
 	if err != nil {
@@ -68,6 +67,13 @@ func (e *SmartShowJobExecutor) Execute(
 		}
 		if e.Database != nil && e.currentRunID > 0 {
 			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", 0, 0, 0, 0, 0, 0, 1, err.Error())
+		}
+		return err
+	}
+	if err := enrichShowCertifications(ctx, e.Config, shows); err != nil {
+		err = fmt.Errorf("failed to enrich show certifications: %w", err)
+		if e.Database != nil && e.currentRunID > 0 {
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", len(shows), 0, 0, 0, 0, 0, 1, err.Error())
 		}
 		return err
 	}
@@ -158,8 +164,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 	shows []integrations.Show,
 	percentiles map[int]float64,
 	jobConfig SmartJobConfig,
-) ([]integrations.Show, map[int]ScoreInfo, []ContentDecision) {
-	enrichShowCertifications(ctx, e.Config, shows)
+) ([]integrations.Show, map[string]ScoreInfo, []ContentDecision) {
 	decisions := make([]ContentDecision, 0, len(shows))
 	passedShows := make([]integrations.Show, 0)
 
@@ -249,7 +254,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 	// Update decisions with scores
 	for i := range decisions {
 		if decisions[i].PassedFilters {
-			if scoreInfo, ok := scoreMap[decisions[i].TVDBID]; ok {
+			if scoreInfo, ok := scoreMap[integrations.ShowKey(integrations.IDs{TVDB: decisions[i].TVDBID, TMDB: decisions[i].TMDBID, IMDB: decisions[i].IMDBID})]; ok {
 				decisions[i].Score = scoreInfo.Score
 				decisions[i].Rank = scoreInfo.Rank
 			}

@@ -12,15 +12,17 @@ import (
 )
 
 type fakeListSource struct {
-	result ListResult
-	err    error
-	calls  int
-	limit  int
+	result    ListResult
+	err       error
+	calls     int
+	limit     int
+	mediaType string
 }
 
-func (source *fakeListSource) FetchList(ctx context.Context, _ config.ListLocator, limit int) (ListResult, error) {
+func (source *fakeListSource) FetchList(ctx context.Context, _ config.ListLocator, mediaType string, limit int) (ListResult, error) {
 	source.calls++
 	source.limit = limit
+	source.mediaType = mediaType
 	if err := ctx.Err(); err != nil {
 		return ListResult{}, err
 	}
@@ -62,6 +64,9 @@ func TestListSourceUsesSharedPreviewAndExecutionPipeline(t *testing.T) {
 	}
 	if source.limit != 50 {
 		t.Fatalf("source limit = %d; want 50", source.limit)
+	}
+	if source.mediaType != "movie" {
+		t.Fatalf("source media type = %q; want movie", source.mediaType)
 	}
 }
 
@@ -125,6 +130,17 @@ func TestListSourceAcceptsEmptyList(t *testing.T) {
 	movies, err := client.GetListMovies(t.Context(), config.ListLocator{Kind: "public_list", ListID: "empty"}, 10)
 	if err != nil || len(movies) != 0 {
 		t.Fatalf("empty list = %v, %v", movies, err)
+	}
+}
+
+func TestNormalizeListResultKeepsDistinctTMDBOnlyShows(t *testing.T) {
+	result := normalizeListResult(ListResult{Shows: []integrations.Show{
+		{IDs: integrations.IDs{TMDB: 10}},
+		{IDs: integrations.IDs{TMDB: 20}},
+		{IDs: integrations.IDs{TMDB: 10}},
+	}})
+	if len(result.Shows) != 2 {
+		t.Fatalf("shows=%d; want two stable identities", len(result.Shows))
 	}
 }
 

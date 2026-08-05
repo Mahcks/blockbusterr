@@ -73,7 +73,9 @@ func previewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 }
 
 func previewMovies(ctx context.Context, cfg *config.Config, db *database.Database, mode, repeatPolicy string, movies []integrations.Movie, response *PreviewResponse) error {
-	enrichMovieCertifications(ctx, cfg, movies)
+	if err := enrichMovieCertifications(ctx, cfg, movies); err != nil {
+		return fmt.Errorf("failed to enrich movie certifications: %w", err)
+	}
 	scores := ScoreAndRankMovies(movies, cfg)
 	existing := map[int]bool{}
 	if mode == "direct" {
@@ -97,7 +99,8 @@ func previewMovies(ctx context.Context, cfg *config.Config, db *database.Databas
 	policy := effectiveRepeatPolicy(repeatPolicy, cfg.Jobs.RepeatPolicy)
 	for index, movie := range movies {
 		item := createMoviePreviewItem(cfg, movie, len(movies)-index)
-		item.Score, item.Rank = scores[movie.IDs.TMDB].Score, scores[movie.IDs.TMDB].Rank
+		score := scores[integrations.MovieKey(movie.IDs)]
+		item.Score, item.Rank = score.Score, score.Rank
 		item.ProviderRank = index + 1
 		result := filters.MoviePassesRules(movie, cfg.Filters.Movies, cfg.TitleExceptions)
 		item.FilterChecks = result.Checks
@@ -134,7 +137,9 @@ func previewMovies(ctx context.Context, cfg *config.Config, db *database.Databas
 }
 
 func previewShows(ctx context.Context, cfg *config.Config, db *database.Database, mode, repeatPolicy string, shows []integrations.Show, response *PreviewResponse) error {
-	enrichShowCertifications(ctx, cfg, shows)
+	if err := enrichShowCertifications(ctx, cfg, shows); err != nil {
+		return fmt.Errorf("failed to enrich show certifications: %w", err)
+	}
 	scores := ScoreAndRankShows(shows, cfg)
 	existingTVDB, existingTMDB := map[int]bool{}, map[int]bool{}
 	if mode == "direct" {
@@ -159,7 +164,8 @@ func previewShows(ctx context.Context, cfg *config.Config, db *database.Database
 	policy := effectiveRepeatPolicy(repeatPolicy, cfg.Jobs.RepeatPolicy)
 	for index, show := range shows {
 		item := createShowPreviewItem(cfg, show, len(shows)-index)
-		item.Score, item.Rank = scores[show.IDs.TVDB].Score, scores[show.IDs.TVDB].Rank
+		score := scores[integrations.ShowKey(show.IDs)]
+		item.Score, item.Rank = score.Score, score.Rank
 		item.ProviderRank = index + 1
 		result := filters.ShowPassesRules(show, cfg.Filters.Shows, cfg.TitleExceptions)
 		item.FilterChecks = result.Checks

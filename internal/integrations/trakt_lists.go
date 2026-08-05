@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -35,7 +36,7 @@ type TraktToken struct {
 
 func (token TraktToken) ExpiresAt() int64 { return token.CreatedAt + token.ExpiresIn }
 
-func (t *Trakt) GetListItems(ctx context.Context, owner, listID string, watchlist bool, limit int) (TraktListItems, error) {
+func (t *Trakt) GetListItems(ctx context.Context, owner, listID string, watchlist bool, mediaType string, limit int) (TraktListItems, error) {
 	var endpoint string
 	if watchlist && t.accessToken != "" && (owner == "" || owner == "me") {
 		endpoint = "/sync/watchlist/movie,show/rank/asc?extended=full"
@@ -46,26 +47,39 @@ func (t *Trakt) GetListItems(ctx context.Context, owner, listID string, watchlis
 	} else {
 		endpoint = fmt.Sprintf("/lists/%s/items/movie,show?extended=full", url.PathEscape(listID))
 	}
-	pages, err := t.doRequestPaginated(ctx, endpoint, limit)
-	if err != nil {
-		return TraktListItems{}, err
-	}
 	result := TraktListItems{}
-	for _, page := range pages {
+	for page := 1; listMediaCount(mediaType, len(result.Movies), len(result.Shows)) < limit; page++ {
+		separator := "?"
+		if strings.Contains(endpoint, "?") {
+			separator = "&"
+		}
+		response, err := t.doRequest(ctx, http.MethodGet, fmt.Sprintf("%s%spage=%d&limit=%d", endpoint, separator, page, TraktDefaultPageSize), nil)
+		if err != nil {
+			return TraktListItems{}, err
+		}
+		if response.StatusCode != http.StatusOK {
+			_ = response.Body.Close()
+			return TraktListItems{}, fmt.Errorf("Trakt API returned status %d", response.StatusCode)
+		}
 		var items []struct {
 			Type  string `json:"type"`
 			Movie *Movie `json:"movie"`
 			Show  *Show  `json:"show"`
 		}
-		if err := json.Unmarshal(page, &items); err != nil {
+		if err := json.NewDecoder(response.Body).Decode(&items); err != nil {
+			_ = response.Body.Close()
 			return TraktListItems{}, fmt.Errorf("failed to decode Trakt list: %w", err)
 		}
+		_ = response.Body.Close()
 		for _, item := range items {
-			if item.Type == "movie" && item.Movie != nil {
+			if item.Type == "movie" && mediaType != "show" && item.Movie != nil && len(result.Movies) < limit {
 				result.Movies = append(result.Movies, *item.Movie)
-			} else if item.Type == "show" && item.Show != nil {
+			} else if item.Type == "show" && mediaType != "movie" && item.Show != nil && len(result.Shows) < limit {
 				result.Shows = append(result.Shows, *item.Show)
 			}
+		}
+		if len(items) < TraktDefaultPageSize {
+			break
 		}
 	}
 	return result, nil
@@ -86,27 +100,41 @@ func (t *Trakt) PollDeviceAuth(ctx context.Context, deviceCode string) (TraktTok
 	if token.CreatedAt == 0 {
 		token.CreatedAt = time.Now().Unix()
 	}
+	traktTokenMu.Lock()
+	defer traktTokenMu.Unlock()
 	return token, status, t.storeToken(token)
 }
 
-func (t *Trakt) refreshAccessToken(ctx context.Context) error {
-	t.tokenMu.Lock()
-	defer t.tokenMu.Unlock()
+func (t *Trakt) accessTokenForRequest(ctx context.Context) (string, error) {
+	traktTokenMu.Lock()
+	defer traktTokenMu.Unlock()
+	if t.loadToken != nil {
+		token := t.loadToken()
+		if token.AccessToken != "" {
+			t.accessToken, t.refreshToken, t.tokenExpires = token.AccessToken, token.RefreshToken, token.ExpiresAt()
+		}
+	}
+	if t.refreshToken == "" || t.tokenExpires <= 0 {
+		return t.accessToken, nil
+	}
 	if time.Now().Unix() < t.tokenExpires-60 {
-		return nil
+		return t.accessToken, nil
 	}
 	var token TraktToken
 	status, err := t.authJSONStatus(ctx, "/oauth/token", map[string]string{"refresh_token": t.refreshToken, "client_id": t.clientID, "client_secret": t.clientSecret, "grant_type": "refresh_token", "redirect_uri": "urn:ietf:wg:oauth:2.0:oob"}, &token)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if status != http.StatusOK {
-		return fmt.Errorf("Trakt token refresh returned status %d", status)
+		return "", fmt.Errorf("Trakt token refresh returned status %d", status)
 	}
 	if token.CreatedAt == 0 {
 		token.CreatedAt = time.Now().Unix()
 	}
-	return t.storeToken(token)
+	if err := t.storeToken(token); err != nil {
+		return "", err
+	}
+	return t.accessToken, nil
 }
 
 func (t *Trakt) storeToken(token TraktToken) error {

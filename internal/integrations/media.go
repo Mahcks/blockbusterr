@@ -1,5 +1,10 @@
 package integrations
 
+import (
+	"strconv"
+	"strings"
+)
+
 // Movie is the provider-neutral movie shape used by discovery, filtering, and jobs.
 type Movie struct {
 	Title          string          `json:"title"`
@@ -45,4 +50,38 @@ type IDs struct {
 	TMDB  int    `json:"tmdb"`
 	TVDB  int    `json:"tvdb"`
 	Simkl int    `json:"simkl_id"`
+}
+
+func MovieKey(ids IDs) string {
+	if ids.TMDB > 0 {
+		return "movie:tmdb:" + strconv.Itoa(ids.TMDB)
+	}
+	if id := strings.TrimSpace(ids.IMDB); id != "" {
+		return "movie:imdb:" + id
+	}
+	return ""
+}
+
+func ShowKey(ids IDs) string {
+	if ids.TMDB > 0 {
+		return "show:tmdb:" + strconv.Itoa(ids.TMDB)
+	}
+	if ids.TVDB > 0 {
+		return "show:tvdb:" + strconv.Itoa(ids.TVDB)
+	}
+	if id := strings.TrimSpace(ids.IMDB); id != "" {
+		return "show:imdb:" + id
+	}
+	return ""
+}
+
+func listMediaCount(mediaType string, movies, shows int) int {
+	switch mediaType {
+	case "movie":
+		return movies
+	case "show":
+		return shows
+	default:
+		return movies + shows
+	}
 }

@@ -140,8 +140,7 @@ func (j *Jellyseerr) login() error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("login failed with status %d: %s", resp.StatusCode, string(body))
+		return newAPIError("Jellyseerr / Seerr", resp)
 	}
 
 	var loginResp LoginResponse
@@ -230,8 +229,7 @@ func (j *Jellyseerr) GetStatus() (*StatusResponse, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("jellyseerr returned status %d: %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Jellyseerr / Seerr", resp)
 	}
 
 	var status StatusResponse
@@ -267,12 +265,11 @@ func (j *Jellyseerr) RequestMovieContext(ctx context.Context, tmdbID int) (*Requ
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, _ := io.ReadAll(resp.Body)
-
 	// Jellyseerr returns 201 for new requests, 200 for existing
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("jellyseerr returned status %d: %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Jellyseerr / Seerr", resp)
 	}
+	body, _ := io.ReadAll(resp.Body)
 
 	var result RequestResponse
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -311,12 +308,11 @@ func (j *Jellyseerr) RequestShowContext(ctx context.Context, tmdbID int) (*Reque
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, _ := io.ReadAll(resp.Body)
-
 	// Jellyseerr returns 201 for new requests, 200 for existing
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("jellyseerr returned status %d: %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Jellyseerr / Seerr", resp)
 	}
+	body, _ := io.ReadAll(resp.Body)
 
 	var result RequestResponse
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -366,8 +362,7 @@ func (j *Jellyseerr) GetMovieInfoContext(ctx context.Context, tmdbID int) (*Medi
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("jellyseerr returned status %d: %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Jellyseerr / Seerr", resp)
 	}
 
 	var mediaInfo MediaInfo
@@ -397,8 +392,7 @@ func (j *Jellyseerr) GetShowInfoContext(ctx context.Context, tmdbID int) (*Media
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("jellyseerr returned status %d: %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Jellyseerr / Seerr", resp)
 	}
 
 	var mediaInfo MediaInfo

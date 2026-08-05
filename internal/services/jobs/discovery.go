@@ -63,23 +63,23 @@ func IsProviderConfigured(cfg *config.Config, source string) bool {
 func (d *DiscoveryClient) Source() string { return string(d.provider) }
 
 func (d *DiscoveryClient) GetListMovies(ctx context.Context, locator config.ListLocator, limit int) ([]integrations.Movie, error) {
-	result, err := d.getList(ctx, locator, limit)
+	result, err := d.getList(ctx, locator, string(enums.MediaTypeMovie), limit)
 	return result.Movies, err
 }
 
 func (d *DiscoveryClient) GetListShows(ctx context.Context, locator config.ListLocator, limit int) ([]integrations.Show, error) {
-	result, err := d.getList(ctx, locator, limit)
+	result, err := d.getList(ctx, locator, string(enums.MediaTypeShow), limit)
 	return result.Shows, err
 }
 
-func (d *DiscoveryClient) getList(ctx context.Context, locator config.ListLocator, limit int) (ListResult, error) {
+func (d *DiscoveryClient) getList(ctx context.Context, locator config.ListLocator, mediaType string, limit int) (ListResult, error) {
 	if err := ValidateListSourceLocator(d.Source(), locator); err != nil {
 		return ListResult{}, err
 	}
 	if d.list == nil {
 		return ListResult{}, fmt.Errorf("%s list adapter is unavailable", d.provider)
 	}
-	result, err := d.list.FetchList(ctx, locator, limit)
+	result, err := d.list.FetchList(ctx, locator, mediaType, limit)
 	if err != nil {
 		return ListResult{}, err
 	}

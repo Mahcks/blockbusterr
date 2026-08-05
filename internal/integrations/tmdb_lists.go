@@ -48,12 +48,12 @@ type tmdbMixedResult struct {
 	VoteCount     int      `json:"vote_count"`
 }
 
-func (t *TMDB) GetListItems(ctx context.Context, listID string, watchlist bool, limit int) (TMDBListItems, error) {
+func (t *TMDB) GetListItems(ctx context.Context, listID string, watchlist bool, mediaType string, limit int) (TMDBListItems, error) {
 	if watchlist {
-		return t.getWatchlist(ctx, limit)
+		return t.getWatchlist(ctx, mediaType, limit)
 	}
 	result := TMDBListItems{}
-	for page := 1; len(result.Movies)+len(result.Shows) < limit; page++ {
+	for page := 1; listMediaCount(mediaType, len(result.Movies), len(result.Shows)) < limit; page++ {
 		var response struct {
 			Name       string            `json:"name"`
 			Page       int               `json:"page"`
@@ -69,16 +69,19 @@ func (t *TMDB) GetListItems(ctx context.Context, listID string, watchlist bool, 
 			break
 		}
 	}
-	t.enrichShows(ctx, result.Shows)
-	return result, nil
+	keepRequestedListMedia(mediaType, &result.Movies, &result.Shows)
+	return result, t.enrichShows(ctx, result.Shows)
 }
 
-func (t *TMDB) getWatchlist(ctx context.Context, limit int) (TMDBListItems, error) {
+func (t *TMDB) getWatchlist(ctx context.Context, mediaType string, limit int) (TMDBListItems, error) {
 	if t.sessionID == "" || t.accountID <= 0 {
 		return TMDBListItems{}, fmt.Errorf("TMDB account is not authorized")
 	}
 	result := TMDBListItems{Name: "TMDB Watchlist"}
 	for _, media := range []string{"movies", "tv"} {
+		if (mediaType == "movie" && media != "movies") || (mediaType == "show" && media != "tv") {
+			continue
+		}
 		for page := 1; ; page++ {
 			var response struct {
 				Page       int               `json:"page"`
@@ -103,8 +106,16 @@ func (t *TMDB) getWatchlist(ctx context.Context, limit int) (TMDBListItems, erro
 			}
 		}
 	}
-	t.enrichShows(ctx, result.Shows)
-	return result, nil
+	keepRequestedListMedia(mediaType, &result.Movies, &result.Shows)
+	return result, t.enrichShows(ctx, result.Shows)
+}
+
+func keepRequestedListMedia(mediaType string, movies *[]Movie, shows *[]Show) {
+	if mediaType == "movie" {
+		*shows = nil
+	} else if mediaType == "show" {
+		*movies = nil
+	}
 }
 
 func appendTMDBMixed(result *TMDBListItems, items []tmdbMixedResult, limit int) {

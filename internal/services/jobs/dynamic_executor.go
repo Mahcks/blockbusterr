@@ -355,7 +355,7 @@ func (e *DynamicJobExecutor) recommendationSeedIDs(ctx context.Context, job conf
 		if adapter == nil {
 			return nil, fmt.Errorf("%s seed-list adapter is unavailable", job.RecommendationList.Source)
 		}
-		result, err := adapter.FetchList(ctx, job.RecommendationList.List, 20)
+		result, err := adapter.FetchList(ctx, job.RecommendationList.List, job.MediaType, 20)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read recommendation seed list: %w", err)
 		}

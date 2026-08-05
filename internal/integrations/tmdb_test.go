@@ -31,8 +31,12 @@ func TestTMDBCertificationEnrichment(t *testing.T) {
 	})
 	movies := []Movie{{IDs: IDs{TMDB: 10}}}
 	shows := []Show{{IDs: IDs{TMDB: 20}}}
-	client.EnrichMovieCertifications(t.Context(), movies)
-	client.EnrichShowCertifications(t.Context(), shows)
+	if err := client.EnrichMovieCertifications(t.Context(), movies); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.EnrichShowCertifications(t.Context(), shows); err != nil {
+		t.Fatal(err)
+	}
 	if len(movies[0].Certifications) != 3 || movies[0].Certifications[0] != (Certification{Value: "PG-13", Country: "US", Source: "tmdb"}) {
 		t.Fatalf("movie certifications = %#v", movies[0].Certifications)
 	}
@@ -61,7 +65,9 @@ func TestTMDBShowEnrichmentIsBoundedAndConcurrent(t *testing.T) {
 	for index := range shows {
 		shows[index].IDs.TMDB = index + 1
 	}
-	client.enrichShows(context.Background(), shows)
+	if err := client.enrichShows(context.Background(), shows); err != nil {
+		t.Fatal(err)
+	}
 
 	if maximum <= 1 || maximum > 8 {
 		t.Fatalf("maximum concurrent requests = %d, want 2..8", maximum)
@@ -93,5 +99,30 @@ func TestTMDBRecommendationsAreOneHopAndDeduplicated(t *testing.T) {
 	}
 	if requests != 2 || len(movies) != 2 || movies[0].IDs.TMDB != 30 || movies[1].IDs.TMDB != 40 {
 		t.Fatalf("requests=%d movies=%#v", requests, movies)
+	}
+}
+
+func TestTMDBRecommendationsPaginateUntilLimit(t *testing.T) {
+	client := NewTMDB(TMDBConfig{APIKey: "key"})
+	client.httpClient.Transport = roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		page := request.URL.Query().Get("page")
+		if page == "1" {
+			return jsonResponse(http.StatusOK, `{"page":1,"total_pages":2,"results":[{"id":10},{"id":20,"title":"First"}]}`), nil
+		}
+		return jsonResponse(http.StatusOK, `{"page":2,"total_pages":2,"results":[{"id":20},{"id":30,"title":"Second"}]}`), nil
+	})
+	movies, err := client.GetMovieRecommendations(t.Context(), []int{10}, 2)
+	if err != nil || len(movies) != 2 || movies[0].IDs.TMDB != 20 || movies[1].IDs.TMDB != 30 {
+		t.Fatalf("movies=%#v err=%v", movies, err)
+	}
+}
+
+func TestTMDBEnrichmentFailureIsExplicit(t *testing.T) {
+	client := NewTMDB(TMDBConfig{APIKey: "key"})
+	client.httpClient.Transport = roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return jsonResponse(http.StatusTooManyRequests, `{}`), nil
+	})
+	if err := client.EnrichShowCertifications(t.Context(), []Show{{IDs: IDs{TMDB: 20}}}); err == nil {
+		t.Fatal("expected enrichment error")
 	}
 }

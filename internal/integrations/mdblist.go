@@ -29,7 +29,7 @@ func NewMDBList(config MDBListConfig) *MDBList {
 	return &MDBList{apiKey: config.APIKey, httpClient: &http.Client{Timeout: 15 * time.Second}}
 }
 
-func (client *MDBList) GetListItems(ctx context.Context, owner, identifier string, watchlist bool, limit int) (MDBListItems, error) {
+func (client *MDBList) GetListItems(ctx context.Context, owner, identifier string, watchlist bool, mediaType string, limit int) (MDBListItems, error) {
 	if client.apiKey == "" {
 		return MDBListItems{}, fmt.Errorf("MDBList API key is not configured")
 	}
@@ -66,6 +66,9 @@ func (client *MDBList) GetListItems(ctx context.Context, owner, identifier strin
 			return MDBListItems{}, err
 		}
 		appendMDBListItems(&result, response.Movies, response.Shows, limit)
+		if listMediaCount(mediaType, len(result.Movies), len(result.Shows)) >= limit {
+			break
+		}
 		if response.NextCursor == "" {
 			response.NextCursor = response.Pagination.NextCursor
 		}
@@ -74,6 +77,7 @@ func (client *MDBList) GetListItems(ctx context.Context, owner, identifier strin
 		}
 		cursor = response.NextCursor
 	}
+	keepRequestedListMedia(mediaType, &result.Movies, &result.Shows)
 	return result, nil
 }
 

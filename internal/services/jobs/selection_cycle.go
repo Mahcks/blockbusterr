@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -245,14 +244,14 @@ func planSelectionCycleWithPreview(cfg *config.Config, previewJob func(config.Dy
 			}
 			candidate := SelectionCandidate{JobID: job.ID, Source: job.Source, Title: item.Title, Year: item.Year, Score: item.Score, ProviderRank: item.ProviderRank, FilterChecks: item.FilterChecks, DecisionReason: item.DecisionReason}
 			if job.MediaType == "show" {
-				candidate.Key = showSelectionKey(item.TVDBID, item.TMDBID, item.IMDBID)
+				candidate.Key = integrations.ShowKey(integrations.IDs{TVDB: item.TVDBID, TMDB: item.TMDBID, IMDB: item.IMDBID})
 				candidate.Show = item.show
 				if candidate.Key != "" {
 					showCandidates = append(showCandidates, candidate)
 					plan.Participants[participantIndex].Candidates++
 				}
 			} else {
-				candidate.Key = movieSelectionKey(item.TMDBID, item.IMDBID)
+				candidate.Key = integrations.MovieKey(integrations.IDs{TMDB: item.TMDBID, IMDB: item.IMDBID})
 				candidate.Movie = item.movie
 				if candidate.Key != "" {
 					movieCandidates = append(movieCandidates, candidate)
@@ -367,27 +366,4 @@ func markBudgetExclusions(results, uncappedWinners []SelectionResult) {
 			results[index].Reason = enums.SelectionReasonBudget
 		}
 	}
-}
-
-func movieSelectionKey(tmdbID int, imdbID string) string {
-	if tmdbID > 0 {
-		return "movie:tmdb:" + strconv.Itoa(tmdbID)
-	}
-	if imdbID != "" {
-		return "movie:imdb:" + imdbID
-	}
-	return ""
-}
-
-func showSelectionKey(tvdbID, tmdbID int, imdbID string) string {
-	if tmdbID > 0 {
-		return "show:tmdb:" + strconv.Itoa(tmdbID)
-	}
-	if tvdbID > 0 {
-		return "show:tvdb:" + strconv.Itoa(tvdbID)
-	}
-	if imdbID != "" {
-		return "show:imdb:" + imdbID
-	}
-	return ""
 }

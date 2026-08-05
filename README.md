@@ -1,14 +1,13 @@
 # Blockbusterr
 
+> [!IMPORTANT]
+> **Blockbusterr v2 is available for public beta testing.** Read the [v2 documentation](https://blockbusterr.dev/v2/) and [v2.0.0-beta.2 release notes](https://github.com/Mahcks/blockbusterr/releases/tag/v2.0.0-beta.2). Use `latest-beta` to follow beta updates; the stable `latest` image remains on v1.
+
 **Automated media discovery with rule-based decision making for self-hosted libraries.**
 
 Blockbusterr follows trends, lists, and watchlists from the providers you already use. It evaluates every movie or show against your rules, ranks the candidates, and sends the winners to Radarr, Sonarr, Jellyseerr, or Seerr.
 
 Rather than importing everything from a trending list or watchlist, Blockbusterr evaluates every candidate using reusable rules, scoring, repeat handling, delivery limits, and title exceptions before deciding whether it belongs in your library. Every decision is recorded so you can see exactly why a title was accepted, skipped, or rejected.
-
-> [!IMPORTANT]
-> **Blockbusterr v2 is available for public beta testing.** Read the [v2 documentation](https://blockbusterr.dev/v2/) and [v2.0.0-beta.2 release notes](https://github.com/Mahcks/blockbusterr/releases/tag/v2.0.0-beta.2). Use `latest-beta` to follow beta updates; the stable `latest` image remains on v1.
-
 
 New here? Start with the **[60-second quick start](https://blockbusterr.dev/v2/getting-started/quickstart/)** or browse the **[complete documentation](https://blockbusterr.dev/v2/)**.
 

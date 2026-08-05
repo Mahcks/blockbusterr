@@ -21,6 +21,7 @@ var (
 	letterboxdTitlePattern = regexp.MustCompile(`data-item-name="([^"]+)"`)
 	letterboxdYearPattern  = regexp.MustCompile(`data-item-full-display-name="[^"]*\((\d{4})\)"`)
 	letterboxdTMDBPattern  = regexp.MustCompile(`themoviedb\.org/(movie|tv)/(\d+)`)
+	letterboxdNextPattern  = regexp.MustCompile(`(?i)(?:rel="next"[^>]*href="([^"]+)"|href="([^"]+)"[^>]*rel="next")`)
 )
 
 type Letterboxd struct {
@@ -31,9 +32,10 @@ type Letterboxd struct {
 type LetterboxdConfig struct{ TMDBAPIKey string }
 
 type LetterboxdListItems struct {
-	Name   string
-	Movies []Movie
-	Shows  []Show
+	Name     string
+	Movies   []Movie
+	Shows    []Show
+	Warnings []string
 }
 
 type letterboxdItem struct {
@@ -46,7 +48,7 @@ func NewLetterboxd(config LetterboxdConfig) *Letterboxd {
 	return &Letterboxd{httpClient: &http.Client{Timeout: 20 * time.Second}, tmdb: NewTMDB(TMDBConfig{APIKey: config.TMDBAPIKey})}
 }
 
-func (client *Letterboxd) GetListItems(ctx context.Context, owner, identifier string, watchlist bool, limit int) (LetterboxdListItems, error) {
+func (client *Letterboxd) GetListItems(ctx context.Context, owner, identifier string, watchlist bool, mediaType string, limit int) (LetterboxdListItems, error) {
 	if owner == "" {
 		return LetterboxdListItems{}, fmt.Errorf("Letterboxd requires a public member name")
 	}
@@ -61,7 +63,7 @@ func (client *Letterboxd) GetListItems(ctx context.Context, owner, identifier st
 	}
 
 	result := LetterboxdListItems{Name: name}
-	for page := 1; len(result.Movies)+len(result.Shows) < limit; page++ {
+	for page := 1; listMediaCount(mediaType, len(result.Movies), len(result.Shows)) < limit; page++ {
 		pagePath := path
 		if page > 1 {
 			pagePath += "page/" + strconv.Itoa(page) + "/"
@@ -70,7 +72,7 @@ func (client *Letterboxd) GetListItems(ctx context.Context, owner, identifier st
 		if err != nil {
 			return LetterboxdListItems{}, err
 		}
-		items := parseLetterboxdItems(body, limit-len(result.Movies)-len(result.Shows))
+		items := parseLetterboxdItems(body, -1)
 		if len(items) == 0 {
 			if page == 1 && !strings.Contains(strings.ToLower(body), "empty") {
 				return LetterboxdListItems{}, fmt.Errorf("Letterboxd page structure changed or access was blocked; use MDBList or disable experimental scraping")
@@ -78,27 +80,37 @@ func (client *Letterboxd) GetListItems(ctx context.Context, owner, identifier st
 			break
 		}
 		for _, item := range items {
+			if listMediaCount(mediaType, len(result.Movies), len(result.Shows)) >= limit {
+				break
+			}
 			filmPage, err := client.getHTML(ctx, item.Path, 2<<20)
 			if err != nil {
-				return LetterboxdListItems{}, err
+				if ctx.Err() != nil {
+					return LetterboxdListItems{}, ctx.Err()
+				}
+				result.Warnings = append(result.Warnings, fmt.Sprintf("%s: %v", item.Title, err))
+				continue
 			}
 			match := letterboxdTMDBPattern.FindStringSubmatch(filmPage)
 			if len(match) != 3 {
-				return LetterboxdListItems{}, fmt.Errorf("Letterboxd no longer exposes a TMDB ID for %q; refusing an unsafe title-only match", item.Title)
+				result.Warnings = append(result.Warnings, fmt.Sprintf("%s: no TMDB ID; skipped unsafe title-only match", item.Title))
+				continue
 			}
 			id, _ := strconv.Atoi(match[2])
-			if match[1] == "movie" {
+			if match[1] == "movie" && mediaType != "show" {
 				result.Movies = append(result.Movies, Movie{Title: item.Title, Year: item.Year, IDs: IDs{TMDB: id}})
-			} else {
+			} else if match[1] == "tv" && mediaType != "movie" {
 				result.Shows = append(result.Shows, Show{Title: item.Title, Year: item.Year, IDs: IDs{TMDB: id}})
 			}
 		}
-		if len(items) < 100 {
+		if len(letterboxdNextPattern.FindStringSubmatch(body)) == 0 {
 			break
 		}
 	}
 	if client.tmdb.apiKey != "" {
-		client.tmdb.enrichShows(ctx, result.Shows)
+		if err := client.tmdb.enrichShows(ctx, result.Shows); err != nil {
+			return LetterboxdListItems{}, err
+		}
 	}
 	return result, nil
 }

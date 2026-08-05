@@ -3,6 +3,8 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/integrations"
@@ -11,46 +13,49 @@ import (
 
 type traktListSource struct{ client *integrations.Trakt }
 
-func (source traktListSource) FetchList(ctx context.Context, locator config.ListLocator, limit int) (ListResult, error) {
+func (source traktListSource) FetchList(ctx context.Context, locator config.ListLocator, mediaType string, limit int) (ListResult, error) {
 	listID := locator.ListID
 	if listID == "" {
 		listID = locator.Slug
 	}
-	items, err := source.client.GetListItems(ctx, locator.Owner, listID, enums.ListKind(locator.Kind) == enums.ListKindWatchlist, limit)
+	items, err := source.client.GetListItems(ctx, locator.Owner, listID, enums.ListKind(locator.Kind) == enums.ListKindWatchlist, mediaType, limit)
 	return ListResult{Source: "trakt", Name: listID, Movies: items.Movies, Shows: items.Shows}, err
 }
 
 type tmdbListSource struct{ client *integrations.TMDB }
 
-func (source tmdbListSource) FetchList(ctx context.Context, locator config.ListLocator, limit int) (ListResult, error) {
+func (source tmdbListSource) FetchList(ctx context.Context, locator config.ListLocator, mediaType string, limit int) (ListResult, error) {
 	listID := locator.ListID
 	if listID == "" {
 		listID = locator.Slug
 	}
-	items, err := source.client.GetListItems(ctx, listID, enums.ListKind(locator.Kind) == enums.ListKindWatchlist, limit)
+	items, err := source.client.GetListItems(ctx, listID, enums.ListKind(locator.Kind) == enums.ListKindWatchlist, mediaType, limit)
 	return ListResult{Source: "tmdb", Name: items.Name, Movies: items.Movies, Shows: items.Shows}, err
 }
 
 type mdbListSource struct{ client *integrations.MDBList }
 
-func (source mdbListSource) FetchList(ctx context.Context, locator config.ListLocator, limit int) (ListResult, error) {
+func (source mdbListSource) FetchList(ctx context.Context, locator config.ListLocator, mediaType string, limit int) (ListResult, error) {
 	listID := locator.ListID
 	if listID == "" {
 		listID = locator.Slug
 	}
-	items, err := source.client.GetListItems(ctx, locator.Owner, listID, enums.ListKind(locator.Kind) == enums.ListKindWatchlist, limit)
+	items, err := source.client.GetListItems(ctx, locator.Owner, listID, enums.ListKind(locator.Kind) == enums.ListKindWatchlist, mediaType, limit)
 	return ListResult{Source: "mdblist", Name: items.Name, Movies: items.Movies, Shows: items.Shows}, err
 }
 
 type letterboxdListSource struct{ client *integrations.Letterboxd }
 
-func (source letterboxdListSource) FetchList(ctx context.Context, locator config.ListLocator, limit int) (ListResult, error) {
+func (source letterboxdListSource) FetchList(ctx context.Context, locator config.ListLocator, mediaType string, limit int) (ListResult, error) {
 	listID := locator.ListID
 	if listID == "" {
 		listID = locator.Slug
 	}
-	items, err := source.client.GetListItems(ctx, locator.Owner, listID, enums.ListKind(locator.Kind) == enums.ListKindWatchlist, limit)
-	return ListResult{Source: "letterboxd", Name: items.Name, Movies: items.Movies, Shows: items.Shows}, err
+	items, err := source.client.GetListItems(ctx, locator.Owner, listID, enums.ListKind(locator.Kind) == enums.ListKindWatchlist, mediaType, limit)
+	for _, warning := range items.Warnings {
+		slog.Warn("Letterboxd item skipped", "warning", warning)
+	}
+	return ListResult{Source: "letterboxd", Name: items.Name, Movies: items.Movies, Shows: items.Shows, Warnings: items.Warnings}, err
 }
 
 func init() {
@@ -58,7 +63,10 @@ func init() {
 		if cfg.Trakt.ClientID == "" {
 			return nil, fmt.Errorf("trakt client ID is not configured")
 		}
-		client := integrations.NewTrakt(integrations.TraktConfig{ClientID: cfg.Trakt.ClientID, ClientSecret: cfg.Trakt.ClientSecret, AccessToken: cfg.Trakt.AccessToken, RefreshToken: cfg.Trakt.RefreshToken, TokenExpires: cfg.Trakt.TokenExpires, OnToken: func(token integrations.TraktToken) error {
+		client := integrations.NewTrakt(integrations.TraktConfig{ClientID: cfg.Trakt.ClientID, ClientSecret: cfg.Trakt.ClientSecret, AccessToken: cfg.Trakt.AccessToken, RefreshToken: cfg.Trakt.RefreshToken, TokenExpires: cfg.Trakt.TokenExpires, LoadToken: func() integrations.TraktToken {
+			now := time.Now().Unix()
+			return integrations.TraktToken{AccessToken: cfg.Trakt.AccessToken, RefreshToken: cfg.Trakt.RefreshToken, CreatedAt: now, ExpiresIn: max(0, cfg.Trakt.TokenExpires-now)}
+		}, OnToken: func(token integrations.TraktToken) error {
 			if cfg.UpdateTraktToken != nil {
 				return cfg.UpdateTraktToken(token.AccessToken, token.RefreshToken, token.ExpiresAt())
 			}
