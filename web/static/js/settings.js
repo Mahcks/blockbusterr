@@ -591,25 +591,22 @@ function setupNavActiveTracking() {
   if (!sections.length) return;
 
   const setActive = (id) => links.forEach((link) => link.setAttribute('aria-current', String(link.getAttribute('href') === `#${id}`)));
-  const activateLastSectionAtPageEnd = () => {
-    if (window.scrollY > 0 && Math.ceil(window.scrollY + window.innerHeight) >= document.documentElement.scrollHeight - 2) {
+  const updateActiveSection = () => {
+    const scrollRoot = document.scrollingElement || document.documentElement;
+    if (window.scrollY > 0 && Math.ceil(window.scrollY + window.innerHeight) >= scrollRoot.scrollHeight - 2) {
       setActive(sections[sections.length - 1].id);
-      return true;
+      return;
     }
-    return false;
+
+    const marker = window.innerHeight * 0.25;
+    const active = sections.reduce((current, section) => section.getBoundingClientRect().top <= marker ? section : current, sections[0]);
+    setActive(active.id);
   };
-  setActive(sections[0].id);
 
-  const observer = new IntersectionObserver((entries) => {
-    if (activateLastSectionAtPageEnd()) return;
-    const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-    if (visible[0]) setActive(visible[0].target.id);
-  }, { rootMargin: '-15% 0px -70% 0px' });
-
-  sections.forEach((section) => observer.observe(section));
-  window.addEventListener('scroll', activateLastSectionAtPageEnd, { passive: true });
-  window.addEventListener('resize', activateLastSectionAtPageEnd);
-  activateLastSectionAtPageEnd();
+  window.addEventListener('scroll', updateActiveSection, { passive: true });
+  window.addEventListener('resize', updateActiveSection);
+  window.addEventListener('hashchange', updateActiveSection);
+  requestAnimationFrame(updateActiveSection);
 }
 
 function handleKeydown(event) {
