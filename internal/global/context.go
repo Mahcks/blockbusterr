@@ -36,7 +36,11 @@ func (g *gCtx) Metadata() Metadata {
 func (g *gCtx) Config() *config.Config {
 	g.cfgMu.RLock()
 	defer g.cfgMu.RUnlock()
-	return g.cfg
+	clone, err := g.cfg.Clone()
+	if err != nil {
+		panic(err)
+	}
+	return clone
 }
 
 func (g *gCtx) Database() *database.Database {
@@ -54,7 +58,50 @@ func (g *gCtx) ReloadConfig() error {
 	}
 
 	g.cfg = newCfg
+	g.bindConfigCallbacks(newCfg)
 	return nil
+}
+
+// UpdateConfig serializes copy-on-write mutations and publishes only saved values.
+func (g *gCtx) UpdateConfig(update func(*config.Config) error) error {
+	g.cfgMu.Lock()
+	defer g.cfgMu.Unlock()
+
+	candidate, err := g.cfg.Clone()
+	if err != nil {
+		return err
+	}
+	if err := update(candidate); err != nil {
+		return err
+	}
+	if err := candidate.Save(); err != nil {
+		return err
+	}
+	g.bindConfigCallbacks(candidate)
+	g.cfg = candidate
+	return nil
+}
+
+// UpdateConfig uses the production context's atomic updater and keeps test contexts compatible.
+func UpdateConfig(ctx Context, update func(*config.Config) error) error {
+	if updater, ok := ctx.(interface {
+		UpdateConfig(func(*config.Config) error) error
+	}); ok {
+		return updater.UpdateConfig(update)
+	}
+	cfg := ctx.Config()
+	candidate, err := cfg.Clone()
+	if err != nil {
+		return err
+	}
+	if err := update(candidate); err != nil {
+		return err
+	}
+	if err := candidate.Save(); err != nil {
+		return err
+	}
+	*cfg = *candidate
+	return ctx.ReloadConfig()
 }
 
 func New(
@@ -63,7 +110,7 @@ func New(
 	db *database.Database,
 	Version, Commit string,
 ) Context {
-	return &gCtx{
+	g := &gCtx{
 		cfg:     cfg,
 		Context: ctx,
 		metadata: Metadata{
@@ -71,5 +118,18 @@ func New(
 			Commit:  Commit,
 		},
 		db: db,
+	}
+	g.bindConfigCallbacks(cfg)
+	return g
+}
+
+func (g *gCtx) bindConfigCallbacks(cfg *config.Config) {
+	cfg.UpdateTraktToken = func(access, refresh string, expires int64) error {
+		return g.UpdateConfig(func(candidate *config.Config) error {
+			candidate.Trakt.AccessToken = access
+			candidate.Trakt.RefreshToken = refresh
+			candidate.Trakt.TokenExpires = expires
+			return nil
+		})
 	}
 }

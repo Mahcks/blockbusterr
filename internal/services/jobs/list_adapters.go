@@ -59,6 +59,9 @@ func init() {
 			return nil, fmt.Errorf("trakt client ID is not configured")
 		}
 		client := integrations.NewTrakt(integrations.TraktConfig{ClientID: cfg.Trakt.ClientID, ClientSecret: cfg.Trakt.ClientSecret, AccessToken: cfg.Trakt.AccessToken, RefreshToken: cfg.Trakt.RefreshToken, TokenExpires: cfg.Trakt.TokenExpires, OnToken: func(token integrations.TraktToken) error {
+			if cfg.UpdateTraktToken != nil {
+				return cfg.UpdateTraktToken(token.AccessToken, token.RefreshToken, token.ExpiresAt())
+			}
 			cfg.Trakt.AccessToken, cfg.Trakt.RefreshToken, cfg.Trakt.TokenExpires = token.AccessToken, token.RefreshToken, token.ExpiresAt()
 			return cfg.Save()
 		}})

@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/integrations"
@@ -628,7 +629,6 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		}
 
 		// Add to blocklist in config
-		cfg := gctx.Config()
 		switch activityLog.MediaType {
 		case string(enums.MediaTypeMovie):
 			if activityLog.TMDBID == 0 {
@@ -637,16 +637,13 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 				})
 			}
 
-			// Check if already blocked
-			alreadyBlocked := slices.Contains(cfg.TitleExceptions.BlockedMovieTMDBIDs, activityLog.TMDBID)
-
-			if !alreadyBlocked {
-				cfg.TitleExceptions.BlockedMovieTMDBIDs = append(cfg.TitleExceptions.BlockedMovieTMDBIDs, activityLog.TMDBID)
-				if err := cfg.Save(); err != nil {
-					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-						"error": fmt.Sprintf("Failed to save config: %v", err),
-					})
+			if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+				if !slices.Contains(candidate.TitleExceptions.BlockedMovieTMDBIDs, activityLog.TMDBID) {
+					candidate.TitleExceptions.BlockedMovieTMDBIDs = append(candidate.TitleExceptions.BlockedMovieTMDBIDs, activityLog.TMDBID)
 				}
+				return nil
+			}); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Failed to save config: %v", err)})
 			}
 
 			log.Infof("Blocked movie '%s' (TMDB ID: %d) - added to blocklist", activityLog.Title, activityLog.TMDBID)
@@ -658,16 +655,13 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 				})
 			}
 
-			// Check if already blocked
-			alreadyBlocked := slices.Contains(cfg.TitleExceptions.BlockedShowTVDBIDs, activityLog.TVDBID)
-
-			if !alreadyBlocked {
-				cfg.TitleExceptions.BlockedShowTVDBIDs = append(cfg.TitleExceptions.BlockedShowTVDBIDs, activityLog.TVDBID)
-				if err := cfg.Save(); err != nil {
-					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-						"error": fmt.Sprintf("Failed to save config: %v", err),
-					})
+			if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+				if !slices.Contains(candidate.TitleExceptions.BlockedShowTVDBIDs, activityLog.TVDBID) {
+					candidate.TitleExceptions.BlockedShowTVDBIDs = append(candidate.TitleExceptions.BlockedShowTVDBIDs, activityLog.TVDBID)
 				}
+				return nil
+			}); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Failed to save config: %v", err)})
 			}
 
 			log.Infof("Blocked show '%s' (TVDB ID: %d) - added to blocklist", activityLog.Title, activityLog.TVDBID)

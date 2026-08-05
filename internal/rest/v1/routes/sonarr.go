@@ -11,6 +11,7 @@ func RegisterSonarrRoutes(rg *RouteGroup, group fiber.Router) {
 
 	// GET /v1/sonarr/validate - Test connection
 	sonarr.Get("/validate", rg.ValidateSonarr)
+	sonarr.Post("/validate", rg.ValidateSonarr)
 
 	// GET /v1/sonarr/series - List all series
 	sonarr.Get("/series", rg.GetSonarrSeries)
@@ -30,21 +31,23 @@ func RegisterSonarrRoutes(rg *RouteGroup, group fiber.Router) {
 
 // ValidateSonarr validates the Sonarr API connection
 func (rg *RouteGroup) ValidateSonarr(c *fiber.Ctx) error {
-	// Check if we're in test mode (testing form values)
-	testMode := c.Query("test") == "true"
-
 	var url, apiKey string
-
-	if testMode {
-		// In test mode, require query parameters
-		url = c.Query("url")
-		apiKey = c.Query("api_key")
+	if c.Method() == fiber.MethodPost {
+		var request struct {
+			URL    string `json:"url"`
+			APIKey string `json:"api_key"`
+		}
+		if err := c.BodyParser(&request); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body", "connected": false})
+		}
+		url, apiKey = request.URL, request.APIKey
 	} else {
 		// Normal mode, use saved config
 		cfg := rg.gctx.Config()
 		url = cfg.Sonarr.URL
 		apiKey = cfg.Sonarr.APIKey
 	}
+	c.Set(fiber.HeaderCacheControl, "no-store")
 
 	if url == "" || apiKey == "" {
 		return c.Status(400).JSON(fiber.Map{

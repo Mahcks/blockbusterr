@@ -102,11 +102,12 @@ func TestActivityBlockWritesUniversalTitleException(t *testing.T) {
 			t.Fatalf("status = %d", resp.StatusCode)
 		}
 	}
-	if got := cfg.TitleExceptions.BlockedMovieTMDBIDs; len(got) != 1 || got[0] != 42 {
+	current := gctx.Config()
+	if got := current.TitleExceptions.BlockedMovieTMDBIDs; len(got) != 1 || got[0] != 42 {
 		t.Fatalf("universal blocks = %v, want [42]", got)
 	}
-	if len(cfg.Filters.Movies.BlacklistedTMDBIds) != 0 {
-		t.Fatalf("legacy filters were mutated: %v", cfg.Filters.Movies.BlacklistedTMDBIds)
+	if len(current.Filters.Movies.BlacklistedTMDBIds) != 0 {
+		t.Fatalf("legacy filters were mutated: %v", current.Filters.Movies.BlacklistedTMDBIds)
 	}
 }
 

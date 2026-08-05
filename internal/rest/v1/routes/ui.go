@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/services/jobs"
 	"github.com/mahcks/blockbusterr/pkg/enums"
 	"github.com/mahcks/blockbusterr/pkg/structures"
@@ -288,9 +289,6 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 				selectionMembers[id] = true
 			}
 		}
-		if selectionEnabled && (selectionMovieLimit == 0 && selectionShowLimit == 0) {
-			fieldErrors = append(fieldErrors, "Ranked selection needs a movie or show limit")
-		}
 		globalPeriod := c.FormValue("jobs.global_period")
 		if globalPeriod == "" {
 			globalPeriod = cfg.Jobs.GlobalPeriod
@@ -343,7 +341,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 					movieMinima += job.MinimumPicks
 				}
 			}
-			if movieMinima > selectionMovieLimit || showMinima > selectionShowLimit {
+			if (selectionMovieLimit > 0 && movieMinima > selectionMovieLimit) || (selectionShowLimit > 0 && showMinima > selectionShowLimit) {
 				fieldErrors = append(fieldErrors, "Ranked selection limits cannot be lower than participating job minimums")
 			}
 		}
@@ -412,20 +410,14 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			cfg.Scoring.PopularityMetric = "votes"
 		}
 
-		// Save config to file (create it if this is the first save).
-		if err := cfg.Save(); err != nil {
-			if cfg.ConfigFilePath == "" {
-				cfg.ConfigFilePath = determineConfigPath()
-				if err := cfg.Save(); err != nil {
-					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create configuration file: " + err.Error()})
-				}
-			} else {
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save configuration: " + err.Error()})
-			}
+		if cfg.ConfigFilePath == "" {
+			cfg.ConfigFilePath = determineConfigPath()
 		}
-
-		if err := rg.gctx.ReloadConfig(); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Configuration saved but failed to reload: " + err.Error()})
+		if err := global.UpdateConfig(rg.gctx, func(candidate *config.Config) error {
+			*candidate = *cfg
+			return nil
+		}); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save configuration: " + err.Error()})
 		}
 
 		return c.JSON(fiber.Map{"success": true, "message": "Configuration saved."})
@@ -793,27 +785,15 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			cfg.Jobs.SmartPopularShows.Monitor = c.FormValue("jobs.smart_popular_shows.monitor")
 		}
 
-		// Save config to file
-		if err := cfg.Save(); err != nil {
-			// If config file doesn't exist, try creating it in the right location
-			if cfg.ConfigFilePath == "" {
-				cfg.ConfigFilePath = determineConfigPath()
-				if err := cfg.Save(); err != nil {
-					return c.Status(500).SendString(`
-						<script>showNotification('Failed to save job configuration: ` + err.Error() + `', 'error');</script>
-					`)
-				}
-			} else {
-				return c.Status(500).SendString(`
-					<script>showNotification('Failed to save job configuration: ` + err.Error() + `', 'error');</script>
-				`)
-			}
+		if cfg.ConfigFilePath == "" {
+			cfg.ConfigFilePath = determineConfigPath()
 		}
-
-		// Automatically reload the configuration
-		if err := rg.gctx.ReloadConfig(); err != nil {
+		if err := global.UpdateConfig(rg.gctx, func(candidate *config.Config) error {
+			*candidate = *cfg
+			return nil
+		}); err != nil {
 			return c.Status(500).SendString(`
-				<script>showNotification('Job configuration saved but failed to reload: ` + err.Error() + `', 'error');</script>
+				<script>showNotification('Failed to save job configuration: ` + err.Error() + `', 'error');</script>
 			`)
 		}
 

@@ -400,7 +400,11 @@ async function testConnection(service, button) {
 
   try {
     const params = config.params(first, second);
-    const response = await fetch(`${config.path}?${new URLSearchParams(params)}`);
+    const response = await fetch(config.path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
     const data = await response.json().catch(() => ({}));
     if (data.connected || (response.ok && data.message)) {
       sessionTestResults[service] = 'connected';

@@ -37,6 +37,9 @@ func AllocateSelection(candidates []SelectionCandidate, capacity int, minimumPic
 	if capacity < 0 {
 		return SelectionAllocation{}, fmt.Errorf("selection capacity cannot be negative")
 	}
+	if capacity == 0 {
+		capacity = len(candidates)
+	}
 	minimumTotal := 0
 	for jobID, minimum := range minimumPicks {
 		if jobID == "" || minimum < 0 {

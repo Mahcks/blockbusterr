@@ -60,3 +60,17 @@ func TestAllocateSelectionIsDeterministicAndValidatesMinima(t *testing.T) {
 		t.Fatal("expected invalid normalized score to fail")
 	}
 }
+
+func TestAllocateSelectionZeroCapacityIsUnlimited(t *testing.T) {
+	candidates := []SelectionCandidate{
+		{Key: "movie:1", JobID: "job", Score: .9},
+		{Key: "movie:2", JobID: "job", Score: .8},
+	}
+	allocation, err := AllocateSelection(candidates, 0, map[string]int{"job": 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(allocation.Winners) != len(candidates) || len(allocation.Excluded) != 0 {
+		t.Fatalf("unlimited allocation = %+v", allocation)
+	}
+}

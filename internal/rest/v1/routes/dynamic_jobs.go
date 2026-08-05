@@ -16,8 +16,18 @@ import (
 
 // AddDynamicJobsRoutes adds the dynamic job management API endpoints
 func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
-	router.Get("/mdblist/validate", func(c *fiber.Ctx) error {
-		apiKey := c.Query("api_key")
+	validateMDBList := func(c *fiber.Ctx) error {
+		apiKey := gctx.Config().MDBList.APIKey
+		if c.Method() == fiber.MethodPost {
+			var request struct {
+				APIKey string `json:"api_key"`
+			}
+			if err := c.BodyParser(&request); err != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+			}
+			apiKey = request.APIKey
+		}
+		c.Set(fiber.HeaderCacheControl, "no-store")
 		if apiKey == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "API key is required"})
 		}
@@ -25,7 +35,9 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
 		}
 		return c.JSON(fiber.Map{"connected": true, "message": "Connected to MDBList."})
-	})
+	}
+	router.Get("/mdblist/validate", validateMDBList)
+	router.Post("/mdblist/validate", validateMDBList)
 
 	router.Post("/jobs/lists/inspect", func(c *fiber.Ctx) error {
 		var request struct {
@@ -72,11 +84,13 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 		if err := cfg.ValidateRuleSet(rules, ""); err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 		}
-		cfg.RuleSets = append(cfg.RuleSets, rules)
-		if err := cfg.Save(); err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-		}
-		if err := gctx.ReloadConfig(); err != nil {
+		if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+			if _, exists := candidate.RuleSetByID(rules.ID); exists {
+				return fmt.Errorf("rule set ID already exists")
+			}
+			candidate.RuleSets = append(candidate.RuleSets, rules)
+			return nil
+		}); err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
 		return c.Status(201).JSON(rules)
@@ -103,11 +117,14 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 		if err := cfg.ValidateRuleSet(rules, id); err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 		}
-		*current = rules
-		if err := cfg.Save(); err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-		}
-		if err := gctx.ReloadConfig(); err != nil {
+		if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+			target, ok := candidate.RuleSetByID(id)
+			if !ok || target.Revision != current.Revision {
+				return fmt.Errorf("rule set changed since it was opened")
+			}
+			*target = rules
+			return nil
+		}); err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
 		return c.JSON(rules)
@@ -121,37 +138,29 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 		if count := cfg.RuleSetUsage(id); count > 0 {
 			return c.Status(409).JSON(fiber.Map{"error": fmt.Sprintf("Rule set is used by %d job(s)", count)})
 		}
-		found := false
-		for i := range cfg.RuleSets {
-			if cfg.RuleSets[i].ID == id {
-				cfg.RuleSets = append(cfg.RuleSets[:i], cfg.RuleSets[i+1:]...)
-				found = true
-				break
+		if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+			for i := range candidate.RuleSets {
+				if candidate.RuleSets[i].ID == id {
+					candidate.RuleSets = append(candidate.RuleSets[:i], candidate.RuleSets[i+1:]...)
+					return nil
+				}
 			}
-		}
-		if !found {
-			return c.Status(404).JSON(fiber.Map{"error": "Rule set not found"})
-		}
-		if err := cfg.Save(); err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-		}
-		if err := gctx.ReloadConfig(); err != nil {
+			return fmt.Errorf("rule set not found")
+		}); err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
 		return c.SendStatus(204)
 	})
 	router.Get("/title-exceptions", func(c *fiber.Ctx) error { return c.JSON(gctx.Config().TitleExceptions) })
 	router.Put("/title-exceptions", func(c *fiber.Ctx) error {
-		cfg := gctx.Config()
 		var exceptions config.TitleExceptions
 		if err := c.BodyParser(&exceptions); err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid request body: " + err.Error()})
 		}
-		cfg.TitleExceptions = exceptions
-		if err := cfg.Save(); err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-		}
-		if err := gctx.ReloadConfig(); err != nil {
+		if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+			candidate.TitleExceptions = exceptions
+			return nil
+		}); err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
 		return c.JSON(exceptions)
@@ -178,17 +187,18 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			}
 			clone.Name = fmt.Sprintf("%s %d", baseName, suffix)
 		}
-		previousRuleSetID := job.RuleSetID
-		cfg.RuleSets = append(cfg.RuleSets, clone)
+		if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+			target := candidate.GetDynamicJobByID(job.ID)
+			if target == nil {
+				return fmt.Errorf("job not found")
+			}
+			candidate.RuleSets = append(candidate.RuleSets, clone)
+			target.RuleSetID = clone.ID
+			return nil
+		}); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
 		job.RuleSetID = clone.ID
-		if err := cfg.Save(); err != nil {
-			cfg.RuleSets = cfg.RuleSets[:len(cfg.RuleSets)-1]
-			job.RuleSetID = previousRuleSetID
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-		}
-		if err := gctx.ReloadConfig(); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-		}
 		return c.Status(fiber.StatusCreated).JSON(fiber.Map{"job": job, "rule_set": clone, "usage_count": 1})
 	})
 
@@ -265,12 +275,12 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Recipe job is invalid: " + err.Error()})
 		}
 		candidate.Jobs.List = append(candidate.Jobs.List, job)
-		if err := candidate.Save(); err != nil {
+		if err := global.UpdateConfig(gctx, func(current *config.Config) error {
+			candidate.ConfigFilePath = current.ConfigFilePath
+			*current = candidate
+			return nil
+		}); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save recipe: " + err.Error()})
-		}
-		*cfg = candidate
-		if err := gctx.ReloadConfig(); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Recipe saved but configuration failed to reload: " + err.Error()})
 		}
 		return c.Status(fiber.StatusCreated).JSON(job)
 	})
@@ -336,23 +346,14 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			})
 		}
 
-		if err := cfg.AddDynamicJob(job); err != nil {
-			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
-				"error": err.Error(),
-			})
-		}
-
-		// Save config to persist changes
-		if err := cfg.Save(); err != nil {
+		if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+			if err := validateDynamicJob(candidate, job); err != nil {
+				return err
+			}
+			return candidate.AddDynamicJob(job)
+		}); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to save config: " + err.Error(),
-			})
-		}
-
-		// Reload config to apply changes
-		if err := gctx.ReloadConfig(); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to reload config: " + err.Error(),
 			})
 		}
 
@@ -400,23 +401,14 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			})
 		}
 
-		if err := cfg.UpdateDynamicJob(job); err != nil {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"error": err.Error(),
-			})
-		}
-
-		// Save config to persist changes
-		if err := cfg.Save(); err != nil {
+		if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+			if err := validateDynamicJob(candidate, job); err != nil {
+				return err
+			}
+			return candidate.UpdateDynamicJob(job)
+		}); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to save config: " + err.Error(),
-			})
-		}
-
-		// Reload config to apply changes
-		if err := gctx.ReloadConfig(); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to reload config: " + err.Error(),
 			})
 		}
 
@@ -434,24 +426,16 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			})
 		}
 
-		cfg := gctx.Config()
-		if err := cfg.DeleteDynamicJob(jobID); err != nil {
+		if gctx.Config().GetDynamicJobByID(jobID) == nil {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"error": err.Error(),
+				"error": "job not found",
 			})
 		}
-
-		// Save config to persist changes
-		if err := cfg.Save(); err != nil {
+		if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+			return candidate.DeleteDynamicJob(jobID)
+		}); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to save config: " + err.Error(),
-			})
-		}
-
-		// Reload config to apply changes
-		if err := gctx.ReloadConfig(); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to reload config: " + err.Error(),
 			})
 		}
 
@@ -540,29 +524,14 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 
 	// Migrate legacy jobs to dynamic list
 	router.Post("/jobs/migrate", func(c *fiber.Ctx) error {
-		cfg := gctx.Config()
-		jobsBefore := cfg.Jobs
-		jobsBefore.List = append([]config.DynamicJob(nil), cfg.Jobs.List...)
-
-		migratedJobs, err := cfg.MigrateLegacyJobs()
-		if err != nil {
+		var migratedJobs []config.DynamicJob
+		if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+			var err error
+			migratedJobs, err = candidate.MigrateLegacyJobs()
+			return err
+		}); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to migrate jobs: " + err.Error(),
-			})
-		}
-
-		// Save config to persist changes
-		if err := cfg.Save(); err != nil {
-			cfg.Jobs = jobsBefore
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to save config: " + err.Error(),
-			})
-		}
-
-		// Reload config to apply changes
-		if err := gctx.ReloadConfig(); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to reload config: " + err.Error(),
 			})
 		}
 
@@ -605,10 +574,10 @@ func registerAccountAuthRoutes(router fiber.Router, gctx global.Context) {
 		if status != fiber.StatusOK {
 			return c.Status(status).JSON(fiber.Map{"connected": false})
 		}
-		previousAccess, previousRefresh, previousExpiry := cfg.Trakt.AccessToken, cfg.Trakt.RefreshToken, cfg.Trakt.TokenExpires
-		cfg.Trakt.AccessToken, cfg.Trakt.RefreshToken, cfg.Trakt.TokenExpires = token.AccessToken, token.RefreshToken, token.ExpiresAt()
-		if err := cfg.Save(); err != nil {
-			cfg.Trakt.AccessToken, cfg.Trakt.RefreshToken, cfg.Trakt.TokenExpires = previousAccess, previousRefresh, previousExpiry
+		if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+			candidate.Trakt.AccessToken, candidate.Trakt.RefreshToken, candidate.Trakt.TokenExpires = token.AccessToken, token.RefreshToken, token.ExpiresAt()
+			return nil
+		}); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 		return c.JSON(fiber.Map{"connected": true})
@@ -641,28 +610,27 @@ func registerAccountAuthRoutes(router fiber.Router, gctx global.Context) {
 		if err != nil {
 			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
 		}
-		previousSession, previousAccount := cfg.TMDB.SessionID, cfg.TMDB.AccountID
-		cfg.TMDB.SessionID, cfg.TMDB.AccountID = session.SessionID, account.ID
-		if err := cfg.Save(); err != nil {
-			cfg.TMDB.SessionID, cfg.TMDB.AccountID = previousSession, previousAccount
+		if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+			candidate.TMDB.SessionID, candidate.TMDB.AccountID = session.SessionID, account.ID
+			return nil
+		}); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 		return c.JSON(fiber.Map{"connected": true, "username": account.Username})
 	})
 	router.Delete("/auth/:provider", func(c *fiber.Ctx) error {
-		cfg := gctx.Config()
-		previousTrakt := cfg.Trakt
-		previousTMDB := cfg.TMDB
-		switch c.Params("provider") {
-		case "trakt":
-			cfg.Trakt.AccessToken, cfg.Trakt.RefreshToken, cfg.Trakt.TokenExpires = "", "", 0
-		case "tmdb":
-			cfg.TMDB.SessionID, cfg.TMDB.AccountID = "", 0
-		default:
+		provider := c.Params("provider")
+		if provider != "trakt" && provider != "tmdb" {
 			return c.SendStatus(fiber.StatusNotFound)
 		}
-		if err := cfg.Save(); err != nil {
-			cfg.Trakt, cfg.TMDB = previousTrakt, previousTMDB
+		if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+			if provider == "trakt" {
+				candidate.Trakt.AccessToken, candidate.Trakt.RefreshToken, candidate.Trakt.TokenExpires = "", "", 0
+			} else {
+				candidate.TMDB.SessionID, candidate.TMDB.AccountID = "", 0
+			}
+			return nil
+		}); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 		return c.SendStatus(fiber.StatusNoContent)

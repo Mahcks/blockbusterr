@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -131,7 +132,9 @@ func (s *Scheduler) scheduleJobs() {
 
 	// Schedule each enabled job
 	for _, job := range enabledJobs {
-		jobSig := jobSignature(job)
+		syncInterval := getJobInterval(job.SyncInterval, defaultInterval)
+		mode := getJobMode(job.Mode, cfg.Jobs.Mode)
+		jobSig := jobSignature(job) + "|" + syncInterval + "|" + mode
 
 		// Check if job is already scheduled
 		if _, exists := s.jobStops[job.ID]; exists {
@@ -148,12 +151,6 @@ func (s *Scheduler) scheduleJobs() {
 			}
 		}
 
-		// Get effective sync interval
-		syncInterval := getJobInterval(job.SyncInterval, defaultInterval)
-
-		// Get effective mode
-		mode := getJobMode(job.Mode, cfg.Jobs.Mode)
-
 		// Create job config for the scheduler
 		jc := jobConfig{
 			id:           job.ID,
@@ -161,13 +158,18 @@ func (s *Scheduler) scheduleJobs() {
 			enabled:      job.Enabled,
 			syncInterval: syncInterval,
 			mode:         mode,
-			runFunc: func(j config.DynamicJob) func(context.Context) {
+			runFunc: func(jobID, jobName string) func(context.Context) {
 				return func(ctx context.Context) {
-					if err := jobs.RunDynamicJob(ctx, s.getConfig(), s.db, j, dryRun); err != nil && !errors.Is(err, context.Canceled) {
-						log.Errorf("Failed to run job %s: %v", formatJobLabel(j.Name, j.ID), err)
+					cfg := s.getConfig()
+					job := cfg.GetDynamicJobByID(jobID)
+					if job == nil || !job.Enabled {
+						return
+					}
+					if err := jobs.RunDynamicJob(ctx, cfg, s.db, *job, dryRun); err != nil && !errors.Is(err, context.Canceled) {
+						log.Errorf("Failed to run job %s: %v", formatJobLabel(jobName, jobID), err)
 					}
 				}
-			}(job),
+			}(job.ID, job.Name),
 		}
 
 		// Start new job scheduler
@@ -360,25 +362,8 @@ func parseSyncInterval(interval string) (time.Duration, *cron.Schedule, error) {
 }
 
 func jobSignature(job config.DynamicJob) string {
-	return fmt.Sprintf(
-		"%s|%t|%s|%s|%s|%d|%s|%s|%s|%s|%s|%f|%f|%s|%t|%d",
-		job.ID,
-		job.Enabled,
-		job.Type,
-		job.Source,
-		job.MediaType,
-		job.Limit,
-		job.Period,
-		job.SyncInterval,
-		job.Mode,
-		job.MinimumAvailability,
-		job.Monitor,
-		job.BaseMinRating,
-		job.AdjustmentFactor,
-		job.RuleSetID,
-		job.SelectionCycle,
-		job.MinimumPicks,
-	)
+	data, _ := json.Marshal(job)
+	return string(data)
 }
 
 func formatJobLabel(name, id string) string {

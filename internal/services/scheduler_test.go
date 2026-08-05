@@ -38,3 +38,17 @@ func TestRunsAtStartupOnlyForDurationSchedules(t *testing.T) {
 		t.Fatal("cron schedule should wait for its next occurrence")
 	}
 }
+
+func TestJobSignatureIncludesExecutionSettings(t *testing.T) {
+	base := config.DynamicJob{ID: "job", Name: "Job", Source: "tmdb", MediaType: "movie"}
+	changed := base
+	changed.DeliveryLimit = 5
+	if jobSignature(base) == jobSignature(changed) {
+		t.Fatal("delivery limit must change the scheduler signature")
+	}
+	changed = base
+	changed.RepeatPolicy = "never"
+	if jobSignature(base) == jobSignature(changed) {
+		t.Fatal("repeat policy must change the scheduler signature")
+	}
+}

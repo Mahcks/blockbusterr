@@ -120,14 +120,14 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
-		if err := candidate.Save(); err != nil {
+		if err := global.UpdateConfig(gctx, func(current *config.Config) error {
+			candidate.ConfigFilePath = current.ConfigFilePath
+			*current = *candidate
+			return nil
+		}); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": fmt.Sprintf("Failed to save config: %v", err),
 			})
-		}
-		*gctx.Config() = *candidate
-		if err := gctx.ReloadConfig(); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Configuration saved but failed to reload: %v", err)})
 		}
 		return c.JSON(fiber.Map{
 			"message": "Shareable configuration imported successfully.",
@@ -144,12 +144,12 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
-		if err := candidate.Save(); err != nil {
+		if err := global.UpdateConfig(gctx, func(current *config.Config) error {
+			candidate.ConfigFilePath = current.ConfigFilePath
+			*current = *candidate
+			return nil
+		}); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Failed to save config: %v", err)})
-		}
-		*gctx.Config() = *candidate
-		if err := gctx.ReloadConfig(); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Job imported but configuration failed to reload: %v", err)})
 		}
 		rules, _ := candidate.RuleSetByID(importedJob.RuleSetID)
 		ruleSetName := "Imported Rules"
@@ -337,7 +337,7 @@ func validatePortableAutomation(candidate *config.Config) error {
 		if !candidate.Scoring.Enabled {
 			return fmt.Errorf("ranked selection requires content scoring")
 		}
-		if candidate.Jobs.Selection.MovieLimit < 0 || candidate.Jobs.Selection.ShowLimit < 0 || (candidate.Jobs.Selection.MovieLimit == 0 && candidate.Jobs.Selection.ShowLimit == 0) {
+		if candidate.Jobs.Selection.MovieLimit < 0 || candidate.Jobs.Selection.ShowLimit < 0 {
 			return fmt.Errorf("ranked selection limits are invalid")
 		}
 		if duration, err := time.ParseDuration(candidate.Jobs.Selection.SyncInterval); err != nil || duration <= 0 {

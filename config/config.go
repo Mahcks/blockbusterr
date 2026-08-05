@@ -389,7 +389,23 @@ type Config struct {
 	TitleExceptions TitleExceptions `mapstructure:"title_exceptions" json:"title_exceptions" yaml:"title_exceptions,omitempty"`
 
 	// Internal field to track config file path
-	ConfigFilePath string `mapstructure:"-" json:"-" yaml:"-"`
+	ConfigFilePath   string                                            `mapstructure:"-" json:"-" yaml:"-"`
+	UpdateTraktToken func(access, refresh string, expires int64) error `mapstructure:"-" json:"-" yaml:"-"`
+}
+
+// Clone returns an independent configuration value suitable for copy-on-write updates.
+func (c *Config) Clone() (*Config, error) {
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to clone config: %w", err)
+	}
+	clone := &Config{}
+	if err := yaml.Unmarshal(data, clone); err != nil {
+		return nil, fmt.Errorf("failed to clone config: %w", err)
+	}
+	clone.ConfigFilePath = c.ConfigFilePath
+	clone.UpdateTraktToken = c.UpdateTraktToken
+	return clone, nil
 }
 
 // New creates a new Config instance with the given settings
