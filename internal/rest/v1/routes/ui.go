@@ -151,6 +151,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			"AlertInfo":         alert,
 			"DiscoveryDisabled": discoveryDisabled,
 			"Readiness":         assessReadiness(cfg),
+			"DryRun":            jobs.DryRunEnabled(rg.gctx.Metadata().Version),
 		}, "base")
 	})
 
@@ -194,6 +195,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 			"AlertInfo":         alert,
 			"DiscoveryDisabled": discoveryDisabled,
 			"Readiness":         assessReadiness(cfg),
+			"DryRun":            jobs.DryRunEnabled(rg.gctx.Metadata().Version),
 		}, "base")
 	})
 

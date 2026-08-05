@@ -2,6 +2,12 @@
 
 <!-- Info Alert -->
 {{template "alert-info" .AlertInfo}}
+{{if .DryRun}}
+<aside class="readiness-inline" aria-label="Dry-run mode">
+  <i data-lucide="shield-check" aria-hidden="true"></i>
+  <span><strong>Dry-run mode is active.</strong> Scheduled jobs and Run Now evaluate and log decisions without sending anything to Radarr, Sonarr, Jellyseerr, or Seerr.</span>
+</aside>
+{{end}}
 {{if not .Readiness.Complete}}
 <aside class="readiness-inline" aria-label="Setup status">
   <i data-lucide="circle-alert" aria-hidden="true"></i>
@@ -26,7 +32,7 @@
   </div>
 </section>
 
-<div id="jobs-page" data-global-mode="{{.Config.Jobs.Mode}}">
+<div id="jobs-page" data-global-mode="{{.Config.Jobs.Mode}}" data-dry-run="{{.DryRun}}">
   <!-- Add Job Section -->
   <div class="jobs-toolbar">
     <div>
@@ -999,9 +1005,9 @@
               id="modal-run-button"
               data-action="run-job"
               class="job-run-button"
-              title="Runs this job immediately, outside its schedule"
+              title="{{if .DryRun}}Simulates this job immediately without delivering content{{else}}Runs this job immediately, outside its schedule{{end}}"
             >
-              Run Now
+              {{if .DryRun}}Dry Run{{else}}Run Now{{end}}
             </button>
           </div>
 

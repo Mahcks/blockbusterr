@@ -487,7 +487,7 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 		if executions == nil {
 			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "Job execution is unavailable"})
 		}
-		dryRun := gctx.Metadata().Version == "dev"
+		dryRun := jobs.DryRunEnabled(gctx.Metadata().Version)
 		if err := executions.StartDynamicJob(gctx, cfg, gctx.Database(), *targetJob, dryRun); err != nil {
 			if errors.Is(err, jobs.ErrExecutionAlreadyRunning) {
 				return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "This job is already running"})

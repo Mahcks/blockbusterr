@@ -105,7 +105,7 @@ func (s *Scheduler) run() {
 
 func (s *Scheduler) scheduleJobs() {
 	cfg := s.getConfig()
-	dryRun := s.version == "dev"
+	dryRun := jobs.DryRunEnabled(s.version)
 	defaultInterval := cfg.Jobs.SyncInterval
 
 	// Get all enabled jobs (both dynamic and legacy)
@@ -277,7 +277,7 @@ func (s *Scheduler) clearJobSchedule(id string, generation uint64) {
 
 func (s *Scheduler) executeAllJobs() {
 	cfg := s.getConfig()
-	dryRun := s.version == "dev"
+	dryRun := jobs.DryRunEnabled(s.version)
 
 	if dryRun {
 		log.Info("Executing initial jobs in DRY RUN mode (no content will be added)")
