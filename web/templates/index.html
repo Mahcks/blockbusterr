@@ -695,7 +695,7 @@
       <div class="settings-section-heading"><h2>About</h2></div>
       <dl class="about-list">
         <div><dt>Version</dt><dd>{{.Version}}{{if or (contains .Version "beta") (contains .Version "alpha")}} <span style="color:rgb(250 204 21);">(pre-release)</span>{{end}}</dd></div>
-        <div><dt>Latest</dt><dd><a id="latest-version" href="https://github.com/mahcks/blockbusterr/releases/latest" target="_blank" rel="noopener">checking&hellip;</a></dd></div>
+        <div><dt>Latest</dt><dd><a data-latest-version href="https://github.com/mahcks/blockbusterr/releases/latest" target="_blank" rel="noopener">checking&hellip;</a></dd></div>
         <div><dt>Config file</dt><dd>{{if .Config.ConfigFilePath}}{{.Config.ConfigFilePath}}{{else}}Not using a config file{{end}}</dd></div>
         <div><dt>Docs</dt><dd><a href="https://blockbusterr.dev/v2/" target="_blank" rel="noopener">blockbusterr.dev/v2</a></dd></div>
       </dl>

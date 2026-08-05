@@ -136,6 +136,9 @@ func TestSharedUIFunctionsAndDynamicStylesAreCompiled(t *testing.T) {
 			t.Errorf("shared app.js is missing window.%s", function)
 		}
 	}
+	if !strings.Contains(app, "[data-latest-version]") {
+		t.Error("shared app.js is missing latest release initialization")
+	}
 	for _, class := range []string{".bg-green-500", ".bg-red-500", ".bg-yellow-500"} {
 		if !strings.Contains(css, class) {
 			t.Errorf("compiled CSS is missing dynamic class %s", class)

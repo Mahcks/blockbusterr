@@ -3,10 +3,6 @@
 <footer class="app-footer border-t text-xs text-slate-500">
   <div class="mx-auto flex min-h-9 max-w-7xl flex-col items-center justify-between gap-2 px-4 py-2 sm:flex-row sm:px-6 lg:px-8">
     <nav class="flex items-center gap-4" aria-label="Community links">
-      <a href="https://www.buymeacoffee.com/mahcks" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-yellow-400 hover:text-yellow-300">
-        <i data-lucide="coffee" class="h-3.5 w-3.5" aria-hidden="true"></i>
-        Buy Me a Coffee
-      </a>
       <a href="https://discord.com/invite/c8vb3VZqmg" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300">
         <i data-lucide="message-circle" class="h-3.5 w-3.5" aria-hidden="true"></i>
         Discord
@@ -15,11 +11,15 @@
         <i data-lucide="github" class="h-3.5 w-3.5" aria-hidden="true"></i>
         Discussions
       </a>
+      <a href="https://www.buymeacoffee.com/mahcks" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-yellow-400 hover:text-yellow-300">
+        <i data-lucide="coffee" class="h-3.5 w-3.5" aria-hidden="true"></i>
+        Buy Me a Coffee
+      </a>
     </nav>
     <div class="flex items-center gap-3">
       <span>Version <strong class="font-medium text-slate-300">{{.Version}}</strong></span>
       <span aria-hidden="true">·</span>
-      <span>Latest <a id="latest-version" href="#" target="_blank" rel="noopener" class="font-medium text-slate-300 underline hover:text-slate-100">...</a></span>
+      <span>Latest <a data-latest-version href="https://github.com/mahcks/blockbusterr/releases/latest" target="_blank" rel="noopener" class="font-medium text-slate-300 underline hover:text-slate-100">checking&hellip;</a></span>
       <span aria-hidden="true">·</span>
       <span>&copy; 2026 Blockbusterr</span>
     </div>

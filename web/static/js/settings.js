@@ -56,7 +56,6 @@ function init() {
   document.addEventListener('keydown', handleKeydown);
   window.addEventListener('beforeunload', handleBeforeUnload);
 
-  loadLatestVersion();
   setupNavActiveTracking();
   // Radarr/Sonarr may be slow or unreachable, so the dirty baseline is never
   // gated on their response — each load patches only its own select's value
@@ -804,18 +803,4 @@ async function disconnectAccount(provider, button) {
     window.showNotification?.(error.message, 'error');
     button.disabled = false;
   }
-}
-
-// ---- About: latest version ------------------------------------------------
-
-function loadLatestVersion() {
-  const el = document.getElementById('latest-version');
-  if (!el) return;
-  fetch('https://api.github.com/repos/mahcks/blockbusterr/releases/latest')
-    .then((response) => response.json())
-    .then((release) => {
-      el.textContent = release.tag_name || 'unavailable';
-      if (release.html_url) el.href = release.html_url;
-    })
-    .catch(() => { el.textContent = 'unavailable'; });
 }

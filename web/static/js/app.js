@@ -1,6 +1,8 @@
 (function () {
   "use strict";
 
+  let latestRelease;
+
   window.togglePassword = function (inputId, button) {
     const input = document.getElementById(inputId);
     const eyeOpen = button.querySelector(".eye-open");
@@ -61,6 +63,21 @@
 
   function initialize(root) {
     window.renderLucideIcons(root);
+
+    const versionLinks = [...root.querySelectorAll('[data-latest-version]')];
+    if (versionLinks.length) {
+      latestRelease ||= fetch('https://api.github.com/repos/mahcks/blockbusterr/releases/latest')
+        .then((response) => {
+          if (!response.ok) throw new Error('release lookup failed');
+          return response.json();
+        });
+      latestRelease
+        .then((release) => versionLinks.forEach((link) => {
+          link.textContent = release.tag_name || 'unavailable';
+          if (release.html_url) link.href = release.html_url;
+        }))
+        .catch(() => versionLinks.forEach((link) => { link.textContent = 'unavailable'; }));
+    }
 
     root.querySelectorAll('[id^="info-alert-"]').forEach((alert) => {
       const id = alert.id.replace('info-alert-', '');
