@@ -180,6 +180,9 @@ func (e *ShowJobExecutor) executeShowsDirect(
 	budget := newDeliveryBudget(e.Config, e.Database, jobConfig.JobID, e.currentRunID, jobConfig.DeliveryLimit, e.DryRun)
 
 	for _, show := range shows {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if jobConfig.SeriesType == "anime" && show.IDs.TVDB <= 0 {
 			message := "Anime could not be mapped to a TVDB series"
 			log.Errorf("%s: '%s (%d)'", message, show.Title, show.Year)

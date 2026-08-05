@@ -12,7 +12,7 @@ import (
 func TestConfigUpdatesAreCopyOnWrite(t *testing.T) {
 	cfg := &config.Config{ConfigFilePath: filepath.Join(t.TempDir(), "config.yaml")}
 	cfg.Jobs.GlobalLimitMovies = 1
-	gctx := New(context.Background(), cfg, nil, "test", "test")
+	gctx := New(context.Background(), cfg, nil, "test", "test", nil)
 
 	snapshot := gctx.Config()
 	snapshot.Jobs.GlobalLimitMovies = 99
@@ -40,7 +40,7 @@ func TestConfigUpdatesAreCopyOnWrite(t *testing.T) {
 func TestConfigUpdateFailureDoesNotPublish(t *testing.T) {
 	cfg := &config.Config{ConfigFilePath: filepath.Join(t.TempDir(), "config.yaml")}
 	cfg.Jobs.GlobalLimitMovies = 1
-	gctx := New(context.Background(), cfg, nil, "test", "test")
+	gctx := New(context.Background(), cfg, nil, "test", "test", nil)
 	err := UpdateConfig(gctx, func(candidate *config.Config) error {
 		candidate.Jobs.GlobalLimitMovies = 99
 		candidate.ConfigFilePath = filepath.Join(t.TempDir(), "missing", "config.yaml")

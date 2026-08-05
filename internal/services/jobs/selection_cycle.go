@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/mahcks/blockbusterr/config"
@@ -37,8 +36,6 @@ type SelectionParticipant struct {
 	DeliveryLimit int    `json:"delivery_limit"`
 }
 
-var selectionCycleMutex sync.Mutex
-
 type selectionExecution struct {
 	scores map[string]ScoreInfo
 	movies []integrations.Movie
@@ -57,11 +54,7 @@ func PreviewSelectionCycle(cfg *config.Config, db *database.Database) (Selection
 	return planSelectionCycle(cfg, db)
 }
 
-func RunSelectionCycle(ctx context.Context, cfg *config.Config, db *database.Database, dryRun bool) (SelectionCyclePlan, error) {
-	if !selectionCycleMutex.TryLock() {
-		return SelectionCyclePlan{}, fmt.Errorf("ranked selection cycle is already running")
-	}
-	defer selectionCycleMutex.Unlock()
+func runSelectionCycle(ctx context.Context, cfg *config.Config, db *database.Database, dryRun bool, run selectionJobRunner) (SelectionCyclePlan, error) {
 	cycleID := int64(0)
 	if db != nil {
 		var err error
@@ -84,7 +77,7 @@ func RunSelectionCycle(ctx context.Context, cfg *config.Config, db *database.Dat
 			return plan, err
 		}
 	}
-	outcome := executeSelectionPlan(ctx, cfg, db, dryRun, &plan, RunSelectedDynamicJob)
+	outcome := executeSelectionPlan(ctx, cfg, db, dryRun, &plan, run)
 	if db != nil {
 		messages := make([]string, 0, len(plan.Errors))
 		for jobID, message := range plan.Errors {

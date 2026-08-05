@@ -27,7 +27,7 @@ func TestRadarrValidationAcceptsCredentialsInPostBody(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	gctx := global.New(context.Background(), &config.Config{}, nil, "test", "test")
+	gctx := global.New(context.Background(), &config.Config{}, nil, "test", "test", nil)
 	app := fiber.New()
 	RegisterRadarrRoutes(NewRouteGroup(gctx), app.Group("/v1"))
 	body := `{"url":"` + upstream.URL + `","api_key":"` + apiKey + `"}`

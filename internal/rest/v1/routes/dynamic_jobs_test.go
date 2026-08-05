@@ -13,17 +13,22 @@ import (
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/global"
+	"github.com/mahcks/blockbusterr/internal/services/jobs"
 )
 
 type dynamicJobsTestContext struct {
 	context.Context
-	cfg *config.Config
+	cfg        *config.Config
+	executions *jobs.ExecutionCoordinator
 }
 
 func (c dynamicJobsTestContext) Config() *config.Config       { return c.cfg }
 func (c dynamicJobsTestContext) Database() *database.Database { return nil }
 func (c dynamicJobsTestContext) Metadata() global.Metadata    { return global.Metadata{Version: "test"} }
 func (c dynamicJobsTestContext) ReloadConfig() error          { return nil }
+func (c dynamicJobsTestContext) ExecutionCoordinator() *jobs.ExecutionCoordinator {
+	return c.executions
+}
 
 func TestValidateDynamicJobSources(t *testing.T) {
 	cfg := &config.Config{}
@@ -163,6 +168,28 @@ func TestRankedSelectionJobCannotTriggerIndependently(t *testing.T) {
 	}
 	if response.StatusCode != fiber.StatusConflict {
 		t.Fatalf("status = %d, want %d", response.StatusCode, fiber.StatusConflict)
+	}
+}
+
+func TestTriggerRejectsJobAlreadyRunning(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.TMDB.APIKey = "configured"
+	cfg.Jobs.List = []config.DynamicJob{{ID: "job", Name: "Job", Enabled: true, Source: "tmdb", Type: "trending", MediaType: "movie"}}
+	coordinator := jobs.NewExecutionCoordinator(t.Context())
+	release := make(chan struct{})
+	if err := coordinator.Start(t.Context(), "job", func(context.Context) error { <-release; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { close(release); coordinator.Stop() })
+	app := fiber.New()
+	AddDynamicJobsRoutes(app.Group("/v1"), dynamicJobsTestContext{Context: t.Context(), cfg: cfg, executions: coordinator})
+	response, err := app.Test(httptest.NewRequest("POST", "/v1/jobs/job/trigger", nil), -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != fiber.StatusConflict {
+		body, _ := io.ReadAll(response.Body)
+		t.Fatalf("status=%d body=%s", response.StatusCode, body)
 	}
 }
 

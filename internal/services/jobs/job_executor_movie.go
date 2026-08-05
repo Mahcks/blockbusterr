@@ -180,6 +180,9 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 	budget := newDeliveryBudget(e.Config, e.Database, jobConfig.JobID, e.currentRunID, jobConfig.DeliveryLimit, e.DryRun)
 
 	for _, movie := range movies {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		// Skip if movie already exists in Radarr
 		if existingTMDBIDs[movie.IDs.TMDB] {
 			log.Debugf("Skipping '%s (%d)' - already in Radarr", movie.Title, movie.Year)

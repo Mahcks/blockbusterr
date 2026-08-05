@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -482,14 +483,20 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			})
 		}
 
-		// Execute job asynchronously
-		go func() {
-			dryRun := gctx.Metadata().Version == "dev"
-			_ = jobs.RunDynamicJob(gctx, cfg, gctx.Database(), *targetJob, dryRun)
-		}()
+		executions := gctx.ExecutionCoordinator()
+		if executions == nil {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "Job execution is unavailable"})
+		}
+		dryRun := gctx.Metadata().Version == "dev"
+		if err := executions.StartDynamicJob(gctx, cfg, gctx.Database(), *targetJob, dryRun); err != nil {
+			if errors.Is(err, jobs.ErrExecutionAlreadyRunning) {
+				return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "This job is already running"})
+			}
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "Job execution is unavailable"})
+		}
 
 		return c.Status(fiber.StatusAccepted).JSON(fiber.Map{
-			"message": fmt.Sprintf("Job '%s' queued", targetJob.Name),
+			"message": fmt.Sprintf("Job '%s' started", targetJob.Name),
 		})
 	})
 

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 
 	"github.com/mahcks/blockbusterr/config"
@@ -50,5 +51,22 @@ func TestJobSignatureIncludesExecutionSettings(t *testing.T) {
 	changed.RepeatPolicy = "never"
 	if jobSignature(base) == jobSignature(changed) {
 		t.Fatal("repeat policy must change the scheduler signature")
+	}
+}
+
+func TestOldSchedulerGenerationCannotDeleteReplacement(t *testing.T) {
+	s := &Scheduler{
+		jobStops:       map[string]context.CancelFunc{"job": func() {}},
+		jobSigs:        map[string]string{"job": "new"},
+		jobNames:       map[string]string{"job": "Replacement"},
+		jobGenerations: map[string]uint64{"job": 2},
+	}
+	s.clearJobSchedule("job", 1)
+	if s.jobStops["job"] == nil || s.jobSigs["job"] != "new" || s.jobNames["job"] != "Replacement" {
+		t.Fatal("old generation deleted replacement bookkeeping")
+	}
+	s.clearJobSchedule("job", 2)
+	if _, exists := s.jobStops["job"]; exists {
+		t.Fatal("owning generation did not clear bookkeeping")
 	}
 }

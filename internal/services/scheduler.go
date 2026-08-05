@@ -26,29 +26,34 @@ type jobConfig struct {
 }
 
 type Scheduler struct {
-	ctx       context.Context
-	cancel    context.CancelFunc
-	wg        sync.WaitGroup
-	getConfig func() *config.Config
-	db        *database.Database
-	version   string
-	jobStops  map[string]context.CancelFunc
-	jobSigs   map[string]string
-	jobNames  map[string]string
-	jobMutex  sync.Mutex
+	ctx            context.Context
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
+	getConfig      func() *config.Config
+	db             *database.Database
+	version        string
+	executions     *jobs.ExecutionCoordinator
+	jobStops       map[string]context.CancelFunc
+	jobSigs        map[string]string
+	jobNames       map[string]string
+	jobGenerations map[string]uint64
+	nextGeneration uint64
+	jobMutex       sync.Mutex
 }
 
-func NewScheduler(getConfig func() *config.Config, db *database.Database, version string) *Scheduler {
+func NewScheduler(getConfig func() *config.Config, db *database.Database, version string, executions *jobs.ExecutionCoordinator) *Scheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
-		ctx:       ctx,
-		cancel:    cancel,
-		getConfig: getConfig,
-		db:        db,
-		version:   version,
-		jobStops:  make(map[string]context.CancelFunc),
-		jobSigs:   make(map[string]string),
-		jobNames:  make(map[string]string),
+		ctx:            ctx,
+		cancel:         cancel,
+		getConfig:      getConfig,
+		db:             db,
+		version:        version,
+		executions:     executions,
+		jobStops:       make(map[string]context.CancelFunc),
+		jobSigs:        make(map[string]string),
+		jobNames:       make(map[string]string),
+		jobGenerations: make(map[string]uint64),
 	}
 }
 
@@ -127,6 +132,7 @@ func (s *Scheduler) scheduleJobs() {
 			delete(s.jobStops, jobID)
 			delete(s.jobSigs, jobID)
 			delete(s.jobNames, jobID)
+			delete(s.jobGenerations, jobID)
 		}
 	}
 
@@ -145,6 +151,7 @@ func (s *Scheduler) scheduleJobs() {
 				delete(s.jobStops, job.ID)
 				delete(s.jobSigs, job.ID)
 				delete(s.jobNames, job.ID)
+				delete(s.jobGenerations, job.ID)
 			} else {
 				// Job already running with same config, skip
 				continue
@@ -165,7 +172,7 @@ func (s *Scheduler) scheduleJobs() {
 					if job == nil || !job.Enabled {
 						return
 					}
-					if err := jobs.RunDynamicJob(ctx, cfg, s.db, *job, dryRun); err != nil && !errors.Is(err, context.Canceled) {
+					if err := s.executions.RunDynamicJob(ctx, cfg, s.db, *job, dryRun); err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, jobs.ErrExecutionAlreadyRunning) {
 						log.Errorf("Failed to run job %s: %v", formatJobLabel(jobName, jobID), err)
 					}
 				}
@@ -183,10 +190,13 @@ func (s *Scheduler) scheduleJobs() {
 		if _, exists := s.jobStops[selectionCycleJobID]; exists && s.jobSigs[selectionCycleJobID] != sig {
 			s.jobStops[selectionCycleJobID]()
 			delete(s.jobStops, selectionCycleJobID)
+			delete(s.jobSigs, selectionCycleJobID)
+			delete(s.jobNames, selectionCycleJobID)
+			delete(s.jobGenerations, selectionCycleJobID)
 		}
 		if _, exists := s.jobStops[selectionCycleJobID]; !exists {
 			s.startJobScheduler(jobConfig{id: selectionCycleJobID, name: "Ranked selection", enabled: true, syncInterval: cfg.Jobs.Selection.SyncInterval, mode: "shared", runFunc: func(ctx context.Context) {
-				if _, err := jobs.RunSelectionCycle(ctx, s.getConfig(), s.db, dryRun); err != nil && !errors.Is(err, context.Canceled) {
+				if _, err := s.executions.RunSelectionCycle(ctx, s.getConfig(), s.db, dryRun); err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, jobs.ErrExecutionAlreadyRunning) {
 					log.Errorf("Failed to run ranked selection: %v", err)
 				}
 			}})
@@ -198,17 +208,14 @@ func (s *Scheduler) scheduleJobs() {
 func (s *Scheduler) startJobScheduler(jc jobConfig) {
 	jobCtx, jobCancel := context.WithCancel(s.ctx)
 	s.jobStops[jc.id] = jobCancel
+	s.nextGeneration++
+	generation := s.nextGeneration
+	s.jobGenerations[jc.id] = generation
 
 	s.wg.Add(1)
 	go func(jc jobConfig) {
 		defer s.wg.Done()
-		defer func() {
-			s.jobMutex.Lock()
-			delete(s.jobStops, jc.id)
-			delete(s.jobSigs, jc.id)
-			delete(s.jobNames, jc.id)
-			s.jobMutex.Unlock()
-		}()
+		defer s.clearJobSchedule(jc.id, generation)
 
 		duration, cronSchedule, _ := parseSyncInterval(jc.syncInterval)
 
@@ -256,6 +263,18 @@ func (s *Scheduler) startJobScheduler(jc jobConfig) {
 	}(jc)
 }
 
+func (s *Scheduler) clearJobSchedule(id string, generation uint64) {
+	s.jobMutex.Lock()
+	defer s.jobMutex.Unlock()
+	if s.jobGenerations[id] != generation {
+		return
+	}
+	delete(s.jobStops, id)
+	delete(s.jobSigs, id)
+	delete(s.jobNames, id)
+	delete(s.jobGenerations, id)
+}
+
 func (s *Scheduler) executeAllJobs() {
 	cfg := s.getConfig()
 	dryRun := s.version == "dev"
@@ -272,7 +291,7 @@ func (s *Scheduler) executeAllJobs() {
 
 	log.Infof("Found %d enabled jobs to execute", len(enabledJobs)+len(cycleJobs))
 	if len(cycleJobs) > 0 && runsAtStartup(cfg.Jobs.Selection.SyncInterval) {
-		if _, err := jobs.RunSelectionCycle(s.ctx, cfg, s.db, dryRun); err != nil && !errors.Is(err, context.Canceled) {
+		if _, err := s.executions.RunSelectionCycle(s.ctx, cfg, s.db, dryRun); err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, jobs.ErrExecutionAlreadyRunning) {
 			log.Errorf("Failed to run ranked selection: %v", err)
 		}
 	}
@@ -283,7 +302,7 @@ func (s *Scheduler) executeAllJobs() {
 			continue
 		}
 		log.Infof("Executing job: %s (%s %s)", formatJobLabel(job.Name, job.ID), job.Type, job.MediaType)
-		if err := jobs.RunDynamicJob(s.ctx, cfg, s.db, job, dryRun); err != nil && !errors.Is(err, context.Canceled) {
+		if err := s.executions.RunDynamicJob(s.ctx, cfg, s.db, job, dryRun); err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, jobs.ErrExecutionAlreadyRunning) {
 			log.Errorf("Failed to run job %s: %v", formatJobLabel(job.Name, job.ID), err)
 		}
 	}
@@ -291,7 +310,7 @@ func (s *Scheduler) executeAllJobs() {
 	log.Info("Completed initial job execution")
 }
 
-const selectionCycleJobID = "selection-cycle"
+const selectionCycleJobID = jobs.SelectionCycleExecutionID
 
 func splitSelectionJobs(cfg *config.Config, enabled []config.DynamicJob) (cycle, standalone []config.DynamicJob) {
 	for _, job := range enabled {

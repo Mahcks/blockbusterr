@@ -83,11 +83,19 @@ func TestSelectionCapacityHonorsRollingBudget(t *testing.T) {
 }
 
 func TestRunSelectionCycleRejectsConcurrentRun(t *testing.T) {
-	selectionCycleMutex.Lock()
-	defer selectionCycleMutex.Unlock()
-	if _, err := RunSelectionCycle(t.Context(), &config.Config{}, nil, true); err == nil {
+	coordinator := NewExecutionCoordinator(t.Context())
+	release := make(chan struct{})
+	if err := coordinator.Start(t.Context(), SelectionCycleExecutionID, func(context.Context) error {
+		<-release
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := coordinator.RunSelectionCycle(t.Context(), &config.Config{}, nil, true); !errors.Is(err, ErrExecutionAlreadyRunning) {
 		t.Fatal("expected concurrent cycle to be rejected")
 	}
+	close(release)
+	coordinator.Stop()
 }
 
 func TestSelectionCandidateRoundTripPreservesShowIdentityWithoutTVDB(t *testing.T) {

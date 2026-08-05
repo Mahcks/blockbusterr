@@ -6,6 +6,7 @@ import (
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
+	"github.com/mahcks/blockbusterr/internal/services/jobs"
 )
 
 type Metadata struct {
@@ -18,15 +19,17 @@ type Context interface {
 	Metadata() Metadata
 	Config() *config.Config
 	Database() *database.Database
+	ExecutionCoordinator() *jobs.ExecutionCoordinator
 	ReloadConfig() error
 }
 
 type gCtx struct {
 	context.Context
-	metadata Metadata
-	cfg      *config.Config
-	cfgMu    sync.RWMutex
-	db       *database.Database
+	metadata   Metadata
+	cfg        *config.Config
+	cfgMu      sync.RWMutex
+	db         *database.Database
+	executions *jobs.ExecutionCoordinator
 }
 
 func (g *gCtx) Metadata() Metadata {
@@ -46,6 +49,8 @@ func (g *gCtx) Config() *config.Config {
 func (g *gCtx) Database() *database.Database {
 	return g.db
 }
+
+func (g *gCtx) ExecutionCoordinator() *jobs.ExecutionCoordinator { return g.executions }
 
 func (g *gCtx) ReloadConfig() error {
 	g.cfgMu.Lock()
@@ -109,6 +114,7 @@ func New(
 	cfg *config.Config,
 	db *database.Database,
 	Version, Commit string,
+	executions *jobs.ExecutionCoordinator,
 ) Context {
 	g := &gCtx{
 		cfg:     cfg,
@@ -119,6 +125,7 @@ func New(
 		},
 		db: db,
 	}
+	g.executions = executions
 	g.bindConfigCallbacks(cfg)
 	return g
 }

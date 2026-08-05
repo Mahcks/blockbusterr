@@ -27,7 +27,7 @@ func setupActivityTestApp(t *testing.T) (*fiber.App, *database.Database) {
 	})
 
 	cfg := &config.Config{}
-	gctx := global.New(context.Background(), cfg, db, "test", "test")
+	gctx := global.New(context.Background(), cfg, db, "test", "test", nil)
 
 	app := fiber.New()
 	RegisterActivityRoutes(app.Group("/v1"), gctx)
@@ -87,7 +87,7 @@ func TestActivityBlockWritesUniversalTitleException(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := &config.Config{ConfigFilePath: configPath}
-	gctx := global.New(context.Background(), cfg, db, "test", "test")
+	gctx := global.New(context.Background(), cfg, db, "test", "test", nil)
 	app := fiber.New()
 	RegisterActivityRoutes(app.Group("/v1"), gctx)
 	if err := db.LogActivity(database.ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "movie", Title: "Blocked", TMDBID: 42, Status: "rejected"}); err != nil {
