@@ -55,16 +55,16 @@ Pair Blockbusterr with [Maintainerr](https://github.com/Maintainerr/Maintainerr)
 - **[Portable configuration](https://blockbusterr.dev/v2/api/config/#portable-configuration):** export shareable jobs and rules separately from credentialed backups.
 - **Single-container deployment:** compiled frontend assets, the API, and SQLite are bundled together in one lightweight Docker image with no required external database.
 
-## Supported services
+## Integrations and compatibility
 
 | Role | Services | Notes |
 | --- | --- | --- |
 | Discovery | [TMDB](https://blockbusterr.dev/v2/integrations/tmdb/), [Simkl](https://blockbusterr.dev/v2/integrations/simkl/), [Trakt](https://blockbusterr.dev/v2/integrations/trakt/) | Trending, popular, anticipated, history-based jobs, lists, and watchlists vary by provider |
-| Curated lists | [MDBList](https://blockbusterr.dev/v2/integrations/mdblist/) | Public lists and the API-key owner's watchlist; recommended bridge for imported Letterboxd or IMDb lists |
-| Experimental lists | [Letterboxd](https://blockbusterr.dev/v2/integrations/mdblist/) | Public lists only; scraping is opt-in and may break when Letterboxd changes its site |
-| Direct delivery | [Radarr](https://blockbusterr.dev/v2/integrations/radarr/), [Sonarr](https://blockbusterr.dev/v2/integrations/sonarr/) | Movies and shows are added with your selected quality profile, root folder, and monitoring settings |
-| Request delivery | [Jellyseerr and Seerr](https://blockbusterr.dev/v2/integrations/jellyseerr/) | Requests use the configured user or optional request credentials |
-| Media servers | Any media server using the Radarr/Sonarr-managed library | Plex, Jellyfin, and Emby are common examples; Blockbusterr does not communicate with media servers directly |
+| Curated lists | [MDBList](https://blockbusterr.dev/v2/integrations/mdblist/) | Public lists and the API-key owner's watchlist; also provides a bridge for imported IMDb and Letterboxd lists |
+| Experimental lists | Letterboxd | Public lists only; direct scraping is opt-in and may stop working if Letterboxd changes its site |
+| Direct delivery | [Radarr](https://blockbusterr.dev/v2/integrations/radarr/), [Sonarr](https://blockbusterr.dev/v2/integrations/sonarr/) | Adds movies and shows using the selected quality profile, root folder, monitoring behavior, and other delivery settings |
+| Request delivery | [Jellyseerr and Seerr](https://blockbusterr.dev/v2/integrations/jellyseerr/) | Submits requests through the configured application user or optional request credentials |
+| Downstream playback | Plex, Jellyfin, Emby, and other media servers | Compatible with any media server using a Radarr/Sonarr-managed library; Blockbusterr does not communicate with the media server directly |
 
 Trakt is optional. Personal Trakt and TMDB watchlists require account authorization; public discovery only needs the provider's application credentials.
 
