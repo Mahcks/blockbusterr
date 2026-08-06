@@ -55,7 +55,15 @@
       <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
         <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
       </svg>
-      Activity outcomes <span class="ml-1 text-sm font-normal text-slate-500">Last 7 days</span>
+      Activity outcomes
+      <span class="ml-auto flex items-center gap-1 text-xs font-normal text-slate-500">
+        <span class="hidden sm:inline">Click a bar to filter the table below</span>
+        <select id="chartDaysSelect" class="ml-2 rounded-md border border-slate-600 bg-slate-700 px-2 py-1 text-xs text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" aria-label="Chart time range">
+          <option value="7" selected>Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30">Last 30 days</option>
+        </select>
+      </span>
     </h3>
     <div class="grid gap-4 lg:grid-cols-2">
       <div class="job-nested-panel p-3">
@@ -106,6 +114,7 @@
     </div>
 
     <div id="activityItemsPanel">
+    <div id="activeFiltersBar" class="hidden mb-3 flex flex-wrap items-center gap-2" role="status" aria-label="Active filters"></div>
     <!-- Quick Status Filter Buttons -->
     <div class="mb-3 flex flex-wrap gap-1">
       <button data-action="filter-status" data-status="" id="filter-all" class="activity-filter" aria-pressed="true">
@@ -208,15 +217,24 @@
       <button data-action="sort" data-sort="year" class="px-3 py-1 hover:bg-slate-700 rounded transition-colors" id="sort-year">
         Year
       </button>
+      <button data-action="sort" data-sort="title" class="px-3 py-1 hover:bg-slate-700 rounded transition-colors" id="sort-title">
+        Title
+      </button>
     </div>
 
-    <div id="activityTable" 
-         hx-get="/v1/activity/logs?page=1&pageSize=50" 
-         hx-trigger="load"
+    <div id="bulkActionsBar" class="hidden mb-3 flex items-center gap-3 rounded-md border border-blue-800/60 bg-blue-950/30 px-3 py-2 text-xs text-blue-100">
+      <span id="bulkActionsCount">0 selected</span>
+      <button type="button" data-action="bulk-block" class="ml-auto inline-flex items-center gap-1.5 rounded-md border border-red-900/60 bg-red-950/40 px-2.5 py-1.5 text-red-200 hover:bg-red-900/40">
+        <i data-lucide="shield-ban" class="h-3.5 w-3.5" aria-hidden="true"></i> Block selected
+      </button>
+      <button type="button" data-action="clear-selection" class="text-blue-300 hover:text-blue-100">Clear</button>
+    </div>
+
+    <div id="activityTable"
          hx-swap="innerHTML"
          hx-indicator="#loadingIndicator"
          class="overflow-x-auto">
-      <!-- Activity table will be loaded here -->
+      <!-- Loaded by activity.js applyFilters(), which restores state from the URL first -->
     </div>
     </div>
 

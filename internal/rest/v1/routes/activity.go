@@ -112,6 +112,8 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		language := strings.TrimSpace(c.Query("language"))
 		search := c.Query("search")        // search by title
 		dateRange := c.Query("date_range") // "today", "yesterday", "week", "month"
+		day := strings.TrimSpace(c.Query("day"))
+		reason := strings.TrimSpace(c.Query("reason")) // rejection reason category, matches /activity/rejection-breakdown
 		runIDStr := c.Query("run_id")
 		sortField := c.Query("sort")
 		order := c.Query("order")
@@ -153,9 +155,16 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		}
 
 		start, end := activityDateBounds(dateRange, time.Now())
+		if day != "" {
+			if parsedDay, err := time.ParseInLocation("2006-01-02", day, time.Local); err == nil {
+				dayStart := parsedDay
+				dayEnd := dayStart.AddDate(0, 0, 1)
+				start, end = &dayStart, &dayEnd
+			}
+		}
 		result, err := db.QueryActivity(database.ActivityQuery{
 			Status: status, MediaType: mediaType, Job: jobType, Language: language,
-			Search: search, Start: start, End: end, RunID: runID, Dedupe: dedupe,
+			Search: search, Start: start, End: end, RunID: runID, Dedupe: dedupe, Reason: reason,
 			Sort: sortField, Order: order, Limit: pageSize, Offset: (page - 1) * pageSize,
 		})
 		if err != nil {
@@ -248,22 +257,30 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		db := gctx.Database()
 		if db == nil {
 			return c.JSON(fiber.Map{
-				"labels": []string{}, "added": []int{}, "requested": []int{}, "would_add": []int{}, "would_request": []int{},
+				"labels": []string{}, "dates": []string{}, "added": []int{}, "requested": []int{}, "would_add": []int{}, "would_request": []int{},
 				"rejected": []int{}, "skipped": []int{}, "failed": []int{}, "dry_run": jobs.DryRunEnabled(gctx.Metadata().Version),
 			})
 		}
 
-		chartData := make(map[string]any)
-		labels := make([]string, 0, 7)
-		added := make([]int, 0, 7)
-		requested := make([]int, 0, 7)
-		wouldAdd := make([]int, 0, 7)
-		wouldRequest := make([]int, 0, 7)
-		rejected := make([]int, 0, 7)
-		skipped := make([]int, 0, 7)
-		failed := make([]int, 0, 7)
+		days := 7
+		if daysStr := c.Query("days"); daysStr != "" {
+			if parsedDays, err := strconv.Atoi(daysStr); err == nil && parsedDays > 0 && parsedDays <= 90 {
+				days = parsedDays
+			}
+		}
 
-		countsByDay, err := db.GetActivityDailyCounts(7)
+		chartData := make(map[string]any)
+		labels := make([]string, 0, days)
+		dates := make([]string, 0, days)
+		added := make([]int, 0, days)
+		requested := make([]int, 0, days)
+		wouldAdd := make([]int, 0, days)
+		wouldRequest := make([]int, 0, days)
+		rejected := make([]int, 0, days)
+		skipped := make([]int, 0, days)
+		failed := make([]int, 0, days)
+
+		countsByDay, err := db.GetActivityDailyCounts(days)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to retrieve chart data",
@@ -271,11 +288,11 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		}
 
 		now := time.Now()
-		for i := 6; i >= 0; i-- {
+		for i := days - 1; i >= 0; i-- {
 			day := now.AddDate(0, 0, -i)
 			labels = append(labels, day.Format("1/2"))
-
 			key := day.Format("2006-01-02")
+			dates = append(dates, key)
 			if counts, ok := countsByDay[key]; ok {
 				added = append(added, counts.Added)
 				requested = append(requested, counts.Requested)
@@ -296,6 +313,7 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		}
 
 		chartData["labels"] = labels
+		chartData["dates"] = dates
 		chartData["added"] = added
 		chartData["requested"] = requested
 		chartData["would_add"] = wouldAdd
@@ -531,6 +549,99 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		return c.JSON(fiber.Map{
 			"success": true,
 			"message": fmt.Sprintf("%s has been blocked and will not be added in future runs", activityLog.Title),
+		})
+	})
+
+	// Block many activity log entries at once (bulk selection in the UI).
+	router.Post("/activity/bulk-block", func(c *fiber.Ctx) error {
+		const maxBulkBlockIDs = 500
+
+		var body struct {
+			IDs []int64 `json:"ids"`
+		}
+		if err := c.BodyParser(&body); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+		}
+		if len(body.IDs) == 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "No activity log IDs provided"})
+		}
+		if len(body.IDs) > maxBulkBlockIDs {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("Cannot block more than %d entries at once", maxBulkBlockIDs)})
+		}
+
+		db := gctx.Database()
+		if db == nil {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "Database not initialized"})
+		}
+
+		type skipped struct {
+			ID     int64  `json:"id"`
+			Title  string `json:"title"`
+			Reason string `json:"reason"`
+		}
+
+		var (
+			toBlock         []*database.ActivityLog
+			skippedEntries  []skipped
+			blockedMovieIDs []int
+			blockedShowIDs  []int
+		)
+		for _, id := range body.IDs {
+			activityLog, err := db.GetActivityLogByID(id)
+			if err != nil || activityLog == nil {
+				skippedEntries = append(skippedEntries, skipped{ID: id, Reason: "not found"})
+				continue
+			}
+			switch activityLog.MediaType {
+			case string(enums.MediaTypeMovie):
+				if activityLog.TMDBID == 0 {
+					skippedEntries = append(skippedEntries, skipped{ID: id, Title: activityLog.Title, Reason: "no TMDB ID available"})
+					continue
+				}
+				blockedMovieIDs = append(blockedMovieIDs, activityLog.TMDBID)
+			case string(enums.MediaTypeShow):
+				if activityLog.TVDBID == 0 {
+					skippedEntries = append(skippedEntries, skipped{ID: id, Title: activityLog.Title, Reason: "no TVDB ID available"})
+					continue
+				}
+				blockedShowIDs = append(blockedShowIDs, activityLog.TVDBID)
+			default:
+				skippedEntries = append(skippedEntries, skipped{ID: id, Title: activityLog.Title, Reason: "unknown media type"})
+				continue
+			}
+			toBlock = append(toBlock, activityLog)
+		}
+
+		if len(toBlock) > 0 {
+			if err := global.UpdateConfig(gctx, func(candidate *config.Config) error {
+				for _, tmdbID := range blockedMovieIDs {
+					if !slices.Contains(candidate.TitleExceptions.BlockedMovieTMDBIDs, tmdbID) {
+						candidate.TitleExceptions.BlockedMovieTMDBIDs = append(candidate.TitleExceptions.BlockedMovieTMDBIDs, tmdbID)
+					}
+				}
+				for _, tvdbID := range blockedShowIDs {
+					if !slices.Contains(candidate.TitleExceptions.BlockedShowTVDBIDs, tvdbID) {
+						candidate.TitleExceptions.BlockedShowTVDBIDs = append(candidate.TitleExceptions.BlockedShowTVDBIDs, tvdbID)
+					}
+				}
+				return nil
+			}); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Failed to save config: %v", err)})
+			}
+
+			for _, activityLog := range toBlock {
+				if err := db.UpdateActivityLogStatus(activityLog.ID, string(enums.ActivityStatusBlocked), "Blocked by user (bulk)"); err != nil {
+					log.Warnf("Bulk block: failed to update activity log %d status: %v", activityLog.ID, err)
+				}
+			}
+			log.Infof("Bulk blocked %d titles (%d movies, %d shows)", len(toBlock), len(blockedMovieIDs), len(blockedShowIDs))
+		}
+
+		return c.JSON(fiber.Map{
+			"success": true,
+			"blocked": len(toBlock),
+			"skipped": skippedEntries,
+			"message": fmt.Sprintf("Blocked %d of %d selected entries", len(toBlock), len(body.IDs)),
 		})
 	})
 }

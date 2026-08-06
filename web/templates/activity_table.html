@@ -1,11 +1,13 @@
 {{if .Logs}}
 <div class="activity-ledger">
-  <div class="activity-ledger-head" aria-hidden="true">
-    <span></span>
-    <span>Media</span>
+  <div class="activity-ledger-head">
+    <span class="activity-ledger-select-all">
+      <input type="checkbox" id="selectAllRows" aria-label="Select all entries on this page">
+    </span>
+    <button type="button" data-action="sort" data-sort="title" id="sort-head-title" class="activity-ledger-sort">Media</button>
     <span>Outcome</span>
-    <span>Score</span>
-    <span>When</span>
+    <button type="button" data-action="sort" data-sort="score" id="sort-head-score" class="activity-ledger-sort">Score</button>
+    <button type="button" data-action="sort" data-sort="timestamp" id="sort-head-timestamp" class="activity-ledger-sort">When</button>
     <span></span>
   </div>
   {{range $index, $group := .Logs}}
@@ -13,12 +15,17 @@
   {{$count := $group.Count}}
   {{$history := $group.History}}
   <article class="activity-ledger-row" id="activity-card-{{$index}}" data-job-id="{{$log.JobID}}" data-status="{{$log.Status}}">
-    <div class="activity-poster">
-      {{if $log.PosterURL}}
-      <img src="{{$log.PosterURL}}" alt="" loading="lazy">
-      {{else}}
-      <svg aria-hidden="true" viewBox="0 0 20 20"><path fill="currentColor" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"></path></svg>
-      {{end}}
+    <div class="activity-poster-cell">
+      <label class="activity-row-select">
+        <input type="checkbox" class="activity-row-select-input" data-id="{{$log.ID}}" aria-label="Select {{$log.Title}}">
+      </label>
+      <div class="activity-poster">
+        {{if $log.PosterURL}}
+        <img src="{{$log.PosterURL}}" alt="" loading="lazy">
+        {{else}}
+        <svg aria-hidden="true" viewBox="0 0 20 20"><path fill="currentColor" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"></path></svg>
+        {{end}}
+      </div>
     </div>
 
     <div class="min-w-0">

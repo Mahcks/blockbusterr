@@ -1,11 +1,14 @@
 package routes
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -115,6 +118,107 @@ func TestActivityBlockWritesUniversalTitleException(t *testing.T) {
 	}
 	if len(current.Filters.Movies.BlacklistedTMDBIds) != 0 {
 		t.Fatalf("legacy filters were mutated: %v", current.Filters.Movies.BlacklistedTMDBIds)
+	}
+}
+
+func TestActivityBulkBlockWritesUniversalTitleExceptionsAndSkipsMissingIDs(t *testing.T) {
+	db, err := database.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(configPath, []byte("version: test\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{ConfigFilePath: configPath}
+	gctx := global.New(context.Background(), cfg, db, "test", "test", nil)
+	app := fiber.New()
+	RegisterActivityRoutes(app.Group("/v1"), gctx)
+
+	if err := db.LogActivity(database.ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "movie", Title: "Movie A", TMDBID: 1, Status: "rejected"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.LogActivity(database.ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "show", Title: "Show B", TVDBID: 2, Status: "rejected"}); err != nil {
+		t.Fatal(err)
+	}
+	// No TMDB ID: should be skipped, not fail the whole batch.
+	if err := db.LogActivity(database.ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "movie", Title: "No ID", Status: "rejected"}); err != nil {
+		t.Fatal(err)
+	}
+
+	body := bytes.NewReader([]byte(`{"ids":[1,2,3,9999]}`))
+	req := httptest.NewRequest("POST", "/v1/activity/bulk-block", body)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("app.Test() error = %v", err)
+	}
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+
+	var payload struct {
+		Blocked int `json:"blocked"`
+		Skipped []struct {
+			ID     int64  `json:"id"`
+			Reason string `json:"reason"`
+		} `json:"skipped"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Blocked != 2 {
+		t.Fatalf("blocked = %d, want 2", payload.Blocked)
+	}
+	if len(payload.Skipped) != 2 {
+		t.Fatalf("skipped = %#v, want 2 entries (no TMDB ID + not found)", payload.Skipped)
+	}
+
+	current := gctx.Config()
+	if got := current.TitleExceptions.BlockedMovieTMDBIDs; len(got) != 1 || got[0] != 1 {
+		t.Fatalf("blocked movie IDs = %v, want [1]", got)
+	}
+	if got := current.TitleExceptions.BlockedShowTVDBIDs; len(got) != 1 || got[0] != 2 {
+		t.Fatalf("blocked show IDs = %v, want [2]", got)
+	}
+
+	movieLog, err := db.GetActivityLogByID(1)
+	if err != nil || movieLog == nil || movieLog.Status != "blocked" {
+		t.Fatalf("movie log status = %#v, error = %v, want status=blocked", movieLog, err)
+	}
+	skippedLog, err := db.GetActivityLogByID(3)
+	if err != nil || skippedLog == nil || skippedLog.Status != "rejected" {
+		t.Fatalf("skipped (no TMDB ID) log status = %#v, error = %v, want unchanged status=rejected", skippedLog, err)
+	}
+}
+
+func TestActivityBulkBlockRejectsEmptyAndOversizedRequests(t *testing.T) {
+	t.Parallel()
+
+	app, _ := setupActivityTestApp(t)
+
+	resp, err := app.Test(httptest.NewRequest("POST", "/v1/activity/bulk-block", bytes.NewReader([]byte(`{"ids":[]}`))), -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != fiber.StatusBadRequest {
+		t.Fatalf("empty ids status = %d, want %d", resp.StatusCode, fiber.StatusBadRequest)
+	}
+
+	ids := make([]string, 501)
+	for i := range ids {
+		ids[i] = strconv.Itoa(i + 1)
+	}
+	oversized := "{\"ids\":[" + strings.Join(ids, ",") + "]}"
+	req := httptest.NewRequest("POST", "/v1/activity/bulk-block", bytes.NewReader([]byte(oversized)))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err = app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != fiber.StatusBadRequest {
+		t.Fatalf("oversized ids status = %d, want %d", resp.StatusCode, fiber.StatusBadRequest)
 	}
 }
 

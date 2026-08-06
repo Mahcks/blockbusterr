@@ -1307,6 +1307,52 @@
     border-radius: 8px;
   }
 
+  .svc-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 9px 11px;
+    border: 1px solid rgb(180 83 9 / 40%);
+    border-radius: 6px;
+    background: rgb(120 53 15 / 18%);
+    color: #fde68a;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .svc-warning strong {
+    color: #fcd34d;
+    font-weight: 600;
+  }
+
+  .svc-warning svg,
+  .svc-warning i {
+    color: #fbbf24;
+  }
+
+  .svc-checkbox-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--canvas);
+    cursor: pointer;
+  }
+
+  .svc-checkbox-field input {
+    margin-top: 3px;
+    accent-color: var(--accent);
+  }
+
+  .svc-checkbox-title {
+    display: block;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
   .job-advanced-fields {
     overflow: hidden;
     border: 1px solid var(--border-strong);
@@ -1506,10 +1552,31 @@
   }
 
   .activity-ledger {
-    overflow: hidden;
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--surface);
+    max-height: min(78vh, 860px);
+    overflow: auto;
+  }
+
+  /* No overflow:hidden here (on purpose): it would clip content correctly,
+     but it also turns this element into the sticky positioning container
+     for anything inside it, which breaks .activity-ledger-head's
+     position:sticky (it would stick to the top of this box instead of the
+     viewport). Round the top/bottom rows directly instead. */
+  .activity-ledger-head {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+  }
+
+  .activity-ledger-row:first-of-type {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+  }
+
+  .activity-ledger-row:last-child {
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
   }
 
   .activity-ledger-head,
@@ -1526,6 +1593,36 @@
     border-bottom: 1px solid var(--border);
     color: var(--muted);
     font-size: 11px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--surface);
+  }
+
+  .activity-ledger-sort {
+    display: inline-flex;
+    align-items: center;
+    border: none;
+    border-radius: 4px;
+    margin: 0 -6px;
+    padding: 2px 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    cursor: pointer;
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+
+  .activity-ledger-sort:hover {
+    background: var(--surface-raised);
+    color: var(--text);
+  }
+
+  .activity-ledger-sort-active {
+    color: var(--accent) !important;
+    font-weight: 600;
   }
 
   .activity-ledger-row {
@@ -1566,6 +1663,65 @@
   .activity-reason-skipped { color: rgb(202 138 4); }
   .activity-reason-rejected { color: rgb(248 113 113); font-weight: 500; }
   .activity-reason-failed { color: rgb(216 180 254); font-weight: 500; }
+
+  .activity-poster-cell {
+    position: relative;
+  }
+
+  .activity-row-select {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    z-index: 2;
+    display: flex;
+    padding: 3px;
+    border-radius: 6px;
+    background: rgb(9 9 11 / 75%);
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  .activity-ledger-row:hover .activity-row-select,
+  .activity-row-select:has(input:checked),
+  .activity-row-select:focus-within {
+    opacity: 1;
+  }
+
+  /* Touch devices have no hover, so the reveal-on-hover trick above would
+     otherwise hide the checkbox from anyone who can't hover to find it. */
+  @media (hover: none) {
+    .activity-row-select {
+      opacity: 0.85;
+    }
+  }
+
+  .activity-row-select input {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .activity-ledger-select-all {
+    display: flex;
+    align-items: center;
+  }
+
+  .activity-ledger-select-all input {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  /* activity_table.html is also reused to render a single Job Run's entries
+     inside the timeline view; bulk selection is scoped to the main table
+     only (its select-all checkbox uses a single #selectAllRows id, which
+     would collide if duplicated into an expanded run's own copy). */
+  .run-timeline-detail .activity-row-select,
+  .run-timeline-detail .activity-ledger-select-all {
+    display: none;
+  }
 
   .activity-poster {
     display: flex;
@@ -1700,17 +1856,26 @@
 
   .rejection-row {
     display: grid;
+    width: 100%;
     grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 2fr) 3rem 3rem;
     align-items: center;
     gap: 12px;
     min-height: 38px;
     padding: 0 12px;
+    border: none;
     border-bottom: 1px solid var(--border);
+    background: transparent;
     color: var(--muted);
-    font-size: 12px;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 120ms ease;
   }
 
   .rejection-row:last-child { border-bottom: 0; }
+  .rejection-row:hover { background: var(--surface-raised); color: var(--text); }
+  .rejection-row[aria-pressed="true"] { background: rgb(127 29 29 / 18%); color: var(--text); }
+  .rejection-row[aria-pressed="true"] .rejection-bar i { background: rgb(248 113 113); }
   .rejection-row b { color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
   .rejection-row small { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 
@@ -2112,6 +2277,73 @@
   .activity-filter[aria-pressed="true"] {
     border-color: var(--border-strong);
     background: var(--surface-raised);
+    color: var(--text);
+  }
+
+  /* Match the quick-filter pills to the same colors as the outcome badges
+     and chart bars (.activity-status-*) they filter for, so scanning the
+     pill row and scanning the table use the same color language. */
+  .activity-filter[data-status="added"] { color: rgb(74 222 128 / 75%); }
+  .activity-filter[data-status="requested"] { color: rgb(129 140 248 / 75%); }
+  .activity-filter[data-status="rejected"] { color: rgb(248 113 113 / 75%); }
+  .activity-filter[data-status="skipped"] { color: rgb(250 204 21 / 75%); }
+  .activity-filter[data-status="failed"] { color: rgb(216 180 254 / 75%); }
+
+  .activity-filter[data-status="added"][aria-pressed="true"] { color: #4ade80; background: rgb(20 83 45 / 22%); border-color: rgb(22 101 52 / 55%); }
+  .activity-filter[data-status="requested"][aria-pressed="true"] { color: #818cf8; background: rgb(30 58 138 / 22%); border-color: rgb(30 64 175 / 55%); }
+  .activity-filter[data-status="rejected"][aria-pressed="true"] { color: #f87171; background: rgb(127 29 29 / 20%); border-color: rgb(153 27 27 / 50%); }
+  .activity-filter[data-status="skipped"][aria-pressed="true"] { color: #facc15; background: rgb(113 63 18 / 20%); border-color: rgb(133 77 14 / 45%); }
+  .activity-filter[data-status="failed"][aria-pressed="true"] { color: #d8b4fe; background: rgb(88 28 135 / 22%); border-color: rgb(107 33 168 / 50%); }
+
+  .active-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--surface-raised);
+    padding: 4px 6px 4px 10px;
+    color: var(--text);
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+
+  .active-filter-chip-accent {
+    border-color: rgb(30 64 175 / 55%);
+    background: rgb(30 58 138 / 22%);
+    color: #a5b4fc;
+  }
+
+  .active-filter-chip button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    opacity: 0.75;
+    cursor: pointer;
+  }
+
+  .active-filter-chip button:hover {
+    opacity: 1;
+    background: rgb(255 255 255 / 12%);
+  }
+
+  .active-filter-clear-all {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 11.5px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+
+  .active-filter-clear-all:hover {
     color: var(--text);
   }
 

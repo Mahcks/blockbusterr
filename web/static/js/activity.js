@@ -4,25 +4,98 @@ let autoRefreshInterval = null;
 let searchTimeout = null;
 let deliveryChart = null;
 let decisionChart = null;
+let chartDates = [];
+let dayFilter = null;
+let reasonFilter = null;
 let recentRuns = [];
 let jobsByID = new Map();
 let activityViewMode = 'items';
 let hasActivityEntries = null;
 let hasJobRuns = null;
+let selectedEntryIds = new Set();
+
+const DEFAULT_SORT = { field: 'timestamp', direction: 'desc' };
+const DEFAULT_PAGE_SIZE = '50';
 
 function updateActivityEmptyState() {
   if (hasActivityEntries === null || hasJobRuns === null) return;
   document.getElementById('activityEmptyState')?.classList.toggle('hidden', hasActivityEntries || hasJobRuns);
 }
 
+// Reads ?status=&media=&job=&language=&date_range=&day=&reason=&search=&page=&pageSize=&sort=&order=&view=
+// so a filtered view is a link you can bookmark, share, or hit back/forward on.
+function readFiltersFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    status: params.get('status') || '',
+    media: params.get('media') || '',
+    job: params.get('job') || '',
+    language: params.get('language') || '',
+    dateRange: params.get('date_range') || '',
+    day: params.get('day') || '',
+    reason: params.get('reason') || '',
+    search: params.get('search') || '',
+    page: Math.max(1, parseInt(params.get('page') || '1', 10) || 1),
+    pageSize: params.get('pageSize') || DEFAULT_PAGE_SIZE,
+    sort: params.get('sort') || DEFAULT_SORT.field,
+    order: params.get('order') === 'asc' ? 'asc' : 'desc',
+    view: params.get('view') === 'timeline' ? 'timeline' : 'items',
+  };
+}
+
+// Pushes the given filter state into the address bar. Uses replaceState (not
+// pushState) since filters change too rapidly for every tweak to be its own
+// back-button stop; defaults are omitted to keep the URL clean.
+function syncFiltersToURL(filters) {
+  const params = activityFilterQueryString(filters);
+  if (currentPage !== 1) params.set('page', String(currentPage));
+  const pageSize = document.getElementById('pageSizeSelect')?.value || DEFAULT_PAGE_SIZE;
+  if (pageSize !== DEFAULT_PAGE_SIZE) params.set('pageSize', pageSize);
+  if (currentSort.field !== DEFAULT_SORT.field || currentSort.direction !== DEFAULT_SORT.direction) {
+    params.set('sort', currentSort.field);
+    params.set('order', currentSort.direction);
+  }
+  if (activityViewMode === 'timeline') params.set('view', 'timeline');
+  const qs = params.toString();
+  window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+}
+
+// Applies a state object (from the URL, or restored on popstate) onto every
+// filter control and the module-level state that mirrors them.
+function applyFilterState(state) {
+  const setValue = (id, value) => { const el = document.getElementById(id); if (el) el.value = value; };
+  setValue('statusFilter', state.status);
+  setValue('mediaFilter', state.media);
+  setValue('languageFilter', state.language);
+  setValue('dateRangeFilter', state.dateRange);
+  setValue('searchInput', state.search);
+  setValue('pageSizeSelect', state.pageSize);
+  dayFilter = state.day || null;
+  reasonFilter = state.reason || null;
+  currentPage = state.page;
+  currentSort = { field: state.sort, direction: state.order };
+
+  document.querySelectorAll('[id^="filter-"]').forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+  const pillId = state.status ? `filter-${state.status}` : 'filter-all';
+  document.getElementById(pillId)?.setAttribute('aria-pressed', 'true');
+  syncSortIndicators();
+
+  // job/language options are populated async (see loadActivityJobs/
+  // loadActivityLanguages); their values are re-applied once those resolve.
+  return state;
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
+  const initialState = readFiltersFromURL();
+  applyFilterState(initialState);
+
   setupAutoRefresh();
   loadActivityChart();
   loadJobRuns();
-  loadActivityJobs();
-  loadActivityLanguages();
-  setActivityView('items');
+  loadActivityJobs().then(() => { const el = document.getElementById('jobFilter'); if (el) el.value = initialState.job; });
+  loadActivityLanguages().then(() => { const el = document.getElementById('languageFilter'); if (el) el.value = initialState.language; });
+  setActivityView(initialState.view);
   const timelineSearch = document.getElementById('timelineRunSearchInput');
   const timelineStatus = document.getElementById('timelineRunStatusFilter');
   if (timelineSearch) timelineSearch.addEventListener('input', renderActivityTimeline);
@@ -31,13 +104,43 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('autoRefresh')?.addEventListener('change', toggleAutoRefresh);
   document.getElementById('clearLogsDays')?.addEventListener('change', updateClearLogsConfirmation);
   document.getElementById('clearLogsConfirmation')?.addEventListener('input', updateClearLogsConfirmation);
-  ['statusFilter', 'mediaFilter', 'jobFilter', 'languageFilter', 'dateRangeFilter'].forEach((id) => {
-    document.getElementById(id)?.addEventListener('change', applyFilters);
+  // date_range and day are mutually exclusive ways of scoping time, so picking
+  // a relative window supersedes a chart-driven single day. The rest (status,
+  // media, job, language) just narrow the day filter further and can coexist
+  // with it freely - see the active-filters bar for what's actually applied.
+  document.getElementById('dateRangeFilter')?.addEventListener('change', () => { dayFilter = null; currentPage = 1; applyFilters(); });
+  // A reason filter only ever matches rejected items (the backend enforces
+  // this), so picking any other status out from under it is a contradiction -
+  // clear it rather than silently keep filtering by a reason that no longer
+  // makes sense for what's selected.
+  document.getElementById('statusFilter')?.addEventListener('change', (event) => {
+    clearReasonFilterIfIncompatible(event.target.value);
+    currentPage = 1;
+    applyFilters();
+  });
+  ['mediaFilter', 'jobFilter', 'languageFilter'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('change', () => { currentPage = 1; applyFilters(); });
   });
   document.getElementById('pageSizeSelect')?.addEventListener('change', changePageSize);
+  document.getElementById('chartDaysSelect')?.addEventListener('change', loadActivityChart);
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') closeClearLogsModal();
   });
+  // Back/forward should restore the filter state that was active then, not
+  // just change the URL text underneath an unchanged page.
+  window.addEventListener('popstate', () => {
+    const state = applyFilterState(readFiltersFromURL());
+    const jobEl = document.getElementById('jobFilter');
+    if (jobEl) jobEl.value = state.job;
+    const langEl = document.getElementById('languageFilter');
+    if (langEl) langEl.value = state.language;
+    setActivityView(state.view);
+    applyFilters();
+  });
+
+  // applyFilters() by itself only loads the table; run it once explicitly so
+  // the chip bar and URL reflect state restored from an incoming link too.
+  applyFilters();
 });
 
 document.addEventListener('click', function(event) {
@@ -50,12 +153,17 @@ document.addEventListener('click', function(event) {
     'close-clear-logs': closeClearLogsModal,
     'clear-logs': clearOldLogs,
     'refresh': applyFilters,
-    'toggle-auto-refresh': toggleAutoRefresh
+    'toggle-auto-refresh': toggleAutoRefresh,
+    'clear-all-filters': clearAllActiveFilters,
+    'bulk-block': bulkBlockSelected,
+    'clear-selection': clearSelection
   };
   const action = trigger.dataset.action;
   if (actions[action]) return actions[action]();
+  if (action === 'clear-active-filter') return clearActiveFilter(trigger.dataset.filterKey);
   if (action === 'set-activity-view') return setActivityView(trigger.dataset.view);
   if (action === 'filter-status') return quickFilterStatus(trigger.dataset.status || '');
+  if (action === 'filter-by-reason') return filterByReason(trigger.dataset.reason);
   if (action === 'filter-job') return quickFilterJob(trigger.dataset.jobId);
   if (action === 'sort') return sortBy(trigger.dataset.sort);
   if (action === 'toggle-timeline-run') return toggleTimelineRun(Number(trigger.dataset.runId));
@@ -96,7 +204,7 @@ function setupAutoRefresh() {
   const enabled = document.getElementById('autoRefresh').checked;
   if (enabled && !autoRefreshInterval) {
     autoRefreshInterval = setInterval(() => {
-      applyFilters();
+      applyFilters({ preserveSelection: true });
       htmx.trigger('#stats', 'statsUpdate');
       loadJobRuns();
     }, 30000); // 30 seconds
@@ -452,25 +560,210 @@ function parseFilterDetailsIn(container) {
   });
 }
 
-function applyFilters() {
-  const pageSize = document.getElementById('pageSizeSelect').value;
-  const status = document.getElementById('statusFilter').value;
-  const media = document.getElementById('mediaFilter').value;
-  const job = document.getElementById('jobFilter').value;
-	  const language = document.getElementById('languageFilter').value;
-  const dateRange = document.getElementById('dateRangeFilter').value;
-  const search = document.getElementById('searchInput').value;
-  
-  let url = `/v1/activity/logs?page=${currentPage}&pageSize=${pageSize}`;
-  if (status) url += `&status=${status}`;
-  if (media) url += `&media=${media}`;
-  if (job) url += `&job=${encodeURIComponent(job)}`;
-  if (language) url += `&language=${encodeURIComponent(language)}`;
-  if (dateRange) url += `&date_range=${dateRange}`;
-  if (search) url += `&search=${encodeURIComponent(search)}`;
-  if (currentSort.field) url += `&sort=${currentSort.field}&order=${currentSort.direction}`;
-  
-  htmx.ajax('GET', url, {target: '#activityTable'});
+// Single source of truth for "what's currently filtered", read directly off
+// the DOM controls plus the module-level state (day/reason) that has no
+// visible input of its own. Used by the table fetch, CSV export, the URL,
+// and the active-filters chip bar, so none of them can drift out of sync.
+function getActivityFilters() {
+  return {
+    status: document.getElementById('statusFilter')?.value || '',
+    media: document.getElementById('mediaFilter')?.value || '',
+    job: document.getElementById('jobFilter')?.value || '',
+    language: document.getElementById('languageFilter')?.value || '',
+    dateRange: document.getElementById('dateRangeFilter')?.value || '',
+    day: dayFilter || '',
+    reason: reasonFilter || '',
+    search: document.getElementById('searchInput')?.value || '',
+  };
+}
+
+function activityFilterQueryString(filters) {
+  const params = new URLSearchParams();
+  if (filters.status) params.set('status', filters.status);
+  if (filters.media) params.set('media', filters.media);
+  if (filters.job) params.set('job', filters.job);
+  if (filters.language) params.set('language', filters.language);
+  if (filters.dateRange) params.set('date_range', filters.dateRange);
+  if (filters.day) params.set('day', filters.day);
+  if (filters.reason) params.set('reason', filters.reason);
+  if (filters.search) params.set('search', filters.search);
+  return params;
+}
+
+function applyFilters(options = {}) {
+  // A selection only makes sense against the rows it was made on; once the
+  // query changes underneath it (a real filter/sort/page change - not just
+  // the periodic auto-refresh re-fetching the same query) it's cleared.
+  if (!options.preserveSelection) clearSelection();
+
+  const filters = getActivityFilters();
+  const params = activityFilterQueryString(filters);
+  params.set('page', String(currentPage));
+  params.set('pageSize', document.getElementById('pageSizeSelect')?.value || DEFAULT_PAGE_SIZE);
+  if (currentSort.field) { params.set('sort', currentSort.field); params.set('order', currentSort.direction); }
+
+  htmx.ajax('GET', `/v1/activity/logs?${params.toString()}`, { target: '#activityTable' });
+  renderActiveFilterChips();
+  syncFiltersToURL(filters);
+}
+
+function clearSelection() {
+  selectedEntryIds.clear();
+  updateBulkActionsBar();
+}
+
+function toggleRowSelection(id, checked) {
+  if (checked) selectedEntryIds.add(id); else selectedEntryIds.delete(id);
+  updateSelectAllState();
+  updateBulkActionsBar();
+}
+
+function toggleSelectAll(checked) {
+  document.querySelectorAll('.activity-row-select-input').forEach((input) => {
+    const id = Number(input.dataset.id);
+    input.checked = checked;
+    if (checked) selectedEntryIds.add(id); else selectedEntryIds.delete(id);
+  });
+  updateBulkActionsBar();
+}
+
+function updateSelectAllState() {
+  const selectAll = document.getElementById('selectAllRows');
+  const rows = document.querySelectorAll('.activity-row-select-input');
+  if (!selectAll || rows.length === 0) return;
+  const checkedCount = Array.from(rows).filter((el) => selectedEntryIds.has(Number(el.dataset.id))).length;
+  selectAll.checked = checkedCount === rows.length;
+  selectAll.indeterminate = checkedCount > 0 && checkedCount < rows.length;
+}
+
+// After every table swap (HTMX innerHTML replace), the checkbox elements are
+// brand new DOM nodes with no checked state of their own; re-apply whatever
+// selectedEntryIds says a preserved selection (see applyFilters) should show.
+function restoreRowSelections() {
+  document.querySelectorAll('.activity-row-select-input').forEach((input) => {
+    input.checked = selectedEntryIds.has(Number(input.dataset.id));
+  });
+  updateSelectAllState();
+}
+
+function updateBulkActionsBar() {
+  const bar = document.getElementById('bulkActionsBar');
+  if (!bar) return;
+  if (selectedEntryIds.size === 0) {
+    bar.classList.add('hidden');
+    return;
+  }
+  bar.classList.remove('hidden');
+  const count = document.getElementById('bulkActionsCount');
+  if (count) count.textContent = `${selectedEntryIds.size} selected`;
+}
+
+async function bulkBlockSelected() {
+  const ids = Array.from(selectedEntryIds);
+  if (ids.length === 0) return;
+  if (!window.confirm(`Block ${ids.length} selected title${ids.length === 1 ? '' : 's'} from future discovery?`)) return;
+  try {
+    const response = await fetch('/v1/activity/bulk-block', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    if (!response.ok) throw new Error(`Request failed (${response.status})`);
+    const data = await response.json();
+    const skippedCount = Array.isArray(data.skipped) ? data.skipped.length : 0;
+    const message = skippedCount > 0
+      ? `${data.message} (${skippedCount} skipped - no ID available)`
+      : data.message;
+    window.showNotification(message || `Blocked ${data.blocked} entries`, 'success');
+    clearSelection();
+    refreshActivityData();
+  } catch (err) {
+    window.showNotification(`Failed to block selected entries: ${err.message}`, 'error');
+  }
+}
+
+document.addEventListener('change', function(event) {
+  const target = event.target;
+  if (target.id === 'selectAllRows') return toggleSelectAll(target.checked);
+  if (target.classList?.contains('activity-row-select-input')) return toggleRowSelection(Number(target.dataset.id), target.checked);
+});
+
+// Every filter input feeds into one place so the compound filter state is
+// always visible and individually reversible, instead of six separate
+// controls a user has to hunt through to figure out what's actually applied.
+function renderActiveFilterChips() {
+  const bar = document.getElementById('activeFiltersBar');
+  if (!bar) return;
+
+  const statusSelect = document.getElementById('statusFilter');
+  const mediaSelect = document.getElementById('mediaFilter');
+  const jobSelect = document.getElementById('jobFilter');
+  const languageSelect = document.getElementById('languageFilter');
+  const dateRangeSelect = document.getElementById('dateRangeFilter');
+  const searchInput = document.getElementById('searchInput');
+  const optionText = (select) => select?.selectedOptions?.[0]?.text || select?.value || '';
+
+  const chips = [];
+  if (dayFilter) {
+    const prettyDate = new Date(`${dayFilter}T00:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' });
+    chips.push({ key: 'day', accent: true, label: `Day: ${prettyDate}`, clear: () => { dayFilter = null; } });
+  }
+  if (statusSelect?.value) {
+    chips.push({ key: 'status', label: `Status: ${optionText(statusSelect)}`, clear: () => {
+      statusSelect.value = '';
+      document.querySelectorAll('[id^="filter-"]').forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+      document.getElementById('filter-all')?.setAttribute('aria-pressed', 'true');
+    }});
+  }
+  if (reasonFilter) chips.push({ key: 'reason', accent: true, label: `Reason: ${reasonFilter}`, clear: () => {
+    reasonFilter = null;
+    document.querySelectorAll('.rejection-row').forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+  }});
+  if (mediaSelect?.value) chips.push({ key: 'media', label: `Type: ${optionText(mediaSelect)}`, clear: () => { mediaSelect.value = ''; } });
+  if (jobSelect?.value) chips.push({ key: 'job', label: `Job: ${optionText(jobSelect)}`, clear: () => { jobSelect.value = ''; } });
+  if (languageSelect?.value) chips.push({ key: 'language', label: `Language: ${optionText(languageSelect)}`, clear: () => { languageSelect.value = ''; } });
+  if (dateRangeSelect?.value) chips.push({ key: 'dateRange', label: `Date: ${optionText(dateRangeSelect)}`, clear: () => { dateRangeSelect.value = ''; } });
+  if (searchInput?.value) chips.push({ key: 'search', label: `Search: "${searchInput.value}"`, clear: () => { searchInput.value = ''; } });
+
+  bar._clearFns = Object.fromEntries(chips.map((chip) => [chip.key, chip.clear]));
+
+  if (!chips.length) {
+    bar.classList.add('hidden');
+    bar.innerHTML = '';
+    return;
+  }
+
+  bar.classList.remove('hidden');
+  bar.innerHTML = chips.map((chip) => `
+    <span class="active-filter-chip${chip.accent ? ' active-filter-chip-accent' : ''}">
+      ${escapeHTML(chip.label)}
+      <button type="button" data-action="clear-active-filter" data-filter-key="${chip.key}" aria-label="Remove ${escapeHTML(chip.label)} filter"><i data-lucide="x" class="h-3 w-3" aria-hidden="true"></i></button>
+    </span>
+  `).join('') + (chips.length > 1 ? '<button type="button" data-action="clear-all-filters" class="active-filter-clear-all">Clear all</button>' : '');
+  window.lucide?.createIcons({ nodes: bar.querySelectorAll('[data-lucide]') });
+}
+
+function clearActiveFilter(key) {
+  const bar = document.getElementById('activeFiltersBar');
+  bar?._clearFns?.[key]?.();
+  currentPage = 1;
+  applyFilters();
+}
+
+function clearAllActiveFilters() {
+  dayFilter = null;
+  reasonFilter = null;
+  document.querySelectorAll('.rejection-row').forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+  document.getElementById('statusFilter').value = '';
+  document.getElementById('mediaFilter').value = '';
+  document.getElementById('jobFilter').value = '';
+  document.getElementById('languageFilter').value = '';
+  document.getElementById('dateRangeFilter').value = '';
+  document.getElementById('searchInput').value = '';
+  document.querySelectorAll('[id^="filter-"]').forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+  document.getElementById('filter-all')?.setAttribute('aria-pressed', 'true');
+  currentPage = 1;
+  applyFilters();
 }
 
 function debounceSearch() {
@@ -488,19 +781,39 @@ function sortBy(field) {
     currentSort.direction = 'desc';
   }
   
-  // Update UI
-  document.querySelectorAll('[id^="sort-"]').forEach(btn => {
-    btn.classList.remove('bg-slate-700', 'text-blue-400');
-  });
-  const btn = document.getElementById(`sort-${field}`);
-  btn.classList.add('bg-slate-700', 'text-blue-400');
-  btn.textContent = btn.textContent.split(' ')[0] + (currentSort.direction === 'desc' ? ' ↓' : ' ↑');
-  
+  syncSortIndicators();
   applyFilters();
 }
 
+// The table header's sort buttons (sort-head-*) are re-created every time
+// activity_table.html is swapped in by HTMX, so their active/arrow state
+// has to be reapplied after every swap, not just when the user clicks sort.
+function syncSortIndicators() {
+  document.querySelectorAll('[id^="sort-"]').forEach(btn => {
+    btn.classList.remove('bg-slate-700', 'text-blue-400', 'activity-ledger-sort-active');
+    btn.removeAttribute('aria-sort');
+    btn.textContent = btn.textContent.replace(/\s*[↓↑]\s*$/, '').trim();
+  });
+  const arrow = currentSort.direction === 'desc' ? ' ↓' : ' ↑';
+  [`sort-${currentSort.field}`, `sort-head-${currentSort.field}`].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('bg-slate-700', 'text-blue-400', 'activity-ledger-sort-active');
+    el.setAttribute('aria-sort', currentSort.direction === 'desc' ? 'descending' : 'ascending');
+    el.textContent = el.textContent.trim() + arrow;
+  });
+}
+
+
+function clearReasonFilterIfIncompatible(status) {
+  if (reasonFilter && status !== 'rejected') {
+    reasonFilter = null;
+    document.querySelectorAll('.rejection-row').forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+  }
+}
 
 function quickFilterStatus(status) {
+  clearReasonFilterIfIncompatible(status);
   // Update the status filter dropdown
   document.getElementById('statusFilter').value = status;
   // Update button styles
@@ -608,8 +921,14 @@ function updateClearLogsConfirmation() {
 
 async function exportToCSV() {
   try {
-		const language = document.getElementById('languageFilter').value;
-		const response = await fetch(`/v1/activity/logs?limit=10000&dedupe=false&format=json${language ? `&language=${encodeURIComponent(language)}` : ''}`);
+    // Export exactly what's on screen, not everything - matches the same
+    // filters (and sort) currently applied to the table.
+    const params = activityFilterQueryString(getActivityFilters());
+    params.set('limit', '10000');
+    params.set('dedupe', 'false');
+    params.set('format', 'json');
+    if (currentSort.field) { params.set('sort', currentSort.field); params.set('order', currentSort.direction); }
+    const response = await fetch(`/v1/activity/logs?${params.toString()}`);
     if (!response.ok) throw new Error(`Request failed (${response.status})`);
     const payload = await response.json();
     let logs = [];
@@ -661,11 +980,63 @@ async function exportToCSV() {
   }
 }
 
+// Dataset label -> the activity status it corresponds to, for click-to-filter.
+const CHART_LABEL_STATUS = {
+  'Added': 'added', 'Would add': 'added',
+  'Requested': 'requested', 'Would request': 'requested',
+  'Rejected': 'rejected', 'Skipped': 'skipped', 'Failed': 'failed'
+};
+
+function onChartBarClick(event, _elements, chart) {
+  // Don't use the passed-in `elements`: with the chart's shared
+  // interaction mode (index + !intersect, needed for the hover tooltip to
+  // show every stacked segment at once), it returns one element per
+  // dataset at that x-position, always in dataset order - so elements[0]
+  // is always the *first* dataset regardless of which colored segment was
+  // actually clicked. Resolve the exact segment under the cursor instead.
+  const hit = chart.getElementsAtEventForMode(event, 'nearest', { intersect: true }, true);
+  if (!hit.length) return;
+  const { datasetIndex, index } = hit[0];
+  const label = chart.data.datasets[datasetIndex].label;
+  const status = CHART_LABEL_STATUS[label];
+  const date = chartDates[index];
+  if (!status || !date) return;
+  filterByChartPoint(date, status, label);
+}
+
+function onChartBarHover(event, elements) {
+  if (event.native?.target) event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+}
+
+function filterByChartPoint(date, status, _label) {
+  dayFilter = date;
+  currentPage = 1;
+  const statusSelect = document.getElementById('statusFilter');
+  if (statusSelect) statusSelect.value = status;
+  document.querySelectorAll('[id^="filter-"]').forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+  document.getElementById(`filter-${status}`)?.setAttribute('aria-pressed', 'true');
+  // dayFilter always wins over date_range server-side, so leaving the
+  // dropdown on its old value (e.g. "Last 7 Days") would silently lie
+  // about what's actually being shown. Media/job/language/search stay as
+  // they were, since those just narrow the result further and don't
+  // conflict with picking a specific day.
+  const dateRangeSelect = document.getElementById('dateRangeFilter');
+  if (dateRangeSelect) dateRangeSelect.value = '';
+
+  if (activityViewMode !== 'items') setActivityView('items');
+  applyFilters();
+  // Scroll to the filters bar (not the table) so the "why am I seeing this"
+  // context stays visible instead of being pushed off the top of the viewport.
+  document.getElementById('activeFiltersBar')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 async function loadActivityChart() {
   try {
-    const response = await fetch('/v1/activity/chart');
+    const days = document.getElementById('chartDaysSelect')?.value || 7;
+    const response = await fetch(`/v1/activity/chart?days=${days}`);
     const data = await response.json();
-    
+    chartDates = data.dates || [];
+
     deliveryChart?.destroy();
     decisionChart?.destroy();
 
@@ -673,7 +1044,12 @@ async function loadActivityChart() {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { intersect: false, mode: 'index' },
-      plugins: { legend: { labels: { color: 'rgb(148, 163, 184)', boxWidth: 10, boxHeight: 10 } } },
+      onClick: onChartBarClick,
+      onHover: onChartBarHover,
+      plugins: {
+        legend: { labels: { color: 'rgb(148, 163, 184)', boxWidth: 10, boxHeight: 10 } },
+        tooltip: { footerFont: { style: 'italic' }, callbacks: { footer: () => 'Click a bar to filter the table below' } }
+      },
       scales: {
         y: { beginAtZero: true, stacked: true, ticks: { color: 'rgb(148, 163, 184)', precision: 0 }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
         x: { stacked: true, ticks: { color: 'rgb(148, 163, 184)' }, grid: { display: false } }
@@ -850,6 +1226,8 @@ document.body.addEventListener('htmx:afterRequest', function(evt) {
 htmx.on('htmx:afterSettle', function(evt) {
   if (evt.detail.target.id === 'activityTable') {
     parseFilterDetailsIn(evt.detail.target);
+    syncSortIndicators();
+    restoreRowSelections();
   }
 });
 
@@ -872,16 +1250,33 @@ async function loadRejectionBreakdown() {
       sorted.forEach(([reason, count]) => {
         const percentage = ((count / data.total_rejected) * 100).toFixed(0);
         container.innerHTML += `
-          <div class="rejection-row">
+          <button type="button" class="rejection-row" data-action="filter-by-reason" data-reason="${escapeHTML(reason)}" aria-pressed="${reasonFilter === reason}">
             <span>${escapeHTML(reason)}</span>
             <span class="rejection-bar"><i style="width:${percentage}%"></i></span>
             <b>${Number(count || 0)}</b>
             <small>${percentage}%</small>
-          </div>
+          </button>
         `;
       });
     }
   } catch (err) {
     // Silently fail if no rejections
   }
+}
+
+function filterByReason(reason) {
+  reasonFilter = reason;
+  currentPage = 1;
+  // Reason only ever applies to rejected items - the backend enforces this
+  // regardless of what's sent, but reflect it in the status controls too so
+  // the UI doesn't show a contradictory "All status" while filtered to one reason.
+  const statusSelect = document.getElementById('statusFilter');
+  if (statusSelect) statusSelect.value = 'rejected';
+  document.querySelectorAll('[id^="filter-"]').forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+  document.getElementById('filter-rejected')?.setAttribute('aria-pressed', 'true');
+  document.querySelectorAll('.rejection-row').forEach((btn) => btn.setAttribute('aria-pressed', String(btn.dataset.reason === reason)));
+
+  if (activityViewMode !== 'items') setActivityView('items');
+  applyFilters();
+  document.getElementById('activeFiltersBar')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
