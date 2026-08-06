@@ -14,6 +14,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/integrations"
+	"github.com/mahcks/blockbusterr/internal/services/jobs"
 	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
@@ -247,18 +248,20 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 		db := gctx.Database()
 		if db == nil {
 			return c.JSON(fiber.Map{
-				"labels":   []string{},
-				"added":    []int{},
-				"rejected": []int{},
-				"skipped":  []int{},
+				"labels": []string{}, "added": []int{}, "requested": []int{}, "would_add": []int{}, "would_request": []int{},
+				"rejected": []int{}, "skipped": []int{}, "failed": []int{}, "dry_run": jobs.DryRunEnabled(gctx.Metadata().Version),
 			})
 		}
 
 		chartData := make(map[string]any)
 		labels := make([]string, 0, 7)
 		added := make([]int, 0, 7)
+		requested := make([]int, 0, 7)
+		wouldAdd := make([]int, 0, 7)
+		wouldRequest := make([]int, 0, 7)
 		rejected := make([]int, 0, 7)
 		skipped := make([]int, 0, 7)
+		failed := make([]int, 0, 7)
 
 		countsByDay, err := db.GetActivityDailyCounts(7)
 		if err != nil {
@@ -275,19 +278,32 @@ func RegisterActivityRoutes(router fiber.Router, gctx global.Context) {
 			key := day.Format("2006-01-02")
 			if counts, ok := countsByDay[key]; ok {
 				added = append(added, counts.Added)
+				requested = append(requested, counts.Requested)
+				wouldAdd = append(wouldAdd, counts.WouldAdd)
+				wouldRequest = append(wouldRequest, counts.WouldRequest)
 				rejected = append(rejected, counts.Rejected)
 				skipped = append(skipped, counts.Skipped)
+				failed = append(failed, counts.Failed)
 				continue
 			}
 			added = append(added, 0)
+			requested = append(requested, 0)
+			wouldAdd = append(wouldAdd, 0)
+			wouldRequest = append(wouldRequest, 0)
 			rejected = append(rejected, 0)
 			skipped = append(skipped, 0)
+			failed = append(failed, 0)
 		}
 
 		chartData["labels"] = labels
 		chartData["added"] = added
+		chartData["requested"] = requested
+		chartData["would_add"] = wouldAdd
+		chartData["would_request"] = wouldRequest
 		chartData["rejected"] = rejected
 		chartData["skipped"] = skipped
+		chartData["failed"] = failed
+		chartData["dry_run"] = jobs.DryRunEnabled(gctx.Metadata().Version)
 
 		return c.JSON(chartData)
 	})

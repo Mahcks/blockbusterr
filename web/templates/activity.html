@@ -49,15 +49,36 @@
     </div>
   </section>
 
-  <!-- Activity Chart -->
+  <!-- Outcome charts use separate scales so delivery remains legible beside high-volume filtering. -->
   <section class="jobs-panel p-4">
     <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
       <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
         <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
       </svg>
-      Activity Volume <span class="ml-1 text-sm font-normal text-slate-500">Last 7 days</span>
+      Activity outcomes <span class="ml-1 text-sm font-normal text-slate-500">Last 7 days</span>
     </h3>
-    <canvas id="activityChart" class="w-full" style="max-height: 200px;"></canvas>
+    <div class="grid gap-4 lg:grid-cols-2">
+      <div class="job-nested-panel p-3">
+        <div class="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h4 class="text-sm font-semibold text-slate-100">Delivery</h4>
+            <p id="deliveryChartDescription" class="mt-1 text-xs text-slate-500">Added directly or requested through Jellyseerr/Seerr.</p>
+          </div>
+          <span id="deliveryChartTotal" class="whitespace-nowrap text-xs text-slate-400"></span>
+        </div>
+        <div class="h-48"><canvas id="deliveryChart" aria-label="Added and requested titles by day"></canvas></div>
+      </div>
+      <div class="job-nested-panel p-3">
+        <div class="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h4 class="text-sm font-semibold text-slate-100">Other decisions</h4>
+            <p class="mt-1 text-xs text-slate-500">Rejected by rules, skipped as existing, or failed.</p>
+          </div>
+          <span id="decisionChartTotal" class="whitespace-nowrap text-xs text-slate-400"></span>
+        </div>
+        <div class="h-48"><canvas id="decisionChart" aria-label="Rejected, skipped, and failed titles by day"></canvas></div>
+      </div>
+    </div>
   </section>
 
   <!-- Filters & Controls -->

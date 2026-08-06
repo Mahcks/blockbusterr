@@ -61,10 +61,14 @@ type JobRun struct {
 }
 
 type ActivityDailyCount struct {
-	Day      string `json:"day"` // YYYY-MM-DD
-	Added    int    `json:"added"`
-	Rejected int    `json:"rejected"`
-	Skipped  int    `json:"skipped"`
+	Day          string `json:"day"` // YYYY-MM-DD
+	Added        int    `json:"added"`
+	Requested    int    `json:"requested"`
+	WouldAdd     int    `json:"would_add"`
+	WouldRequest int    `json:"would_request"`
+	Rejected     int    `json:"rejected"`
+	Skipped      int    `json:"skipped"`
+	Failed       int    `json:"failed"`
 }
 
 type DeliveryBudgetUsage struct {
@@ -741,13 +745,13 @@ func (d *Database) GetActivityLanguages() ([]string, error) {
 func (d *Database) GetActivityStats() (map[string]any, error) {
 	var totalAdded, totalFailed, totalRejected, totalSkipped, totalMovies, totalShows, recentAdded int
 	err := d.db.QueryRow(`SELECT
-		COALESCE(SUM(CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END), 0),
+		COALESCE(SUM(CASE WHEN status IN (?, ?) AND COALESCE(message, '') NOT LIKE '[DRY RUN]%' THEN 1 ELSE 0 END), 0),
 		COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0),
 		COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0),
 		COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0),
 		COALESCE(SUM(CASE WHEN media_type = ? THEN 1 ELSE 0 END), 0),
 		COALESCE(SUM(CASE WHEN media_type = ? THEN 1 ELSE 0 END), 0),
-		COALESCE(SUM(CASE WHEN status IN (?, ?) AND timestamp > datetime('now', '-24 hours') THEN 1 ELSE 0 END), 0)
+		COALESCE(SUM(CASE WHEN status IN (?, ?) AND COALESCE(message, '') NOT LIKE '[DRY RUN]%' AND timestamp > datetime('now', '-24 hours') THEN 1 ELSE 0 END), 0)
 		FROM activity_logs`,
 		enums.ActivityStatusAdded, enums.ActivityStatusRequested,
 		enums.ActivityStatusFailed, enums.ActivityStatusRejected, enums.ActivityStatusSkipped,
@@ -777,9 +781,13 @@ func (d *Database) GetActivityDailyCounts(days int) (map[string]ActivityDailyCou
 	query := `
 		SELECT
 			date(timestamp) AS day,
-			SUM(CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END) AS added,
+			SUM(CASE WHEN status = ? AND COALESCE(message, '') NOT LIKE '[DRY RUN]%' THEN 1 ELSE 0 END) AS added,
+			SUM(CASE WHEN status = ? AND COALESCE(message, '') NOT LIKE '[DRY RUN]%' THEN 1 ELSE 0 END) AS requested,
+			SUM(CASE WHEN status = ? AND COALESCE(message, '') LIKE '[DRY RUN]%' THEN 1 ELSE 0 END) AS would_add,
+			SUM(CASE WHEN status = ? AND COALESCE(message, '') LIKE '[DRY RUN]%' THEN 1 ELSE 0 END) AS would_request,
 			SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS rejected,
-			SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS skipped
+			SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS skipped,
+			SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS failed
 		FROM activity_logs
 		WHERE timestamp >= ?
 		GROUP BY day
@@ -790,8 +798,11 @@ func (d *Database) GetActivityDailyCounts(days int) (map[string]ActivityDailyCou
 		query,
 		enums.ActivityStatusAdded,
 		enums.ActivityStatusRequested,
+		enums.ActivityStatusAdded,
+		enums.ActivityStatusRequested,
 		enums.ActivityStatusRejected,
 		enums.ActivityStatusSkipped,
+		enums.ActivityStatusFailed,
 		startDay,
 	)
 	if err != nil {
@@ -802,15 +813,19 @@ func (d *Database) GetActivityDailyCounts(days int) (map[string]ActivityDailyCou
 	result := make(map[string]ActivityDailyCount)
 	for rows.Next() {
 		var day string
-		var added, rejected, skipped int
-		if err := rows.Scan(&day, &added, &rejected, &skipped); err != nil {
+		var added, requested, wouldAdd, wouldAsk, rejected, skipped, failed int
+		if err := rows.Scan(&day, &added, &requested, &wouldAdd, &wouldAsk, &rejected, &skipped, &failed); err != nil {
 			return nil, err
 		}
 		result[day] = ActivityDailyCount{
-			Day:      day,
-			Added:    added,
-			Rejected: rejected,
-			Skipped:  skipped,
+			Day:          day,
+			Added:        added,
+			Requested:    requested,
+			WouldAdd:     wouldAdd,
+			WouldRequest: wouldAsk,
+			Rejected:     rejected,
+			Skipped:      skipped,
+			Failed:       failed,
 		}
 	}
 

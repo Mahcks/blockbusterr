@@ -125,6 +125,9 @@ func TestGetActivityDailyCountsAggregatesStatuses(t *testing.T) {
 		{Timestamp: today, JobType: "test", MediaType: "movie", Title: "A", Status: "added"},
 		{Timestamp: today, JobType: "test", MediaType: "movie", Title: "B", Status: "requested"},
 		{Timestamp: today, JobType: "test", MediaType: "movie", Title: "C", Status: "rejected"},
+		{Timestamp: today, JobType: "test", MediaType: "movie", Title: "D", Status: "failed"},
+		{Timestamp: today, JobType: "test", MediaType: "movie", Title: "E", Status: "added", Message: "[DRY RUN] Would be added to Radarr"},
+		{Timestamp: today, JobType: "test", MediaType: "movie", Title: "F", Status: "requested", Message: "[DRY RUN] Would be requested via Jellyseerr"},
 		{Timestamp: yesterday, JobType: "test", MediaType: "show", Title: "D", Status: "skipped"},
 	}
 	for i, e := range entries {
@@ -142,14 +145,24 @@ func TestGetActivityDailyCountsAggregatesStatuses(t *testing.T) {
 	todayKey := today.Format("2006-01-02")
 	yesterdayKey := yesterday.Format("2006-01-02")
 
-	if counts[todayKey].Added != 2 {
-		t.Fatalf("today added = %d, want 2", counts[todayKey].Added)
+	if counts[todayKey].Added != 1 || counts[todayKey].Requested != 1 {
+		t.Fatalf("today delivery = %#v, want 1 added and 1 requested", counts[todayKey])
+	}
+	if counts[todayKey].WouldAdd != 1 || counts[todayKey].WouldRequest != 1 {
+		t.Fatalf("today dry-run delivery = %#v, want 1 would add and 1 would request", counts[todayKey])
 	}
 	if counts[todayKey].Rejected != 1 {
 		t.Fatalf("today rejected = %d, want 1", counts[todayKey].Rejected)
 	}
 	if counts[todayKey].Skipped != 0 {
 		t.Fatalf("today skipped = %d, want 0", counts[todayKey].Skipped)
+	}
+	if counts[todayKey].Failed != 1 {
+		t.Fatalf("today failed = %d, want 1", counts[todayKey].Failed)
+	}
+	stats, err := db.GetActivityStats()
+	if err != nil || stats["total_added"] != 2 {
+		t.Fatalf("delivery stats = %#v, error = %v; dry-run deliveries must not count", stats, err)
 	}
 
 	if counts[yesterdayKey].Skipped != 1 {

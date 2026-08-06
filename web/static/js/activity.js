@@ -2,7 +2,8 @@ let currentSort = { field: 'timestamp', direction: 'desc' };
 let currentPage = 1;
 let autoRefreshInterval = null;
 let searchTimeout = null;
-let activityChart = null;
+let deliveryChart = null;
+let decisionChart = null;
 let recentRuns = [];
 let jobsByID = new Map();
 let activityViewMode = 'items';
@@ -665,60 +666,61 @@ async function loadActivityChart() {
     const response = await fetch('/v1/activity/chart');
     const data = await response.json();
     
-    const ctx = document.getElementById('activityChart');
-    if (activityChart) {
-      activityChart.destroy();
+    deliveryChart?.destroy();
+    decisionChart?.destroy();
+
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: { legend: { labels: { color: 'rgb(148, 163, 184)', boxWidth: 10, boxHeight: 10 } } },
+      scales: {
+        y: { beginAtZero: true, stacked: true, ticks: { color: 'rgb(148, 163, 184)', precision: 0 }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
+        x: { stacked: true, ticks: { color: 'rgb(148, 163, 184)' }, grid: { display: false } }
+      }
+    };
+
+    const deliveryDatasets = [
+      { label: 'Added', data: data.added || [], backgroundColor: 'rgb(34, 197, 94)', borderRadius: 2 },
+      { label: 'Requested', data: data.requested || [], backgroundColor: 'rgb(99, 102, 241)', borderRadius: 2 }
+    ];
+    if (data.dry_run) {
+      deliveryDatasets.push(
+        { label: 'Would add', data: data.would_add || [], backgroundColor: 'rgba(34, 197, 94, 0.4)', borderRadius: 2 },
+        { label: 'Would request', data: data.would_request || [], backgroundColor: 'rgba(99, 102, 241, 0.45)', borderRadius: 2 }
+      );
+      document.getElementById('deliveryChartDescription').textContent = 'Real outcomes and dry-run simulations are shown separately.';
+    } else {
+      document.getElementById('deliveryChartDescription').textContent = 'Added directly or requested through Jellyseerr/Seerr.';
     }
-    
-    activityChart = new Chart(ctx, {
-      type: 'line',
+
+    deliveryChart = new Chart(document.getElementById('deliveryChart'), {
+      type: 'bar',
+      data: {
+        labels: data.labels || [],
+        datasets: deliveryDatasets
+      },
+      options: chartOptions
+    });
+
+    decisionChart = new Chart(document.getElementById('decisionChart'), {
+      type: 'bar',
       data: {
         labels: data.labels || [],
         datasets: [
-          {
-            label: 'Delivered',
-            data: data.added || [],
-            borderColor: 'rgb(34, 197, 94)',
-            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-            tension: 0.4
-          },
-          {
-            label: 'Rejected',
-            data: data.rejected || [],
-            borderColor: 'rgb(239, 68, 68)',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            tension: 0.4
-          },
-          {
-            label: 'Skipped',
-            data: data.skipped || [],
-            borderColor: 'rgb(234, 179, 8)',
-            backgroundColor: 'rgba(234, 179, 8, 0.1)',
-            tension: 0.4
-          }
+          { label: 'Rejected', data: data.rejected || [], backgroundColor: 'rgb(239, 68, 68)', borderRadius: 2 },
+          { label: 'Skipped', data: data.skipped || [], backgroundColor: 'rgb(234, 179, 8)', borderRadius: 2 },
+          { label: 'Failed', data: data.failed || [], backgroundColor: 'rgb(168, 85, 247)', borderRadius: 2 }
         ]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            labels: { color: 'rgb(148, 163, 184)' }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: { color: 'rgb(148, 163, 184)' },
-            grid: { color: 'rgba(148, 163, 184, 0.1)' }
-          },
-          x: {
-            ticks: { color: 'rgb(148, 163, 184)' },
-            grid: { color: 'rgba(148, 163, 184, 0.1)' }
-          }
-        }
-      }
+      options: chartOptions
     });
+
+    const total = (keys) => keys.reduce((sum, key) => sum + (data[key] || []).reduce((a, value) => a + value, 0), 0);
+    const delivered = total(['added', 'requested']);
+    const simulated = total(['would_add', 'would_request']);
+    document.getElementById('deliveryChartTotal').textContent = `${delivered.toLocaleString()} delivered${data.dry_run && simulated ? ` · ${simulated.toLocaleString()} simulated` : ''}`;
+    document.getElementById('decisionChartTotal').textContent = `${total(['rejected', 'skipped', 'failed']).toLocaleString()} decisions`;
   } catch (err) {
     console.error('Failed to load chart:', err);
   }
