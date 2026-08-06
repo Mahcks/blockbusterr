@@ -18,7 +18,7 @@ The backup must include the YAML configuration and SQLite database. Do not test 
 
 1. Pull the v2 image or replace the binary.
 2. Optionally set `BLOCKBUSTERR_AUTH_TOKEN` to a random value of at least 32 characters and save it in your password manager.
-3. Ensure the mounted data directory is writable by container UID/GID `10001:10001` (for example, `sudo chown -R 10001:10001 ./data`).
+3. Docker users should leave the container user unset. The v2 entrypoint will repair ownership left by root-running v1 containers only for the mounted data directory and Blockbusterr's known writable files, then immediately run the application as UID/GID `10001:10001`.
 4. Start Blockbusterr with the existing configuration and data mounts.
 5. If authentication is enabled, sign in with username `blockbusterr` and the owner token. Open **Settings** and confirm discovery and delivery connections.
 6. Open **Jobs**. If the legacy migration banner appears, review the count and choose **Upgrade jobs**.
@@ -36,6 +36,7 @@ The migration creates dynamic jobs, assigns media-compatible default rules, pres
 - Discovery source selection is explicit per job.
 - Global Limits now enforce successful deliveries. Existing movie/show values carry forward; the obsolete `sync` period becomes a rolling 24-hour period.
 - Release containers run as UID/GID `10001:10001`; `BLOCKBUSTERR_AUTH_TOKEN` optionally protects the UI and API.
+- The Docker entrypoint performs the one-time v1 ownership repair without changing file modes or granting broad permissions. If you override the container `user`, the entrypoint cannot perform that repair; stop Blockbusterr and run `sudo chown -R 10001:10001 <mounted-data-directory>` on the Docker host instead.
 
 ## Verify the upgrade
 
