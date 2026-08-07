@@ -64,8 +64,14 @@ PY
   echo "startup unexpectedly changed activity/job-run counts: $before -> $after" >&2
   exit 1
 }
-grep -q '"id":"trending_movies"' "$jobs_json"
-grep -q '"limit":37' "$jobs_json"
+grep -q '"id":"trending_movies"' "$jobs_json" || {
+  echo "migrated job is missing from the v2 API" >&2
+  exit 1
+}
+grep -q '"limit":37' "$jobs_json" || {
+  echo "migrated job limit was not preserved" >&2
+  exit 1
+}
 docker exec "$v2_name" sh -c '
   test -f /app/data/backups/pre-v2/blockbusterr.db &&
   test -f /app/data/config.yaml.backup &&
@@ -76,7 +82,11 @@ docker exec "$v2_name" sh -c '
   grep -q "global_limit_movies: 7" /app/data/config.yaml &&
   grep -q "upgrade-fixture-client" /app/data/config.yaml &&
   grep -q "upgrade-fixture-secret" /app/data/config.yaml
-'
+' || {
+  echo "automatic backup or migrated configuration verification failed" >&2
+  docker logs "$v2_name"
+  exit 1
+}
 
 docker exec "$v2_name" sh -c 'test "$(awk '\''/^Uid:/{print $2}'\'' /proc/1/status)" = 10001 && test "$(awk '\''/^Gid:/{print $2}'\'' /proc/1/status)" = 10001'
 backup_hash=$(docker exec "$v2_name" sha256sum /app/data/backups/pre-v2/blockbusterr.db /app/data/backups/pre-v2/config.yaml)
@@ -91,11 +101,17 @@ until docker exec "$v2_name" wget -qO- http://127.0.0.1:9090/v1/jobs/list >/dev/
   }
   sleep 1
 done
-[ "$backup_hash" = "$(docker exec "$v2_name" sha256sum /app/data/backups/pre-v2/blockbusterr.db /app/data/backups/pre-v2/config.yaml)" ]
+[ "$backup_hash" = "$(docker exec "$v2_name" sha256sum /app/data/backups/pre-v2/blockbusterr.db /app/data/backups/pre-v2/config.yaml)" ] || {
+  echo "second startup modified the pre-v2 backup" >&2
+  exit 1
+}
 [ "$after" = "$(python3 - "$data_dir/blockbusterr.db" <<'PY'
 import sqlite3, sys
 db = sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True)
 print(":".join(str(db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]) for table in ("activity_logs", "job_runs")))
 PY
-)" ]
+)" ] || {
+  echo "second startup changed activity or job-run history" >&2
+  exit 1
+}
 echo "v1.5.0 -> v2 upgrade passed without intervention"

@@ -56,7 +56,7 @@ jobs:
 
       - name: Verify v1 container ownership upgrade
         run: |
-          docker build -t blockbusterr:ci .
+          docker build --build-arg VERSION=v2.0.0-ci -t blockbusterr:ci .
           legacy_data="$(mktemp -d)"
           chmod 0775 "$legacy_data"
           original_group="$(stat -c %g "$legacy_data")"
