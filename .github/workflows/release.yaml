@@ -51,6 +51,11 @@ jobs:
           npm run check:assets
           go test -race ./...
 
+      - name: Verify unattended v1 to v2 upgrade
+        run: |
+          docker build --build-arg VERSION=${GITHUB_REF#refs/tags/} -t blockbusterr:release-candidate .
+          scripts/test-v1-upgrade.sh blockbusterr:release-candidate
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 

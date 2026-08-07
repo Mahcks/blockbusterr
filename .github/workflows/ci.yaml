@@ -80,6 +80,9 @@ jobs:
             exit 1
           fi
 
+      - name: Verify unattended v1 to v2 upgrade
+        run: scripts/test-v1-upgrade.sh blockbusterr:ci
+
   test:
     name: Test
     runs-on: ubuntu-latest

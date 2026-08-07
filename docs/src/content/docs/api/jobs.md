@@ -70,7 +70,7 @@ Starts an enabled dynamic job asynchronously. Use Activity Job Runs to follow th
 
 `POST /v1/jobs/migrate`
 
-Creates dynamic equivalents for enabled legacy jobs, assigns default media rules, saves the configuration, and disables the migrated legacy entries.
+Compatibility endpoint that applies the same idempotent legacy-job migration used during startup. Supported v1 installations are migrated automatically, so this normally reports that no legacy jobs remain.
 
 ## Customize rules
 

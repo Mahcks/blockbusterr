@@ -1,0 +1,45 @@
+version: v1.5.0
+
+trakt:
+  client_id: upgrade-fixture-client
+  client_secret: upgrade-fixture-secret
+
+tmdb:
+  api_key: upgrade-fixture-tmdb
+
+scoring:
+  enabled: true
+  rating_weight: 0.6
+  popularity_weight: 0.3
+  recency_weight: 0.1
+  rating_scale: 10
+  popularity_metric: votes
+  recency_days: 365
+
+jobs:
+  sync_interval: "0 8 * * *"
+  mode: direct
+  global_limit_movies: 7
+  global_limit_shows: 3
+  global_period: daily
+  trending_movies:
+    enabled: true
+    limit: 37
+    sync_interval: "0 8 * * *"
+
+filters:
+  movies:
+    allowed_countries: [US]
+    allowed_languages: [en]
+    blacklisted_genres: [Horror, Documentary]
+    blacklisted_keywords: [Christmas]
+    blacklisted_tmdb_ids: [11, 22]
+    blacklisted_min_year: 2000
+    min_rating: 6.5
+    min_votes: 100
+  shows:
+    allowed_languages: [en]
+    blacklisted_genres: [Reality, Talk]
+    blacklisted_tvdb_ids: [33, 44]
+    min_rating: 7
+    min_votes: 50

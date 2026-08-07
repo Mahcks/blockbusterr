@@ -443,6 +443,19 @@ func New(version string) (*Config, error) {
 	}
 
 	c.applyDefaults()
+	if c.ConfigFilePath != "" {
+		migrated, err := c.MigrateLegacyJobs()
+		if err != nil {
+			return nil, fmt.Errorf("legacy job migration: %w", err)
+		}
+		if len(migrated) > 0 {
+			c.Version = version
+			if err := c.Restore(); err != nil {
+				return nil, fmt.Errorf("save migrated configuration: %w", err)
+			}
+			fmt.Printf("Migrated %d legacy jobs; original configuration saved to %s.backup\n", len(migrated), c.ConfigFilePath)
+		}
+	}
 
 	return c, nil
 }

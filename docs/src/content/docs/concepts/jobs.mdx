@@ -132,6 +132,6 @@ Use Preview while tuning rules, Job Runs to spot pipeline-level problems, and Ac
 
 ## Upgrade legacy jobs
 
-v1 named job sections remain readable. When legacy jobs are detected, the Jobs page offers an upgrade action that creates equivalent dynamic jobs, assigns the appropriate default rule set, preserves supported settings, saves the new configuration, and disables the legacy entries.
+On first v2 startup, enabled v1 named job sections are upgraded automatically. Blockbusterr creates equivalent dynamic jobs, assigns the appropriate default rule set, preserves supported settings, saves the new configuration atomically, and disables the migrated legacy entries. The untouched v1 configuration remains available as `config.yaml.backup`.
 
-Back up the configuration first and review the generated jobs before deleting any old configuration manually. See [Upgrading to v2](/getting-started/upgrading-to-v2/).
+Review the generated jobs and rules after startup. Do not delete the automatic backup until the installation has completed at least one expected schedule cycle. See [Upgrading to v2](/getting-started/upgrading-to-v2/).

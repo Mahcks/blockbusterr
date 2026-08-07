@@ -1,11 +1,53 @@
 package config
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"slices"
 	"testing"
 )
+
+func TestNewAutomaticallyMigratesAndBacksUpLegacyJobs(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	original := []byte(`version: v1.5.0
+trakt:
+  client_id: preserved-client
+jobs:
+  sync_interval: "0 8 * * *"
+  trending_movies:
+    enabled: true
+    limit: 37
+filters:
+  movies:
+    blacklisted_genres: [Horror]
+`)
+	if err := os.WriteFile(path, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CONFIG_PATH", dir)
+
+	cfg, err := New("v2.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Jobs.List) != 1 || cfg.Jobs.List[0].ID != "trending_movies" || cfg.Jobs.List[0].Limit != 37 || cfg.Jobs.List[0].RuleSetID != DefaultMoviesRuleSetID {
+		t.Fatalf("migrated jobs = %+v", cfg.Jobs.List)
+	}
+	if cfg.Jobs.TrendingMovies.Enabled || cfg.Trakt.ClientID != "preserved-client" {
+		t.Fatalf("legacy state was not preserved safely: %+v", cfg)
+	}
+	backup, err := os.ReadFile(path + ".backup")
+	if err != nil || !bytes.Equal(backup, original) {
+		t.Fatalf("backup=%q err=%v, want original config", backup, err)
+	}
+
+	reloaded, err := New("v2.0.0")
+	if err != nil || len(reloaded.Jobs.List) != 1 {
+		t.Fatalf("second startup changed migration: jobs=%+v err=%v", reloaded.Jobs.List, err)
+	}
+}
 
 func TestMigrateLegacyJobsPreservesSettings(t *testing.T) {
 	cfg := &Config{}

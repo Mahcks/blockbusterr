@@ -3,7 +3,7 @@ title: Upgrading to v2
 description: Safely migrate a Blockbusterr v1 installation to jobs, reusable rules, and the v2 interface.
 ---
 
-v2 keeps existing configuration readable while moving active automation to dynamic jobs and reusable rule sets. Perform the upgrade once, verify the result, then manage the installation through the v2 UI.
+v2 upgrades a supported v1 installation on first startup. It preserves the original configuration, converts enabled legacy jobs to dynamic jobs and reusable rules, upgrades SQLite, and then starts normally. No migration button or manual ownership change is required for the standard Docker installation.
 
 ## Before upgrading
 
@@ -21,11 +21,13 @@ The backup must include the YAML configuration and SQLite database. Do not test 
 3. Docker users should leave the container user unset. The v2 entrypoint will repair ownership left by root-running v1 containers only for the mounted data directory and Blockbusterr's known writable files, then immediately run the application as UID/GID `10001:10001`.
 4. Start Blockbusterr with the existing configuration and data mounts.
 5. If authentication is enabled, sign in with username `blockbusterr` and the owner token. Open **Settings** and confirm discovery and delivery connections.
-6. Open **Jobs**. If the legacy migration banner appears, review the count and choose **Upgrade jobs**.
+6. Open **Jobs** and confirm the enabled v1 jobs appear with their schedules and delivery settings.
 7. Open **Rules** and review Default Movies, Default Shows, migrated job-specific rule sets, and title exceptions.
-8. Preview every enabled job before running it.
+8. Preview every enabled job before running it manually.
 
-The migration creates dynamic jobs, assigns media-compatible default rules, preserves supported scheduling and delivery overrides, saves the configuration, and disables migrated legacy entries. Embedded custom job filters become job-specific rule sets.
+Before changing data, the Docker entrypoint saves the stopped v1 SQLite database and configuration under `data/backups/pre-v2/`. Configuration migration also preserves the original file as `config.yaml.backup`. The migration creates dynamic jobs, assigns media-compatible default rules, preserves supported scheduling and delivery overrides, saves the configuration atomically, and disables migrated legacy entries. Embedded custom job filters become job-specific rule sets.
+
+If backup, ownership repair, configuration migration, or database initialization fails, Blockbusterr exits before starting automation and leaves the original data available for recovery.
 
 ## Important changes
 
@@ -37,6 +39,7 @@ The migration creates dynamic jobs, assigns media-compatible default rules, pres
 - Global Limits now enforce successful deliveries. Existing movie/show values carry forward; the obsolete `sync` period becomes a rolling 24-hour period.
 - Release containers run as UID/GID `10001:10001`; `BLOCKBUSTERR_AUTH_TOKEN` optionally protects the UI and API.
 - The Docker entrypoint performs the one-time v1 ownership repair without changing file modes or granting broad permissions. If you override the container `user`, the entrypoint cannot perform that repair; stop Blockbusterr and run `sudo chown -R 10001:10001 <mounted-data-directory>` on the Docker host instead.
+- Cron schedules wait for their next scheduled time after startup. Duration schedules retain their existing run-on-start behavior.
 
 ## Verify the upgrade
 
@@ -53,7 +56,7 @@ Also test configuration backup/download after migration.
 ## Roll back
 
 1. Stop Blockbusterr.
-2. Restore the backed-up configuration and database together.
+2. Restore the externally backed-up configuration and database together. If needed, the automatic pre-upgrade copies are under `data/backups/pre-v2/` and `data/config.yaml.backup`.
 3. Restore the previous image tag or binary.
 4. Start the service and verify its integrations.
 
