@@ -4,6 +4,21 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 
 ## [Unreleased]
 
+### Added
+
+- Added desktop and narrow-viewport browser tests for critical Jobs, Rules, Activity, and dialog workflows.
+- Added release metadata validation and runtime container smoke tests before image publication.
+
+### Changed
+
+- V2 installation examples now use the beta channel and named Docker volumes by default.
+- Release-critical GitHub Actions are pinned and local Make targets can no longer publish images.
+
+### Fixed
+
+- Unsaved browser edits, modal focus behavior, Activity refresh state, tab semantics, and CSV formula escaping.
+- V1 upgrade testing now recovers hot SQLite sidecars reliably before validating unattended migration.
+
 ## [2.0.0-beta.6] - 2026-08-08
 
 ### Changed

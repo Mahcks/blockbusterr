@@ -40,7 +40,7 @@ func postConfigSave(t *testing.T, app *fiber.App, fields map[string]string) (*ht
 	req := httptest.NewRequest("POST", "/config/save", &body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
