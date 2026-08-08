@@ -1,7 +1,7 @@
 # Blockbusterr
 
 > [!IMPORTANT]
-> **Blockbusterr v2 is available for public beta testing.** Read the [v2 documentation](https://blockbusterr.dev/v2/) and [v2.0.0-beta.2 release notes](https://github.com/Mahcks/blockbusterr/releases/tag/v2.0.0-beta.2). Use `latest-beta` to follow beta updates; the stable `latest` image remains on v1.
+> **Blockbusterr v2 is available for public beta testing.** Read the [v2 documentation](https://blockbusterr.dev/v2/) and [v2.0.0-beta.5 release notes](https://github.com/Mahcks/blockbusterr/releases/tag/v2.0.0-beta.5). Use `latest-beta` to follow beta updates; the stable `latest` image remains on v1.
 
 **Automated media discovery with rule-based decision making for self-hosted libraries.**
 
@@ -82,14 +82,14 @@ docker run -d \
   --restart unless-stopped \
   -p 9090:9090 \
   -v blockbusterr-data:/app/data \
-  ghcr.io/mahcks/blockbusterr:v2.0.0-beta.2
+  ghcr.io/mahcks/blockbusterr:v2.0.0-beta.5
 ```
 
 Open `http://localhost:9090`, connect one discovery provider and one delivery target, then create and preview a job.
 
 Blockbusterr has no login requirement by default. Keep it on a trusted LAN, behind an authenticated reverse proxy or VPN, or set `BLOCKBUSTERR_AUTH_TOKEN` to a random value of at least 32 characters. The username is `blockbusterr`.
 
-[Read the quick start](https://blockbusterr.dev/v2/getting-started/quickstart/) · [Installation options](https://blockbusterr.dev/v2/getting-started/installation/) · [Upgrade from v1](https://blockbusterr.dev/v2/getting-started/upgrading-to-v2/)
+[Read the quick start](https://blockbusterr.dev/v2/getting-started/quickstart/) · [Installation options](https://blockbusterr.dev/v2/getting-started/installation/) · [Unraid, TrueNAS SCALE, and Portainer](https://blockbusterr.dev/v2/getting-started/deployment-platforms/) · [Upgrade from v1](https://blockbusterr.dev/v2/getting-started/upgrading-to-v2/)
 
 ## See it in use
 

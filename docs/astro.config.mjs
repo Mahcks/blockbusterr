@@ -95,6 +95,7 @@ export default defineConfig({
 						{ label: 'Introduction', slug: 'index' },
 						{ label: 'Quick Start', slug: 'getting-started/quickstart' },
 						{ label: 'Installation', slug: 'getting-started/installation' },
+						{ label: 'Deployment platforms', slug: 'getting-started/deployment-platforms' },
 						{ label: 'Configuration', slug: 'getting-started/configuration' },
 						{ label: 'Upgrading to v2', slug: 'getting-started/upgrading-to-v2' },
 					],

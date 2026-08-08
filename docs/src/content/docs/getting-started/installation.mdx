@@ -1,11 +1,11 @@
 ---
 title: Installation
-description: Different ways to install and run Blockbusterr
+description: Install Blockbusterr with Docker or Docker Compose.
 ---
 
 import { Tabs, TabItem, Steps, Card, CardGrid, Aside } from '@astrojs/starlight/components';
 
-Choose your preferred installation method to get Blockbusterr running.
+Blockbusterr is distributed as a Linux container for AMD64 and ARM64 systems. Use Docker directly, Docker Compose, or a container-management UI such as Unraid, TrueNAS SCALE, or Portainer.
 
 <Aside type="caution" title="Keep it private">
 Blockbusterr can use an optional owner token, but you should still keep port 9090 behind a trusted LAN, VPN, or HTTPS reverse proxy. The built-in owner boundary is not a multi-user identity system.
@@ -17,8 +17,8 @@ Blockbusterr can use an optional owner token, but you should still keep port 909
 <Card title="Docker" icon="seti:docker">
 Docker 20.10+ or Docker Desktop
 </Card>
-<Card title="Storage" icon="laptop">
-50GB+ recommended for database and logs
+<Card title="Persistent storage" icon="laptop">
+A writable host directory mounted at `/app/data`
 </Card>
 <Card title="Network" icon="star">
 Access to at least one discovery provider (TMDB, Simkl, Trakt, or MDBList) and your delivery stack
@@ -30,7 +30,11 @@ Configure any one supported discovery provider: TMDB, Simkl, Trakt, or MDBList. 
 </Aside>
 
 <Aside type="caution" title="Installing the v2 beta">
-Use `ghcr.io/mahcks/blockbusterr:latest-beta` to follow beta updates, or pin an immutable version such as `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.1`. The `latest` tag remains on the stable v1 release until v2 is ready.
+Use `ghcr.io/mahcks/blockbusterr:latest-beta` to follow beta updates, or pin the immutable `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.5` image. The `latest` tag remains on stable v1 until v2 is released.
+</Aside>
+
+<Aside type="tip" title="Using a NAS or container UI">
+See [Deployment platforms](/getting-started/deployment-platforms/) for field-by-field Unraid, TrueNAS SCALE, and Portainer instructions.
 </Aside>
 
 ## Installation Methods
@@ -45,7 +49,7 @@ Use `ghcr.io/mahcks/blockbusterr:latest-beta` to follow beta updates, or pin an 
 1. Pull the latest image:
 
    ```bash
-   docker pull ghcr.io/mahcks/blockbusterr:latest
+   docker pull ghcr.io/mahcks/blockbusterr:latest-beta
    ```
 
 2. Run the container:
@@ -56,7 +60,7 @@ Use `ghcr.io/mahcks/blockbusterr:latest-beta` to follow beta updates, or pin an 
      -p 9090:9090 \
      -v $(pwd)/data:/app/data \
      -e TZ=America/New_York \
-     ghcr.io/mahcks/blockbusterr:latest
+     ghcr.io/mahcks/blockbusterr:latest-beta
    ```
 
 3. Access the web UI at `http://localhost:9090`
@@ -74,22 +78,19 @@ Use `docker logs blockbusterr -f` to view live logs and verify startup.
 
 <Steps>
 
-1. Create `docker-compose.yaml`:
+1. Create `compose.yaml`:
 
    ```yaml
-   version: '3.8'
-
    services:
      blockbusterr:
-       image: ghcr.io/mahcks/blockbusterr:latest
+       image: ghcr.io/mahcks/blockbusterr:latest-beta
        container_name: blockbusterr
        ports:
          - "9090:9090"
        volumes:
          - ./data:/app/data
-         - ./config:/app/config  # Optional: external config
        environment:
-         - TZ=America/New_York
+         TZ: America/New_York
          # BLOCKBUSTERR_AUTH_TOKEN: replace-with-at-least-32-random-characters
        restart: unless-stopped
    ```
@@ -97,20 +98,16 @@ Use `docker logs blockbusterr -f` to view live logs and verify startup.
 2. Start the stack:
 
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 3. View logs:
 
    ```bash
-   docker-compose logs -f blockbusterr
+   docker compose logs -f blockbusterr
    ```
 
 </Steps>
-
-<Aside type="note">
-The config volume is optional - you can configure everything through the web UI.
-</Aside>
 
 </TabItem>
 <TabItem label="With Full Stack" icon="puzzle">
@@ -118,15 +115,13 @@ The config volume is optional - you can configure everything through the web UI.
 **Complete setup** - Blockbusterr + Radarr + Sonarr on the same network.
 
 ```yaml
-version: '3.8'
-
 networks:
   media:
     driver: bridge
 
 services:
   blockbusterr:
-    image: ghcr.io/mahcks/blockbusterr:latest
+    image: ghcr.io/mahcks/blockbusterr:latest-beta
     container_name: blockbusterr
     networks:
       - media
@@ -175,40 +170,6 @@ services:
 When using container networking, use container names in URLs:
 - Radarr: `http://radarr:7878`
 - Sonarr: `http://sonarr:8989`
-</Aside>
-
-</TabItem>
-<TabItem label="Binary" icon="rocket">
-
-**For advanced users** - Direct binary execution without Docker.
-
-<Steps>
-
-1. Download the latest release from [GitHub Releases](https://github.com/mahcks/blockbusterr/releases)
-
-2. Extract the archive:
-
-   ```bash
-   tar -xzf blockbusterr-linux-amd64.tar.gz
-   cd blockbusterr
-   ```
-
-3. Make the binary executable:
-
-   ```bash
-   chmod +x blockbusterr
-   ```
-
-4. Run Blockbusterr:
-
-   ```bash
-   ./blockbusterr
-   ```
-
-</Steps>
-
-<Aside type="note">
-The binary expects `config.yaml` in the same directory or in `./config/`.
 </Aside>
 
 </TabItem>
@@ -278,7 +239,7 @@ docker run -d \
   -e DATA_DIR=/app/data \
   -e TZ=Europe/London \
   -v $(pwd)/data:/app/data \
-  ghcr.io/mahcks/blockbusterr:latest
+  ghcr.io/mahcks/blockbusterr:latest-beta
 ```
 
 ## Health Check
@@ -304,7 +265,7 @@ Expected response:
 <TabItem label="Docker" icon="seti:docker">
 
 ```bash
-docker pull ghcr.io/mahcks/blockbusterr:latest
+docker pull ghcr.io/mahcks/blockbusterr:latest-beta
 docker stop blockbusterr
 docker rm blockbusterr
 # Then run the original docker run command
@@ -314,17 +275,17 @@ docker rm blockbusterr
 <TabItem label="Docker Compose" icon="seti:yml">
 
 ```bash
-docker-compose pull blockbusterr
-docker-compose up -d blockbusterr
+docker compose pull blockbusterr
+docker compose up -d blockbusterr
 ```
 
 </TabItem>
-<TabItem label="Binary/Source" icon="rocket">
+<TabItem label="From source" icon="rocket">
 
 Download the new release or pull the latest code:
 
 ```bash
-git pull origin master
+git pull origin main
 make build
 ./bin/blockbusterr
 ```

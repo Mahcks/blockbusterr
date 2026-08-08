@@ -1,0 +1,108 @@
+---
+title: Deployment platforms
+description: Map Blockbusterr's container settings into Docker, Unraid, TrueNAS SCALE, and Portainer.
+---
+
+import { Tabs, TabItem, Steps, Aside } from '@astrojs/starlight/components';
+
+Blockbusterr uses the same container on every compatible platform. The platform only changes how you enter these settings:
+
+| Setting | Value |
+| --- | --- |
+| Image | `ghcr.io/mahcks/blockbusterr:latest-beta` |
+| Immutable beta image | `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.5` |
+| Container port | `9090/tcp` |
+| Persistent container path | `/app/data` |
+| Required environment variables | None |
+| Recommended environment variable | `TZ`, using your IANA timezone |
+| Optional safety variable | `BLOCKBUSTERR_DRY_RUN=true` |
+| Optional owner token | `BLOCKBUSTERR_AUTH_TOKEN`, at least 32 characters |
+
+<Aside type="caution" title="Keep the data directory">
+The `/app/data` mount contains configuration, credentials, SQLite history, repeat state, and automatic upgrade backups. Never recreate or upgrade the container without this persistent mount.
+</Aside>
+
+<Tabs>
+<TabItem label="Docker Compose">
+
+Use this on a Linux server, Docker Desktop, or any platform that accepts a Compose stack.
+
+```yaml
+services:
+  blockbusterr:
+    image: ghcr.io/mahcks/blockbusterr:latest-beta
+    container_name: blockbusterr
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./data:/app/data
+    environment:
+      TZ: America/Chicago
+      BLOCKBUSTERR_DRY_RUN: "true"
+      # BLOCKBUSTERR_AUTH_TOKEN: replace-with-at-least-32-random-characters
+    restart: unless-stopped
+```
+
+Start it with `docker compose up -d`, then open `http://<server-address>:9090`.
+
+Remove `BLOCKBUSTERR_DRY_RUN` after you have previewed a job and are ready to permit real delivery.
+
+</TabItem>
+<TabItem label="Unraid">
+
+<Steps>
+1. Open **Docker**, select **Add Container**, and switch to the advanced view if needed.
+2. Set the name to `blockbusterr` and the repository to `ghcr.io/mahcks/blockbusterr:latest-beta`.
+3. Map a free host port, normally `9090`, to container port `9090` using TCP.
+4. Map `/mnt/user/appdata/blockbusterr` on the host to `/app/data` in the container with read/write access.
+5. Add `TZ` using your IANA timezone. Add `BLOCKBUSTERR_DRY_RUN=true` while testing the beta.
+6. Apply the template, wait for the startup log to report that Blockbusterr is listening, and open its WebUI on the mapped host port.
+</Steps>
+
+<Aside type="note">
+An official Community Applications template is not currently published. Adding the container manually uses the same image and settings as Docker Compose.
+</Aside>
+
+</TabItem>
+<TabItem label="TrueNAS SCALE">
+
+<Steps>
+1. Open **Apps**, choose the option to install a custom app, and use `ghcr.io/mahcks/blockbusterr:latest-beta` as the image.
+2. Expose container port `9090` over TCP using an available host port.
+3. Add host-path storage for a dataset such as `/mnt/<pool>/apps/blockbusterr`, mounted inside the container at `/app/data` with write access.
+4. Add `TZ` and, during beta testing, `BLOCKBUSTERR_DRY_RUN=true` as environment variables.
+5. Do not set a custom container user. Blockbusterr starts as root only long enough to repair legacy v1 ownership, then runs as UID/GID `10001:10001`.
+6. Deploy the app, confirm the UI responds, and open `http://<server-address>:<host-port>`.
+</Steps>
+
+<Aside type="note">
+TrueNAS labels for custom apps and networking can vary by release. The image, port, storage path, and environment values above remain the same.
+</Aside>
+
+</TabItem>
+<TabItem label="Portainer">
+
+<Steps>
+1. Open **Stacks**, add a stack named `blockbusterr`, and paste the Docker Compose example from this page.
+2. For persistent storage outside Portainer's stack directory, replace `./data` with an absolute host path.
+3. Deploy the stack and open port `9090` on the Docker host.
+</Steps>
+
+</TabItem>
+</Tabs>
+
+## Platform support boundary
+
+Docker Engine is the tested runtime. Unraid, TrueNAS SCALE, Portainer, Synology Container Manager, and similar products are compatible when they can run the published Linux image with the required port and writable data mount. Their management interfaces are maintained by those projects, so labels and screen layouts may change independently of Blockbusterr.
+
+Blockbusterr does not currently publish native Linux packages or standalone binary archives. Building from source is intended for development, not as a separately supported production deployment.
+
+## Verify the deployment
+
+1. Confirm the container remains running and the UI responds.
+2. Open the UI and verify the **Dry-run mode is active** banner if you enabled it.
+3. Configure one discovery provider and one delivery integration.
+4. Create a job and use **Preview** before enabling it.
+5. Back up the entire host directory mapped to `/app/data` before upgrades.
+
+Continue with the [Quick Start](/getting-started/quickstart/) or [upgrade an existing v1 installation](/getting-started/upgrading-to-v2/).
