@@ -1,15 +1,13 @@
-version: '3.8'
-
 services:
   blockbusterr:
-    image: ghcr.io/mahcks/blockbusterr:latest
+    image: ghcr.io/mahcks/blockbusterr:latest-beta
     container_name: blockbusterr
     restart: unless-stopped
     ports:
       - "9090:9090"  # Change host port: "8080:9090" or "443:9090"
     volumes:
       # Persist database, activity logs, and configuration
-      - ./data:/app/data
+      - blockbusterr-data:/app/data
       
       # Optional: Mount your config file directly
       # - ./config.yaml:/app/config/config.yaml:ro
@@ -30,6 +28,9 @@ services:
       # SONARR_API_KEY: your_sonarr_key
       # DISABLE_UI: true  # Set to disable Web UI (enabled by default)
       - TZ=America/New_York  # Set your timezone
+
+volumes:
+  blockbusterr-data:
 
 # Example: Run alongside Radarr and Sonarr
 #   radarr:

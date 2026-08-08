@@ -30,7 +30,7 @@ Configure any one supported discovery provider: TMDB, Simkl, Trakt, or MDBList. 
 </Aside>
 
 <Aside type="caution" title="Installing the v2 beta">
-Use `ghcr.io/mahcks/blockbusterr:latest-beta` to follow beta updates, or pin the immutable `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.5` image. The `latest` tag remains on stable v1 until v2 is released.
+Use `ghcr.io/mahcks/blockbusterr:latest-beta` to follow beta updates, or pin the immutable `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.6` image. The `latest` tag remains on stable v1 until v2 is released.
 </Aside>
 
 <Aside type="tip" title="Using a NAS or container UI">
@@ -58,7 +58,7 @@ See [Deployment platforms](/getting-started/deployment-platforms/) for field-by-
    docker run -d \
      --name blockbusterr \
      -p 9090:9090 \
-     -v $(pwd)/data:/app/data \
+     -v blockbusterr-data:/app/data \
      -e TZ=America/New_York \
      ghcr.io/mahcks/blockbusterr:latest-beta
    ```
@@ -88,11 +88,14 @@ Use `docker logs blockbusterr -f` to view live logs and verify startup.
        ports:
          - "9090:9090"
        volumes:
-         - ./data:/app/data
+         - blockbusterr-data:/app/data
        environment:
          TZ: America/New_York
          # BLOCKBUSTERR_AUTH_TOKEN: replace-with-at-least-32-random-characters
        restart: unless-stopped
+
+   volumes:
+     blockbusterr-data:
    ```
 
 2. Start the stack:
@@ -297,7 +300,11 @@ make build
 Always backup your `data` directory before major version upgrades:
 
 ```bash
-cp -r data data.backup
+docker stop blockbusterr
+docker run --rm \
+  -v blockbusterr-data:/data:ro \
+  -v "$PWD:/backup" \
+  alpine tar -czf /backup/blockbusterr-data.tar.gz -C /data .
 ```
 </Aside>
 

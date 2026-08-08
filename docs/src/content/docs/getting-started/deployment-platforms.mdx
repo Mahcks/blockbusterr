@@ -10,7 +10,7 @@ Blockbusterr uses the same container on every compatible platform. The platform 
 | Setting | Value |
 | --- | --- |
 | Image | `ghcr.io/mahcks/blockbusterr:latest-beta` |
-| Immutable beta image | `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.5` |
+| Immutable beta image | `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.6` |
 | Container port | `9090/tcp` |
 | Persistent container path | `/app/data` |
 | Required environment variables | None |
@@ -35,12 +35,15 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./data:/app/data
+      - blockbusterr-data:/app/data
     environment:
       TZ: America/Chicago
       BLOCKBUSTERR_DRY_RUN: "true"
       # BLOCKBUSTERR_AUTH_TOKEN: replace-with-at-least-32-random-characters
     restart: unless-stopped
+
+volumes:
+  blockbusterr-data:
 ```
 
 Start it with `docker compose up -d`, then open `http://<server-address>:9090`.

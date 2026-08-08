@@ -4,6 +4,45 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 
 ## [Unreleased]
 
+## [2.0.0-beta.6] - 2026-08-08
+
+### Changed
+
+- Updated Fiber and frontend dependencies to patched releases and cleared open dependency alerts.
+- Added deployment guidance for common self-hosted container platforms.
+
+## [2.0.0-beta.5] - 2026-08-07
+
+### Added
+
+- Added an unattended v1-to-v2 upgrade with automatic backups, ownership repair, and fail-closed migration checks.
+- Added CI coverage that upgrades the published v1.5.0 image into the candidate v2 image.
+
+## [2.0.0-beta.4] - 2026-08-05
+
+### Added
+
+- Added instance-wide dry-run mode across scheduled, manual, ranked-selection, and legacy execution paths.
+
+### Changed
+
+- Upgraded Go and restored lint, security, dependency, asset, documentation, and race-test release gates.
+
+## [2.0.0-beta.3] - 2026-08-05
+
+### Fixed
+
+- Serialized job execution and made ranked selection deliver its reviewed snapshot.
+- Made configuration restore atomic and delivery memory independent from Activity retention.
+- Hardened provider pagination, identity, enrichment failures, duplicate classification, and token refresh.
+
+## [2.0.0-beta.2] - 2026-08-04
+
+### Fixed
+
+- Cron jobs now wait for their next occurrence instead of running at startup.
+- Activity job filtering now uses enabled jobs and stable job IDs.
+
 ## [2.0.0-beta.1] - 2026-08-04
 
 ### Added
@@ -57,5 +96,10 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 - The beta image is published as `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.1` and `ghcr.io/mahcks/blockbusterr:latest-beta`; `latest` remains on v1 until the stable release.
 - See the [v2 upgrade guide](https://blockbusterr.dev/v2/getting-started/upgrading-to-v2/).
 
-[Unreleased]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.1...HEAD
+[Unreleased]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.6...HEAD
+[2.0.0-beta.6]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.5...v2.0.0-beta.6
+[2.0.0-beta.5]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.4...v2.0.0-beta.5
+[2.0.0-beta.4]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.3...v2.0.0-beta.4
+[2.0.0-beta.3]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.2...v2.0.0-beta.3
+[2.0.0-beta.2]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]: https://github.com/Mahcks/blockbusterr/compare/v1.5.0...v2.0.0-beta.1

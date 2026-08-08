@@ -23,6 +23,9 @@ function scan(directory) {
 		else if (entry.name.endsWith('.html')) {
 			if (entry.name === '404.html') continue;
 			const html = fs.readFileSync(file, 'utf8');
+			if (/ghcr\.io\/mahcks\/blockbusterr:latest(?![-\w.])/.test(html)) {
+				invalid.push(`${file}: v2 documentation references the stable v1 image`);
+			}
 			for (const match of html.matchAll(/(?:href|src)="(\/[^"]*)"/g)) {
 				if (prefixes.some((prefix) => match[1].startsWith(prefix))) invalid.push(`${file}: ${match[1]}`);
 			}

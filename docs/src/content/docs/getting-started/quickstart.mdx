@@ -11,7 +11,7 @@ import { Aside, Steps } from '@astrojs/starlight/components';
 docker run -d \
   --name blockbusterr \
   -p 9090:9090 \
-  -v "$(pwd)/data:/app/data" \
+  -v blockbusterr-data:/app/data \
   --restart unless-stopped \
   ghcr.io/mahcks/blockbusterr:latest-beta
 ```

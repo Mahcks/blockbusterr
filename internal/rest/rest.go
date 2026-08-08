@@ -98,7 +98,7 @@ func New(gctx global.Context) error {
 		log.Info("Web UI is disabled")
 		// Provide a simple message on root route
 		app.Get("/", func(c *fiber.Ctx) error {
-			return c.SendString("Blockbusterr API - Web UI is disabled. Set UI_ENABLED=true environment variable to enable.")
+			return c.SendString("Blockbusterr API - Web UI is disabled. Unset DISABLE_UI or set it to false to enable.")
 		})
 	}
 

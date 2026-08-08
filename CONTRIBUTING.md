@@ -14,8 +14,8 @@ Thank you for your interest in contributing to Blockbusterr! This guide will hel
 
 ### Prerequisites
 
-- Go 1.21 or higher
-- Node.js 20 or higher (only when changing frontend assets)
+- Go 1.25.12 or higher
+- Node.js 24 or higher (only when changing frontend assets or documentation)
 - Docker (optional, for testing)
 - Git
 
@@ -29,7 +29,8 @@ Thank you for your interest in contributing to Blockbusterr! This guide will hel
 
 2. **Install dependencies**
    ```bash
-   make install
+   go mod download
+   npm ci
    ```
 
 3. **Copy config template**
@@ -108,7 +109,7 @@ When reporting bugs, please include:
 - **Logs** (if applicable)
 - **Configuration** (sanitize sensitive data!)
 
-Use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.md) when creating an issue.
+Use the [Bug Report template](https://github.com/Mahcks/blockbusterr/issues/new?template=bug_report.yml) when creating an issue.
 
 ## Feature Requests
 
@@ -120,7 +121,7 @@ We love new ideas! When requesting features:
 - **Consider alternatives** you've thought about
 - **Describe any additional context** that might be helpful
 
-Use the [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.md) when creating an issue.
+Use the [Feature Request template](https://github.com/Mahcks/blockbusterr/issues/new?template=feature_request.md) when creating an issue.
 
 ## Project Structure
 
@@ -129,9 +130,8 @@ blockbusterr/
 ├── cmd/                    # Application entrypoints
 │   └── app/                # Main application
 ├── internal/               # Internal application code
-│   ├── aggregator/         # Data aggregation logic
 │   ├── database/           # Database interactions
-│   ├── filters/            # Content filtering
+│   ├── filters/            # Rule evaluation
 │   ├── integrations/       # External service integrations
 │   ├── rest/               # REST API handlers
 │   ├── scoring/            # Content scoring algorithms

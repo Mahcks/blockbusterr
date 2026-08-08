@@ -5,30 +5,45 @@ on:
     types: [published]
 
 permissions:
-  contents: write
+  contents: read
   packages: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Validate release metadata
+        id: release
+        shell: bash
+        run: |
+          channel=$(scripts/validate-release-metadata.sh \
+            "$RELEASE_TAG" \
+            '${{ github.event.release.prerelease }}')
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          scripts/test-release-metadata.sh
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25.12"
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24.12.0"
           cache: npm
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
           version: v2.6
           args: --timeout=5m
@@ -53,14 +68,17 @@ jobs:
 
       - name: Verify unattended v1 to v2 upgrade
         run: |
-          docker build --build-arg VERSION=${GITHUB_REF#refs/tags/} -t blockbusterr:release-candidate .
+          docker build --build-arg VERSION="$RELEASE_TAG" -t blockbusterr:release-candidate .
           scripts/test-v1-upgrade.sh blockbusterr:release-candidate
 
+      - name: Smoke runtime image
+        run: scripts/test-container-smoke.sh blockbusterr:release-candidate
+
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -71,24 +89,20 @@ jobs:
 
       - name: Extract version from tag
         id: version
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+        run: echo "version=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Generate image tags
         id: tags
         shell: bash
         run: |
           tags="ghcr.io/${{ env.repo }}:${{ steps.version.outputs.version }}"
-          if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
-            tags="$tags"$'\n'"ghcr.io/${{ env.repo }}:latest-beta"
-          else
-            tags="$tags"$'\n'"ghcr.io/${{ env.repo }}:latest"
-          fi
+          tags="$tags"$'\n'"ghcr.io/${{ env.repo }}:${{ steps.release.outputs.channel }}"
           echo "tags<<EOF" >> "$GITHUB_OUTPUT"
           echo "$tags" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         with:
           context: ./
           file: ./Dockerfile
@@ -100,4 +114,4 @@ jobs:
           build-args: |
             GOLANG_TAG=1.25.12-alpine
             VERSION=${{ steps.version.outputs.version }}
-            COMMIT=${{ github.sha }}
+            COMMIT=${{ steps.release.outputs.commit }}

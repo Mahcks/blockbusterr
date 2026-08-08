@@ -83,6 +83,12 @@ jobs:
       - name: Verify unattended v1 to v2 upgrade
         run: scripts/test-v1-upgrade.sh blockbusterr:ci
 
+      - name: Smoke runtime image
+        run: scripts/test-container-smoke.sh blockbusterr:ci
+
+      - name: Verify release metadata rules
+        run: scripts/test-release-metadata.sh
+
   test:
     name: Test
     runs-on: ubuntu-latest
