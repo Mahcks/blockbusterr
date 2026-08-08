@@ -31,15 +31,16 @@ done
   exit 1
 }
 docker stop -t 15 "$v1_name" >/dev/null
-docker run --rm --entrypoint sh -v "$data_dir:/data" "$candidate_image" -c 'chmod 0775 /data && chmod 0644 /data/blockbusterr.db'
+docker run --rm --entrypoint sh -v "$data_dir:/data" "$candidate_image" -c 'chmod 0775 /data && chmod 0666 /data/blockbusterr.db'
 
 before=$(python3 - "$data_dir/blockbusterr.db" <<'PY'
 import sqlite3, sys
-db = sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True)
+db = sqlite3.connect(sys.argv[1])
 tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
 print(":".join(str(db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]) if table in tables else "0" for table in ("activity_logs", "job_runs")))
 PY
 )
+docker run --rm --entrypoint sh -v "$data_dir:/data" "$candidate_image" -c 'chmod 0644 /data/blockbusterr.db'
 
 docker run -d --name "$v2_name" -e DATA_DIR=/app/data -e BLOCKBUSTERR_DRY_RUN=false -v "$data_dir:/app/data" "$candidate_image" >/dev/null
 i=0
