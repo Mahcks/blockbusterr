@@ -12,13 +12,13 @@
   </header>
 
   <nav class="filter-media-tabs" aria-label="Rules workspace" role="tablist">
-    <button type="button" data-rules-view="movie" role="tab" aria-selected="true"><i data-lucide="film" class="h-4 w-4" aria-hidden="true"></i>Movie rules</button>
-    <button type="button" data-rules-view="show" role="tab" aria-selected="false"><i data-lucide="tv" class="h-4 w-4" aria-hidden="true"></i>Show rules</button>
-    <button type="button" data-rules-view="exceptions" role="tab" aria-selected="false"><i data-lucide="shield-check" class="h-4 w-4" aria-hidden="true"></i>Title exceptions</button>
+    <button type="button" id="rules-tab-movie" data-rules-view="movie" role="tab" aria-selected="true" aria-controls="rule-set-workspace"><i data-lucide="film" class="h-4 w-4" aria-hidden="true"></i>Movie rules</button>
+    <button type="button" id="rules-tab-show" data-rules-view="show" role="tab" aria-selected="false" aria-controls="rule-set-workspace"><i data-lucide="tv" class="h-4 w-4" aria-hidden="true"></i>Show rules</button>
+    <button type="button" id="rules-tab-exceptions" data-rules-view="exceptions" role="tab" aria-selected="false" aria-controls="exceptions-workspace"><i data-lucide="shield-check" class="h-4 w-4" aria-hidden="true"></i>Title exceptions</button>
   </nav>
 
   <!-- Movie / Show rule-set workspace -->
-  <div id="rule-set-workspace" class="rule-set-workspace">
+  <div id="rule-set-workspace" class="rule-set-workspace" role="tabpanel" aria-labelledby="rules-tab-movie">
     <aside class="rule-set-sidebar" aria-label="Rule sets">
       <div class="rule-set-search">
         <i data-lucide="search" class="h-3.5 w-3.5" aria-hidden="true"></i>
@@ -239,15 +239,15 @@
   </div>
 
   <!-- Title exceptions workspace -->
-  <div id="exceptions-workspace" class="hidden">
+  <div id="exceptions-workspace" class="hidden" role="tabpanel" aria-labelledby="rules-tab-exceptions">
     <p class="exceptions-intro">Title exceptions apply across every job and take precedence over normal rule preferences.</p>
 
     <nav class="filter-media-tabs" aria-label="Title exceptions media" role="tablist">
-      <button type="button" data-exceptions-media="movie" role="tab" aria-selected="true"><i data-lucide="film" class="h-4 w-4" aria-hidden="true"></i>Movies</button>
-      <button type="button" data-exceptions-media="show" role="tab" aria-selected="false"><i data-lucide="tv" class="h-4 w-4" aria-hidden="true"></i>Shows</button>
+      <button type="button" id="exceptions-tab-movie" data-exceptions-media="movie" role="tab" aria-selected="true" aria-controls="exceptions-editor"><i data-lucide="film" class="h-4 w-4" aria-hidden="true"></i>Movies</button>
+      <button type="button" id="exceptions-tab-show" data-exceptions-media="show" role="tab" aria-selected="false" aria-controls="exceptions-editor"><i data-lucide="tv" class="h-4 w-4" aria-hidden="true"></i>Shows</button>
     </nav>
 
-    <div class="filter-workspace">
+    <div id="exceptions-editor" class="filter-workspace" role="tabpanel" aria-labelledby="exceptions-tab-movie">
       <section class="filter-section">
         <div class="filter-section-heading">
           <div><i data-lucide="check-circle" aria-hidden="true"></i><h2>Always allow</h2></div>

@@ -74,7 +74,7 @@
           </div>
           <span id="deliveryChartTotal" class="whitespace-nowrap text-xs text-slate-400"></span>
         </div>
-        <div class="h-48"><canvas id="deliveryChart" aria-label="Added and requested titles by day"></canvas></div>
+        <div class="h-48"><canvas id="deliveryChart" aria-label="Added and requested titles by day" aria-describedby="activityChartSummary"></canvas></div>
       </div>
       <div class="job-nested-panel p-3">
         <div class="mb-3 flex items-start justify-between gap-3">
@@ -84,17 +84,18 @@
           </div>
           <span id="decisionChartTotal" class="whitespace-nowrap text-xs text-slate-400"></span>
         </div>
-        <div class="h-48"><canvas id="decisionChart" aria-label="Rejected, skipped, and failed titles by day"></canvas></div>
+        <div class="h-48"><canvas id="decisionChart" aria-label="Rejected, skipped, and failed titles by day" aria-describedby="activityChartSummary"></canvas></div>
       </div>
     </div>
+    <div id="activityChartSummary" class="sr-only" aria-live="polite"></div>
   </section>
 
   <!-- Filters & Controls -->
   <section class="jobs-panel p-4">
     <div class="mb-4 flex flex-col gap-3 border-b border-zinc-700 pb-3 sm:flex-row sm:items-center sm:justify-between">
       <div class="activity-tabs" role="tablist" aria-label="Activity view">
-          <button id="activityViewItemsBtn" data-action="set-activity-view" data-view="items" role="tab" aria-selected="true">Activity Entries</button>
-          <button id="activityViewTimelineBtn" data-action="set-activity-view" data-view="timeline" role="tab" aria-selected="false">Job Runs</button>
+          <button id="activityViewItemsBtn" data-action="set-activity-view" data-view="items" role="tab" aria-selected="true" aria-controls="activityItemsPanel">Activity Entries</button>
+          <button id="activityViewTimelineBtn" data-action="set-activity-view" data-view="timeline" role="tab" aria-selected="false" aria-controls="activityTimelinePanel">Job Runs</button>
         </div>
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2 text-slate-400">
@@ -113,7 +114,7 @@
       </div>
     </div>
 
-    <div id="activityItemsPanel">
+    <div id="activityItemsPanel" role="tabpanel" aria-labelledby="activityViewItemsBtn">
     <div id="activeFiltersBar" class="hidden mb-3 flex flex-wrap items-center gap-2" role="status" aria-label="Active filters"></div>
     <!-- Quick Status Filter Buttons -->
     <div class="mb-3 flex flex-wrap gap-1">
@@ -238,7 +239,7 @@
     </div>
     </div>
 
-    <div id="activityTimelinePanel" class="hidden space-y-4">
+    <div id="activityTimelinePanel" class="hidden space-y-4" role="tabpanel" aria-labelledby="activityViewTimelineBtn">
       <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div class="relative md:col-span-2">
           <input id="timelineRunSearchInput" type="text" placeholder="Search runs by job name or id..." class="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 pr-10 text-sm text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">

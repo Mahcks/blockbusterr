@@ -13,6 +13,7 @@ let activityViewMode = 'items';
 let hasActivityEntries = null;
 let hasJobRuns = null;
 let selectedEntryIds = new Set();
+const runEntryCache = new Map();
 
 const DEFAULT_SORT = { field: 'timestamp', direction: 'desc' };
 const DEFAULT_PAGE_SIZE = '50';
@@ -123,9 +124,6 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   document.getElementById('pageSizeSelect')?.addEventListener('change', changePageSize);
   document.getElementById('chartDaysSelect')?.addEventListener('change', loadActivityChart);
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeClearLogsModal();
-  });
   // Back/forward should restore the filter state that was active then, not
   // just change the URL text underneath an unchanged page.
   window.addEventListener('popstate', () => {
@@ -149,7 +147,7 @@ document.addEventListener('click', function(event) {
 
   const actions = {
     'export-csv': exportToCSV,
-    'show-clear-logs': showClearLogsModal,
+    'show-clear-logs': () => showClearLogsModal(trigger),
     'close-clear-logs': closeClearLogsModal,
     'clear-logs': clearOldLogs,
     'refresh': applyFilters,
@@ -484,6 +482,17 @@ function renderActivityTimeline() {
     return;
   }
   container.innerHTML = runs.map(renderTimelineRunRow).join('');
+  runs.forEach((run) => {
+    const cached = runEntryCache.get(Number(run.id));
+    if (!cached || cached.signature !== runSignature(run)) return;
+    const panel = document.getElementById(`timeline-run-logs-${run.id}`);
+    const body = document.getElementById(`timeline-run-logs-body-${run.id}`);
+    if (panel && body) {
+      body.innerHTML = cached.html;
+      collapseLongEntryList(body);
+      panel.dataset.loaded = 'true';
+    }
+  });
   window.lucide?.createIcons();
 
   expandedRunIds.forEach((runId) => {
@@ -530,12 +539,19 @@ async function toggleTimelineRun(runID) {
       body.innerHTML = await resp.text();
     }
     parseFilterDetailsIn(body);
+    const cachedHTML = body.innerHTML;
     collapseLongEntryList(body);
     panel.dataset.loaded = 'true';
+    const run = recentRuns.find((item) => Number(item.id) === Number(runID));
+    if (run) runEntryCache.set(Number(runID), { signature: runSignature(run), html: cachedHTML });
   } catch (err) {
     body.textContent = `Failed to load logs: ${err}`;
     body.className = 'p-3 text-xs text-red-400';
   }
+}
+
+function runSignature(run) {
+  return [run.status, run.total_found, run.passed_filters, run.added, run.requested, run.rejected, run.skipped, run.failed].join(':');
 }
 
 function parseFilterDetailsIn(container) {
@@ -863,15 +879,14 @@ function toggleHistory(triggerOrIndex, maybeIndex) {
   if (element) element.classList.toggle('hidden');
 }
 
-function showClearLogsModal() {
+function showClearLogsModal(trigger) {
   const modal = document.getElementById('clearLogsModal');
-  modal.classList.remove('hidden');
   updateClearLogsConfirmation();
-  modal.querySelector('select')?.focus();
+  window.blockbusterrDialog.open(modal, { trigger, initialFocus: modal.querySelector('select'), onRequestClose: closeClearLogsModal });
 }
 
 function closeClearLogsModal() {
-  document.getElementById('clearLogsModal').classList.add('hidden');
+  window.blockbusterrDialog.close('clearLogsModal');
   document.getElementById('clearLogsConfirmation').value = '';
   document.getElementById('clearDeliveryMemory').checked = false;
   updateClearLogsConfirmation();
@@ -945,7 +960,7 @@ async function exportToCSV() {
     }
 
 		const headers = ['Timestamp', 'Job Type', 'Source', 'Media Type', 'Title', 'Language', 'Year', 'Score', 'Rank', 'Status', 'Message', 'TMDB ID', 'IMDB ID', 'TVDB ID'];
-    const csvRows = [headers.join(',')];
+    const csvRows = [headers.map(encodeCSVCell).join(',')];
     
     logs.forEach(log => {
       const row = [
@@ -953,18 +968,18 @@ async function exportToCSV() {
         log.job_type,
 		log.source || '',
         log.media_type,
-        `"${(log.title || '').replace(/"/g, '""')}"`,
+		log.title || '',
 			log.language || '',
         log.year || '',
         log.score || '',
         log.rank || '',
         log.status,
-        `"${(log.message || '').replace(/"/g, '""')}"`,
+		log.message || '',
         log.tmdb_id || '',
         log.imdb_id || '',
         log.tvdb_id || ''
       ];
-      csvRows.push(row.join(','));
+      csvRows.push(row.map(encodeCSVCell).join(','));
     });
 
     const csvContent = csvRows.join('\n');
@@ -979,6 +994,14 @@ async function exportToCSV() {
     window.showNotification(`Failed to export activity: ${err.message}`, 'error');
   }
 }
+
+function encodeCSVCell(value) {
+  let text = String(value ?? '');
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+window.encodeCSVCell = encodeCSVCell;
 
 // Dataset label -> the activity status it corresponds to, for click-to-filter.
 const CHART_LABEL_STATUS = {
@@ -1097,6 +1120,15 @@ async function loadActivityChart() {
     const simulated = total(['would_add', 'would_request']);
     document.getElementById('deliveryChartTotal').textContent = `${delivered.toLocaleString()} delivered${data.dry_run && simulated ? ` · ${simulated.toLocaleString()} simulated` : ''}`;
     document.getElementById('decisionChartTotal').textContent = `${total(['rejected', 'skipped', 'failed']).toLocaleString()} decisions`;
+    const summary = document.getElementById('activityChartSummary');
+    if (summary) {
+      const series = [
+        ['Added', data.added], ['Requested', data.requested],
+        ...(data.dry_run ? [['Would add', data.would_add], ['Would request', data.would_request]] : []),
+        ['Rejected', data.rejected], ['Skipped', data.skipped], ['Failed', data.failed]
+      ];
+      summary.innerHTML = `<table><caption>Activity outcomes by day</caption><thead><tr><th>Date</th>${series.map(([label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${(data.labels || []).map((label, index) => `<tr><th>${escapeHTML(label)}</th>${series.map(([, values]) => `<td>${Number(values?.[index] || 0)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    }
   } catch (err) {
     console.error('Failed to load chart:', err);
   }

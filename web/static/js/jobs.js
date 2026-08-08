@@ -10,51 +10,15 @@
   let templateSearchQuery = '';
   let previewData = null;
   let currentFilter = 'all';
-  const dialogTriggers = [];
+  let jobFormSnapshot = null;
   const globalMode = document.getElementById("jobs-page")?.dataset.globalMode || "direct";
 
-  const dialogIds = ['preview-modal', 'job-modal', 'add-job-modal'];
-  const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
-
-  function openDialog(id, trigger = document.activeElement) {
-    const dialog = document.getElementById(id);
-    if (!dialog) return;
-    dialogTriggers.push(trigger);
-    dialog.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    requestAnimationFrame(() => dialog.querySelector(focusableSelector)?.focus());
+  function openDialog(id, trigger = document.activeElement, onRequestClose) {
+    window.blockbusterrDialog.open(id, { trigger, onRequestClose });
   }
 
   function closeDialog(id) {
-    document.getElementById(id)?.classList.add('hidden');
-    if (!dialogIds.some(dialogId => !document.getElementById(dialogId)?.classList.contains('hidden'))) {
-      document.body.style.overflow = '';
-    }
-    dialogTriggers.pop()?.focus();
-  }
-
-  function handleDialogKeyboard(event) {
-    const dialog = dialogIds.map(id => document.getElementById(id)).find(element => element && !element.classList.contains('hidden'));
-    if (!dialog) return;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      if (dialog.id === 'add-job-modal') closeAddJobModal();
-      if (dialog.id === 'job-modal') closeJobModal();
-      if (dialog.id === 'preview-modal') closePreviewModal();
-      return;
-    }
-    if (event.key !== 'Tab') return;
-    const focusable = [...dialog.querySelectorAll(focusableSelector)].filter(element => element.offsetParent !== null);
-    if (!focusable.length) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
+    window.blockbusterrDialog.close(id);
   }
 
   // Job type icons and colors
@@ -124,8 +88,15 @@
 	document.getElementById('modal-list-kind')?.addEventListener('change', () => updateListGuidance('modal'));
 	document.getElementById('modal-selection-cycle')?.addEventListener('change', () => updateSelectionFields('modal'));
     document.getElementById('modal-rule-set')?.addEventListener('change', updateRuleSetSummary);
-    document.addEventListener('keydown', handleDialogKeyboard);
     document.addEventListener('click', handleJobsAction);
+    const jobForm = document.getElementById('job-config-form');
+    jobForm?.addEventListener('input', updateJobDirtyState);
+    jobForm?.addEventListener('change', updateJobDirtyState);
+    window.addEventListener('beforeunload', (event) => {
+      if (!isJobDirty()) return;
+      event.preventDefault();
+      event.returnValue = '';
+    });
     // 'error' doesn't bubble for <img>, so this must be a capture-phase listener.
     document.getElementById('preview-content')?.addEventListener('error', handlePreviewPosterError, true);
 
@@ -425,7 +396,7 @@
     if (templateSearch) templateSearch.value = '';
     showTemplatesView();
     filterTemplates('Movies');
-    openDialog('add-job-modal', trigger);
+    openDialog('add-job-modal', trigger, closeAddJobModal);
   }
 
   function closeAddJobModal() {
@@ -908,7 +879,9 @@
       document.getElementById('export-job-button').classList.remove('hidden');
     }
 
-    openDialog('job-modal', trigger);
+    jobFormSnapshot = serializeJobForm();
+    updateJobDirtyState();
+    openDialog('job-modal', trigger, closeJobModal);
   }
 
   async function openJobFilters(jobId, trigger) {
@@ -1159,12 +1132,33 @@
     }
   }
 
-  function closeJobModal() {
+  function serializeJobForm() {
+    const form = document.getElementById('job-config-form');
+    if (!form) return '';
+    return JSON.stringify([...form.elements]
+      .filter((field) => field.id && !['button', 'submit', 'file'].includes(field.type))
+      .map((field) => [field.id, field.type === 'checkbox' ? field.checked : field.value])
+      .sort(([left], [right]) => left.localeCompare(right)));
+  }
+
+  function isJobDirty() {
+    return currentJob && jobFormSnapshot !== null && serializeJobForm() !== jobFormSnapshot;
+  }
+
+  function updateJobDirtyState() {
+    document.getElementById('job-editor-dirty')?.classList.toggle('hidden', !isJobDirty());
+  }
+
+  function closeJobModal(force = false) {
+    if (!force && isJobDirty() && !confirm('Discard unsaved changes to this job?')) return false;
     jobModalRequest++;
     closeDialog('job-modal');
     document.getElementById('modal-advanced').classList.add('hidden');
     document.getElementById('advanced-chevron').style.transform = '';
     currentJob = null;
+    jobFormSnapshot = null;
+    updateJobDirtyState();
+    return true;
   }
 
   function toggleModalAdvanced() {
@@ -1317,6 +1311,8 @@
       }
       currentJob = savedJob;
 	  updateSelectionFields('modal');
+      jobFormSnapshot = serializeJobForm();
+      updateJobDirtyState();
 
       renderJobsList();
       showNotification('Job saved successfully!', 'success');
@@ -1358,7 +1354,7 @@
         allJobs[index].enabled = newEnabled;
       }
 
-      closeJobModal();
+      closeJobModal(true);
       renderJobsList();
       showNotification(`Job ${action}d successfully!`, 'success');
     } catch (error) {
@@ -1399,8 +1395,9 @@
 
   function deleteCurrentJob() {
     if (currentJob) {
-      closeJobModal();
-      deleteJob(currentJob.id);
+      const jobID = currentJob.id;
+      if (!closeJobModal()) return;
+      deleteJob(jobID);
     }
   }
 
@@ -1439,13 +1436,13 @@
     if (!currentJob) return;
 
     const job = currentJob;
-    closeJobModal();
+    if (!closeJobModal()) return;
 
     setTimeout(async () => {
       currentFilter = 'all';
 
       document.getElementById('preview-title').textContent = job.name;
-      openDialog('preview-modal');
+      openDialog('preview-modal', document.activeElement, closePreviewModal);
 
       const previewContent = document.getElementById('preview-content');
       previewData = null;

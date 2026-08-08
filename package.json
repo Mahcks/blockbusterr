@@ -3,9 +3,11 @@
   "private": true,
   "scripts": {
     "build:assets": "mkdir -p web/static/css web/static/js/vendor && tailwindcss -c tailwind.config.js -i web/assets/app.css -o web/static/css/app.css --minify && cp node_modules/htmx.org/dist/htmx.min.js web/static/js/vendor/htmx.min.js && cp node_modules/lucide/dist/umd/lucide.min.js web/static/js/vendor/lucide.min.js && cp node_modules/chart.js/dist/chart.umd.js web/static/js/vendor/chart.umd.min.js",
-    "check:assets": "tmpdir=$(mktemp -d) && trap 'rm -rf \"$tmpdir\"' EXIT && tailwindcss -c tailwind.config.js -i web/assets/app.css -o \"$tmpdir/app.css\" --minify && cmp \"$tmpdir/app.css\" web/static/css/app.css && cmp node_modules/htmx.org/dist/htmx.min.js web/static/js/vendor/htmx.min.js && cmp node_modules/lucide/dist/umd/lucide.min.js web/static/js/vendor/lucide.min.js && cmp node_modules/chart.js/dist/chart.umd.js web/static/js/vendor/chart.umd.min.js"
+    "check:assets": "tmpdir=$(mktemp -d) && trap 'rm -rf \"$tmpdir\"' EXIT && tailwindcss -c tailwind.config.js -i web/assets/app.css -o \"$tmpdir/app.css\" --minify && cmp \"$tmpdir/app.css\" web/static/css/app.css && cmp node_modules/htmx.org/dist/htmx.min.js web/static/js/vendor/htmx.min.js && cmp node_modules/lucide/dist/umd/lucide.min.js web/static/js/vendor/lucide.min.js && cmp node_modules/chart.js/dist/chart.umd.js web/static/js/vendor/chart.umd.min.js",
+    "test:browser": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "chart.js": "4.4.1",
     "htmx.org": "2.0.4",
     "lucide": "0.468.0",

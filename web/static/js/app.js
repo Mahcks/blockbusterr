@@ -2,6 +2,102 @@
   "use strict";
 
   let latestRelease;
+  const dialogState = new WeakMap();
+  const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
+
+  function visibleFocusable(dialog) {
+    return [...dialog.querySelectorAll(focusableSelector)].filter((element) => element.getClientRects().length > 0);
+  }
+
+  function setPageInert(dialog, inert) {
+    [...document.body.children].forEach((element) => {
+      if (element === dialog || element.tagName === 'SCRIPT') return;
+      if (inert) {
+        element.dataset.dialogWasInert = String(element.inert);
+        element.inert = true;
+      } else if (element.dataset.dialogWasInert !== undefined) {
+        element.inert = element.dataset.dialogWasInert === 'true';
+        delete element.dataset.dialogWasInert;
+      }
+    });
+  }
+
+  function requestDialogClose(dialog) {
+    const state = dialogState.get(dialog);
+    if (state?.onRequestClose) state.onRequestClose();
+    else window.blockbusterrDialog.close(dialog);
+  }
+
+  window.blockbusterrDialog = {
+    open(dialogOrID, options = {}) {
+      const dialog = typeof dialogOrID === 'string' ? document.getElementById(dialogOrID) : dialogOrID;
+      if (!dialog || !dialog.classList.contains('hidden')) return;
+      const trigger = options.trigger || document.activeElement;
+      if (dialog.parentElement !== document.body) document.body.appendChild(dialog);
+      dialogState.set(dialog, { trigger, onRequestClose: options.onRequestClose });
+      setPageInert(dialog, true);
+      dialog.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      requestAnimationFrame(() => (options.initialFocus || visibleFocusable(dialog)[0])?.focus());
+    },
+    close(dialogOrID) {
+      const dialog = typeof dialogOrID === 'string' ? document.getElementById(dialogOrID) : dialogOrID;
+      if (!dialog || dialog.classList.contains('hidden')) return;
+      const state = dialogState.get(dialog);
+      dialog.classList.add('hidden');
+      setPageInert(dialog, false);
+      document.body.style.overflow = document.querySelector('.job-dialog:not(.hidden)') ? 'hidden' : '';
+      dialogState.delete(dialog);
+      state?.trigger?.focus?.();
+    }
+  };
+
+  document.addEventListener('keydown', (event) => {
+    const dialog = document.querySelector('.job-dialog:not(.hidden)');
+    if (!dialog) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      requestDialogClose(dialog);
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = visibleFocusable(dialog);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    if (event.target.matches('.job-dialog:not(.hidden)')) requestDialogClose(event.target);
+    const tab = event.target.closest('[role="tab"]');
+    if (!tab) return;
+    const tabs = tab.closest('[role="tablist"]')?.querySelectorAll(':scope > [role="tab"]') || [];
+    tabs.forEach((candidate) => { candidate.tabIndex = candidate === tab ? 0 : -1; });
+    const panel = document.getElementById(tab.getAttribute('aria-controls'));
+    if (panel && tab.id) panel.setAttribute('aria-labelledby', tab.id);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    const current = event.target.closest('[role="tab"]');
+    const tablist = current?.closest('[role="tablist"]');
+    if (!tablist || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const tabs = [...tablist.querySelectorAll(':scope > [role="tab"]:not([disabled])')];
+    const index = tabs.indexOf(current);
+    if (index < 0) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? tabs[0]
+      : event.key === 'End' ? tabs[tabs.length - 1]
+      : tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+    next.focus();
+    next.click();
+  });
 
   window.togglePassword = function (inputId, button) {
     const input = document.getElementById(inputId);
@@ -63,6 +159,11 @@
 
   function initialize(root) {
     window.renderLucideIcons(root);
+
+    root.querySelectorAll('[role="tablist"]').forEach((tablist) => {
+      const tabs = [...tablist.querySelectorAll(':scope > [role="tab"]')];
+      tabs.forEach((tab, index) => { tab.tabIndex = tab.getAttribute('aria-selected') === 'true' || (!tabs.some((item) => item.getAttribute('aria-selected') === 'true') && index === 0) ? 0 : -1; });
+    });
 
     const versionLinks = [...root.querySelectorAll('[data-latest-version]')];
     if (versionLinks.length) {

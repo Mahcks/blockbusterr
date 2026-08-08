@@ -73,6 +73,8 @@ temp/
 # Dependencies
 /vendor/
 node_modules/
+playwright-report/
+test-results/
 
 # Docs
 docs/node_modules/

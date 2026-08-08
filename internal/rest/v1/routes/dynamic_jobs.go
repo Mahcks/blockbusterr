@@ -98,7 +98,7 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 	})
 	router.Put("/rule-sets/:id", func(c *fiber.Ctx) error {
 		cfg := gctx.Config()
-		id := c.Params("id")
+		id := strings.Clone(c.Params("id"))
 		current, ok := cfg.RuleSetByID(id)
 		if !ok {
 			return c.Status(404).JSON(fiber.Map{"error": "Rule set not found"})
@@ -363,7 +363,7 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 
 	// Update an existing dynamic job
 	router.Put("/jobs/:id", func(c *fiber.Ctx) error {
-		jobID := c.Params("id")
+		jobID := strings.Clone(c.Params("id"))
 
 		// Prevent updating legacy jobs through this endpoint
 		if strings.HasPrefix(jobID, "legacy_") {

@@ -545,7 +545,12 @@ function handleRestoreSubmit(event) {
   if (!fileInput.files?.length) return showFieldMessage(messageEl, 'Select a backup file first.');
   restoreFile = fileInput.files[0];
   document.getElementById('restore-confirm-filename').textContent = restoreFile.name;
-  document.getElementById('restore-confirm').classList.remove('hidden');
+  window.blockbusterrDialog.open('restore-confirm', { trigger: event.submitter, onRequestClose: closeRestoreDialog });
+}
+
+function closeRestoreDialog() {
+  window.blockbusterrDialog.close('restore-confirm');
+  restoreFile = null;
 }
 
 async function confirmRestore() {
@@ -568,11 +573,11 @@ async function confirmRestore() {
       window.showNotification?.(result.message || 'Configuration restored.', 'success');
       setTimeout(() => window.location.reload(), 1200);
     } else {
-      dialog.classList.add('hidden');
+      window.blockbusterrDialog.close(dialog);
       showFieldMessage(messageEl, result.error || 'Failed to restore configuration.');
     }
   } catch (err) {
-    dialog.classList.add('hidden');
+    window.blockbusterrDialog.close(dialog);
     showFieldMessage(messageEl, `Network error: ${err.message}`);
   } finally {
     button.disabled = false;
@@ -614,9 +619,6 @@ function handleKeydown(event) {
     event.preventDefault();
     if (isDirty()) saveSettings();
     return;
-  }
-  if (event.key === 'Escape') {
-    document.getElementById('restore-confirm')?.classList.add('hidden');
   }
 }
 
@@ -675,8 +677,7 @@ function handleSettingsClick(event) {
     return;
   }
   if (action === 'cancel-restore') {
-    document.getElementById('restore-confirm').classList.add('hidden');
-    restoreFile = null;
+    closeRestoreDialog();
     return;
   }
   if (action === 'confirm-restore') {

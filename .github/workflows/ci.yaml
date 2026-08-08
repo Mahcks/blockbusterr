@@ -126,3 +126,22 @@ jobs:
       - name: Audit and build documentation
         working-directory: docs
         run: npm ci && npm audit && npm run build
+
+  browser:
+    name: Browser smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.12.0"
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser

@@ -43,6 +43,15 @@ function init() {
   ruleForm?.addEventListener('change', () => updateRuleDirtyState());
 
   document.addEventListener('keydown', handleGlobalKeydown);
+  window.addEventListener('beforeunload', (event) => {
+    if (!hasUnsavedChanges()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+}
+
+function hasUnsavedChanges() {
+  return rulesView === 'exceptions' ? isExceptionsDirty() : isRuleDirty();
 }
 
 function handleGlobalKeydown(event) {
@@ -84,19 +93,25 @@ function jobsUsing(ruleSetId) {
 
 function selectView(view) {
   if (view === rulesView) return;
-  if (rulesView !== 'exceptions' && isRuleDirty() && !confirm('Discard unsaved changes to this rule set?')) return;
+  if (hasUnsavedChanges() && !confirm(`Discard unsaved changes to ${rulesView === 'exceptions' ? 'title exceptions' : 'this rule set'}?`)) return;
+  if (rulesView === 'exceptions') writeExceptions();
   rulesView = view;
   document.querySelectorAll('[data-rules-view]').forEach((button) => button.setAttribute('aria-selected', String(button.dataset.rulesView === view)));
   document.getElementById('rule-set-workspace').classList.toggle('hidden', view === 'exceptions');
   document.getElementById('exceptions-workspace').classList.toggle('hidden', view !== 'exceptions');
+  document.getElementById('rule-set-workspace').setAttribute('aria-labelledby', `rules-tab-${view === 'exceptions' ? 'movie' : view}`);
   document.getElementById('new-rule-set').classList.toggle('hidden', view === 'exceptions');
   closeCreateRuleSet();
   if (view !== 'exceptions') renderRuleList();
 }
 
 function selectExceptionsMedia(media) {
+  if (media === exceptionsMedia) return;
+  if (isExceptionsDirty() && !confirm('Discard unsaved changes to these title exceptions?')) return;
+  writeExceptions();
   exceptionsMedia = media;
   document.querySelectorAll('[data-exceptions-media]').forEach((button) => button.setAttribute('aria-selected', String(button.dataset.exceptionsMedia === media)));
+  document.getElementById('exceptions-editor').setAttribute('aria-labelledby', `exceptions-tab-${media}`);
   document.getElementById('exceptions-id-kind').textContent = media === 'show' ? 'TVDB' : 'TMDB';
   writeExceptions();
 }

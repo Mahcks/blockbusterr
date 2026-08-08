@@ -185,7 +185,9 @@
             data-action="filter-templates"
             data-category="Movies"
             id="tab-movies"
+            role="tab"
             aria-selected="true"
+            aria-controls="templates-content"
             class="text-sm font-medium"
           >
             Movies
@@ -194,7 +196,9 @@
             data-action="filter-templates"
             data-category="TV Shows"
             id="tab-shows"
+            role="tab"
             aria-selected="false"
+            aria-controls="templates-content"
             class="text-sm font-medium"
           >
             TV Shows
@@ -202,7 +206,9 @@
           <button
             data-action="show-custom-job"
             id="tab-custom"
+            role="tab"
             aria-selected="false"
+            aria-controls="custom-job-content"
             class="text-sm font-medium"
           >
             Custom Job
@@ -212,7 +218,7 @@
 
       <!-- Modal Body (scrolls independently of the header above) -->
       <div class="min-h-0 flex-1 overflow-y-auto">
-      <div id="templates-content" class="p-6">
+      <div id="templates-content" class="p-6" role="tabpanel" aria-labelledby="tab-movies">
         <div class="mb-4">
           <label for="template-search" class="block mb-2 font-medium">
             Search recipes
@@ -236,7 +242,7 @@
       </div>
 
       <!-- Modal Body - Custom Job Form -->
-      <div id="custom-job-content" class="hidden p-6">
+      <div id="custom-job-content" class="hidden p-6" role="tabpanel" aria-labelledby="tab-custom">
         <form id="custom-job-form" class="space-y-4">
           <!-- Job Name -->
           <div>
@@ -570,7 +576,10 @@
           </button>
         </div>
         <!-- Job Type Badge -->
-        <div id="modal-badges" class="mt-3 flex gap-2"></div>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <div id="modal-badges" class="flex flex-wrap gap-2"></div>
+          <span id="job-editor-dirty" class="rule-set-dirty-hint hidden" role="status"><i data-lucide="circle" class="h-2 w-2" aria-hidden="true"></i>Unsaved changes</span>
+        </div>
       </div>
 
       <!-- Modal Body (scrolls independently of the header above) -->

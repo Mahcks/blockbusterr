@@ -230,7 +230,7 @@ func TestJobsPageUsesExternalScriptAndServerDataAttributes(t *testing.T) {
 			t.Errorf("jobs.js is missing %s", expected)
 		}
 	}
-	for _, expected := range []string{"function openDialog", "function closeDialog", "function handleDialogKeyboard", "function handleJobsAction"} {
+	for _, expected := range []string{"function openDialog", "function closeDialog", "window.blockbusterrDialog", "function handleJobsAction"} {
 		if !strings.Contains(script, expected) {
 			t.Errorf("jobs.js is missing %s", expected)
 		}

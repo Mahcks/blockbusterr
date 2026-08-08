@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
@@ -168,6 +169,29 @@ func TestRankedSelectionJobCannotTriggerIndependently(t *testing.T) {
 	}
 	if response.StatusCode != fiber.StatusConflict {
 		t.Fatalf("status = %d, want %d", response.StatusCode, fiber.StatusConflict)
+	}
+}
+
+func TestUpdateJobCopiesRouteIDBeforeFiberReusesRequestBuffer(t *testing.T) {
+	cfg := &config.Config{ConfigFilePath: filepath.Join(t.TempDir(), "config.yaml")}
+	cfg.TMDB.APIKey = "configured"
+	cfg.MigrateRuleSets()
+	cfg.Jobs.List = []config.DynamicJob{{ID: "browser-one", Name: "Before", Source: "tmdb", Type: "trending", MediaType: "movie", RuleSetID: config.DefaultMoviesRuleSetID}}
+	app := fiber.New()
+	AddDynamicJobsRoutes(app.Group("/v1"), dynamicJobsTestContext{Context: context.Background(), cfg: cfg})
+
+	body := `{"id":"browser-one","name":"After","source":"tmdb","type":"trending","media":"movie","limit":20,"rule_set_id":"default-movies"}`
+	request := httptest.NewRequest("PUT", "/v1/jobs/browser-one", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	response, err := app.Test(request, -1)
+	if err != nil || response.StatusCode != fiber.StatusOK {
+		t.Fatalf("update status=%d err=%v", response.StatusCode, err)
+	}
+	for range 10 {
+		_, _ = app.Test(httptest.NewRequest("GET", "/v1/jobs/dynamic/reused-path", nil), -1)
+	}
+	if got := cfg.Jobs.List[0].ID; got != "browser-one" {
+		t.Fatalf("saved job ID changed after request buffer reuse: %q", got)
 	}
 }
 
