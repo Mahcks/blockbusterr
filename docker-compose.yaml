@@ -1,6 +1,6 @@
 services:
   blockbusterr:
-    image: ghcr.io/mahcks/blockbusterr:latest
+    image: ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
     container_name: blockbusterr
     restart: unless-stopped
     ports:

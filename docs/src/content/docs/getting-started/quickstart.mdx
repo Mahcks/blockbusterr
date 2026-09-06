@@ -13,7 +13,7 @@ docker run -d \
   -p 9090:9090 \
   -v blockbusterr-data:/app/data \
   --restart unless-stopped \
-  ghcr.io/mahcks/blockbusterr:latest
+  ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
 ```
 
 Open `http://localhost:9090`. To enable owner authentication, add `-e BLOCKBUSTERR_AUTH_TOKEN="replace-with-at-least-32-random-characters"` and sign in as `blockbusterr`.

@@ -4,13 +4,13 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 
 ## [Unreleased]
 
-## [2.0.0] - 2026-09-05
+## [2.0.0-rc.1] - 2026-09-05
 
 ### Changed
 
-- Promoted v2 to stable after the beta.7 feedback period.
+- Prepared the first v2 release candidate after the beta.7 audit; stable `latest` remains on v1.
 - Updated Go to 1.25.13 to address six reachable standard-library vulnerabilities.
-- Updated stable installation examples and preserved versioned documentation.
+- Pinned installation examples to the release candidate and preserved versioned documentation.
 
 ### Fixed
 
