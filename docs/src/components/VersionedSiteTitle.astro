@@ -1,15 +1,15 @@
 ---
 import SiteTitle from '@astrojs/starlight/components/SiteTitle.astro';
 
-const isV2 = import.meta.env.BASE_URL.startsWith('/v2');
+const isV1 = import.meta.env.BASE_URL.startsWith('/v1');
 ---
 
 <div class="versioned-site-title">
 	<SiteTitle />
 	<label class="sr-only" for="docs-version">Documentation version</label>
 	<select id="docs-version" class="version-switcher" aria-label="Documentation version">
-		<option value="https://blockbusterr.dev/" selected={!isV2}>v1 stable</option>
-		<option value="https://blockbusterr.dev/v2/" selected={isV2}>v2 beta</option>
+		<option value="https://blockbusterr.dev/" selected={!isV1}>v2 stable</option>
+		<option value="https://blockbusterr.dev/v1/" selected={isV1}>v1 archive</option>
 	</select>
 </div>
 

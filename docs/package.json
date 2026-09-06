@@ -6,6 +6,7 @@
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
+    "test:archive": "node scripts/archive-v1.test.mjs",
     "check:v2-links": "node scripts/check-versioned-links.mjs",
     "preview": "astro preview",
     "astro": "astro"

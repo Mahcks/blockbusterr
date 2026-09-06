@@ -23,16 +23,13 @@ function scan(directory) {
 		else if (entry.name.endsWith('.html')) {
 			if (entry.name === '404.html') continue;
 			const html = fs.readFileSync(file, 'utf8');
-			if (/ghcr\.io\/mahcks\/blockbusterr:latest(?![-\w.])/.test(html)) {
-				invalid.push(`${file}: v2 documentation references the stable v1 image`);
-			}
 			for (const match of html.matchAll(/(?:href|src)="(\/[^"]*)"/g)) {
 				if (prefixes.some((prefix) => match[1].startsWith(prefix))) invalid.push(`${file}: ${match[1]}`);
 			}
 			for (const match of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
 				if (/^(?:#|mailto:|javascript:)/.test(match[1])) continue;
 				const url = new URL(match[1], origin + deployedPath(file));
-				if (url.origin !== origin || url.pathname === '/') continue;
+				if (url.origin !== origin || ['/', '/v1/'].includes(url.pathname)) continue;
 				if (!url.pathname.startsWith('/v2/')) {
 					invalid.push(`${file}: escapes /v2/: ${match[1]}`);
 					continue;

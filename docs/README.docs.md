@@ -18,7 +18,7 @@ Visit `http://localhost:4321/` to view the docs locally.
 npm run build
 ```
 
-Build the v2 beta path locally with:
+Build the compatible `/v2/` path locally with:
 
 ```bash
 DOCS_BASE=/v2/ npm run build
@@ -28,13 +28,13 @@ Built files will be in `dist/`.
 
 ## Deployment
 
-Documentation is automatically deployed to GitHub Pages when documentation changes are pushed to `main` or `release/v2.0.0`. The deployment combines both branches:
+Documentation is automatically deployed to GitHub Pages when documentation changes are pushed to `main`. The deployment builds the triggering commit:
 
-- `/` serves the stable v1 documentation from `main`.
-- `/v2/` serves the beta documentation from `release/v2.0.0`.
+- `/` serves stable v2 documentation.
+- `/v2/` preserves existing v2 links with the same documentation.
+- `/v1/` archives documentation from the immutable `v1.5.2` tag.
 
-When v2 becomes stable, archive the final v1 documentation under `/v1/`, make
-`main` the unversioned v2 source, and redirect `/v2/` to `/`.
+The archive build updates the version selector and prefixes legacy content links so navigation stays within `/v1/`.
 
 View live docs at: https://blockbusterr.dev/
 

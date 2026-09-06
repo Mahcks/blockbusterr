@@ -29,8 +29,8 @@ Access to at least one discovery provider (TMDB, Simkl, Trakt, or MDBList) and y
 Configure any one supported discovery provider: TMDB, Simkl, Trakt, or MDBList. You only need Trakt credentials for jobs that use Trakt as their source.
 </Aside>
 
-<Aside type="caution" title="Installing the v2 beta">
-Use `ghcr.io/mahcks/blockbusterr:latest-beta` to follow beta updates, or pin the immutable `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.6` image. The `latest` tag remains on stable v1 until v2 is released.
+<Aside type="caution" title="Installing v2">
+Use `ghcr.io/mahcks/blockbusterr:latest` to follow stable updates, or pin the immutable `ghcr.io/mahcks/blockbusterr:v2.0.0` image. Before upgrading from v1, back up the complete data directory and follow the [upgrade guide](/getting-started/upgrading-to-v2/).
 </Aside>
 
 <Aside type="tip" title="Using a NAS or container UI">
@@ -49,7 +49,7 @@ See [Deployment platforms](/getting-started/deployment-platforms/) for field-by-
 1. Pull the latest image:
 
    ```bash
-   docker pull ghcr.io/mahcks/blockbusterr:latest-beta
+   docker pull ghcr.io/mahcks/blockbusterr:latest
    ```
 
 2. Run the container:
@@ -60,7 +60,7 @@ See [Deployment platforms](/getting-started/deployment-platforms/) for field-by-
      -p 9090:9090 \
      -v blockbusterr-data:/app/data \
      -e TZ=America/New_York \
-     ghcr.io/mahcks/blockbusterr:latest-beta
+     ghcr.io/mahcks/blockbusterr:latest
    ```
 
 3. Access the web UI at `http://localhost:9090`
@@ -83,7 +83,7 @@ Use `docker logs blockbusterr -f` to view live logs and verify startup.
    ```yaml
    services:
      blockbusterr:
-       image: ghcr.io/mahcks/blockbusterr:latest-beta
+       image: ghcr.io/mahcks/blockbusterr:latest
        container_name: blockbusterr
        ports:
          - "9090:9090"
@@ -124,7 +124,7 @@ networks:
 
 services:
   blockbusterr:
-    image: ghcr.io/mahcks/blockbusterr:latest-beta
+    image: ghcr.io/mahcks/blockbusterr:latest
     container_name: blockbusterr
     networks:
       - media
@@ -242,7 +242,7 @@ docker run -d \
   -e DATA_DIR=/app/data \
   -e TZ=Europe/London \
   -v $(pwd)/data:/app/data \
-  ghcr.io/mahcks/blockbusterr:latest-beta
+  ghcr.io/mahcks/blockbusterr:latest
 ```
 
 ## Health Check
@@ -268,7 +268,7 @@ Expected response:
 <TabItem label="Docker" icon="seti:docker">
 
 ```bash
-docker pull ghcr.io/mahcks/blockbusterr:latest-beta
+docker pull ghcr.io/mahcks/blockbusterr:latest
 docker stop blockbusterr
 docker rm blockbusterr
 # Then run the original docker run command

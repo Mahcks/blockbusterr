@@ -4,7 +4,7 @@ import starlight from '@astrojs/starlight';
 import { unified } from '@astrojs/markdown-remark';
 
 const base = process.env.DOCS_BASE || '/';
-const isVersionedPreview = base !== '/';
+const isVersioned = base !== '/';
 const basePath = base.replace(/\/$/, '');
 
 function prefixVersionedLinks() {
@@ -29,7 +29,7 @@ export default defineConfig({
 	markdown: { processor: unified({ remarkPlugins: [prefixVersionedLinks] }) },
 	integrations: [
 		starlight({
-			title: isVersionedPreview ? 'Blockbusterr v2' : 'Blockbusterr',
+			title: isVersioned ? 'Blockbusterr v2' : 'Blockbusterr',
 			description: 'Automate media discovery with reusable rules and observable delivery',
 			tagline: 'Smart content discovery for your media server',
 			components: {
@@ -79,7 +79,7 @@ export default defineConfig({
 			
 			// Edit link (optional - links to GitHub)
 			editLink: {
-				baseUrl: `https://github.com/mahcks/blockbusterr/edit/${isVersionedPreview ? 'release/v2.0.0' : 'main'}/docs/`,
+				baseUrl: 'https://github.com/mahcks/blockbusterr/edit/main/docs/',
 			},
 			
 			// Last updated timestamp

@@ -4,6 +4,16 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-05
+
+### Changed
+
+- Promoted v2 to stable after the beta.7 feedback period.
+- Updated Go to 1.25.13 to address six reachable standard-library vulnerabilities.
+- Updated stable installation examples and preserved versioned documentation.
+
+## [2.0.0-beta.7] - 2026-08-09
+
 ### Added
 
 - Added desktop and narrow-viewport browser tests for critical Jobs, Rules, Activity, and dialog workflows.
@@ -111,7 +121,9 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 - The beta image is published as `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.1` and `ghcr.io/mahcks/blockbusterr:latest-beta`; `latest` remains on v1 until the stable release.
 - See the [v2 upgrade guide](https://blockbusterr.dev/v2/getting-started/upgrading-to-v2/).
 
-[Unreleased]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.6...HEAD
+[Unreleased]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.7...v2.0.0
+[2.0.0-beta.7]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.6...v2.0.0-beta.7
 [2.0.0-beta.6]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.5...v2.0.0-beta.6
 [2.0.0-beta.5]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.4...v2.0.0-beta.5
 [2.0.0-beta.4]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.3...v2.0.0-beta.4

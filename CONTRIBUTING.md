@@ -14,7 +14,7 @@ Thank you for your interest in contributing to Blockbusterr! This guide will hel
 
 ### Prerequisites
 
-- Go 1.25.12 or higher
+- Go 1.25.13 or higher
 - Node.js 24 or higher (only when changing frontend assets or documentation)
 - Docker (optional, for testing)
 - Git

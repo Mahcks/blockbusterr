@@ -1,5 +1,5 @@
 # Choose Go version
-ARG GOLANG_TAG=1.25.12-alpine
+ARG GOLANG_TAG=1.25.13-alpine
 
 FROM golang:${GOLANG_TAG} AS builder
 

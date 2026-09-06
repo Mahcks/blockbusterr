@@ -9,8 +9,8 @@ Blockbusterr uses the same container on every compatible platform. The platform 
 
 | Setting | Value |
 | --- | --- |
-| Image | `ghcr.io/mahcks/blockbusterr:latest-beta` |
-| Immutable beta image | `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.6` |
+| Image | `ghcr.io/mahcks/blockbusterr:latest` |
+| Immutable release image | `ghcr.io/mahcks/blockbusterr:v2.0.0` |
 | Container port | `9090/tcp` |
 | Persistent container path | `/app/data` |
 | Required environment variables | None |
@@ -30,7 +30,7 @@ Use this on a Linux server, Docker Desktop, or any platform that accepts a Compo
 ```yaml
 services:
   blockbusterr:
-    image: ghcr.io/mahcks/blockbusterr:latest-beta
+    image: ghcr.io/mahcks/blockbusterr:latest
     container_name: blockbusterr
     ports:
       - "9090:9090"
@@ -55,10 +55,10 @@ Remove `BLOCKBUSTERR_DRY_RUN` after you have previewed a job and are ready to pe
 
 <Steps>
 1. Open **Docker**, select **Add Container**, and switch to the advanced view if needed.
-2. Set the name to `blockbusterr` and the repository to `ghcr.io/mahcks/blockbusterr:latest-beta`.
+2. Set the name to `blockbusterr` and the repository to `ghcr.io/mahcks/blockbusterr:latest`.
 3. Map a free host port, normally `9090`, to container port `9090` using TCP.
 4. Map `/mnt/user/appdata/blockbusterr` on the host to `/app/data` in the container with read/write access.
-5. Add `TZ` using your IANA timezone. Add `BLOCKBUSTERR_DRY_RUN=true` while testing the beta.
+5. Add `TZ` using your IANA timezone. Add `BLOCKBUSTERR_DRY_RUN=true` while verifying your setup.
 6. Apply the template, wait for the startup log to report that Blockbusterr is listening, and open its WebUI on the mapped host port.
 </Steps>
 
@@ -70,10 +70,10 @@ An official Community Applications template is not currently published. Adding t
 <TabItem label="TrueNAS SCALE">
 
 <Steps>
-1. Open **Apps**, choose the option to install a custom app, and use `ghcr.io/mahcks/blockbusterr:latest-beta` as the image.
+1. Open **Apps**, choose the option to install a custom app, and use `ghcr.io/mahcks/blockbusterr:latest` as the image.
 2. Expose container port `9090` over TCP using an available host port.
 3. Add host-path storage for a dataset such as `/mnt/<pool>/apps/blockbusterr`, mounted inside the container at `/app/data` with write access.
-4. Add `TZ` and, during beta testing, `BLOCKBUSTERR_DRY_RUN=true` as environment variables.
+4. Add `TZ` and, while verifying your setup, `BLOCKBUSTERR_DRY_RUN=true` as environment variables.
 5. Do not set a custom container user. Blockbusterr starts as root only long enough to repair legacy v1 ownership, then runs as UID/GID `10001:10001`.
 6. Deploy the app, confirm the UI responds, and open `http://<server-address>:<host-port>`.
 </Steps>
