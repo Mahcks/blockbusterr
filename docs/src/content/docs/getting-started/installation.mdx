@@ -1,14 +1,14 @@
 ---
 title: Installation
-description: Different ways to install and run Blockbusterr
+description: Install Blockbusterr with Docker or Docker Compose.
 ---
 
 import { Tabs, TabItem, Steps, Card, CardGrid, Aside } from '@astrojs/starlight/components';
 
-Choose your preferred installation method to get Blockbusterr running.
+Blockbusterr is distributed as a Linux container for AMD64 and ARM64 systems. Use Docker directly, Docker Compose, or a container-management UI such as Unraid, TrueNAS SCALE, or Portainer.
 
-<Aside type="caution" title="Trusted LAN only">
-Blockbusterr has no built-in authentication and is intended for a trusted LAN. Do not expose port 9090 directly to the internet; use an authenticated reverse proxy or VPN for remote access.
+<Aside type="caution" title="Keep it private">
+Blockbusterr can use an optional owner token, but you should still keep port 9090 behind a trusted LAN, VPN, or HTTPS reverse proxy. The built-in owner boundary is not a multi-user identity system.
 </Aside>
 
 ## Prerequisites
@@ -17,13 +17,25 @@ Blockbusterr has no built-in authentication and is intended for a trusted LAN. D
 <Card title="Docker" icon="seti:docker">
 Docker 20.10+ or Docker Desktop
 </Card>
-<Card title="Storage" icon="laptop">
-50GB+ recommended for database and logs
+<Card title="Persistent storage" icon="laptop">
+A writable host directory mounted at `/app/data`
 </Card>
 <Card title="Network" icon="star">
-Access to Trakt, TMDB, and your *arr stack
+Access to at least one discovery provider (TMDB, Simkl, Trakt, or MDBList) and your delivery stack
 </Card>
 </CardGrid>
+
+<Aside type="note" title="Trakt is optional">
+Configure any one supported discovery provider: TMDB, Simkl, Trakt, or MDBList. You only need Trakt credentials for jobs that use Trakt as their source.
+</Aside>
+
+<Aside type="caution" title="Installing v2">
+Use `ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1` to test this release candidate. Stable `latest` remains on v1; `latest-beta` follows prereleases. Before upgrading from v1, back up the complete data directory and follow the [upgrade guide](/getting-started/upgrading-to-v2/).
+</Aside>
+
+<Aside type="tip" title="Using a NAS or container UI">
+See [Deployment platforms](/getting-started/deployment-platforms/) for field-by-field Unraid, TrueNAS SCALE, and Portainer instructions.
+</Aside>
 
 ## Installation Methods
 
@@ -37,7 +49,7 @@ Access to Trakt, TMDB, and your *arr stack
 1. Pull the latest image:
 
    ```bash
-   docker pull ghcr.io/mahcks/blockbusterr:latest
+   docker pull ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
    ```
 
 2. Run the container:
@@ -46,9 +58,9 @@ Access to Trakt, TMDB, and your *arr stack
    docker run -d \
      --name blockbusterr \
      -p 9090:9090 \
-     -v $(pwd)/data:/app/data \
+     -v blockbusterr-data:/app/data \
      -e TZ=America/New_York \
-     ghcr.io/mahcks/blockbusterr:latest
+     ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
    ```
 
 3. Access the web UI at `http://localhost:9090`
@@ -66,42 +78,39 @@ Use `docker logs blockbusterr -f` to view live logs and verify startup.
 
 <Steps>
 
-1. Create `docker-compose.yaml`:
+1. Create `compose.yaml`:
 
    ```yaml
-   version: '3.8'
-
    services:
      blockbusterr:
-       image: ghcr.io/mahcks/blockbusterr:latest
+       image: ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
        container_name: blockbusterr
        ports:
          - "9090:9090"
        volumes:
-         - ./data:/app/data
-         - ./config:/app/config  # Optional: external config
+         - blockbusterr-data:/app/data
        environment:
-         - TZ=America/New_York
+         TZ: America/New_York
+         # BLOCKBUSTERR_AUTH_TOKEN: replace-with-at-least-32-random-characters
        restart: unless-stopped
+
+   volumes:
+     blockbusterr-data:
    ```
 
 2. Start the stack:
 
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 3. View logs:
 
    ```bash
-   docker-compose logs -f blockbusterr
+   docker compose logs -f blockbusterr
    ```
 
 </Steps>
-
-<Aside type="note">
-The config volume is optional - you can configure everything through the web UI.
-</Aside>
 
 </TabItem>
 <TabItem label="With Full Stack" icon="puzzle">
@@ -109,15 +118,13 @@ The config volume is optional - you can configure everything through the web UI.
 **Complete setup** - Blockbusterr + Radarr + Sonarr on the same network.
 
 ```yaml
-version: '3.8'
-
 networks:
   media:
     driver: bridge
 
 services:
   blockbusterr:
-    image: ghcr.io/mahcks/blockbusterr:latest
+    image: ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
     container_name: blockbusterr
     networks:
       - media
@@ -166,40 +173,6 @@ services:
 When using container networking, use container names in URLs:
 - Radarr: `http://radarr:7878`
 - Sonarr: `http://sonarr:8989`
-</Aside>
-
-</TabItem>
-<TabItem label="Binary" icon="rocket">
-
-**For advanced users** - Direct binary execution without Docker.
-
-<Steps>
-
-1. Download the latest release from [GitHub Releases](https://github.com/mahcks/blockbusterr/releases)
-
-2. Extract the archive:
-
-   ```bash
-   tar -xzf blockbusterr-linux-amd64.tar.gz
-   cd blockbusterr
-   ```
-
-3. Make the binary executable:
-
-   ```bash
-   chmod +x blockbusterr
-   ```
-
-4. Run Blockbusterr:
-
-   ```bash
-   ./blockbusterr
-   ```
-
-</Steps>
-
-<Aside type="note">
-The binary expects `config.yaml` in the same directory or in `./config/`.
 </Aside>
 
 </TabItem>
@@ -254,6 +227,8 @@ Configure Blockbusterr behavior with environment variables:
 | `CONFIG_PATH` | config search paths | Directory containing the config file |
 | `DATA_DIR` | `./data` | Database directory |
 | `DISABLE_UI` | `false` | Disable the web UI when set to `true`, `1`, or `yes` |
+| `BLOCKBUSTERR_AUTH_TOKEN` | unset | Optional owner token (at least 32 characters); sign in with username `blockbusterr` |
+| `BLOCKBUSTERR_DRY_RUN` | `false` | Evaluate jobs and record decisions without sending content to Radarr, Sonarr, Jellyseerr, or Seerr |
 | `VERSION` | build metadata | Override displayed version metadata |
 | `COMMIT` | build metadata | Override displayed commit metadata |
 | `TZ` | `UTC` | Timezone for scheduling |
@@ -267,7 +242,7 @@ docker run -d \
   -e DATA_DIR=/app/data \
   -e TZ=Europe/London \
   -v $(pwd)/data:/app/data \
-  ghcr.io/mahcks/blockbusterr:latest
+  ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
 ```
 
 ## Health Check
@@ -275,14 +250,14 @@ docker run -d \
 Verify Blockbusterr is running correctly:
 
 ```bash
-curl http://localhost:9090/v1/
+curl -u blockbusterr:$BLOCKBUSTERR_AUTH_TOKEN http://localhost:9090/v1/
 ```
 
 Expected response:
 
 ```json
 {
-  "version": "1.5.0",
+  "version": "2.0.0",
   "uptime": "1785518792000"
 }
 ```
@@ -293,7 +268,7 @@ Expected response:
 <TabItem label="Docker" icon="seti:docker">
 
 ```bash
-docker pull ghcr.io/mahcks/blockbusterr:latest
+docker pull ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
 docker stop blockbusterr
 docker rm blockbusterr
 # Then run the original docker run command
@@ -303,17 +278,17 @@ docker rm blockbusterr
 <TabItem label="Docker Compose" icon="seti:yml">
 
 ```bash
-docker-compose pull blockbusterr
-docker-compose up -d blockbusterr
+docker compose pull blockbusterr
+docker compose up -d blockbusterr
 ```
 
 </TabItem>
-<TabItem label="Binary/Source" icon="rocket">
+<TabItem label="From source" icon="rocket">
 
 Download the new release or pull the latest code:
 
 ```bash
-git pull origin master
+git pull origin main
 make build
 ./bin/blockbusterr
 ```
@@ -325,7 +300,11 @@ make build
 Always backup your `data` directory before major version upgrades:
 
 ```bash
-cp -r data data.backup
+docker stop blockbusterr
+docker run --rm \
+  -v blockbusterr-data:/data:ro \
+  -v "$PWD:/backup" \
+  alpine tar -czf /backup/blockbusterr-data.tar.gz -C /data .
 ```
 </Aside>
 
@@ -353,7 +332,7 @@ Only run one Blockbusterr instance per data directory
 Get up and running in 5 minutes
 </Card>
 <Card title="Configuration" icon="setting" href="/getting-started/configuration">
-Configure Trakt and your integrations
+Configure a discovery provider and your delivery integrations
 </Card>
 <Card title="Set Up Jobs" icon="star" href="/concepts/jobs">
 Create automated content discovery jobs

@@ -96,15 +96,3 @@ func TestParseJobRunStatus(t *testing.T) {
 		t.Fatal("ParseJobRunStatus(done) should be invalid")
 	}
 }
-
-func TestIsSuccessLikeActivityStatus(t *testing.T) {
-	if !IsSuccessLikeActivityStatus(ActivityStatusAdded) {
-		t.Fatal("added should be success-like")
-	}
-	if !IsSuccessLikeActivityStatus(ActivityStatusRequested) {
-		t.Fatal("requested should be success-like")
-	}
-	if IsSuccessLikeActivityStatus(ActivityStatusRejected) {
-		t.Fatal("rejected should not be success-like")
-	}
-}

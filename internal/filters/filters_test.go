@@ -53,6 +53,114 @@ func TestMoviePassesFilters_AllowedCountries(t *testing.T) {
 	}
 }
 
+func TestCertificationRules(t *testing.T) {
+	certifications := []integrations.Certification{{Value: "PG-13", Country: "US", Source: "tmdb"}, {Value: "R", Country: "US", Source: "tmdb"}, {Value: "12", Country: "GB", Source: "tmdb"}}
+	tests := []struct {
+		name        string
+		values      []integrations.Certification
+		country     string
+		allowed     []string
+		blocked     []string
+		unknown     string
+		wantPassed  bool
+		wantMessage string
+	}{
+		{name: "allowed", values: certifications[:1], country: "US", allowed: []string{"PG-13"}, unknown: "reject", wantPassed: true, wantMessage: "US certification PG-13 is allowed (TMDB)"},
+		{name: "blocked wins across multiple releases", values: certifications, country: "US", allowed: []string{"PG-13"}, blocked: []string{"R"}, unknown: "allow", wantMessage: "US certification R is blocked (TMDB)"},
+		{name: "unknown allowed", country: "US", allowed: []string{"PG"}, unknown: "allow", wantPassed: true, wantMessage: "TMDB has no US certification; unknown ratings are allowed"},
+		{name: "unknown rejected", country: "US", allowed: []string{"PG"}, unknown: "reject", wantMessage: "TMDB has no US certification; unknown ratings are rejected"},
+		{name: "wrong region is unknown", values: certifications[2:], country: "US", allowed: []string{"12"}, unknown: "reject", wantMessage: "TMDB has no US certification; unknown ratings are rejected"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			movie := integrations.Movie{IDs: integrations.IDs{TMDB: 1}, Certifications: test.values}
+			movieResult := MoviePassesRules(movie, config.MovieFilters{CertificationCountry: test.country, AllowedCertifications: test.allowed, BlockedCertifications: test.blocked, UnknownCertification: test.unknown}, config.TitleExceptions{})
+			show := integrations.Show{IDs: integrations.IDs{TVDB: 1}, Certifications: test.values}
+			showResult := ShowPassesRules(show, config.ShowFilters{CertificationCountry: test.country, AllowedCertifications: test.allowed, BlockedCertifications: test.blocked, UnknownCertification: test.unknown}, config.TitleExceptions{})
+			if movieResult.Passed != test.wantPassed || showResult.Passed != test.wantPassed || len(movieResult.Checks) == 0 || movieResult.Checks[0].Message != test.wantMessage || showResult.Checks[0].Message != test.wantMessage {
+				t.Fatalf("movie=%#v show=%#v", movieResult, showResult)
+			}
+		})
+	}
+}
+
+func TestTitleExceptionPrecedence(t *testing.T) {
+	movie := integrations.Movie{Title: "Example", Country: "us", IDs: integrations.IDs{TMDB: 42}}
+	rules := config.MovieFilters{AllowedCountries: []string{"gb"}}
+	exceptions := config.TitleExceptions{AllowedMovieTMDBIDs: []int{42}}
+	if result := MoviePassesRules(movie, rules, exceptions); !result.Passed {
+		t.Fatalf("allowed title rejected: %s", result.Reason)
+	}
+	exceptions.BlockedMovieTMDBIDs = []int{42}
+	if result := MoviePassesRules(movie, rules, exceptions); result.Passed || result.Reason != "blocked title" {
+		t.Fatalf("block did not win: %#v", result)
+	}
+}
+
+func TestExplainUsesDecisionCheck(t *testing.T) {
+	tests := []struct {
+		name   string
+		result FilterResult
+		want   string
+	}{
+		{name: "ordinary pass", result: FilterResult{Passed: true}, want: "Accepted: Passed all configured rules"},
+		{name: "title exception", result: FilterResult{Passed: true, Checks: []FilterCheck{{Name: "Title exceptions", Passed: true}}}, want: "Accepted: Universal title exception"},
+		{name: "failed check", result: FilterResult{Checks: []FilterCheck{{Name: "Minimum Rating", Message: "Rating 5.0 below minimum 7.0"}}}, want: "Rejected: Rating 5.0 below minimum 7.0"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Explain(tt.result); got != tt.want {
+				t.Fatalf("Explain() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRuleModePrecedence(t *testing.T) {
+	movie := integrations.Movie{Title: "Star Trek Documentary", Year: 1990, Country: "us", Language: "en", Genres: []string{"Documentary"}, Rating: 9.5}
+
+	t.Run("hard block beats allow override", func(t *testing.T) {
+		rules := config.MovieFilters{BlacklistedGenres: []string{"Documentary"}, AllowKeywords: []string{"Star Trek"}}
+		result := MoviePassesRules(movie, rules, config.TitleExceptions{})
+		if result.Passed || Explain(result) != "Rejected: Blocked genre matched: Documentary" {
+			t.Fatalf("unexpected result: %#v", result)
+		}
+	})
+
+	t.Run("allow override bypasses required rules and boundaries", func(t *testing.T) {
+		rules := config.MovieFilters{AllowKeywords: []string{"Star Trek"}, RequiredGenres: []string{"Science Fiction"}, BlacklistedMinYear: 2020}
+		result := MoviePassesRules(movie, rules, config.TitleExceptions{})
+		if !result.Passed || Explain(result) != "Accepted: Allow override matched title keyword: Star Trek" {
+			t.Fatalf("unexpected result: %#v", result)
+		}
+	})
+
+	t.Run("required category rejects a missing match", func(t *testing.T) {
+		rules := config.MovieFilters{RequiredGenres: []string{"Science Fiction"}}
+		result := MoviePassesRules(movie, rules, config.TitleExceptions{})
+		if result.Passed || Explain(result) != "Rejected: Required genre not matched: Science Fiction" {
+			t.Fatalf("unexpected result: %#v", result)
+		}
+	})
+
+	t.Run("blocked country rejects", func(t *testing.T) {
+		rules := config.MovieFilters{BlacklistedCountries: []string{"US"}}
+		result := MoviePassesRules(movie, rules, config.TitleExceptions{})
+		if result.Passed || Explain(result) != "Rejected: Blocked country matched: us" {
+			t.Fatalf("unexpected result: %#v", result)
+		}
+	})
+}
+
+func TestShowRuleModesSupportNetworks(t *testing.T) {
+	show := integrations.Show{Title: "Family Series", Network: "Disney+", Country: "us", Language: "en"}
+	rules := config.ShowFilters{AllowNetworks: []string{"Disney+"}, RequiredGenres: []string{"Family"}}
+	result := ShowPassesRules(show, rules, config.TitleExceptions{})
+	if !result.Passed || Explain(result) != "Accepted: Allow override matched network: Disney+" {
+		t.Fatalf("unexpected result: %#v", result)
+	}
+}
+
 func TestMoviePassesFilters_BlacklistedGenres(t *testing.T) {
 	tests := []struct {
 		name              string

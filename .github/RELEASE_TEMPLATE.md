@@ -16,15 +16,16 @@
 - 
 
 ## Upgrading
-1. **Backup current config first!**
+1. **Stop Blockbusterr and back up its complete data directory.** The configuration and SQLite database must come from the same stopped snapshot.
 ```sh
-cp data/config.yaml data/config.yaml.backup
+docker stop blockbusterr
+cp -a data "data.backup-$(date +%Y%m%d-%H%M%S)"
 ```
 
 2. **Pull and restart**
 ```sh
 docker pull ghcr.io/mahcks/blockbusterr:vX.Y.Z
-docker-compose down && docker-compose up -d
+docker compose down && docker compose up -d
 ```
 
 *Or for docker run users*

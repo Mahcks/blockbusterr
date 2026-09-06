@@ -1,37 +1,23 @@
 package rest
 
 import (
-	"encoding/json"
 	"errors"
 	"html/template"
 	"os"
-	"reflect"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	htmlEngine "github.com/gofiber/template/html/v2"
-	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/middleware"
 	v1 "github.com/mahcks/blockbusterr/internal/rest/v1"
 	"github.com/mahcks/blockbusterr/internal/rest/v1/routes"
-	apiErrors "github.com/mahcks/blockbusterr/pkg/api_errors"
-	"github.com/mahcks/blockbusterr/pkg/structures"
 )
 
-var allowedHeaders = []string{
-	"Content-Type",
-	"Content-Length",
-	"Accept-Encoding",
-	"Authorization",
-	"Cookie",
-	"X-Api-Key",
-	"X-CSRF-Token",
-}
+const shutdownTimeout = 5 * time.Second
 
 func New(gctx global.Context) error {
 	// Check DISABLE_UI environment variable (UI enabled by default)
@@ -43,17 +29,10 @@ func New(gctx global.Context) error {
 	// Initialize template engine with custom functions
 	engine := htmlEngine.New("./web/templates", ".html")
 	engine.Reload(true) // Enable template reloading in development
-	engine.AddFunc("json", func(v any) template.JS {
-		b, _ := json.Marshal(v)
-		return template.JS(b)
-	})
 	engine.AddFunc("safeHTML", func(s string) template.HTML {
 		return template.HTML(s)
 	})
 	engine.AddFunc("mul", func(a, b float64) float64 {
-		return a * b
-	})
-	engine.AddFunc("muli", func(a, b int) int {
 		return a * b
 	})
 	engine.AddFunc("add", func(a, b int) int {
@@ -62,64 +41,8 @@ func New(gctx global.Context) error {
 	engine.AddFunc("sub", func(a, b int) int {
 		return a - b
 	})
-	engine.AddFunc("iterate", func(start, end int) []int {
-		result := []int{}
-		for i := start; i <= end; i++ {
-			result = append(result, i)
-		}
-		return result
-	})
-	engine.AddFunc("mod", func(a, b int) int {
-		if b == 0 {
-			return 0
-		}
-		return a % b
-	})
 	engine.AddFunc("contains", func(s, substr string) bool {
 		return strings.Contains(s, substr)
-	})
-	engine.AddFunc("activityLog", func(v any) database.ActivityLog {
-		if log, ok := v.(database.ActivityLog); ok {
-			return log
-		}
-		rv := reflect.ValueOf(v)
-		if rv.IsValid() && rv.Kind() == reflect.Struct {
-			field := rv.FieldByName("Log")
-			if field.IsValid() {
-				if log, ok := field.Interface().(database.ActivityLog); ok {
-					return log
-				}
-			}
-		}
-		return database.ActivityLog{}
-	})
-	engine.AddFunc("activityCount", func(v any) int {
-		if _, ok := v.(database.ActivityLog); ok {
-			return 1
-		}
-		rv := reflect.ValueOf(v)
-		if rv.IsValid() && rv.Kind() == reflect.Struct {
-			field := rv.FieldByName("Count")
-			if field.IsValid() && field.Kind() == reflect.Int {
-				return int(field.Int())
-			}
-		}
-		return 1
-	})
-	engine.AddFunc("activityHistory", func(v any) []database.ActivityLog {
-		if log, ok := v.(database.ActivityLog); ok {
-			return []database.ActivityLog{log}
-		}
-		rv := reflect.ValueOf(v)
-		if rv.IsValid() && rv.Kind() == reflect.Struct {
-			field := rv.FieldByName("History")
-			if field.IsValid() {
-				if logs, ok := field.Interface().([]database.ActivityLog); ok {
-					return logs
-				}
-			}
-		}
-		return nil
 	})
 
 	app := fiber.New(fiber.Config{
@@ -128,7 +51,6 @@ func New(gctx global.Context) error {
 		DisableStartupMessage: false,
 		ServerHeader:          "Blockbusterr",
 		AppName:               "Blockbusterr",
-		// Custom error handler for common.APIError
 		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
 			log.Errorw("error in fiber", "error", err)
 
@@ -136,25 +58,6 @@ func New(gctx global.Context) error {
 			var fe *fiber.Error
 			if errors.As(err, &fe) {
 				return ctx.Status(fe.Code).SendString(fe.Message)
-			}
-
-			// Handle common API errors
-			var ce apiErrors.APIError
-			if errors.As(err, &ce) {
-				ctx.Set("Content-Type", "application/json")
-				ctx.Status(ce.ExpectedHTTPStatus())
-
-				responseBody := &structures.APIErrorResponseBodyError{
-					StatusCode: ce.Code(),
-					Timestamp:  int(time.Now().Unix()),
-					Error: structures.APIError{
-						StatusCode: ce.ExpectedHTTPStatus(),
-						Message:    ce.Message(),
-						ErrorCode:  ce.Code(),
-						Details:    ce.GetFields(),
-					},
-				}
-				return ctx.JSON(responseBody)
 			}
 
 			// Fallback error handling
@@ -166,19 +69,25 @@ func New(gctx global.Context) error {
 		Format: "[${ip}]:${port} ${status} - ${method} ${path}\n",
 	}))
 
-	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000",
-		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-		AllowHeaders:     strings.Join(allowedHeaders, ", "),
-		AllowCredentials: true,
-		ExposeHeaders:    "Content-Length, Content-Type",
-	}))
-
 	// Security headers
 	app.Use(middleware.SecureHeaders())
 
 	// Serve static files
 	app.Static("/static", "./web/static")
+	app.Get("/favicon.ico", func(c *fiber.Ctx) error {
+		return c.Redirect("/static/favicon.svg", fiber.StatusPermanentRedirect)
+	})
+
+	ownerToken := strings.TrimSpace(os.Getenv("BLOCKBUSTERR_AUTH_TOKEN"))
+	app.Use(middleware.SameOriginMutations())
+	if ownerToken == "" {
+		log.Warn("Owner authentication is disabled; keep Blockbusterr on a trusted network")
+	} else {
+		if len(ownerToken) < 32 {
+			return errors.New("BLOCKBUSTERR_AUTH_TOKEN must contain at least 32 characters")
+		}
+		app.Use(middleware.OwnerAccess(ownerToken))
+	}
 
 	// Conditionally enable UI routes
 	if uiEnabled {
@@ -189,7 +98,7 @@ func New(gctx global.Context) error {
 		log.Info("Web UI is disabled")
 		// Provide a simple message on root route
 		app.Get("/", func(c *fiber.Ctx) error {
-			return c.SendString("Blockbusterr API - Web UI is disabled. Set UI_ENABLED=true environment variable to enable.")
+			return c.SendString("Blockbusterr API - Web UI is disabled. Unset DISABLE_UI or set it to false to enable.")
 		})
 	}
 
@@ -211,7 +120,7 @@ func New(gctx global.Context) error {
 	case <-gctx.Done():
 		// A shutdown signal was received before the server started,
 		// so try to stop the server.
-		if err := app.Shutdown(); err != nil {
+		if err := app.ShutdownWithTimeout(shutdownTimeout); err != nil {
 			log.Error("error while shutting down server", "error", err)
 		}
 		return nil
@@ -227,7 +136,7 @@ func New(gctx global.Context) error {
 	<-gctx.Done()
 
 	// Shutdown the server
-	if err := app.Shutdown(); err != nil {
+	if err := app.ShutdownWithTimeout(shutdownTimeout); err != nil {
 		log.Error("error while shutting down server", "error", err)
 		return err
 	}

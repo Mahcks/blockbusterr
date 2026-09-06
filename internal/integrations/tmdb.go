@@ -3,6 +3,7 @@ package integrations
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,24 +16,31 @@ import (
 
 const (
 	TMDBAPIBaseURL   = "https://api.themoviedb.org/3"
+	TMDBAPIv4BaseURL = "https://api.themoviedb.org/4"
 	TMDBImageBaseURL = "https://image.tmdb.org/t/p/w500"
 )
 
 // TMDB is the client for interacting with TMDB API
 type TMDB struct {
 	apiKey     string
+	sessionID  string
+	accountID  int
 	httpClient *http.Client
 }
 
 // TMDBConfig holds configuration for TMDB client
 type TMDBConfig struct {
-	APIKey string
+	APIKey    string
+	SessionID string
+	AccountID int
 }
 
 // NewTMDB creates a new TMDB API client
 func NewTMDB(config TMDBConfig) *TMDB {
 	return &TMDB{
-		apiKey: config.APIKey,
+		apiKey:    config.APIKey,
+		sessionID: config.SessionID,
+		accountID: config.AccountID,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -93,6 +101,26 @@ type tmdbShowDetails struct {
 		IMDB string `json:"imdb_id"`
 		TVDB int    `json:"tvdb_id"`
 	} `json:"external_ids"`
+	ContentRatings struct {
+		Results []struct {
+			Rating  string `json:"rating"`
+			Country string `json:"iso_3166_1"`
+		} `json:"results"`
+	} `json:"content_ratings"`
+}
+
+type tmdbMovieCertifications struct {
+	Runtime       int      `json:"runtime"`
+	OriginCountry []string `json:"origin_country"`
+	IMDBID        string   `json:"imdb_id"`
+	ReleaseDates  struct {
+		Results []struct {
+			Country string `json:"iso_3166_1"`
+			Dates   []struct {
+				Certification string `json:"certification"`
+			} `json:"release_dates"`
+		} `json:"results"`
+	} `json:"release_dates"`
 }
 
 var tmdbMovieGenres = map[int]string{12: "adventure", 14: "fantasy", 16: "animation", 18: "drama", 27: "horror", 28: "action", 35: "comedy", 36: "history", 37: "western", 53: "thriller", 80: "crime", 99: "documentary", 878: "science-fiction", 9648: "mystery", 10402: "music", 10749: "romance", 10751: "family", 10752: "war", 10770: "tv-movie"}
@@ -107,7 +135,7 @@ func (t *TMDB) get(ctx context.Context, endpoint string, query url.Values, targe
 	if err != nil {
 		return fmt.Errorf("failed to create TMDB request: %w", err)
 	}
-	resp, err := t.httpClient.Do(req)
+	resp, err := doRequest(t.httpClient, req)
 	if err != nil {
 		return fmt.Errorf("TMDB request failed: %w", err)
 	}
@@ -156,7 +184,7 @@ func (t *TMDB) getMovies(ctx context.Context, endpoint string, limit int) ([]Mov
 			break
 		}
 	}
-	return result, nil
+	return result, t.enrichMovies(ctx, result, true)
 }
 
 func (t *TMDB) getShows(ctx context.Context, endpoint string, limit int) ([]Show, error) {
@@ -177,19 +205,96 @@ func (t *TMDB) getShows(ctx context.Context, endpoint string, limit int) ([]Show
 			break
 		}
 	}
-	t.enrichShows(ctx, result)
-	return result, nil
+	return result, t.enrichShows(ctx, result)
 }
 
-func (t *TMDB) enrichShows(ctx context.Context, shows []Show) {
+func (t *TMDB) GetMovieRecommendations(ctx context.Context, seeds []int, limit int) ([]Movie, error) {
+	result := make([]Movie, 0, limit)
+	seen := make(map[int]bool, len(seeds)+limit)
+	uniqueSeeds := make([]int, 0, len(seeds))
+	for _, seed := range seeds {
+		if seen[seed] {
+			continue
+		}
+		seen[seed] = true
+		uniqueSeeds = append(uniqueSeeds, seed)
+	}
+	for _, seed := range uniqueSeeds {
+		for page := 1; len(result) < limit; page++ {
+			var response tmdbListResponse[tmdbMovieResult]
+			if err := t.get(ctx, fmt.Sprintf("/movie/%d/recommendations", seed), url.Values{"page": {strconv.Itoa(page)}, "language": {"en-US"}}, &response); err != nil {
+				return nil, err
+			}
+			for _, item := range response.Results {
+				if seen[item.ID] {
+					continue
+				}
+				seen[item.ID] = true
+				result = append(result, Movie{Title: item.Title, Year: yearFromDate(item.ReleaseDate), IDs: IDs{TMDB: item.ID}, Genres: genreNames(item.GenreIDs, tmdbMovieGenres), Language: item.OriginalLanguage, Overview: item.Overview, Rating: item.VoteAverage, Votes: item.VoteCount})
+				if len(result) == limit {
+					return result, t.enrichMovies(ctx, result, true)
+				}
+			}
+			if page >= response.TotalPages || len(response.Results) == 0 {
+				break
+			}
+		}
+	}
+	return result, t.enrichMovies(ctx, result, true)
+}
+
+func (t *TMDB) GetShowRecommendations(ctx context.Context, seeds []int, limit int) ([]Show, error) {
+	result := make([]Show, 0, limit)
+	seen := make(map[int]bool, len(seeds)+limit)
+	uniqueSeeds := make([]int, 0, len(seeds))
+	for _, seed := range seeds {
+		if seen[seed] {
+			continue
+		}
+		seen[seed] = true
+		uniqueSeeds = append(uniqueSeeds, seed)
+	}
+	for _, seed := range uniqueSeeds {
+		for page := 1; len(result) < limit; page++ {
+			var response tmdbListResponse[tmdbShowResult]
+			if err := t.get(ctx, fmt.Sprintf("/tv/%d/recommendations", seed), url.Values{"page": {strconv.Itoa(page)}, "language": {"en-US"}}, &response); err != nil {
+				return nil, err
+			}
+			for _, item := range response.Results {
+				if seen[item.ID] {
+					continue
+				}
+				seen[item.ID] = true
+				result = append(result, Show{Title: item.Name, Year: yearFromDate(item.FirstAirDate), IDs: IDs{TMDB: item.ID}, Genres: genreNames(item.GenreIDs, tmdbShowGenres), Language: item.OriginalLanguage, Country: strings.ToLower(strings.Join(item.OriginCountry, ",")), Overview: item.Overview, Rating: item.VoteAverage, Votes: item.VoteCount})
+				if len(result) == limit {
+					return result, t.enrichShows(ctx, result)
+				}
+			}
+			if page >= response.TotalPages || len(response.Results) == 0 {
+				break
+			}
+		}
+	}
+	return result, t.enrichShows(ctx, result)
+}
+
+func (t *TMDB) enrichShows(ctx context.Context, shows []Show) error {
 	semaphore := make(chan struct{}, 8)
 	var waitGroup sync.WaitGroup
+	var errorMu sync.Mutex
+	var enrichmentErrors []error
 	for index := range shows {
+		if shows[index].IDs.TMDB <= 0 {
+			continue
+		}
 		waitGroup.Go(func() {
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 			var details tmdbShowDetails
-			if err := t.get(ctx, fmt.Sprintf("/tv/%d", shows[index].IDs.TMDB), url.Values{"append_to_response": {"external_ids"}, "language": {"en-US"}}, &details); err != nil {
+			if err := t.get(ctx, fmt.Sprintf("/tv/%d", shows[index].IDs.TMDB), url.Values{"append_to_response": {"external_ids,content_ratings"}, "language": {"en-US"}}, &details); err != nil {
+				errorMu.Lock()
+				enrichmentErrors = append(enrichmentErrors, fmt.Errorf("show %d enrichment failed: %w", shows[index].IDs.TMDB, err))
+				errorMu.Unlock()
 				return
 			}
 			shows[index].IDs.IMDB = details.ExternalIDs.IMDB
@@ -200,9 +305,105 @@ func (t *TMDB) enrichShows(ctx context.Context, shows []Show) {
 			if len(details.Networks) > 0 {
 				shows[index].Network = details.Networks[0].Name
 			}
+			shows[index].Certifications = showCertifications(details)
 		})
 	}
 	waitGroup.Wait()
+	return errors.Join(enrichmentErrors...)
+}
+
+func (t *TMDB) EnrichMovieCertifications(ctx context.Context, movies []Movie) error {
+	return t.enrichMovies(ctx, movies, false)
+}
+
+func (t *TMDB) enrichMovies(ctx context.Context, movies []Movie, includeMetadata bool) error {
+	var waitGroup sync.WaitGroup
+	semaphore := make(chan struct{}, 8)
+	var errorMu sync.Mutex
+	var enrichmentErrors []error
+	for index := range movies {
+		if movies[index].IDs.TMDB <= 0 || (!includeMetadata && len(movies[index].Certifications) > 0) {
+			continue
+		}
+		waitGroup.Go(func() {
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+			var details tmdbMovieCertifications
+			if err := t.get(ctx, fmt.Sprintf("/movie/%d", movies[index].IDs.TMDB), url.Values{"append_to_response": {"release_dates"}}, &details); err != nil {
+				errorMu.Lock()
+				enrichmentErrors = append(enrichmentErrors, fmt.Errorf("movie %d certification enrichment failed: %w", movies[index].IDs.TMDB, err))
+				errorMu.Unlock()
+				return
+			}
+			movies[index].Certifications = movieCertifications(details)
+			if includeMetadata {
+				movies[index].Runtime = details.Runtime
+				movies[index].Country = joinCountry(details.OriginCountry)
+				movies[index].IDs.IMDB = details.IMDBID
+			}
+		})
+	}
+	waitGroup.Wait()
+	return errors.Join(enrichmentErrors...)
+}
+
+func (t *TMDB) EnrichShowCertifications(ctx context.Context, shows []Show) error {
+	var waitGroup sync.WaitGroup
+	semaphore := make(chan struct{}, 8)
+	var errorMu sync.Mutex
+	var enrichmentErrors []error
+	for index := range shows {
+		if shows[index].IDs.TMDB <= 0 || len(shows[index].Certifications) > 0 {
+			continue
+		}
+		waitGroup.Go(func() {
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+			var details tmdbShowDetails
+			if err := t.get(ctx, fmt.Sprintf("/tv/%d", shows[index].IDs.TMDB), url.Values{"append_to_response": {"content_ratings"}}, &details); err != nil {
+				errorMu.Lock()
+				enrichmentErrors = append(enrichmentErrors, fmt.Errorf("show %d certification enrichment failed: %w", shows[index].IDs.TMDB, err))
+				errorMu.Unlock()
+				return
+			}
+			shows[index].Certifications = showCertifications(details)
+		})
+	}
+	waitGroup.Wait()
+	return errors.Join(enrichmentErrors...)
+}
+
+func movieCertifications(details tmdbMovieCertifications) []Certification {
+	result := []Certification{}
+	for _, country := range details.ReleaseDates.Results {
+		for _, release := range country.Dates {
+			value := strings.ToUpper(strings.TrimSpace(release.Certification))
+			if value != "" && !hasCertification(result, country.Country, value) {
+				result = append(result, Certification{Value: value, Country: strings.ToUpper(country.Country), Source: "tmdb"})
+			}
+		}
+	}
+	return result
+}
+
+func showCertifications(details tmdbShowDetails) []Certification {
+	result := []Certification{}
+	for _, rating := range details.ContentRatings.Results {
+		value := strings.ToUpper(strings.TrimSpace(rating.Rating))
+		if value != "" && !hasCertification(result, rating.Country, value) {
+			result = append(result, Certification{Value: value, Country: strings.ToUpper(rating.Country), Source: "tmdb"})
+		}
+	}
+	return result
+}
+
+func hasCertification(certifications []Certification, country, value string) bool {
+	for _, certification := range certifications {
+		if strings.EqualFold(certification.Country, country) && strings.EqualFold(certification.Value, value) {
+			return true
+		}
+	}
+	return false
 }
 
 func (t *TMDB) GetTrendingMovies(ctx context.Context, limit int) ([]Movie, error) {
@@ -234,7 +435,7 @@ func (t *TMDB) GetMoviePosterURL(ctx context.Context, tmdbID int) (string, error
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := t.httpClient.Do(req)
+	resp, err := doRequest(t.httpClient, req)
 	if err != nil {
 		return "", fmt.Errorf("request failed: %w", err)
 	}
@@ -274,7 +475,7 @@ func (t *TMDB) GetShowPosterURL(ctx context.Context, tmdbID int) (string, error)
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := t.httpClient.Do(req)
+	resp, err := doRequest(t.httpClient, req)
 	if err != nil {
 		return "", fmt.Errorf("request failed: %w", err)
 	}

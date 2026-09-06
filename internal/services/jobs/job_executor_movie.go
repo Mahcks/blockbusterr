@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -21,6 +20,8 @@ type MovieJobExecutor struct {
 	DryRun        bool
 	lastDecisions *JobRunDecisions // Store last run decisions for API access
 	currentRunID  int64
+	discovery     *DiscoveryClient
+	selection     map[string]ScoreInfo
 }
 
 // Execute runs a movie job with the given configuration and fetcher function
@@ -46,10 +47,14 @@ func (e *MovieJobExecutor) Execute(
 		}
 	}
 
-	discoveryClient, err := NewDiscoveryClient(e.Config, jobConfig.Source)
-	if err != nil {
-		log.Errorf("Failed to configure discovery source for %s: %v", jobLabel, err)
-		return err
+	discoveryClient := e.discovery
+	if discoveryClient == nil {
+		var err error
+		discoveryClient, err = NewDiscoveryClient(e.Config, jobConfig.Source)
+		if err != nil {
+			log.Errorf("Failed to configure discovery source for %s: %v", jobLabel, err)
+			return err
+		}
 	}
 
 	// Fetch movies using the provided fetcher
@@ -73,6 +78,13 @@ func (e *MovieJobExecutor) Execute(
 		}
 		return err
 	}
+	if err := enrichMovieCertifications(ctx, e.Config, movies); err != nil {
+		err = fmt.Errorf("failed to enrich movie certifications: %w", err)
+		if e.Database != nil && e.currentRunID > 0 {
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", len(movies), 0, 0, 0, 0, 0, 1, err.Error())
+		}
+		return err
+	}
 
 	log.Infof("Found %d movies from %s for %s", len(movies), discoveryClient.Source(), jobLabel)
 
@@ -86,14 +98,30 @@ func (e *MovieJobExecutor) Execute(
 	e.lastDecisions = runDecisions
 
 	// Apply filters with detailed decision tracking
-	filteredMovies, scoreMap, movieDecisions := e.evaluateMoviesWithDecisions(movies, jobConfig)
+	filteredMovies, scoreMap, movieDecisions := e.evaluateMoviesWithDecisions(ctx, movies, jobConfig)
+	if e.selection != nil {
+		selected := filteredMovies[:0]
+		for _, movie := range filteredMovies {
+			key := integrations.MovieKey(movie.IDs)
+			if score, ok := e.selection[key]; ok {
+				selected = append(selected, movie)
+				scoreMap[key] = score
+			} else {
+				e.skipMovieDelivery(jobConfig, movie, scoreMap, "Displaced by ranked selection")
+			}
+		}
+		filteredMovies = selected
+	}
 	runDecisions.Decisions = movieDecisions
 	runDecisions.PassedFilters = len(filteredMovies)
 
 	// Route to appropriate handler based on mode
 	var executionErr error
-	if jobConfig.Mode == "jellyseerr" {
+	if ctx.Err() != nil {
+		executionErr = ctx.Err()
+	} else if jobConfig.Mode == "jellyseerr" {
 		e.executeMoviesJellyseerr(ctx, jobConfig, filteredMovies, scoreMap)
+		executionErr = ctx.Err()
 	} else {
 		executionErr = e.executeMoviesDirect(ctx, jobConfig, filteredMovies, scoreMap)
 	}
@@ -130,7 +158,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 	ctx context.Context,
 	jobConfig JobConfig,
 	movies []integrations.Movie,
-	scoreMap map[int]ScoreInfo,
+	scoreMap map[string]ScoreInfo,
 ) error {
 	jobLabel := FormatJobLabel(jobConfig.JobID, jobConfig.JobName)
 	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
@@ -155,16 +183,20 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 	added := 0
 	skipped := 0
 	failed := 0
+	budget := newDeliveryBudget(e.Config, e.Database, jobConfig.JobID, e.currentRunID, jobConfig.DeliveryLimit, e.DryRun)
 
 	for _, movie := range movies {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		// Skip if movie already exists in Radarr
 		if existingTMDBIDs[movie.IDs.TMDB] {
 			log.Debugf("Skipping '%s (%d)' - already in Radarr", movie.Title, movie.Year)
-			e.updateDecisionOutcome(movie.IDs.TMDB, "skipped", "Already in Radarr")
+			e.updateDecisionOutcome(movie.IDs, "skipped", "Already in Radarr")
 			if e.Database != nil {
 				posterURL := GetTMDBPosterURL(e.Config, movie.IDs.TMDB, "movie")
-				scoreInfo := scoreMap[movie.IDs.TMDB]
-				filterDetails := e.getFilterDetailsForMovie(movie.IDs.TMDB)
+				scoreInfo := scoreMap[integrations.MovieKey(movie.IDs)]
+				filterDetails := e.getFilterDetailsForMovie(movie.IDs)
 				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp:     time.Now(),
 					JobID:         jobConfig.JobID,
@@ -187,6 +219,15 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 					slog.Error("Failed to log activity for movie", "title", movie.Title, "year", movie.Year, "err", err)
 				}
 			}
+			skipped++
+			continue
+		}
+		repeatReason, repeatErr := repeatSkipReason(e.Config, e.Database, jobConfig.RepeatPolicy, "movie", movie.IDs.TMDB, 0, time.Now())
+		if repeatErr != nil {
+			return fmt.Errorf("failed to check movie delivery history: %w", repeatErr)
+		}
+		if repeatReason != "" {
+			e.skipMovieDelivery(jobConfig, movie, scoreMap, repeatReason)
 			skipped++
 			continue
 		}
@@ -226,14 +267,21 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 			},
 		}
 
+		reservationID, allowed, reason := budget.reserve("movie")
+		if !allowed {
+			e.skipMovieDelivery(jobConfig, movie, scoreMap, reason)
+			skipped++
+			continue
+		}
+
 		// Add movie to Radarr (or simulate in dry-run mode)
 		if e.DryRun {
 			log.Infof("[DRY RUN] Would add %s movie '%s (%d)' to Radarr", jobLabel, movie.Title, movie.Year)
-			e.updateDecisionOutcome(movie.IDs.TMDB, "added", "[DRY RUN] Would be added to Radarr")
+			e.updateDecisionOutcome(movie.IDs, "added", "[DRY RUN] Would be added to Radarr")
 			if e.Database != nil {
 				posterURL := GetTMDBPosterURL(e.Config, movie.IDs.TMDB, "movie")
-				scoreInfo := scoreMap[movie.IDs.TMDB]
-				filterDetails := e.getFilterDetailsForMovie(movie.IDs.TMDB)
+				scoreInfo := scoreMap[integrations.MovieKey(movie.IDs)]
+				filterDetails := e.getFilterDetailsForMovie(movie.IDs)
 				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp:     time.Now(),
 					JobID:         jobConfig.JobID,
@@ -260,14 +308,15 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 		} else {
 			addedMovie, err := radarrClient.AddMovie(ctx, radarrMovie)
 			if err != nil {
+				budget.release(reservationID)
 				// Check if it's a duplicate error
-				if strings.Contains(err.Error(), "already") || strings.Contains(err.Error(), "exists") {
+				if integrations.IsDuplicateError(err) {
 					log.Debugf("Movie '%s (%d)' already exists in Radarr", movie.Title, movie.Year)
-					e.updateDecisionOutcome(movie.IDs.TMDB, "skipped", "Already in Radarr")
+					e.updateDecisionOutcome(movie.IDs, "skipped", "Already in Radarr")
 					if e.Database != nil {
 						posterURL := GetTMDBPosterURL(e.Config, movie.IDs.TMDB, "movie")
-						scoreInfo := scoreMap[movie.IDs.TMDB]
-						filterDetails := e.getFilterDetailsForMovie(movie.IDs.TMDB)
+						scoreInfo := scoreMap[integrations.MovieKey(movie.IDs)]
+						filterDetails := e.getFilterDetailsForMovie(movie.IDs)
 						err := e.Database.LogActivity(database.ActivityLog{
 							Timestamp:     time.Now(),
 							JobID:         jobConfig.JobID,
@@ -296,7 +345,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 					failed++
 					// Log failure to database
 					if e.Database != nil {
-						scoreInfo := scoreMap[movie.IDs.TMDB]
+						scoreInfo := scoreMap[integrations.MovieKey(movie.IDs)]
 						err := e.Database.LogActivity(database.ActivityLog{
 							Timestamp: time.Now(),
 							JobID:     jobConfig.JobID,
@@ -322,12 +371,13 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 			}
 
 			log.Infof("Added %s movie '%s (%d)' to Radarr (ID: %d)", jobLabel, addedMovie.Title, addedMovie.Year, addedMovie.ID)
+			e.updateDecisionOutcome(movie.IDs, "added", "Added to Radarr")
 			added++
 
 			// Log success to database
 			if e.Database != nil {
 				posterURL := GetTMDBPosterURL(e.Config, addedMovie.TmdbID, "movie")
-				scoreInfo := scoreMap[addedMovie.TmdbID]
+				scoreInfo := scoreMap[integrations.MovieKey(integrations.IDs{TMDB: addedMovie.TmdbID})]
 				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp: time.Now(),
 					JobID:     jobConfig.JobID,
@@ -360,10 +410,10 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 
 // executeMoviesJellyseerr requests movies via Jellyseerr
 func (e *MovieJobExecutor) executeMoviesJellyseerr(
-	_ context.Context,
+	ctx context.Context,
 	jobConfig JobConfig,
 	movies []integrations.Movie,
-	scoreMap map[int]ScoreInfo,
+	scoreMap map[string]ScoreInfo,
 ) {
 	jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
 		URL:             e.Config.Jellyseerr.URL,
@@ -377,19 +427,23 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 	requested := 0
 	skipped := 0
 	failed := 0
+	budget := newDeliveryBudget(e.Config, e.Database, jobConfig.JobID, e.currentRunID, jobConfig.DeliveryLimit, e.DryRun)
 
 	for _, movie := range movies {
+		if ctx.Err() != nil {
+			return
+		}
 		// Check if movie already exists in Jellyseerr
-		mediaInfo, err := jellyseerrClient.GetMovieInfo(movie.IDs.TMDB)
+		mediaInfo, err := jellyseerrClient.GetMovieInfoContext(ctx, movie.IDs.TMDB)
 		if err != nil {
 			log.Debugf("Failed to check Jellyseerr status for '%s (%d)': %v", movie.Title, movie.Year, err)
 		} else if mediaInfo.HasMediaInfo() {
 			log.Debugf("Skipping '%s (%d)' - already requested/available in Jellyseerr", movie.Title, movie.Year)
-			e.updateDecisionOutcome(movie.IDs.TMDB, "skipped", "Already in Jellyseerr")
+			e.updateDecisionOutcome(movie.IDs, "skipped", "Already in Jellyseerr")
 			if e.Database != nil {
 				posterURL := GetTMDBPosterURL(e.Config, movie.IDs.TMDB, "movie")
-				scoreInfo := scoreMap[movie.IDs.TMDB]
-				filterDetails := e.getFilterDetailsForMovie(movie.IDs.TMDB)
+				scoreInfo := scoreMap[integrations.MovieKey(movie.IDs)]
+				filterDetails := e.getFilterDetailsForMovie(movie.IDs)
 				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp:     time.Now(),
 					JobID:         jobConfig.JobID,
@@ -415,15 +469,32 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 			skipped++
 			continue
 		}
+		repeatReason, repeatErr := repeatSkipReason(e.Config, e.Database, jobConfig.RepeatPolicy, "movie", movie.IDs.TMDB, 0, time.Now())
+		if repeatErr != nil {
+			log.Errorf("Failed to check movie delivery history: %v", repeatErr)
+			return
+		}
+		if repeatReason != "" {
+			e.skipMovieDelivery(jobConfig, movie, scoreMap, repeatReason)
+			skipped++
+			continue
+		}
+
+		reservationID, allowed, reason := budget.reserve("movie")
+		if !allowed {
+			e.skipMovieDelivery(jobConfig, movie, scoreMap, reason)
+			skipped++
+			continue
+		}
 
 		// Request movie via Jellyseerr (or simulate in dry-run mode)
 		if e.DryRun {
 			log.Infof("[DRY RUN] Would request %s movie '%s (%d)' via Jellyseerr", jobConfig.JobName, movie.Title, movie.Year)
-			e.updateDecisionOutcome(movie.IDs.TMDB, "requested", "[DRY RUN] Would be requested")
+			e.updateDecisionOutcome(movie.IDs, "requested", "[DRY RUN] Would be requested")
 			if e.Database != nil {
 				posterURL := GetTMDBPosterURL(e.Config, movie.IDs.TMDB, "movie")
-				scoreInfo := scoreMap[movie.IDs.TMDB]
-				filterDetails := e.getFilterDetailsForMovie(movie.IDs.TMDB)
+				scoreInfo := scoreMap[integrations.MovieKey(movie.IDs)]
+				filterDetails := e.getFilterDetailsForMovie(movie.IDs)
 				err := e.Database.LogActivity(database.ActivityLog{
 					Timestamp:     time.Now(),
 					JobID:         jobConfig.JobID,
@@ -448,16 +519,17 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 			}
 			requested++
 		} else {
-			result, err := jellyseerrClient.RequestMovie(movie.IDs.TMDB)
+			result, err := jellyseerrClient.RequestMovieContext(ctx, movie.IDs.TMDB)
 			if err != nil {
+				budget.release(reservationID)
 				// Check if it's a duplicate error
-				if strings.Contains(err.Error(), "already") || strings.Contains(err.Error(), "exists") || strings.Contains(err.Error(), "requested") {
+				if integrations.IsDuplicateError(err) {
 					log.Debugf("Movie '%s (%d)' already requested in Jellyseerr", movie.Title, movie.Year)
-					e.updateDecisionOutcome(movie.IDs.TMDB, "skipped", "Already requested")
+					e.updateDecisionOutcome(movie.IDs, "skipped", "Already requested")
 					if e.Database != nil {
 						posterURL := GetTMDBPosterURL(e.Config, movie.IDs.TMDB, "movie")
-						scoreInfo := scoreMap[movie.IDs.TMDB]
-						filterDetails := e.getFilterDetailsForMovie(movie.IDs.TMDB)
+						scoreInfo := scoreMap[integrations.MovieKey(movie.IDs)]
+						filterDetails := e.getFilterDetailsForMovie(movie.IDs)
 						err := e.Database.LogActivity(database.ActivityLog{
 							Timestamp:     time.Now(),
 							JobID:         jobConfig.JobID,
@@ -483,12 +555,12 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 					skipped++
 				} else {
 					log.Errorf("Failed to request movie '%s (%d)' via Jellyseerr: %v", movie.Title, movie.Year, err)
-					e.updateDecisionOutcome(movie.IDs.TMDB, "failed", err.Error())
+					e.updateDecisionOutcome(movie.IDs, "failed", err.Error())
 					failed++
 					// Log failure to database
 					if e.Database != nil {
-						scoreInfo := scoreMap[movie.IDs.TMDB]
-						filterDetails := e.getFilterDetailsForMovie(movie.IDs.TMDB)
+						scoreInfo := scoreMap[integrations.MovieKey(movie.IDs)]
+						filterDetails := e.getFilterDetailsForMovie(movie.IDs)
 						err := e.Database.LogActivity(database.ActivityLog{
 							Timestamp:     time.Now(),
 							JobID:         jobConfig.JobID,
@@ -515,12 +587,13 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 			}
 
 			if result.IsAlreadyRequested() {
+				budget.release(reservationID)
 				log.Debugf("Movie '%s (%d)' already requested in Jellyseerr", movie.Title, movie.Year)
-				e.updateDecisionOutcome(movie.IDs.TMDB, "skipped", "Already requested")
+				e.updateDecisionOutcome(movie.IDs, "skipped", "Already requested")
 				if e.Database != nil {
 					posterURL := GetTMDBPosterURL(e.Config, movie.IDs.TMDB, "movie")
-					scoreInfo := scoreMap[movie.IDs.TMDB]
-					filterDetails := e.getFilterDetailsForMovie(movie.IDs.TMDB)
+					scoreInfo := scoreMap[integrations.MovieKey(movie.IDs)]
+					filterDetails := e.getFilterDetailsForMovie(movie.IDs)
 					err := e.Database.LogActivity(database.ActivityLog{
 						Timestamp:     time.Now(),
 						JobID:         jobConfig.JobID,
@@ -546,14 +619,14 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 				skipped++
 			} else {
 				log.Infof("Requested %s movie '%s (%d)' via Jellyseerr (Request ID: %d)", jobConfig.JobName, movie.Title, movie.Year, result.ID)
-				e.updateDecisionOutcome(movie.IDs.TMDB, "requested", fmt.Sprintf("Jellyseerr request ID: %d", result.ID))
+				e.updateDecisionOutcome(movie.IDs, "requested", fmt.Sprintf("Jellyseerr request ID: %d", result.ID))
 				requested++
 
 				// Log success to database
 				if e.Database != nil {
 					posterURL := GetTMDBPosterURL(e.Config, movie.IDs.TMDB, "movie")
-					scoreInfo := scoreMap[movie.IDs.TMDB]
-					filterDetails := e.getFilterDetailsForMovie(movie.IDs.TMDB)
+					scoreInfo := scoreMap[integrations.MovieKey(movie.IDs)]
+					filterDetails := e.getFilterDetailsForMovie(movie.IDs)
 					err := e.Database.LogActivity(database.ActivityLog{
 						Timestamp:     time.Now(),
 						JobID:         jobConfig.JobID,
@@ -585,14 +658,18 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 
 // evaluateMoviesWithDecisions evaluates all movies through filters and scoring, tracking detailed decisions
 func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
+	ctx context.Context,
 	movies []integrations.Movie,
 	jobConfig JobConfig,
-) ([]integrations.Movie, map[int]ScoreInfo, []ContentDecision) {
+) ([]integrations.Movie, map[string]ScoreInfo, []ContentDecision) {
 	decisions := make([]ContentDecision, 0, len(movies))
 	passedMovies := make([]integrations.Movie, 0)
 
 	// Evaluate each movie through filters
 	for _, movie := range movies {
+		if ctx.Err() != nil {
+			break
+		}
 		decision := ContentDecision{
 			Title:       movie.Title,
 			Year:        movie.Year,
@@ -611,7 +688,7 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 		}
 
 		// Run through filters and get detailed results
-		filterResult := filters.MoviePassesFiltersDetailed(movie, e.Config.Filters.Movies)
+		filterResult := filters.MoviePassesRules(movie, e.Config.Filters.Movies, e.Config.TitleExceptions)
 		decision.PassedFilters = filterResult.Passed
 
 		// Convert filter checks
@@ -627,12 +704,12 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 		if filterResult.Passed {
 			passedMovies = append(passedMovies, movie)
 			decision.Action = "passed_filters"
-			decision.ActionReason = "Passed all filter checks"
+			decision.ActionReason = filters.Explain(filterResult)
 
 			log.Debugf("'%s (%d)' - PASS all filters (rating: %.1f)", movie.Title, movie.Year, movie.Rating)
 		} else {
 			decision.Action = "rejected"
-			decision.ActionReason = filterResult.Reason
+			decision.ActionReason = filters.Explain(filterResult)
 
 			log.Debugf("'%s (%d)' - FAIL: %s", movie.Title, movie.Year, filterResult.Reason)
 		}
@@ -646,7 +723,7 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 	// Update decisions with score and rank information
 	for i := range decisions {
 		if decisions[i].PassedFilters {
-			if scoreInfo, ok := scoreMap[decisions[i].TMDBID]; ok {
+			if scoreInfo, ok := scoreMap[integrations.MovieKey(integrations.IDs{TMDB: decisions[i].TMDBID, IMDB: decisions[i].IMDBID})]; ok {
 				decisions[i].Score = scoreInfo.Score
 				decisions[i].Rank = scoreInfo.Rank
 			}
@@ -690,13 +767,14 @@ func (e *MovieJobExecutor) evaluateMoviesWithDecisions(
 }
 
 // updateDecisionOutcome updates a decision with the final action taken
-func (e *MovieJobExecutor) updateDecisionOutcome(tmdbID int, action, reason string) {
+func (e *MovieJobExecutor) updateDecisionOutcome(ids integrations.IDs, action, reason string) {
 	if e.lastDecisions == nil {
 		return
 	}
 
 	for i := range e.lastDecisions.Decisions {
-		if e.lastDecisions.Decisions[i].TMDBID == tmdbID {
+		decision := e.lastDecisions.Decisions[i]
+		if integrations.MovieKey(integrations.IDs{TMDB: decision.TMDBID, IMDB: decision.IMDBID}) == integrations.MovieKey(ids) {
 			e.lastDecisions.Decisions[i].Action = action
 			e.lastDecisions.Decisions[i].ActionReason = reason
 
@@ -717,13 +795,13 @@ func (e *MovieJobExecutor) updateDecisionOutcome(tmdbID int, action, reason stri
 }
 
 // getFilterDetailsForMovie retrieves the filter checks for a movie from decisions
-func (e *MovieJobExecutor) getFilterDetailsForMovie(tmdbID int) string {
+func (e *MovieJobExecutor) getFilterDetailsForMovie(ids integrations.IDs) string {
 	if e.lastDecisions == nil {
 		return ""
 	}
 
 	for _, decision := range e.lastDecisions.Decisions {
-		if decision.TMDBID == tmdbID {
+		if integrations.MovieKey(integrations.IDs{TMDB: decision.TMDBID, IMDB: decision.IMDBID}) == integrations.MovieKey(ids) {
 			return FilterChecksToJSON(decision.FilterChecks)
 		}
 	}

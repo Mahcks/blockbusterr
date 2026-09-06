@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +10,7 @@ import (
 	"time"
 
 	"github.com/mahcks/blockbusterr/pkg/enums"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 )
 
 type Database struct {
@@ -23,6 +24,7 @@ type ActivityLog struct {
 	RunID         int64     `json:"run_id,omitempty"`
 	JobID         string    `json:"job_id,omitempty"`
 	JobType       string    `json:"job_type"`
+	Source        string    `json:"source,omitempty"`
 	MediaType     string    `json:"media_type"` // "movie" or "show"
 	Title         string    `json:"title"`
 	Language      string    `json:"language,omitempty"`
@@ -59,21 +61,66 @@ type JobRun struct {
 }
 
 type ActivityDailyCount struct {
-	Day      string `json:"day"` // YYYY-MM-DD
-	Added    int    `json:"added"`
-	Rejected int    `json:"rejected"`
-	Skipped  int    `json:"skipped"`
+	Day          string `json:"day"` // YYYY-MM-DD
+	Added        int    `json:"added"`
+	Requested    int    `json:"requested"`
+	WouldAdd     int    `json:"would_add"`
+	WouldRequest int    `json:"would_request"`
+	Rejected     int    `json:"rejected"`
+	Skipped      int    `json:"skipped"`
+	Failed       int    `json:"failed"`
+}
+
+type DeliveryBudgetUsage struct {
+	Movies int
+	Shows  int
+}
+
+type DeliveryIdentity struct {
+	MediaType string
+	TMDBID    int
+	TVDBID    int
+	IMDBID    string
+}
+
+func (identity DeliveryIdentity) Key() string {
+	switch identity.MediaType {
+	case string(enums.MediaTypeMovie):
+		if identity.TMDBID > 0 {
+			return fmt.Sprintf("movie:tmdb:%d", identity.TMDBID)
+		}
+		if identity.IMDBID != "" {
+			return "movie:imdb:" + identity.IMDBID
+		}
+	case string(enums.MediaTypeShow):
+		if identity.TMDBID > 0 {
+			return fmt.Sprintf("show:tmdb:%d", identity.TMDBID)
+		}
+		if identity.TVDBID > 0 {
+			return fmt.Sprintf("show:tvdb:%d", identity.TVDBID)
+		}
+		if identity.IMDBID != "" {
+			return "show:imdb:" + identity.IMDBID
+		}
+	}
+	return ""
 }
 
 func New(dataDir string) (*Database, error) {
 	// Ensure data directory exists
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		if isDatabaseWritePermissionError(err) {
+			return nil, databaseWritePermissionError(dataDir, err)
+		}
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
 
 	dbPath := filepath.Join(dataDir, "blockbusterr.db")
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
+		if isDatabaseWritePermissionError(err) {
+			return nil, databaseWritePermissionError(dataDir, err)
+		}
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
@@ -84,15 +131,53 @@ func New(dataDir string) (*Database, error) {
 	database := &Database{db: db, path: dbPath}
 
 	// Initialize schema
-	if err := database.initSchema(); err != nil {
+	err = database.initSchema()
+	if err == nil {
+		err = database.recoverInterruptedRuns()
+	}
+	if err != nil {
 		schemaErr := err
 		if closeErr := db.Close(); closeErr != nil {
 			return nil, fmt.Errorf("failed to initialize schema (%v) and close db: %w", schemaErr, closeErr)
+		}
+		if isDatabaseWritePermissionError(schemaErr) {
+			return nil, databaseWritePermissionError(dataDir, schemaErr)
 		}
 		return nil, fmt.Errorf("failed to initialize schema: %w", schemaErr)
 	}
 
 	return database, nil
+}
+
+// No execution survives reopening this single-process database. Preserve
+// delivery history and uncertain cycle accounting; never retry automatically.
+func (d *Database) recoverInterruptedRuns() error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	now := time.Now()
+	message := "Interrupted before completion; application restarted"
+	if _, err := tx.Exec(`UPDATE job_runs SET status = ?, finished_at = ?, error_message = ? WHERE status = ?`, enums.JobRunStatusFailed, now, message, enums.JobRunStatusRunning); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE selection_cycles SET status = ?, finished_at = ?, error_message = ?, accounting_complete = 0 WHERE status = ?`, enums.SelectionCycleFailed, now, message, enums.SelectionCycleRunning); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func isDatabaseWritePermissionError(err error) bool {
+	if errors.Is(err, os.ErrPermission) {
+		return true
+	}
+	var sqliteErr sqlite3.Error
+	return errors.As(err, &sqliteErr) && (sqliteErr.Code == sqlite3.ErrPerm || sqliteErr.Code == sqlite3.ErrReadonly || sqliteErr.Code == sqlite3.ErrCantOpen)
+}
+
+func databaseWritePermissionError(dataDir string, err error) error {
+	return fmt.Errorf("database storage at %q is not writable by Blockbusterr (UID/GID 10001:10001); on the Docker host, stop Blockbusterr, run `sudo chown -R 10001:10001 <mounted-data-directory>`, then start Blockbusterr again: %w", dataDir, err)
 }
 
 func (d *Database) initSchema() error {
@@ -110,13 +195,32 @@ func (d *Database) initSchema() error {
 		tvdb_id INTEGER,
 		imdb_id TEXT,
 		poster_url TEXT,
+		language TEXT,
+		score REAL,
+		rank INTEGER,
 		status TEXT NOT NULL,
-		message TEXT
+		message TEXT,
+		filter_details TEXT
 		);
 
 		CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_logs(timestamp DESC);
 		CREATE INDEX IF NOT EXISTS idx_activity_job_type ON activity_logs(job_type);
 		CREATE INDEX IF NOT EXISTS idx_activity_status ON activity_logs(status);
+
+	CREATE TABLE IF NOT EXISTS delivery_memory (
+		media_key TEXT PRIMARY KEY,
+		media_type TEXT NOT NULL,
+		tmdb_id INTEGER,
+		tvdb_id INTEGER,
+		imdb_id TEXT,
+		delivered_at DATETIME NOT NULL,
+		outcome TEXT NOT NULL
+	);
+
+	CREATE TABLE IF NOT EXISTS schema_metadata (
+		key TEXT PRIMARY KEY,
+		value TEXT NOT NULL
+	);
 
 	CREATE TABLE IF NOT EXISTS job_runs (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -142,86 +246,66 @@ func (d *Database) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_job_runs_job_id ON job_runs(job_id);
 	CREATE INDEX IF NOT EXISTS idx_job_runs_status ON job_runs(status);
 
-	CREATE TABLE IF NOT EXISTS global_limits (
+	CREATE TABLE IF NOT EXISTS delivery_budget_reservations (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		period TEXT NOT NULL,
-		media_type TEXT NOT NULL,
-		count INTEGER NOT NULL DEFAULT 0,
-		reset_at DATETIME NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		reserved_at DATETIME NOT NULL,
+		run_id INTEGER NOT NULL,
+		job_id TEXT NOT NULL,
+		media_type TEXT NOT NULL
 	);
 
-	CREATE INDEX IF NOT EXISTS idx_global_limits_period ON global_limits(period, media_type);
-	CREATE INDEX IF NOT EXISTS idx_global_limits_reset ON global_limits(reset_at);
+	CREATE INDEX IF NOT EXISTS idx_delivery_budget_media_time ON delivery_budget_reservations(media_type, reserved_at);
+	CREATE INDEX IF NOT EXISTS idx_delivery_budget_run ON delivery_budget_reservations(run_id);
+
+	CREATE TABLE IF NOT EXISTS selection_cycles (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		started_at DATETIME NOT NULL,
+		finished_at DATETIME,
+		status TEXT NOT NULL,
+		movie_winners INTEGER NOT NULL DEFAULT 0,
+		show_winners INTEGER NOT NULL DEFAULT 0,
+		movie_delivered INTEGER NOT NULL DEFAULT 0,
+		show_delivered INTEGER NOT NULL DEFAULT 0,
+		failed_items INTEGER NOT NULL DEFAULT 0,
+		accounting_complete INTEGER NOT NULL DEFAULT 0,
+		error_message TEXT
+	);
+
+	CREATE TABLE IF NOT EXISTS selection_cycle_items (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		cycle_id INTEGER NOT NULL,
+		media_key TEXT NOT NULL,
+		job_id TEXT NOT NULL,
+		job_ids TEXT NOT NULL,
+		sources TEXT NOT NULL,
+		score REAL NOT NULL,
+		rank INTEGER NOT NULL,
+		reason TEXT NOT NULL,
+		snapshot TEXT NOT NULL DEFAULT '{}',
+		FOREIGN KEY(cycle_id) REFERENCES selection_cycles(id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_selection_cycle_items_cycle ON selection_cycle_items(cycle_id);
+
 	`
 
 	_, err := d.db.Exec(schema)
 	if err != nil {
 		return err
 	}
-
-	// Migrate existing tables if needed (add new columns)
-	// Check if imdb_id column exists
-	var columnCount int
-	err = d.db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('activity_logs') WHERE name='imdb_id'").Scan(&columnCount)
-	if err != nil {
+	if _, err = d.db.Exec("DELETE FROM delivery_budget_reservations WHERE reserved_at < datetime('now', '-31 days')"); err != nil {
 		return err
 	}
 
-	if columnCount == 0 {
-		// Add imdb_id and poster_url columns to existing table
-		_, err = d.db.Exec("ALTER TABLE activity_logs ADD COLUMN imdb_id TEXT")
-		if err != nil {
+	// Repair every optional Activity column independently. Older releases could
+	// leave partially migrated schemas when one paired column already existed.
+	for _, definition := range []string{
+		"run_id INTEGER", "job_id TEXT", "imdb_id TEXT", "poster_url TEXT",
+		"language TEXT", "score REAL", "rank INTEGER", "filter_details TEXT",
+	} {
+		if err := d.ensureActivityLogsColumn(definition); err != nil {
 			return err
 		}
-		_, err = d.db.Exec("ALTER TABLE activity_logs ADD COLUMN poster_url TEXT")
-		if err != nil {
-			return err
-		}
-	}
-
-	// Check if score column exists
-	err = d.db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('activity_logs') WHERE name='score'").Scan(&columnCount)
-	if err != nil {
-		return err
-	}
-
-	if columnCount == 0 {
-		// Add score and rank columns
-		_, err = d.db.Exec("ALTER TABLE activity_logs ADD COLUMN score REAL")
-		if err != nil {
-			return err
-		}
-		_, err = d.db.Exec("ALTER TABLE activity_logs ADD COLUMN rank INTEGER")
-		if err != nil {
-			return err
-		}
-	}
-
-	// Check if filter_details column exists
-	err = d.db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('activity_logs') WHERE name='filter_details'").Scan(&columnCount)
-	if err != nil {
-		return err
-	}
-
-	if columnCount == 0 {
-		// Add filter_details column
-		_, err = d.db.Exec("ALTER TABLE activity_logs ADD COLUMN filter_details TEXT")
-		if err != nil {
-			return err
-		}
-	}
-
-	// Ensure newer activity columns exist (robust against partially migrated DBs)
-	if err := d.ensureActivityLogsColumn("run_id INTEGER"); err != nil {
-		return err
-	}
-	if err := d.ensureActivityLogsColumn("job_id TEXT"); err != nil {
-		return err
-	}
-	if err := d.ensureActivityLogsColumn("language TEXT"); err != nil {
-		return err
 	}
 
 	// Ensure job_id index exists for filtering/grouping performance
@@ -234,83 +318,121 @@ func (d *Database) initSchema() error {
 		return err
 	}
 
-	// Ensure job_runs table/indexes exist for run timeline data
-	_, err = d.db.Exec(`
-		CREATE TABLE IF NOT EXISTS job_runs (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			started_at DATETIME NOT NULL,
-			finished_at DATETIME,
-			duration_ms INTEGER NOT NULL DEFAULT 0,
-			job_id TEXT,
-			job_name TEXT NOT NULL,
-			media_type TEXT NOT NULL,
-			mode TEXT,
-			status TEXT NOT NULL DEFAULT 'running',
-			total_found INTEGER NOT NULL DEFAULT 0,
-			passed_filters INTEGER NOT NULL DEFAULT 0,
-			added INTEGER NOT NULL DEFAULT 0,
-			requested INTEGER NOT NULL DEFAULT 0,
-			skipped INTEGER NOT NULL DEFAULT 0,
-			rejected INTEGER NOT NULL DEFAULT 0,
-			failed INTEGER NOT NULL DEFAULT 0,
-			error_message TEXT
-		);
-	`)
-	if err != nil {
-		return err
+	for _, definition := range []string{"movie_delivered INTEGER NOT NULL DEFAULT 0", "show_delivered INTEGER NOT NULL DEFAULT 0", "failed_items INTEGER NOT NULL DEFAULT 0", "accounting_complete INTEGER NOT NULL DEFAULT 0"} {
+		if err := d.ensureTableColumn("selection_cycles", definition); err != nil {
+			return err
+		}
 	}
-	_, err = d.db.Exec("CREATE INDEX IF NOT EXISTS idx_job_runs_started_at ON job_runs(started_at DESC)")
-	if err != nil {
-		return err
-	}
-	_, err = d.db.Exec("CREATE INDEX IF NOT EXISTS idx_job_runs_job_id ON job_runs(job_id)")
-	if err != nil {
-		return err
-	}
-	_, err = d.db.Exec("CREATE INDEX IF NOT EXISTS idx_job_runs_status ON job_runs(status)")
-	if err != nil {
+	if err := d.ensureTableColumn("selection_cycle_items", "snapshot TEXT NOT NULL DEFAULT '{}'"); err != nil {
 		return err
 	}
 
-	return nil
+	return d.backfillDeliveryMemory()
 }
 
 func (d *Database) ensureActivityLogsColumn(definition string) error {
-	_, err := d.db.Exec("ALTER TABLE activity_logs ADD COLUMN " + definition)
-	if err != nil {
-		// SQLite returns "duplicate column name: <name>" when it already exists.
-		if strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {
-			return nil
-		}
-		return err
-	}
-	return nil
+	return d.ensureTableColumn("activity_logs", definition)
 }
 
-func (d *Database) ensureActivityIdentityColumns() error {
-	if err := d.ensureActivityLogsColumn("run_id INTEGER"); err != nil {
+func (d *Database) ensureTableColumn(table, definition string) error {
+	column := strings.Fields(definition)[0]
+	var exists int
+	if err := d.db.QueryRow("SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?", table, column).Scan(&exists); err != nil {
 		return err
 	}
-	if err := d.ensureActivityLogsColumn("job_id TEXT"); err != nil {
-		return err
+	if exists > 0 {
+		return nil
 	}
-	_, err := d.db.Exec("CREATE INDEX IF NOT EXISTS idx_activity_job_id ON activity_logs(job_id)")
+	_, err := d.db.Exec("ALTER TABLE " + table + " ADD COLUMN " + definition)
+	return err
+}
+
+// TryReserveDelivery atomically claims one delivery slot. Zero means unlimited.
+// The caller releases the reservation when the downstream delivery does not succeed.
+func (d *Database) TryReserveDelivery(runID int64, jobID, mediaType string, perRunLimit, globalLimit int, since time.Time) (int64, string, error) {
+	if perRunLimit <= 0 && globalLimit <= 0 {
+		return 0, "", nil
+	}
+
+	tx, err := d.db.Begin()
 	if err != nil {
-		return err
+		return 0, "", err
 	}
-	_, err = d.db.Exec("CREATE INDEX IF NOT EXISTS idx_activity_run_id ON activity_logs(run_id)")
+	defer func() { _ = tx.Rollback() }()
+
+	if perRunLimit > 0 {
+		var count int
+		if err := tx.QueryRow("SELECT COUNT(*) FROM delivery_budget_reservations WHERE run_id = ?", runID).Scan(&count); err != nil {
+			return 0, "", err
+		}
+		if count >= perRunLimit {
+			return 0, "Job delivery limit reached", nil
+		}
+	}
+
+	if globalLimit > 0 {
+		var count int
+		if err := tx.QueryRow("SELECT COUNT(*) FROM delivery_budget_reservations WHERE media_type = ? AND reserved_at >= ?", mediaType, since).Scan(&count); err != nil {
+			return 0, "", err
+		}
+		if count >= globalLimit {
+			return 0, "Global delivery limit reached", nil
+		}
+	}
+
+	result, err := tx.Exec(
+		"INSERT INTO delivery_budget_reservations (reserved_at, run_id, job_id, media_type) VALUES (?, ?, ?, ?)",
+		time.Now(), runID, jobID, mediaType,
+	)
 	if err != nil {
-		return err
+		return 0, "", err
 	}
-	return nil
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, "", err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, "", err
+	}
+	return id, "", nil
+}
+
+func (d *Database) ReleaseDeliveryReservation(id int64) error {
+	if id == 0 {
+		return nil
+	}
+	_, err := d.db.Exec("DELETE FROM delivery_budget_reservations WHERE id = ?", id)
+	return err
+}
+
+func (d *Database) CountDeliveriesSince(mediaType string, since time.Time) (int, error) {
+	var count int
+	err := d.db.QueryRow(
+		"SELECT COUNT(*) FROM delivery_budget_reservations WHERE media_type = ? AND reserved_at >= ?",
+		mediaType, since,
+	).Scan(&count)
+	return count, err
+}
+
+func (d *Database) GetDeliveryBudgetUsage(period string) (DeliveryBudgetUsage, error) {
+	window := 24 * time.Hour
+	switch period {
+	case "weekly":
+		window = 7 * 24 * time.Hour
+	case "monthly":
+		window = 30 * 24 * time.Hour
+	}
+	since := time.Now().Add(-window)
+	movies, err := d.CountDeliveriesSince("movie", since)
+	if err != nil {
+		return DeliveryBudgetUsage{}, err
+	}
+	shows, err := d.CountDeliveriesSince("show", since)
+	return DeliveryBudgetUsage{Movies: movies, Shows: shows}, err
 }
 
 func (d *Database) Close() error {
 	return d.db.Close()
-}
-
-func (d *Database) Path() string {
-	return d.path
 }
 
 func (d *Database) GetActivityDebug() (map[string]any, error) {
@@ -355,74 +477,98 @@ func (d *Database) GetActivityDebug() (map[string]any, error) {
 
 // LogActivity adds a new activity log entry
 func (d *Database) LogActivity(log ActivityLog) error {
-	if err := d.ensureActivityIdentityColumns(); err != nil {
-		return err
-	}
-
 	query := `
 		INSERT INTO activity_logs (timestamp, run_id, job_id, job_type, media_type, title, language, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message, filter_details)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	_, err := d.db.Exec(query, log.Timestamp, log.RunID, log.JobID, log.JobType, log.MediaType, log.Title, log.Language, log.Year,
-		log.TMDBID, log.TVDBID, log.IMDBID, log.PosterURL, log.Score, log.Rank, log.Status, log.Message, log.FilterDetails)
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err = tx.Exec(query, log.Timestamp, log.RunID, log.JobID, log.JobType, log.MediaType, log.Title, log.Language, log.Year,
+		log.TMDBID, log.TVDBID, log.IMDBID, log.PosterURL, log.Score, log.Rank, log.Status, log.Message, log.FilterDetails); err != nil {
+		return err
+	}
+	if isSuccessfulDelivery(log.Status, log.Message) {
+		if err := upsertDeliveryMemory(tx, log); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// LatestSuccessfulDelivery returns the most recent time Blockbusterr delivered a title.
+func (d *Database) LatestSuccessfulDelivery(mediaType string, tmdbID, tvdbID int) (time.Time, bool, error) {
+	identity := DeliveryIdentity{MediaType: mediaType, TMDBID: tmdbID, TVDBID: tvdbID}
+	key := identity.Key()
+	if key == "" {
+		return time.Time{}, false, nil
+	}
+	var deliveredAt time.Time
+	err := d.db.QueryRow("SELECT delivered_at FROM delivery_memory WHERE media_key = ?", key).Scan(&deliveredAt)
+	if err == sql.ErrNoRows {
+		return time.Time{}, false, nil
+	}
+	return deliveredAt, err == nil, err
+}
+
+func isSuccessfulDelivery(status, message string) bool {
+	return (status == string(enums.ActivityStatusAdded) || status == string(enums.ActivityStatusRequested)) &&
+		!strings.HasPrefix(message, "[DRY RUN]")
+}
+
+type sqlExecutor interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}
+
+func upsertDeliveryMemory(exec sqlExecutor, log ActivityLog) error {
+	identity := DeliveryIdentity{MediaType: log.MediaType, TMDBID: log.TMDBID, TVDBID: log.TVDBID, IMDBID: log.IMDBID}
+	key := identity.Key()
+	if key == "" {
+		return nil
+	}
+	_, err := exec.Exec(`
+		INSERT INTO delivery_memory (media_key, media_type, tmdb_id, tvdb_id, imdb_id, delivered_at, outcome)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(media_key) DO UPDATE SET
+			tmdb_id = excluded.tmdb_id, tvdb_id = excluded.tvdb_id, imdb_id = excluded.imdb_id,
+			delivered_at = excluded.delivered_at, outcome = excluded.outcome
+		WHERE excluded.delivered_at >= delivery_memory.delivered_at`,
+		key, log.MediaType, log.TMDBID, log.TVDBID, log.IMDBID, log.Timestamp, log.Status,
+	)
 	return err
 }
 
-// GetRecentActivity retrieves recent activity logs
-func (d *Database) GetRecentActivity(limit int) ([]ActivityLog, error) {
-	if err := d.ensureActivityIdentityColumns(); err != nil {
-		return nil, err
+func (d *Database) backfillDeliveryMemory() error {
+	var complete int
+	if err := d.db.QueryRow("SELECT COUNT(*) FROM schema_metadata WHERE key = 'delivery_memory_backfill_v1'").Scan(&complete); err != nil {
+		return err
 	}
-
-	query := `
-		SELECT id, timestamp, run_id, job_id, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message, filter_details
+	if complete > 0 {
+		return nil
+	}
+	rows, err := d.db.Query(`
+		SELECT timestamp, media_type, tmdb_id, tvdb_id, imdb_id, status, COALESCE(message, '')
 		FROM activity_logs
-		ORDER BY timestamp DESC
-		LIMIT ?
-	`
-
-	rows, err := d.db.Query(query, limit)
+		WHERE status IN (?, ?)
+		ORDER BY timestamp`, enums.ActivityStatusAdded, enums.ActivityStatusRequested)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer func() { _ = rows.Close() }()
 
-	var logs []ActivityLog
+	logs := make([]ActivityLog, 0)
 	for rows.Next() {
 		var log ActivityLog
-		var runID, tmdbID, tvdbID, rank sql.NullInt64
-		var message, imdbID, jobID, posterURL, filterDetails sql.NullString
-		var score sql.NullFloat64
-
-		err := rows.Scan(
-			&log.ID,
-			&log.Timestamp,
-			&runID,
-			&jobID,
-			&log.JobType,
-			&log.MediaType,
-			&log.Title,
-			&log.Year,
-			&tmdbID,
-			&tvdbID,
-			&imdbID,
-			&posterURL,
-			&score,
-			&rank,
-			&log.Status,
-			&message,
-			&filterDetails,
-		)
-		if err != nil {
-			return nil, err
+		var tmdbID, tvdbID sql.NullInt64
+		var imdbID sql.NullString
+		if err := rows.Scan(&log.Timestamp, &log.MediaType, &tmdbID, &tvdbID, &imdbID, &log.Status, &log.Message); err != nil {
+			return err
 		}
-
 		if tmdbID.Valid {
 			log.TMDBID = int(tmdbID.Int64)
-		}
-		if runID.Valid {
-			log.RunID = runID.Int64
 		}
 		if tvdbID.Valid {
 			log.TVDBID = int(tvdbID.Int64)
@@ -430,37 +576,73 @@ func (d *Database) GetRecentActivity(limit int) ([]ActivityLog, error) {
 		if imdbID.Valid {
 			log.IMDBID = imdbID.String
 		}
-		if jobID.Valid {
-			log.JobID = jobID.String
+		if isSuccessfulDelivery(log.Status, log.Message) {
+			logs = append(logs, log)
 		}
-		if posterURL.Valid {
-			log.PosterURL = posterURL.String
-		}
-		if score.Valid {
-			log.Score = score.Float64
-		}
-		if rank.Valid {
-			log.Rank = int(rank.Int64)
-		}
-		if message.Valid {
-			log.Message = message.String
-		}
-		if filterDetails.Valid {
-			log.FilterDetails = filterDetails.String
-		}
-
-		logs = append(logs, log)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if err := rows.Close(); err != nil {
+		return err
 	}
 
-	return logs, rows.Err()
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	for _, log := range logs {
+		if err := upsertDeliveryMemory(tx, log); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec("INSERT INTO schema_metadata (key, value) VALUES ('delivery_memory_backfill_v1', 'complete')"); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (d *Database) LatestSuccessfulDeliveries(identities []DeliveryIdentity) (map[string]time.Time, error) {
+	result := make(map[string]time.Time, len(identities))
+	keys := make([]string, 0, len(identities))
+	seen := make(map[string]struct{}, len(identities))
+	for _, identity := range identities {
+		key := identity.Key()
+		if key == "" {
+			continue
+		}
+		if _, ok := seen[key]; !ok {
+			seen[key] = struct{}{}
+			keys = append(keys, key)
+		}
+	}
+	if len(keys) == 0 {
+		return result, nil
+	}
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(keys)), ",")
+	args := make([]any, len(keys))
+	for index := range keys {
+		args[index] = keys[index]
+	}
+	rows, err := d.db.Query("SELECT media_key, delivered_at FROM delivery_memory WHERE media_key IN ("+placeholders+")", args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var key string
+		var deliveredAt time.Time
+		if err := rows.Scan(&key, &deliveredAt); err != nil {
+			return nil, err
+		}
+		result[key] = deliveredAt
+	}
+	return result, rows.Err()
 }
 
 // GetRecentActivityFiltered retrieves recent activity logs with optional filters
-func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobType, language string) ([]ActivityLog, error) {
-	if err := d.ensureActivityIdentityColumns(); err != nil {
-		return nil, err
-	}
-
+func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, job, language string) ([]ActivityLog, error) {
 	query := `
 		SELECT id, timestamp, run_id, job_id, job_type, media_type, title, language, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message, filter_details
 		FROM activity_logs
@@ -476,9 +658,9 @@ func (d *Database) GetRecentActivityFiltered(limit int, status, mediaType, jobTy
 		query += " AND media_type = ?"
 		args = append(args, mediaType)
 	}
-	if jobType != "" {
-		query += " AND job_type = ?"
-		args = append(args, jobType)
+	if job != "" {
+		query += " AND (job_id = ? OR job_type = ?)"
+		args = append(args, job, job)
 	}
 	if language != "" {
 		query += " AND language = ?"
@@ -584,73 +766,29 @@ func (d *Database) GetActivityLanguages() ([]string, error) {
 
 // GetActivityStats returns statistics about activity
 func (d *Database) GetActivityStats() (map[string]any, error) {
-	stats := make(map[string]any)
-
-	// Total added
-	var totalAdded int
-	err := d.db.QueryRow(
-		"SELECT COUNT(*) FROM activity_logs WHERE status IN (?, ?)",
-		enums.ActivityStatusAdded,
-		enums.ActivityStatusRequested,
-	).Scan(&totalAdded)
+	var totalAdded, totalFailed, totalRejected, totalSkipped, totalMovies, totalShows, recentAdded int
+	err := d.db.QueryRow(`SELECT
+		COALESCE(SUM(CASE WHEN status IN (?, ?) AND COALESCE(message, '') NOT LIKE '[DRY RUN]%' THEN 1 ELSE 0 END), 0),
+		COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0),
+		COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0),
+		COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0),
+		COALESCE(SUM(CASE WHEN media_type = ? THEN 1 ELSE 0 END), 0),
+		COALESCE(SUM(CASE WHEN media_type = ? THEN 1 ELSE 0 END), 0),
+		COALESCE(SUM(CASE WHEN status IN (?, ?) AND COALESCE(message, '') NOT LIKE '[DRY RUN]%' AND timestamp > datetime('now', '-24 hours') THEN 1 ELSE 0 END), 0)
+		FROM activity_logs`,
+		enums.ActivityStatusAdded, enums.ActivityStatusRequested,
+		enums.ActivityStatusFailed, enums.ActivityStatusRejected, enums.ActivityStatusSkipped,
+		enums.MediaTypeMovie, enums.MediaTypeShow,
+		enums.ActivityStatusAdded, enums.ActivityStatusRequested,
+	).Scan(&totalAdded, &totalFailed, &totalRejected, &totalSkipped, &totalMovies, &totalShows, &recentAdded)
 	if err != nil {
 		return nil, err
 	}
-	stats["total_added"] = totalAdded
-
-	// Total failed
-	var totalFailed int
-	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE status = ?", enums.ActivityStatusFailed).Scan(&totalFailed)
-	if err != nil {
-		return nil, err
-	}
-	stats["total_failed"] = totalFailed
-
-	// Total rejected by filters
-	var totalRejected int
-	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE status = ?", enums.ActivityStatusRejected).Scan(&totalRejected)
-	if err != nil {
-		return nil, err
-	}
-	stats["total_rejected"] = totalRejected
-
-	// Total skipped
-	var totalSkipped int
-	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE status = ?", enums.ActivityStatusSkipped).Scan(&totalSkipped)
-	if err != nil {
-		return nil, err
-	}
-	stats["total_skipped"] = totalSkipped
-
-	// Total movies
-	var totalMovies int
-	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE media_type = ?", enums.MediaTypeMovie).Scan(&totalMovies)
-	if err != nil {
-		return nil, err
-	}
-	stats["total_movies"] = totalMovies
-
-	// Total shows
-	var totalShows int
-	err = d.db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE media_type = ?", enums.MediaTypeShow).Scan(&totalShows)
-	if err != nil {
-		return nil, err
-	}
-	stats["total_shows"] = totalShows
-
-	// Recent activity (last 24 hours)
-	var recentAdded int
-	err = d.db.QueryRow(
-		"SELECT COUNT(*) FROM activity_logs WHERE status IN (?, ?) AND timestamp > datetime('now', '-24 hours')",
-		enums.ActivityStatusAdded,
-		enums.ActivityStatusRequested,
-	).Scan(&recentAdded)
-	if err != nil {
-		return nil, err
-	}
-	stats["added_last_24h"] = recentAdded
-
-	return stats, nil
+	return map[string]any{
+		"total_added": totalAdded, "total_failed": totalFailed, "total_rejected": totalRejected,
+		"total_skipped": totalSkipped, "total_movies": totalMovies, "total_shows": totalShows,
+		"added_last_24h": recentAdded,
+	}, nil
 }
 
 // GetActivityDailyCounts returns per-day activity counters for the given lookback window.
@@ -666,9 +804,13 @@ func (d *Database) GetActivityDailyCounts(days int) (map[string]ActivityDailyCou
 	query := `
 		SELECT
 			date(timestamp) AS day,
-			SUM(CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END) AS added,
+			SUM(CASE WHEN status = ? AND COALESCE(message, '') NOT LIKE '[DRY RUN]%' THEN 1 ELSE 0 END) AS added,
+			SUM(CASE WHEN status = ? AND COALESCE(message, '') NOT LIKE '[DRY RUN]%' THEN 1 ELSE 0 END) AS requested,
+			SUM(CASE WHEN status = ? AND COALESCE(message, '') LIKE '[DRY RUN]%' THEN 1 ELSE 0 END) AS would_add,
+			SUM(CASE WHEN status = ? AND COALESCE(message, '') LIKE '[DRY RUN]%' THEN 1 ELSE 0 END) AS would_request,
 			SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS rejected,
-			SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS skipped
+			SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS skipped,
+			SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS failed
 		FROM activity_logs
 		WHERE timestamp >= ?
 		GROUP BY day
@@ -679,8 +821,11 @@ func (d *Database) GetActivityDailyCounts(days int) (map[string]ActivityDailyCou
 		query,
 		enums.ActivityStatusAdded,
 		enums.ActivityStatusRequested,
+		enums.ActivityStatusAdded,
+		enums.ActivityStatusRequested,
 		enums.ActivityStatusRejected,
 		enums.ActivityStatusSkipped,
+		enums.ActivityStatusFailed,
 		startDay,
 	)
 	if err != nil {
@@ -691,15 +836,19 @@ func (d *Database) GetActivityDailyCounts(days int) (map[string]ActivityDailyCou
 	result := make(map[string]ActivityDailyCount)
 	for rows.Next() {
 		var day string
-		var added, rejected, skipped int
-		if err := rows.Scan(&day, &added, &rejected, &skipped); err != nil {
+		var added, requested, wouldAdd, wouldAsk, rejected, skipped, failed int
+		if err := rows.Scan(&day, &added, &requested, &wouldAdd, &wouldAsk, &rejected, &skipped, &failed); err != nil {
 			return nil, err
 		}
 		result[day] = ActivityDailyCount{
-			Day:      day,
-			Added:    added,
-			Rejected: rejected,
-			Skipped:  skipped,
+			Day:          day,
+			Added:        added,
+			Requested:    requested,
+			WouldAdd:     wouldAdd,
+			WouldRequest: wouldAsk,
+			Rejected:     rejected,
+			Skipped:      skipped,
+			Failed:       failed,
 		}
 	}
 
@@ -709,112 +858,72 @@ func (d *Database) GetActivityDailyCounts(days int) (map[string]ActivityDailyCou
 	return result, nil
 }
 
-// GlobalLimit represents a limit tracking record
-type GlobalLimit struct {
-	ID        int64     `json:"id"`
-	Period    string    `json:"period"`     // sync, daily, weekly, monthly
-	MediaType string    `json:"media_type"` // movie, show
-	Count     int       `json:"count"`
-	ResetAt   time.Time `json:"reset_at"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// GetGlobalLimit retrieves the current limit record for a period and media type
-func (d *Database) GetGlobalLimit(period string, mediaType string) (*GlobalLimit, error) {
-	var limit GlobalLimit
-
-	err := d.db.QueryRow(`
-		SELECT id, period, media_type, count, reset_at, created_at, updated_at
-		FROM global_limits
-		WHERE period = ? AND media_type = ?
-		ORDER BY created_at DESC
-		LIMIT 1
-	`, period, mediaType).Scan(
-		&limit.ID,
-		&limit.Period,
-		&limit.MediaType,
-		&limit.Count,
-		&limit.ResetAt,
-		&limit.CreatedAt,
-		&limit.UpdatedAt,
-	)
-
-	if err == sql.ErrNoRows {
-		return nil, nil // No record found
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return &limit, nil
-}
-
-// IncrementGlobalLimit increments the count for a period and media type
-// Creates a new record if one doesn't exist or if the current one has expired
-func (d *Database) IncrementGlobalLimit(period string, mediaType string, resetAt time.Time) error {
-	limit, err := d.GetGlobalLimit(period, mediaType)
-	if err != nil {
-		return err
-	}
-
-	now := time.Now()
-
-	// If no limit exists or the current one has expired, create a new one
-	if limit == nil || now.After(limit.ResetAt) {
-		_, err = d.db.Exec(`
-			INSERT INTO global_limits (period, media_type, count, reset_at, created_at, updated_at)
-			VALUES (?, ?, 1, ?, ?, ?)
-		`, period, mediaType, resetAt, now, now)
-		return err
-	}
-
-	// Otherwise increment the existing count
-	_, err = d.db.Exec(`
-		UPDATE global_limits
-		SET count = count + 1, updated_at = ?
-		WHERE id = ?
-	`, now, limit.ID)
-	return err
-}
-
-// GetCurrentGlobalCount returns the current count for a period and media type
-// Returns 0 if no record exists or if the record has expired
-func (d *Database) GetCurrentGlobalCount(period string, mediaType string) (int, error) {
-	limit, err := d.GetGlobalLimit(period, mediaType)
-	if err != nil {
-		return 0, err
-	}
-
-	if limit == nil {
-		return 0, nil
-	}
-
-	// Check if limit has expired
-	if time.Now().After(limit.ResetAt) {
-		return 0, nil
-	}
-
-	return limit.Count, nil
-}
-
 // ClearOldLogs removes logs older than the specified number of days
 func (d *Database) ClearOldLogs(daysToKeep int) (int64, error) {
-	query := "DELETE FROM activity_logs WHERE timestamp < datetime('now', '-' || ? || ' days')"
-	result, err := d.db.Exec(query, daysToKeep)
+	tx, err := d.db.Begin()
 	if err != nil {
 		return 0, err
 	}
+	defer func() { _ = tx.Rollback() }()
+	cutoff := time.Now().AddDate(0, 0, -daysToKeep)
+	var count int64
+	result, err := tx.Exec("DELETE FROM activity_logs WHERE timestamp < ?", cutoff)
+	if err != nil {
+		return 0, err
+	}
+	count, err = result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	if _, err = tx.Exec(`DELETE FROM selection_cycle_items WHERE cycle_id IN (
+		SELECT id FROM selection_cycles WHERE started_at < ? AND status != ?
+	)`, cutoff, enums.SelectionCycleRunning); err != nil {
+		return 0, err
+	}
+	if _, err = tx.Exec("DELETE FROM selection_cycles WHERE started_at < ? AND status != ?", cutoff, enums.SelectionCycleRunning); err != nil {
+		return 0, err
+	}
+	if _, err = tx.Exec("DELETE FROM job_runs WHERE started_at < ? AND status != ?", cutoff, enums.JobRunStatusRunning); err != nil {
+		return 0, err
+	}
+	return count, tx.Commit()
+}
 
-	return result.RowsAffected()
+// ClearActivityHistory removes Activity Entries, completed Job Runs, and completed ranked-selection history.
+// Delivery memory is preserved unless explicitly requested.
+func (d *Database) ClearActivityHistory(clearDeliveryMemory ...bool) (int64, error) {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var count int64
+	statements := []string{
+		"DELETE FROM activity_logs",
+		"DELETE FROM selection_cycle_items WHERE cycle_id IN (SELECT id FROM selection_cycles WHERE status != 'running')",
+		"DELETE FROM selection_cycles WHERE status != 'running'",
+		"DELETE FROM job_runs WHERE status != 'running'",
+	}
+	if len(clearDeliveryMemory) > 0 && clearDeliveryMemory[0] {
+		statements = append(statements, "DELETE FROM delivery_memory")
+	}
+	for _, statement := range statements {
+		result, err := tx.Exec(statement)
+		if err != nil {
+			return 0, err
+		}
+		rows, err := result.RowsAffected()
+		if err != nil {
+			return 0, err
+		}
+		count += rows
+	}
+	return count, tx.Commit()
 }
 
 // GetActivityLogByID retrieves a single activity log entry by ID
 func (d *Database) GetActivityLogByID(id int64) (*ActivityLog, error) {
-	if err := d.ensureActivityIdentityColumns(); err != nil {
-		return nil, err
-	}
-
 	query := `
 		SELECT id, timestamp, run_id, job_id, job_type, media_type, title, year, tmdb_id, tvdb_id, imdb_id, poster_url, score, rank, status, message, filter_details
 		FROM activity_logs
@@ -1031,12 +1140,36 @@ func (d *Database) UpdateActivityLogStatus(id int64, status, message string) err
 		return fmt.Errorf("invalid activity status: %s", status)
 	}
 
-	query := `
-		UPDATE activity_logs
-		SET status = ?, message = ?
-		WHERE id = ?
-	`
-
-	_, err := d.db.Exec(query, status, message, id)
-	return err
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec("UPDATE activity_logs SET status = ?, message = ? WHERE id = ?", status, message, id); err != nil {
+		return err
+	}
+	if isSuccessfulDelivery(status, message) {
+		var log ActivityLog
+		var tmdbID, tvdbID sql.NullInt64
+		var imdbID sql.NullString
+		if err := tx.QueryRow("SELECT media_type, tmdb_id, tvdb_id, imdb_id FROM activity_logs WHERE id = ?", id).
+			Scan(&log.MediaType, &tmdbID, &tvdbID, &imdbID); err != nil {
+			return err
+		}
+		if tmdbID.Valid {
+			log.TMDBID = int(tmdbID.Int64)
+		}
+		if tvdbID.Valid {
+			log.TVDBID = int(tvdbID.Int64)
+		}
+		if imdbID.Valid {
+			log.IMDBID = imdbID.String
+		}
+		log.Timestamp = time.Now()
+		log.Status, log.Message = status, message
+		if err := upsertDeliveryMemory(tx, log); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }

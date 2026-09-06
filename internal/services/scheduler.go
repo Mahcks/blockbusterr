@@ -2,7 +2,10 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -10,7 +13,6 @@ import (
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/services/jobs"
-	"github.com/robfig/cron/v3"
 )
 
 type jobConfig struct {
@@ -19,33 +21,38 @@ type jobConfig struct {
 	enabled      bool
 	syncInterval string
 	mode         string
-	runFunc      func()
+	runFunc      func(context.Context)
 }
 
 type Scheduler struct {
-	ctx       context.Context
-	cancel    context.CancelFunc
-	wg        sync.WaitGroup
-	getConfig func() *config.Config
-	db        *database.Database
-	version   string
-	jobStops  map[string]context.CancelFunc
-	jobSigs   map[string]string
-	jobNames  map[string]string
-	jobMutex  sync.Mutex
+	ctx            context.Context
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
+	getConfig      func() *config.Config
+	db             *database.Database
+	version        string
+	executions     *jobs.ExecutionCoordinator
+	jobStops       map[string]context.CancelFunc
+	jobSigs        map[string]string
+	jobNames       map[string]string
+	jobGenerations map[string]uint64
+	nextGeneration uint64
+	jobMutex       sync.Mutex
 }
 
-func NewScheduler(getConfig func() *config.Config, db *database.Database, version string) *Scheduler {
+func NewScheduler(getConfig func() *config.Config, db *database.Database, version string, executions *jobs.ExecutionCoordinator) *Scheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
-		ctx:       ctx,
-		cancel:    cancel,
-		getConfig: getConfig,
-		db:        db,
-		version:   version,
-		jobStops:  make(map[string]context.CancelFunc),
-		jobSigs:   make(map[string]string),
-		jobNames:  make(map[string]string),
+		ctx:            ctx,
+		cancel:         cancel,
+		getConfig:      getConfig,
+		db:             db,
+		version:        version,
+		executions:     executions,
+		jobStops:       make(map[string]context.CancelFunc),
+		jobSigs:        make(map[string]string),
+		jobNames:       make(map[string]string),
+		jobGenerations: make(map[string]uint64),
 	}
 }
 
@@ -97,16 +104,20 @@ func (s *Scheduler) run() {
 
 func (s *Scheduler) scheduleJobs() {
 	cfg := s.getConfig()
-	dryRun := s.version == "dev"
+	dryRun := jobs.DryRunEnabled(s.version)
 	defaultInterval := cfg.Jobs.SyncInterval
 
 	// Get all enabled jobs (both dynamic and legacy)
 	enabledJobs := runnableJobs(cfg)
+	cycleJobs, enabledJobs := splitSelectionJobs(cfg, enabledJobs)
 
 	// Track which jobs should be running
 	activeJobIDs := make(map[string]bool)
 	for _, job := range enabledJobs {
 		activeJobIDs[job.ID] = true
+	}
+	if len(cycleJobs) > 0 {
+		activeJobIDs[selectionCycleJobID] = true
 	}
 
 	s.jobMutex.Lock()
@@ -120,12 +131,15 @@ func (s *Scheduler) scheduleJobs() {
 			delete(s.jobStops, jobID)
 			delete(s.jobSigs, jobID)
 			delete(s.jobNames, jobID)
+			delete(s.jobGenerations, jobID)
 		}
 	}
 
 	// Schedule each enabled job
 	for _, job := range enabledJobs {
-		jobSig := jobSignature(job)
+		syncInterval := getJobInterval(job.SyncInterval, defaultInterval)
+		mode := getJobMode(job.Mode, cfg.Jobs.Mode)
+		jobSig := jobSignature(job) + "|" + syncInterval + "|" + mode
 
 		// Check if job is already scheduled
 		if _, exists := s.jobStops[job.ID]; exists {
@@ -136,17 +150,12 @@ func (s *Scheduler) scheduleJobs() {
 				delete(s.jobStops, job.ID)
 				delete(s.jobSigs, job.ID)
 				delete(s.jobNames, job.ID)
+				delete(s.jobGenerations, job.ID)
 			} else {
 				// Job already running with same config, skip
 				continue
 			}
 		}
-
-		// Get effective sync interval
-		syncInterval := getJobInterval(job.SyncInterval, defaultInterval)
-
-		// Get effective mode
-		mode := getJobMode(job.Mode, cfg.Jobs.Mode)
 
 		// Create job config for the scheduler
 		jc := jobConfig{
@@ -155,13 +164,18 @@ func (s *Scheduler) scheduleJobs() {
 			enabled:      job.Enabled,
 			syncInterval: syncInterval,
 			mode:         mode,
-			runFunc: func(j config.DynamicJob) func() {
-				return func() {
-					if err := jobs.RunDynamicJob(s.getConfig(), s.db, j, dryRun); err != nil {
-						log.Errorf("Failed to run job %s: %v", formatJobLabel(j.Name, j.ID), err)
+			runFunc: func(jobID, jobName string) func(context.Context) {
+				return func(ctx context.Context) {
+					cfg := s.getConfig()
+					job := cfg.GetDynamicJobByID(jobID)
+					if job == nil || !job.Enabled {
+						return
+					}
+					if err := s.executions.RunDynamicJob(ctx, cfg, s.db, *job, dryRun); err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, jobs.ErrExecutionAlreadyRunning) {
+						log.Errorf("Failed to run job %s: %v", formatJobLabel(jobName, jobID), err)
 					}
 				}
-			}(job),
+			}(job.ID, job.Name),
 		}
 
 		// Start new job scheduler
@@ -169,43 +183,63 @@ func (s *Scheduler) scheduleJobs() {
 		s.jobSigs[job.ID] = jobSig
 		s.jobNames[job.ID] = job.Name
 	}
+
+	if len(cycleJobs) > 0 {
+		sig := selectionCycleSignature(cfg, cycleJobs)
+		if _, exists := s.jobStops[selectionCycleJobID]; exists && s.jobSigs[selectionCycleJobID] != sig {
+			s.jobStops[selectionCycleJobID]()
+			delete(s.jobStops, selectionCycleJobID)
+			delete(s.jobSigs, selectionCycleJobID)
+			delete(s.jobNames, selectionCycleJobID)
+			delete(s.jobGenerations, selectionCycleJobID)
+		}
+		if _, exists := s.jobStops[selectionCycleJobID]; !exists {
+			s.startJobScheduler(jobConfig{id: selectionCycleJobID, name: "Ranked selection", enabled: true, syncInterval: cfg.Jobs.Selection.SyncInterval, mode: "shared", runFunc: func(ctx context.Context) {
+				if _, err := s.executions.RunSelectionCycle(ctx, s.getConfig(), s.db, dryRun); err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, jobs.ErrExecutionAlreadyRunning) {
+					log.Errorf("Failed to run ranked selection: %v", err)
+				}
+			}})
+			s.jobSigs[selectionCycleJobID], s.jobNames[selectionCycleJobID] = sig, "Ranked selection"
+		}
+	}
 }
 
 func (s *Scheduler) startJobScheduler(jc jobConfig) {
 	jobCtx, jobCancel := context.WithCancel(s.ctx)
 	s.jobStops[jc.id] = jobCancel
+	s.nextGeneration++
+	generation := s.nextGeneration
+	s.jobGenerations[jc.id] = generation
 
 	s.wg.Add(1)
 	go func(jc jobConfig) {
 		defer s.wg.Done()
-		defer func() {
-			s.jobMutex.Lock()
-			delete(s.jobStops, jc.id)
-			delete(s.jobSigs, jc.id)
-			delete(s.jobNames, jc.id)
-			s.jobMutex.Unlock()
-		}()
+		defer s.clearJobSchedule(jc.id, generation)
 
-		duration, cronSchedule, _ := parseSyncInterval(jc.syncInterval)
+		duration, cronSchedule, err := config.ParseSyncInterval(jc.syncInterval)
+		if err != nil {
+			log.Errorf("Job %s has an invalid interval: %v", jc.id, err)
+			return
+		}
 
 		// Log job startup
 		if cronSchedule != nil {
-			nextRun := (*cronSchedule).Next(time.Now())
+			nextRun := cronSchedule.Next(time.Now())
 			log.Infof("Job '%s' scheduled with cron '%s' (%s mode), next run at %s",
 				formatJobLabel(jc.name, jc.id), jc.syncInterval, jc.mode, nextRun.Format(time.RFC3339))
 		} else {
-			if duration == 0 {
-				log.Warnf("Invalid sync interval '%s' for job '%s', defaulting to 1h", jc.syncInterval, formatJobLabel(jc.name, jc.id))
-				duration = 1 * time.Hour
-			}
 			log.Infof("Job '%s' scheduled every %s (%s mode)", formatJobLabel(jc.name, jc.id), duration, jc.mode)
 		}
 
 		// Create ticker
 		var ticker *time.Ticker
 		if cronSchedule != nil {
-			nextRun := (*cronSchedule).Next(time.Now())
+			nextRun := cronSchedule.Next(time.Now())
 			waitDuration := time.Until(nextRun)
+			if nextRun.IsZero() || waitDuration <= 0 {
+				log.Errorf("Job %s has no future cron occurrence", jc.id)
+				return
+			}
 			ticker = time.NewTicker(waitDuration)
 		} else {
 			ticker = time.NewTicker(duration)
@@ -219,12 +253,16 @@ func (s *Scheduler) startJobScheduler(jc jobConfig) {
 				return
 			case <-ticker.C:
 				// Execute the job
-				jc.runFunc()
+				jc.runFunc(jobCtx)
 
 				// If using cron, calculate next run time
 				if cronSchedule != nil {
-					nextRun := (*cronSchedule).Next(time.Now())
+					nextRun := cronSchedule.Next(time.Now())
 					waitDuration := time.Until(nextRun)
+					if nextRun.IsZero() || waitDuration <= 0 {
+						log.Errorf("Job %s has no future cron occurrence", jc.id)
+						return
+					}
 					ticker.Reset(waitDuration)
 				}
 			}
@@ -232,9 +270,21 @@ func (s *Scheduler) startJobScheduler(jc jobConfig) {
 	}(jc)
 }
 
+func (s *Scheduler) clearJobSchedule(id string, generation uint64) {
+	s.jobMutex.Lock()
+	defer s.jobMutex.Unlock()
+	if s.jobGenerations[id] != generation {
+		return
+	}
+	delete(s.jobStops, id)
+	delete(s.jobSigs, id)
+	delete(s.jobNames, id)
+	delete(s.jobGenerations, id)
+}
+
 func (s *Scheduler) executeAllJobs() {
 	cfg := s.getConfig()
-	dryRun := s.version == "dev"
+	dryRun := jobs.DryRunEnabled(s.version)
 
 	if dryRun {
 		log.Info("Executing initial jobs in DRY RUN mode (no content will be added)")
@@ -244,13 +294,22 @@ func (s *Scheduler) executeAllJobs() {
 
 	// Get all enabled jobs (both dynamic and legacy)
 	enabledJobs := runnableJobs(cfg)
+	cycleJobs, enabledJobs := splitSelectionJobs(cfg, enabledJobs)
 
-	log.Infof("Found %d enabled jobs to execute", len(enabledJobs))
+	log.Infof("Found %d enabled jobs to execute", len(enabledJobs)+len(cycleJobs))
+	if len(cycleJobs) > 0 && runsAtStartup(cfg.Jobs.Selection.SyncInterval) {
+		if _, err := s.executions.RunSelectionCycle(s.ctx, cfg, s.db, dryRun); err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, jobs.ErrExecutionAlreadyRunning) {
+			log.Errorf("Failed to run ranked selection: %v", err)
+		}
+	}
 
 	// Run each enabled job
 	for _, job := range enabledJobs {
+		if !runsAtStartup(getJobInterval(job.SyncInterval, cfg.Jobs.SyncInterval)) {
+			continue
+		}
 		log.Infof("Executing job: %s (%s %s)", formatJobLabel(job.Name, job.ID), job.Type, job.MediaType)
-		if err := jobs.RunDynamicJob(cfg, s.db, job, dryRun); err != nil {
+		if err := s.executions.RunDynamicJob(s.ctx, cfg, s.db, job, dryRun); err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, jobs.ErrExecutionAlreadyRunning) {
 			log.Errorf("Failed to run job %s: %v", formatJobLabel(job.Name, job.ID), err)
 		}
 	}
@@ -258,11 +317,32 @@ func (s *Scheduler) executeAllJobs() {
 	log.Info("Completed initial job execution")
 }
 
+const selectionCycleJobID = jobs.SelectionCycleExecutionID
+
+func splitSelectionJobs(cfg *config.Config, enabled []config.DynamicJob) (cycle, standalone []config.DynamicJob) {
+	for _, job := range enabled {
+		if cfg.Jobs.Selection.Enabled && job.SelectionCycle {
+			cycle = append(cycle, job)
+		} else {
+			standalone = append(standalone, job)
+		}
+	}
+	return cycle, standalone
+}
+
+func selectionCycleSignature(cfg *config.Config, cycleJobs []config.DynamicJob) string {
+	parts := []string{fmt.Sprintf("%t|%s|%d|%d", cfg.Jobs.Selection.Enabled, cfg.Jobs.Selection.SyncInterval, cfg.Jobs.Selection.MovieLimit, cfg.Jobs.Selection.ShowLimit)}
+	for _, job := range cycleJobs {
+		parts = append(parts, jobSignature(job))
+	}
+	return strings.Join(parts, "|")
+}
+
 func runnableJobs(cfg *config.Config) []config.DynamicJob {
 	enabled := cfg.GetEnabledJobs()
 	runnable := make([]config.DynamicJob, 0, len(enabled))
 	for _, job := range enabled {
-		if jobs.IsProviderConfigured(cfg, job.Source) {
+		if jobs.IsJobSourceConfigured(cfg, job) {
 			runnable = append(runnable, job)
 		}
 	}
@@ -287,39 +367,14 @@ func getJobMode(jobMode, defaultMode string) string {
 	return defaultMode
 }
 
-func parseSyncInterval(interval string) (time.Duration, *cron.Schedule, error) {
-	// Try parsing as duration first
-	if duration, err := time.ParseDuration(interval); err == nil {
-		return duration, nil, nil
-	}
-
-	// Try parsing as cron expression
-	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
-	if schedule, err := parser.Parse(interval); err == nil {
-		return 0, &schedule, nil
-	}
-
-	return 0, nil, nil
+func runsAtStartup(interval string) bool {
+	_, cronSchedule, err := config.ParseSyncInterval(interval)
+	return err == nil && cronSchedule == nil
 }
 
 func jobSignature(job config.DynamicJob) string {
-	return fmt.Sprintf(
-		"%s|%t|%s|%s|%s|%d|%s|%s|%s|%s|%s|%f|%f|%d",
-		job.ID,
-		job.Enabled,
-		job.Type,
-		job.Source,
-		job.MediaType,
-		job.Limit,
-		job.Period,
-		job.SyncInterval,
-		job.Mode,
-		job.MinimumAvailability,
-		job.Monitor,
-		job.BaseMinRating,
-		job.AdjustmentFactor,
-		job.MinGlobalPicks,
-	)
+	data, _ := json.Marshal(job)
+	return string(data)
 }
 
 func formatJobLabel(name, id string) string {

@@ -1,185 +1,154 @@
 # Blockbusterr
 
 > [!IMPORTANT]
-> **Blockbusterr v2 is available for public beta testing.** Read the [v2 documentation](https://blockbusterr.dev/v2/) and [v2.0.0-beta.2 release notes](https://github.com/Mahcks/blockbusterr/releases/tag/v2.0.0-beta.2). Use `latest-beta` to follow beta updates; the stable `latest` image remains on v1.
+> **Blockbusterr v2.0.0-rc.1 is a release candidate.** Stable `latest` remains on v1; `latest-beta` follows prereleases. Read the [documentation](https://blockbusterr.dev/) and [release notes](https://github.com/Mahcks/blockbusterr/releases/tag/v2.0.0-rc.1). Upgrading from v1? Back up your complete data directory and follow the [upgrade guide](https://blockbusterr.dev/getting-started/upgrading-to-v2/).
 
-**Automate your media library with smart content discovery from TMDB, Simkl, or Trakt.**
+**Automated media discovery with rule-based decision making for self-hosted libraries.**
 
-Blockbusterr automatically adds trending, popular, and highly-rated movies and TV shows to your Radarr/Sonarr library. Choose a discovery source per job, configure once, and let it run on a schedule.
+Blockbusterr follows trends, lists, and watchlists from the providers you already use. It evaluates every movie or show against your rules, ranks the candidates, and sends the winners to Radarr, Sonarr, Jellyseerr, or Seerr.
+
+Rather than importing everything from a trending list or watchlist, Blockbusterr evaluates every candidate using reusable rules, scoring, repeat handling, delivery limits, and title exceptions before deciding whether it belongs in your library. Every decision is recorded so you can see exactly why a title was accepted, skipped, or rejected.
+
+New here? Start with the **[60-second quick start](https://blockbusterr.dev/v2/getting-started/quickstart/)** or browse the **[complete documentation](https://blockbusterr.dev/v2/)**.
 
 [![GitHub release](https://img.shields.io/github/v/release/Mahcks/blockbusterr)](https://github.com/Mahcks/blockbusterr/releases)
-[![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-ghcr.io-blue)](https://github.com/mahcks/blockbusterr/pkgs/container/blockbusterr)
+[![Container](https://img.shields.io/badge/container-ghcr.io-blue)](https://github.com/mahcks/blockbusterr/pkgs/container/blockbusterr)
+[![Documentation](https://img.shields.io/badge/docs-blockbusterr.dev-blue)](https://blockbusterr.dev/v2/)
 [![License](https://img.shields.io/github/license/Mahcks/blockbusterr)](LICENSE)
-[![Documentation](https://img.shields.io/badge/docs-live-blue)](https://blockbusterr.dev/)
 [![Discord](https://img.shields.io/discord/1463322126999097386?label=Discord&logo=discord&color=5865F2)](https://discord.com/invite/c8vb3VZqmg)
 
----
+![A completed Blockbusterr job run showing its decision flow and media results](docs/src/assets/job_runs.png)
 
-## Documentation
+Blockbusterr is designed to automate discovery without turning your library into a firehose. Every candidate passes through the same repeatable decision process before anything is delivered.
 
-**Full documentation available at [blockbusterr.dev](https://blockbusterr.dev/)**
+## Where it fits
 
-- [Quick Start Guide](https://blockbusterr.dev/getting-started/quickstart/)
-- [Installation Methods](https://blockbusterr.dev/getting-started/installation/)
-- [Configuration](https://blockbusterr.dev/getting-started/configuration/)
-- [Jobs Overview](https://blockbusterr.dev/concepts/jobs/)
-- [Filters & Scoring](https://blockbusterr.dev/concepts/filters/)
-- [Real-World Examples](https://blockbusterr.dev/examples/use-cases/)
-- [API Reference](https://blockbusterr.dev/api/overview/)
+Blockbusterr is the discovery and decision layer in a homelab media stack. It does not replace your request manager, `*arr` applications, download client, or media server.
 
----
+Instead, it sits between discovery and delivery, deciding which titles should reach the rest of your stack.
 
-## Quick Start
-
-**Get running in 60 seconds:**
-
-```bash
-docker run -d \
-  --name blockbusterr \
-  -p 9090:9090 \
-  -v $(pwd)/data:/app/data \
-  ghcr.io/mahcks/blockbusterr:latest
+```mermaid
+flowchart LR
+    A[TMDB / Simkl / Trakt / MDBList / Letterboxd] --> B[Blockbusterr]
+    B --> C[Rules and scoring]
+    C --> D[Radarr / Sonarr]
+    C --> E[Jellyseerr / Seerr]
+    E --> D
+    D --> F[Download client]
+    F --> G[Media server, such as Plex / Jellyfin / Emby]
 ```
 
-Then open `http://localhost:9090` and configure your services.
+One discovery provider is enough. Mix providers when you want different jobs to serve different purposes, such as trending movies, a personal watchlist, family-safe shows, or a tightly curated public list.
 
-**[→ Full Quick Start Guide](https://blockbusterr.dev/getting-started/quickstart/)**
-
----
+Pair Blockbusterr with [Maintainerr](https://github.com/Maintainerr/Maintainerr) to create a complete library lifecycle. Blockbusterr discovers suitable content; Maintainerr can remove or unmonitor stale and unwatched media. Repeat handling and title exceptions prevent removed titles from immediately returning.
 
 ## Features
 
-- **17 Job Types** - Trending, popular, anticipated, favorited, box office, and more
-- **Multiple Discovery Sources** - Use TMDB, Simkl, or Trakt per job
-- **Smart Filtering** - Genre, certification, runtime, year, language, country, keywords
-- **Weighted Scoring** - Combine IMDb, Trakt, TMDB, and Metacritic ratings
-- **Two Integration Modes** - Direct to Radarr/Sonarr or via Jellyseerr for approval
-- **Activity Tracking** - See what was added, when, and why with visual logs
-- **Job Preview** - Test configurations before enabling to avoid surprises
-- **Unified Dashboard** - Manage movies and TV shows in one place
-- **Smart Jobs** - Adaptive scoring that balances popularity with quality
+- **[Preview-first jobs](https://blockbusterr.dev/v2/concepts/jobs/#preview-run-and-schedule):** inspect candidates and rule decisions before enabling delivery.
+- **[Reusable rules](https://blockbusterr.dev/v2/concepts/rules/#the-v2-model):** assign a movie or show policy to many jobs, or create a job-specific copy.
+- **[Lists and watchlists](https://blockbusterr.dev/v2/concepts/jobs/#discovery-types):** follow Trakt, TMDB, MDBList, and experimental public Letterboxd sources.
+- **[Recipes and custom jobs](https://blockbusterr.dev/v2/concepts/jobs/#built-in-recipes):** start from a safe built-in recipe or configure the complete discovery flow yourself.
+- **Decision history:** every title has an outcome, reason, score, source, and Job Run.
+- **[Ranked selection](https://blockbusterr.dev/v2/concepts/jobs/#ranked-selection-cycles):** let participating jobs compete for a shared number of movie or show slots.
+- **Delivery safeguards:** combine [delivery budgets](https://blockbusterr.dev/v2/getting-started/configuration/#delivery-budgets), [previews](https://blockbusterr.dev/v2/concepts/jobs/#preview-run-and-schedule), [repeat handling](https://blockbusterr.dev/v2/getting-started/configuration/#repeat-handling), and [title exceptions](https://blockbusterr.dev/v2/concepts/rules/#title-exceptions).
+- **[Two delivery paths](https://blockbusterr.dev/v2/concepts/integration-modes/):** add directly to Radarr and Sonarr, or request through Jellyseerr or Seerr.
+- **[Portable configuration](https://blockbusterr.dev/v2/api/config/#portable-configuration):** export shareable jobs and rules separately from credentialed backups.
+- **Single-container deployment:** compiled frontend assets, the API, and SQLite are bundled together in one lightweight Docker image with no required external database.
 
----
+## Integrations and compatibility
 
-## 📸 Screenshots
+| Role | Services | Notes |
+| --- | --- | --- |
+| Discovery | [TMDB](https://blockbusterr.dev/v2/integrations/tmdb/), [Simkl](https://blockbusterr.dev/v2/integrations/simkl/), [Trakt](https://blockbusterr.dev/v2/integrations/trakt/) | Trending, popular, anticipated, history-based jobs, lists, and watchlists vary by provider |
+| Curated lists | [MDBList](https://blockbusterr.dev/v2/integrations/mdblist/) | Public lists and the API-key owner's watchlist; also provides a bridge for imported IMDb and Letterboxd lists |
+| Experimental lists | Letterboxd | Public lists only; direct scraping is opt-in and may stop working if Letterboxd changes its site |
+| Direct delivery | [Radarr](https://blockbusterr.dev/v2/integrations/radarr/), [Sonarr](https://blockbusterr.dev/v2/integrations/sonarr/) | Adds movies and shows using the selected quality profile, root folder, monitoring behavior, and other delivery settings |
+| Request delivery | [Jellyseerr and Seerr](https://blockbusterr.dev/v2/integrations/jellyseerr/) | Submits requests through the configured application user or optional request credentials |
+| Downstream playback | Plex, Jellyfin, Emby, and other media servers | Compatible with any media server using a Radarr/Sonarr-managed library; Blockbusterr does not communicate with the media server directly |
 
-### Dashboard & Configuration
-![Settings](reference-docs/images/settings.png)
+Trakt is optional. Personal Trakt and TMDB watchlists require account authorization; public discovery only needs the provider's application credentials.
 
-### Job Preview & Management
-![Jobs Preview](reference-docs/images/jobs.png)
+Blockbusterr is media-server agnostic. Its delivery boundary is Radarr, Sonarr, Jellyseerr, or Seerr; your existing media stack handles downloading and playback after that.
 
-### Activity Log
-![Activity Log](reference-docs/images/activity_log_preview.png)
+Want support for another discovery provider, list source, direct delivery target, or request manager? Feature requests and pull requests are always welcome!
 
----
-
-## Why Blockbusterr?
-
-**The Problem:** Managing Trakt lists in Radarr/Sonarr is tedious - configure each list separately, no filtering, no limits, no unified tracking.
-
-**The Solution:** One dashboard to rule them all. Set filters once, configure jobs with limits, see everything that's added in one activity log.
-
-| Feature | Manual Trakt Lists | Blockbusterr |
-|---------|-------------------|--------------|
-| Setup | Configure in each *arr app | One unified dashboard |
-| Limits | All or nothing | Top N items per job |
-| Filters | None | Genre, rating, runtime, language, etc. |
-| Activity Log | Check each app separately | Unified log with posters |
-| Preview | No preview capability | Test before enabling |
-
----
-
-## Use Cases
-
-- **Family Server** - Block R-rated content, require G/PG/PG-13 only
-- **Quality Curator** - Only add movies scoring 80+, minimum 50k IMDb votes
-- **Genre Specialist** - Sci-fi and fantasy only, no comedies or romance
-- **Completionist** - Add everything trending with minimal filtering
-
-**[→ See Real-World Examples](https://blockbusterr.dev/examples/use-cases/)**
-
----
-
-## Installation
-
-**Docker Compose** (Recommended):
-
-```yaml
-version: '3.8'
-services:
-  blockbusterr:
-    image: ghcr.io/mahcks/blockbusterr:latest
-    container_name: blockbusterr
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./data:/app/data
-    environment:
-      - TZ=America/New_York
-    restart: unless-stopped
-```
-
-**Other methods:** Binary, from source, with full stack → **[Installation Guide](https://blockbusterr.dev/getting-started/installation/)**
-
----
-
-## Configuration
-
-Blockbusterr can be configured via:
-- **Web UI** - `http://localhost:9090` (easiest)
-- **config.yaml** - Mount as volume or edit in container
-- **Environment Variables** - For Docker deployments
-
-**[→ Configuration Guide](https://blockbusterr.dev/getting-started/configuration/)**
-
----
-
-## How It Works
-
-1. **Jobs run on schedule** (cron) - e.g., "Trending Movies" every 6 hours
-2. **Fetch content from your selected source** - TMDB, Simkl, or Trakt
-3. **Apply filters** - Genre, rating, runtime, certification, language
-4. **Calculate scores** - Weighted average of IMDb/Trakt/TMDB ratings
-5. **Check threshold** - Only content scoring above threshold proceeds
-6. **Add to library** - Direct to Radarr/Sonarr or create Jellyseerr request
-7. **Log activity** - Track what was added with posters and metadata
-
-**[→ Learn About Jobs](https://blockbusterr.dev/concepts/jobs/)** | **[→ Filters & Scoring](https://blockbusterr.dev/concepts/filters/)**
-
----
-
-## Contributing
-
-Contributions welcome! Please open an issue or PR.
-
-**Development:**
+## Quick start
 
 ```bash
-git clone https://github.com/mahcks/blockbusterr.git
+docker volume create blockbusterr-data
+
+docker run -d \
+  --name blockbusterr \
+  --restart unless-stopped \
+  -p 9090:9090 \
+  -v blockbusterr-data:/app/data \
+  ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
+```
+
+Open `http://localhost:9090`, connect one discovery provider and one delivery target, then create and preview a job.
+
+Blockbusterr has no login requirement by default. Keep it on a trusted LAN, behind an authenticated reverse proxy or VPN, or set `BLOCKBUSTERR_AUTH_TOKEN` to a random value of at least 32 characters. The username is `blockbusterr`.
+
+[Read the quick start](https://blockbusterr.dev/v2/getting-started/quickstart/) · [Installation options](https://blockbusterr.dev/v2/getting-started/installation/) · [Unraid, TrueNAS SCALE, and Portainer](https://blockbusterr.dev/v2/getting-started/deployment-platforms/) · [Upgrade from v1](https://blockbusterr.dev/v2/getting-started/upgrading-to-v2/)
+
+## See it in use
+
+### Jobs
+
+Each job owns its source, media type, schedule, delivery behavior, and assigned rules. Built-in recipes are created disabled so they can be reviewed and previewed first.
+
+![Configured Blockbusterr discovery jobs](docs/src/assets/jobs.png)
+
+### Rules
+
+Movie and show rule sets can require or block countries, languages, genres, keywords, networks, years, runtimes, ratings, votes, and provider IDs. Title exceptions apply across jobs.
+
+![Reusable movie rules in Blockbusterr](docs/src/assets/rules.png)
+
+### Activity Entries
+
+Every automated decision is recorded in Activity Entries, including the title, source, outcome, score, rank, timestamp, and the reason behind the decision.
+
+![Blockbusterr Activity Entries with posters and outcomes](docs/src/assets/activity_log_preview.png)
+
+### Settings
+
+Settings keeps provider health, delivery targets, scoring, ranked selection, repeat handling, delivery limits, backup, and recovery in one place.
+
+![Blockbusterr connection settings and system readiness](docs/src/assets/settings.png)
+
+## Job lifecycle
+
+1. Fetch candidates from the job's selected source.
+2. Normalize provider data to a movie or show identity.
+3. Apply the assigned rules and universal title exceptions.
+4. Skip titles already present or blocked by repeat handling.
+5. Score and rank the remaining candidates when scoring is enabled.
+6. Enforce job, ranked-selection, and rolling delivery limits.
+7. Add to Radarr or Sonarr, or submit a Jellyseerr or Seerr request.
+8. Record the complete decision flow in Activity Entries and Job Runs.
+
+Removing an item from a source list never deletes media that Blockbusterr already delivered.
+
+## Documentation
+
+- [Jobs and recipes](https://blockbusterr.dev/v2/concepts/jobs/)
+- [Rules and title exceptions](https://blockbusterr.dev/v2/concepts/rules/)
+- [Integration modes](https://blockbusterr.dev/v2/concepts/integration-modes/)
+- [Configuration reference](https://blockbusterr.dev/v2/getting-started/configuration/)
+- [Real-world examples](https://blockbusterr.dev/v2/examples/use-cases/)
+- [API reference](https://blockbusterr.dev/v2/api/overview/)
+
+## Development
+
+```bash
+git clone https://github.com/Mahcks/blockbusterr.git
 cd blockbusterr
 make dev
 ```
----
 
-## Community
-
-Join our Discord for support, questions, and discussion:  
-[https://discord.com/invite/c8vb3VZqmg](https://discord.com/invite/c8vb3VZqmg)
-
----
+Contributions are welcome. Please open an issue or pull request, or join the [Discord community](https://discord.com/invite/c8vb3VZqmg).
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
----
-
-## Support
-
-If Blockbusterr saves you time, consider giving it a star!
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Mahcks/blockbusterr&type=Date)](https://star-history.com/#Mahcks/blockbusterr&Date)
-
-
-**Made for the *arr community** 
+[MIT](LICENSE), made for the self-hosted media community.

@@ -1,89 +1,55 @@
 {{define "jobs"}}
 
 <!-- Info Alert -->
-{{template "alert-info" .AlertInfo}} {{if .DiscoveryDisabled}}
-<div
-  class="bg-yellow-200 border-l-4 border-yellow-500 text-yellow-900 p-4 mb-6 rounded-lg shadow"
->
-  <div class="flex items-center">
-    <svg
-      class="w-6 h-6 mr-2 text-yellow-600"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M12 9v2m0 4h.01M10.29 3.86l-7.09 12.26A2 2 0 005.18 19h13.64a2 2 0 001.98-2.88l-7.09-12.26a2 2 0 00-3.42 0z"
-      />
-    </svg>
-    <span class="font-semibold">Warning:</span>
-    <span class="ml-2"
-      >No discovery source is configured. Add TMDB, Simkl, or Trakt
-      credentials on the
-      <a href="/config" class="underline text-blue-700">settings</a> page to
-      enable discovery jobs.</span
-    >
-  </div>
-</div>
+{{template "alert-info" .AlertInfo}}
+{{if .DryRun}}
+<aside class="readiness-inline" aria-label="Dry-run mode">
+  <i data-lucide="shield-check" aria-hidden="true"></i>
+  <span><strong>Dry-run mode is active.</strong> Scheduled jobs and Run Now evaluate and log decisions without sending anything to Radarr, Sonarr, Jellyseerr, or Seerr.</span>
+</aside>
+{{end}}
+{{if not .Readiness.Complete}}
+<aside class="readiness-inline" aria-label="Setup status">
+  <i data-lucide="circle-alert" aria-hidden="true"></i>
+  <span><strong>{{.Readiness.Automation.Title}}</strong> {{.Readiness.Automation.Message}}</span>
+  <a href="{{if ne .Readiness.Discovery.State "ready"}}{{.Readiness.Discovery.Href}}{{else if ne .Readiness.Delivery.State "ready"}}{{.Readiness.Delivery.Href}}{{else}}{{.Readiness.Automation.Href}}{{end}}">{{if eq .Readiness.Automation.State "not_started"}}Create job{{else}}Review setup{{end}}</a>
+</aside>
 {{end}}
 
-<!-- Legacy Jobs Migration Banner (hidden by default, shown via JS when legacy jobs detected) -->
-<div
-  id="migration-banner"
-  class="hidden bg-blue-900/30 border border-blue-500/50 text-blue-100 p-4 mb-6 rounded-lg"
->
-  <div class="flex items-start gap-3">
-    <svg
-      class="w-6 h-6 text-blue-400 flex-shrink-0 mt-0.5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-      />
-    </svg>
-    <div class="flex-1">
-      <h3 class="font-semibold text-blue-200">Legacy Jobs Detected</h3>
-      <p class="text-sm text-blue-300 mt-1">
-        You have <span id="legacy-count" class="font-medium">0</span> jobs using the old configuration format.
-        Migrate them to the new dynamic job system for full editing capabilities (rename, delete, duplicate).
-      </p>
-      <div class="mt-3 flex gap-3">
-        <button
-          onclick="migrateJobs()"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          Migrate Jobs
-        </button>
-        <button
-          onclick="dismissMigrationBanner()"
-          class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium rounded-lg transition-colors"
-        >
-          Dismiss
-        </button>
-      </div>
-    </div>
+<section id="migration-banner" class="upgrade-notice hidden" aria-labelledby="migration-title">
+  <i data-lucide="replace" aria-hidden="true"></i>
+  <div class="upgrade-notice-copy">
+    <h2 id="migration-title">Upgrade legacy jobs</h2>
+    <p><span id="legacy-count">0</span> jobs use the v1 format. Upgrade them to assign Rule Sets and use the complete job editor.</p>
+    <p class="upgrade-notice-detail">Schedules, limits, delivery settings, and enabled state are preserved. The old entries are disabled only after the new configuration is saved.</p>
+    <p id="migration-status" class="upgrade-notice-status hidden" role="status"></p>
   </div>
-</div>
+  <div class="upgrade-notice-actions">
+    <button type="button" data-action="migrate-jobs" class="job-secondary-button">Upgrade jobs</button>
+    <button type="button" data-action="dismiss-migration" class="icon-button" aria-label="Dismiss upgrade notice">
+      <i data-lucide="x" aria-hidden="true"></i>
+    </button>
+  </div>
+</section>
 
-<div>
+<div id="jobs-page" data-global-mode="{{.Config.Jobs.Mode}}" data-dry-run="{{.DryRun}}">
   <!-- Add Job Section -->
-  <div class="bg-slate-800 rounded-lg p-6 mb-4">
-    <h2
-      class="text-2xl font-semibold text-slate-100 mb-4 flex items-center gap-2"
+  <div class="jobs-toolbar">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight text-slate-50">Jobs</h1>
+      <p class="mt-0.5 text-sm text-slate-500">Automated discovery and delivery.</p>
+    </div>
+    <button
+      type="button"
+      data-action="open-add-job"
+      class="app-primary-button"
     >
       <svg
-        class="w-6 h-6 text-green-400"
+        class="h-4 w-4"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
+        aria-hidden="true"
       >
         <path
           stroke-linecap="round"
@@ -92,31 +58,19 @@
           d="M12 6v6m0 0v6m0-6h6m-6 0H6"
         ></path>
       </svg>
-      Add New Job
-    </h2>
-    <p class="text-slate-400 text-sm mb-4">
-      Choose from templates or create a custom job configuration.
-    </p>
-    <div class="flex gap-3">
-      <button
-        onclick="openAddJobModal()"
-        class="px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg flex items-center gap-2"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-        </svg>
-        Add Job
-      </button>
-    </div>
+      New job
+    </button>
   </div>
 
   <!-- Active Jobs List -->
-  <div class="bg-slate-800 rounded-lg p-6 mb-4">
+  <section aria-labelledby="active-jobs-heading" class="jobs-panel">
+    <div class="jobs-panel-header">
     <h2
-      class="text-2xl font-semibold text-slate-100 mb-6 flex items-center gap-2"
+      id="active-jobs-heading"
+      class="flex items-center gap-2 text-sm font-medium text-slate-100"
     >
       <svg
-        class="w-6 h-6 text-purple-400"
+        class="h-5 w-5 text-slate-400"
         fill="currentColor"
         viewBox="0 0 20 20"
       >
@@ -127,18 +81,28 @@
           clip-rule="evenodd"
         ></path>
       </svg>
-      Active Jobs
-      <span id="jobs-count" class="ml-2 px-2 py-0.5 text-sm font-medium rounded-full bg-slate-700 text-slate-300"></span>
+      Configured jobs
+      <span id="jobs-count" class="text-xs font-normal text-slate-500"></span>
     </h2>
+    </div>
 
-    <div id="active-jobs-list" class="space-y-3">
+    <div class="jobs-column-head" aria-hidden="true">
+      <span>Job</span>
+      <span>Source</span>
+      <span>Media</span>
+      <span>Rules</span>
+      <span class="text-right">Actions</span>
+    </div>
+
+    <div id="active-jobs-list">
       <!-- Jobs will be dynamically rendered here -->
-      <div class="flex items-center justify-center py-8">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
+      <div class="space-y-2 p-3" aria-label="Loading jobs">
+        <div class="h-12 animate-pulse rounded-md bg-zinc-800"></div>
+        <div class="h-12 animate-pulse rounded-md bg-zinc-800"></div>
       </div>
     </div>
 
-    <div id="no-jobs-message" class="hidden text-center py-8 text-slate-400">
+    <div id="no-jobs-message" class="hidden px-4 py-10 text-center text-slate-400">
       <svg
         class="w-16 h-16 mx-auto mb-4 text-slate-600"
         fill="none"
@@ -152,43 +116,52 @@
           d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
         ></path>
       </svg>
-      <p class="text-lg font-medium">No active jobs</p>
-      <p class="text-sm mt-1">
-        Click "Add Job" above to get started
-      </p>
+      <p class="text-base font-medium text-slate-200">Create your first discovery job</p>
+      <p class="mx-auto mt-1 max-w-md text-sm">Choose a provider, assign a Rule Set, preview the results, then enable automation.</p>
+      <button type="button" data-action="open-add-job" class="job-secondary-button mt-4">Create job</button>
     </div>
 
-	<div id="unavailable-jobs-section" class="hidden mt-8 pt-6 border-t border-slate-700">
-	  <div class="flex items-center gap-2 mb-3">
-		<h3 class="text-lg font-semibold text-slate-200">Needs Provider Setup</h3>
-		<span id="unavailable-jobs-count" class="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-900/40 text-amber-300"></span>
+	<div id="unavailable-jobs-section" class="hidden border-t border-zinc-700">
+	  <div class="flex items-center gap-2 border-b border-zinc-800 px-3 py-2.5">
+		<h3 class="text-sm font-medium text-slate-200">Needs provider setup</h3>
+		<span id="unavailable-jobs-count" class="text-xs text-amber-300"></span>
+		<p class="ml-1 text-xs text-slate-500">Configure the source, change the job type, or delete the job.</p>
 	  </div>
-	  <p class="text-sm text-slate-400 mb-4">These saved jobs cannot run because their discovery provider is not configured. Change their type or delete them.</p>
-	  <div id="unavailable-jobs-list" class="space-y-3"></div>
+	  <div id="unavailable-jobs-list"></div>
 	</div>
-  </div>
+  </section>
 
   <!-- Add Job Modal -->
   <div
     id="add-job-modal"
-    class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    class="job-dialog hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="add-job-title"
   >
     <div
-      class="bg-slate-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+      class="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg"
     >
       <!-- Modal Header -->
-      <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 z-10">
+      <div class="sticky top-0 z-10">
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-2xl font-bold text-slate-100">Add New Job</h2>
-            <p id="preview-source" class="text-sm text-slate-400 mt-1">
-              Choose a template or create a custom job
+            <h2 id="add-job-title" class="text-xl font-semibold text-slate-100">New job</h2>
+            <p class="text-sm text-slate-400 mt-1">
+              Start with a preview-ready recipe or build a custom job
             </p>
+            <label class="job-secondary-button mt-3 inline-flex cursor-pointer items-center gap-2">
+              <i data-lucide="upload" class="h-4 w-4" aria-hidden="true"></i>
+              Import job
+              <input id="import-job-file" type="file" accept=".yaml,.yml" class="sr-only">
+            </label>
           </div>
 
           <button
-            onclick="closeAddJobModal()"
-            class="text-slate-400 hover:text-slate-200 transition-colors"
+            type="button"
+            data-action="close-add-job"
+            class="icon-button"
+            aria-label="Close new job dialog"
           >
             <svg
               class="w-6 h-6"
@@ -207,43 +180,55 @@
         </div>
 
         <!-- Category Tabs -->
-        <div class="mt-4 flex gap-2">
+        <div class="job-tabs mt-4" role="tablist" aria-label="Job type">
           <button
-            onclick="filterTemplates('Movies')"
+            data-action="filter-templates"
+            data-category="Movies"
             id="tab-movies"
-            class="px-4 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white"
+            role="tab"
+            aria-selected="true"
+            aria-controls="templates-content"
+            class="text-sm font-medium"
           >
             Movies
           </button>
           <button
-            onclick="filterTemplates('TV Shows')"
+            data-action="filter-templates"
+            data-category="TV Shows"
             id="tab-shows"
-            class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+            role="tab"
+            aria-selected="false"
+            aria-controls="templates-content"
+            class="text-sm font-medium"
           >
             TV Shows
           </button>
           <button
-            onclick="showCustomJobForm()"
+            data-action="show-custom-job"
             id="tab-custom"
-            class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+            role="tab"
+            aria-selected="false"
+            aria-controls="custom-job-content"
+            class="text-sm font-medium"
           >
             Custom Job
           </button>
         </div>
       </div>
 
-      <!-- Modal Body - Templates -->
-      <div id="templates-content" class="p-6">
+      <!-- Modal Body (scrolls independently of the header above) -->
+      <div class="min-h-0 flex-1 overflow-y-auto">
+      <div id="templates-content" class="p-6" role="tabpanel" aria-labelledby="tab-movies">
         <div class="mb-4">
-          <label for="template-search" class="block text-sm font-medium text-slate-300 mb-2">
-            Search Templates
+          <label for="template-search" class="block mb-2 font-medium">
+            Search recipes
           </label>
           <div class="relative">
             <input
               id="template-search"
               type="text"
-              placeholder="Search by template name or type..."
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+              placeholder="Search by outcome, provider, or type..."
+              class="w-full rounded-lg transition"
             />
             <span class="pointer-events-none absolute right-3 top-2.5 text-slate-500">
               <i data-lucide="search" class="w-5 h-5"></i>
@@ -251,17 +236,17 @@
           </div>
           <p id="templates-count" class="text-xs text-slate-400 mt-2"></p>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="templates-grid">
-          <!-- Templates will be rendered here -->
+        <div class="overflow-hidden rounded-md border border-zinc-700" id="templates-grid">
+          <!-- Recipes will be rendered here -->
         </div>
       </div>
 
       <!-- Modal Body - Custom Job Form -->
-      <div id="custom-job-content" class="hidden p-6">
+      <div id="custom-job-content" class="hidden p-6" role="tabpanel" aria-labelledby="tab-custom">
         <form id="custom-job-form" class="space-y-4">
           <!-- Job Name -->
           <div>
-            <label for="custom-name" class="block text-sm font-medium text-slate-300 mb-2">
+            <label for="custom-name" class="block mb-2 font-medium">
               Job Name
             </label>
             <input
@@ -269,35 +254,34 @@
               id="custom-name"
               name="name"
               placeholder="e.g., My Weekly Movies"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+              class="w-full rounded-lg transition"
               required
             />
           </div>
 
           <!-- Job Type and Media Type in a row -->
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label for="custom-type" class="block text-sm font-medium text-slate-300 mb-2">
+              <label for="custom-type" class="block mb-2 font-medium">
                 Job Type
               </label>
               <select
                 id="custom-type"
                 name="type"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                class="w-full rounded-lg transition"
                 required
-                onchange="updateCustomFormFields()"
               >
                 <!-- Options will be populated dynamically -->
               </select>
             </div>
             <div>
-              <label for="custom-media" class="block text-sm font-medium text-slate-300 mb-2">
+              <label for="custom-media" class="block mb-2 font-medium">
                 Media Type
               </label>
               <select
                 id="custom-media"
                 name="media"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                class="w-full rounded-lg transition"
                 required
               >
                 <option value="movie">Movie</option>
@@ -308,43 +292,124 @@
 
           <!-- Job Type Description -->
 		  <div>
-			<label for="custom-source" class="block text-sm font-medium text-slate-300 mb-2">Discovery Source</label>
-			<select id="custom-source" name="source" onchange="updateCustomFormFields()" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"></select>
+			<label for="custom-source" class="block mb-2 font-medium">Discovery Source</label>
+			<select id="custom-source" name="source" class="w-full rounded-lg transition"></select>
 			<p id="custom-source-help" class="text-xs text-slate-400 mt-1">Only configured discovery sources are shown.</p>
 		  </div>
 
+          <div id="custom-list-container" class="job-nested-panel hidden space-y-4 p-4">
+            <div id="custom-letterboxd-warning" class="hidden rounded-md border border-amber-700/60 bg-amber-950/30 p-3 text-xs text-amber-200">
+              Experimental: Letterboxd has no generally available API. This scrapes public pages, may be blocked or stop working without notice, and never supports private lists. MDBList is the reliable alternative.
+            </div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label for="custom-list-kind" class="block mb-2 font-medium">List kind</label>
+                <select id="custom-list-kind" name="list_kind" class="w-full rounded-lg transition">
+                  <option value="public_list">Public list</option>
+                  <option value="watchlist">Personal watchlist</option>
+                </select>
+              </div>
+              <div>
+                <label for="custom-list-ordering" class="block mb-2 font-medium">Ordering</label>
+                <select id="custom-list-ordering" name="list_ordering" class="w-full rounded-lg transition">
+                  <option value="source">Provider order</option>
+                  <option value="rank">Provider rank</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label for="custom-list-owner" class="block mb-2 font-medium">Owner or member</label>
+                <input id="custom-list-owner" name="list_owner" class="w-full rounded-lg transition" placeholder="Account name">
+              </div>
+              <div>
+                <label for="custom-list-id" class="block mb-2 font-medium">List ID or slug</label>
+                <input id="custom-list-id" name="list_id" class="w-full rounded-lg transition" placeholder="Provider list identifier">
+              </div>
+            </div>
+            <p class="text-xs text-slate-400">Use provider identifiers, not a copied web URL. Removing an item later never deletes media already delivered.</p>
+            <div class="flex items-center gap-3">
+              <button type="button" class="job-secondary-button" data-action="inspect-list" data-scope="custom">Check source</button>
+              <span id="custom-list-result" class="text-xs text-slate-400" aria-live="polite"></span>
+            </div>
+          </div>
+
+          <div id="custom-recommendations-container" class="job-nested-panel hidden space-y-2 p-4">
+            <label for="custom-recommendation-seeds" class="block font-medium">TMDB seed IDs</label>
+            <input id="custom-recommendation-seeds" name="recommendation_seeds" class="w-full rounded-lg transition" placeholder="550, 680, 155" inputmode="numeric">
+            <p class="text-xs text-slate-400">Up to 20 IDs, or use a provider list below. Each seed is expanded once; recommendations never recurse.</p>
+            <div class="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3">
+              <select id="custom-recommendation-list-source" aria-label="Seed-list provider" class="rounded-lg transition"><option value="">No seed list</option></select>
+              <input id="custom-recommendation-list-owner" aria-label="Seed-list owner" class="rounded-lg transition" placeholder="Owner (optional)">
+              <input id="custom-recommendation-list-id" aria-label="Seed-list ID or slug" class="rounded-lg transition" placeholder="List ID or slug">
+            </div>
+          </div>
+
+          <div id="custom-series-type-container" class="hidden">
+            <label for="custom-series-type" class="block mb-2 font-medium">Sonarr series type</label>
+            <select id="custom-series-type" name="series_type" class="w-full rounded-lg transition">
+              <option value="standard">Standard</option>
+              <option value="anime">Anime</option>
+              <option value="daily">Daily</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Anime requires a provider-supplied TVDB identity that Sonarr recognizes.</p>
+          </div>
+
+          <div>
+            <label for="custom-rule-set" class="block mb-2 font-medium">Rule set</label>
+            <select id="custom-rule-set" name="rule_set_id" class="w-full rounded-lg transition" required></select>
+            <p id="custom-rule-set-help" class="text-xs text-slate-400 mt-1">Changes to this rule set apply to every assigned job.</p>
+          </div>
+
           <!-- Job Type Description -->
-          <div id="custom-type-description" class="bg-slate-900/50 rounded-lg p-3 border border-slate-700">
+          <div id="custom-type-description" class="job-nested-panel p-3">
             <p class="text-sm text-slate-400">Select a job type to see its description</p>
           </div>
 
-          <!-- Limit -->
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label for="custom-limit" class="block mb-2 font-medium">Discovery limit</label>
+              <input type="number" id="custom-limit" name="limit" min="1" max="1000" value="50" class="w-full rounded-lg transition" required />
+              <p id="custom-limit-description" class="text-xs text-slate-400 mt-1">Candidates fetched per run</p>
+            </div>
+            <div>
+              <label for="custom-delivery-limit" class="block mb-2 font-medium">Job delivery cap</label>
+              <input type="number" id="custom-delivery-limit" name="delivery_limit" min="0" value="0" class="w-full rounded-lg transition" />
+              <p class="text-xs text-slate-400 mt-1">Maximum winners this job contributes per run or ranked cycle. Zero is unlimited.</p>
+            </div>
+          </div>
+
           <div>
-            <label for="custom-limit" class="block text-sm font-medium text-slate-300 mb-2">
-              Content Limit
+            <label for="custom-repeat-policy" class="block mb-2 font-medium">Repeat handling</label>
+            <select id="custom-repeat-policy" name="repeat_policy" class="w-full rounded-lg transition">
+              <option value="">Use global default</option>
+              <option value="immediate">Re-add immediately</option>
+              <option value="30_days">Wait 30 days</option>
+              <option value="90_days">Wait 90 days</option>
+              <option value="180_days">Wait 180 days</option>
+              <option value="never">Never re-add</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Applies only after previously delivered media is removed from its destination.</p>
+          </div>
+
+          <div class="job-nested-panel p-3">
+            <label class="flex items-start gap-3">
+              <input type="checkbox" id="custom-selection-cycle" name="selection_cycle" class="mt-1">
+              <span><strong>Include in ranked selection</strong><span class="block text-xs text-slate-400">Run with other participating jobs instead of on its own schedule.</span></span>
             </label>
-            <input
-              type="number"
-              id="custom-limit"
-              name="limit"
-              min="1"
-              max="1000"
-              value="50"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-              required
-            />
-            <p id="custom-limit-description" class="text-xs text-slate-400 mt-1">Number of items to fetch</p>
+            <label for="custom-minimum-picks" class="mt-3 block font-medium">Minimum picks per cycle</label>
+            <input type="number" id="custom-minimum-picks" name="minimum_picks" min="0" value="0" disabled class="mt-2 w-full rounded-lg transition">
           </div>
 
           <!-- Period (shown only for period-based jobs) -->
           <div id="custom-period-container" class="hidden">
-            <label for="custom-period" class="block text-sm font-medium text-slate-300 mb-2">
+            <label for="custom-period" class="block mb-2 font-medium">
               Time Period
             </label>
             <select
               id="custom-period"
               name="period"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+              class="w-full rounded-lg transition"
             >
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
@@ -356,7 +421,7 @@
           <!-- Smart Job Fields -->
           <div id="custom-smart-container" class="hidden space-y-4">
             <div>
-              <label for="custom-base-rating" class="block text-sm font-medium text-slate-300 mb-2">
+              <label for="custom-base-rating" class="block mb-2 font-medium">
                 Base Minimum Rating
               </label>
               <input
@@ -367,11 +432,11 @@
                 max="10"
                 step="0.1"
                 value="6.0"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                class="w-full rounded-lg transition"
               />
             </div>
             <div>
-              <label for="custom-adjustment-factor" class="block text-sm font-medium text-slate-300 mb-2">
+              <label for="custom-adjustment-factor" class="block mb-2 font-medium">
                 Adjustment Factor
               </label>
               <input
@@ -382,7 +447,7 @@
                 max="5"
                 step="0.1"
                 value="0.5"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                class="w-full rounded-lg transition"
               />
             </div>
           </div>
@@ -391,12 +456,14 @@
           <div class="pt-4">
             <button
               type="submit"
-              class="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg"
+              id="custom-create-button"
+              class="app-primary-button w-full py-2.5"
             >
               Create Job
             </button>
           </div>
         </form>
+      </div>
       </div>
     </div>
   </div>
@@ -404,27 +471,32 @@
   <!-- Job Preview Modal -->
   <div
     id="preview-modal"
-    class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    class="job-dialog hidden fixed inset-0 z-[100] flex items-center justify-center p-4"
     tabindex="-1"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="preview-title"
   >
     <div
-      class="bg-slate-800 rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+      class="flex max-h-[90vh] w-full max-w-6xl flex-col rounded-lg"
     >
       <!-- Modal Header -->
-      <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 z-10">
+      <div class="sticky top-0 z-10">
         <div class="flex items-center justify-between">
           <div>
             <h2
               id="preview-title"
               class="text-2xl font-bold text-slate-100"
             ></h2>
-            <p class="text-sm text-slate-400 mt-1">
+            <p id="preview-source" class="text-sm text-slate-400 mt-1">
               Preview of what this job will fetch
             </p>
           </div>
           <button
-            onclick="closePreviewModal()"
-            class="text-slate-400 hover:text-slate-200 transition-colors"
+            type="button"
+            data-action="close-preview"
+            class="icon-button"
+            aria-label="Close preview dialog"
           >
             <svg
               class="w-6 h-6"
@@ -442,46 +514,22 @@
           </button>
         </div>
         <!-- Summary Stats -->
-        <div id="preview-stats" class="mt-4 grid grid-cols-4 gap-4"></div>
+        <div id="preview-stats" class="preview-stats"></div>
 
         <!-- Filter Tabs -->
-        <div class="mt-4 flex gap-2">
-          <button
-            onclick="filterPreview('all')"
-            id="filter-all"
-            class="px-4 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white"
-          >
-            All
-          </button>
-          <button
-            onclick="filterPreview('will_add')"
-            id="filter-will_add"
-            class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
-          >
-            Will Add
-          </button>
-          <button
-            onclick="filterPreview('already_exists')"
-            id="filter-already_exists"
-            class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
-          >
-            Already Exists
-          </button>
-          <button
-            onclick="filterPreview('filtered_out')"
-            id="filter-filtered_out"
-            class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
-          >
-            Filtered Out
-          </button>
+        <div id="preview-tabs" class="preview-tabs" role="tablist" aria-label="Preview outcome filter">
+          <button type="button" data-action="filter-preview" data-filter="all" id="filter-all" role="tab" aria-selected="true">All</button>
+          <button type="button" data-action="filter-preview" data-filter="will_add" id="filter-will_add" role="tab" aria-selected="false">Will add</button>
+          <button type="button" data-action="filter-preview" data-filter="already_exists" id="filter-already_exists" role="tab" aria-selected="false">Skipped</button>
+          <button type="button" data-action="filter-preview" data-filter="filtered_out" id="filter-filtered_out" role="tab" aria-selected="false">Rejected</button>
         </div>
       </div>
 
-      <!-- Modal Body -->
-      <div id="preview-content" class="p-6">
+      <!-- Modal Body (scrolls independently of the header above) -->
+      <div id="preview-content" class="min-h-0 flex-1 overflow-y-auto p-4">
         <div class="flex items-center justify-center py-12">
           <div
-            class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"
+            class="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-400"
           ></div>
         </div>
       </div>
@@ -491,21 +539,26 @@
   <!-- Job Configuration Modal -->
   <div
     id="job-modal"
-    class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    class="job-dialog hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-title"
   >
     <div
-      class="bg-slate-800 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+      class="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg"
     >
       <!-- Modal Header -->
-      <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 z-10">
+      <div class="sticky top-0 z-10">
         <div class="flex items-center justify-between">
           <div>
             <h2 id="modal-title" class="text-2xl font-bold text-slate-100"></h2>
             <p id="modal-description" class="text-sm text-slate-400 mt-1"></p>
           </div>
           <button
-            onclick="closeJobModal()"
-            class="text-slate-400 hover:text-slate-200 transition-colors"
+            type="button"
+            data-action="close-job"
+            class="icon-button"
+            aria-label="Close job editor"
           >
             <svg
               class="w-6 h-6"
@@ -523,19 +576,27 @@
           </button>
         </div>
         <!-- Job Type Badge -->
-        <div id="modal-badges" class="mt-3 flex gap-2"></div>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <div id="modal-badges" class="flex flex-wrap gap-2"></div>
+          <span id="job-editor-dirty" class="rule-set-dirty-hint hidden" role="status"><i data-lucide="circle" class="h-2 w-2" aria-hidden="true"></i>Unsaved changes</span>
+        </div>
       </div>
 
-      <!-- Modal Body -->
-      <div class="p-6">
+      <!-- Modal Body (scrolls independently of the header above) -->
+      <div class="min-h-0 flex-1 overflow-y-auto p-6">
         <form id="job-config-form" class="space-y-4">
           <input type="hidden" id="modal-job-id" name="job-id" value="" />
+
+          <div class="job-form-heading">
+            <h3>Discovery</h3>
+            <p>Choose what this job finds and where it looks.</p>
+          </div>
 
           <!-- Job Name -->
           <div id="modal-name-container">
             <label
               for="modal-name"
-              class="block text-sm font-medium text-slate-300 mb-2"
+              class="block mb-2 font-medium"
             >
               Job Name
             </label>
@@ -543,7 +604,7 @@
               type="text"
               id="modal-name"
               name="name"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              class="w-full rounded-lg transition"
             />
             <p class="text-xs text-slate-400 mt-1">
               A friendly name to identify this job
@@ -551,19 +612,18 @@
           </div>
 
           <!-- Job Type and Media Type -->
-          <div id="modal-type-container" class="grid grid-cols-2 gap-4">
+          <div id="modal-type-container" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label
                 for="modal-type"
-                class="block text-sm font-medium text-slate-300 mb-2"
+                class="block mb-2 font-medium"
               >
                 Job Type
               </label>
               <select
                 id="modal-type"
                 name="type"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                onchange="onJobTypeChange()"
+                class="w-full rounded-lg transition"
               >
                 <!-- Options populated dynamically -->
               </select>
@@ -571,14 +631,14 @@
             <div>
               <label
                 for="modal-media"
-                class="block text-sm font-medium text-slate-300 mb-2"
+                class="block mb-2 font-medium"
               >
                 Media Type
               </label>
               <select
                 id="modal-media"
                 name="media"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                class="w-full rounded-lg transition"
               >
                 <option value="movie">Movie</option>
                 <option value="show">TV Show</option>
@@ -587,44 +647,94 @@
           </div>
 
 		  <div>
-			<label for="modal-source" class="block text-sm font-medium text-slate-300 mb-2">Discovery Source</label>
-			<select id="modal-source" name="source" onchange="updateModalTypeFields()" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"></select>
+			<label for="modal-source" class="block mb-2 font-medium">Discovery Source</label>
+			<select id="modal-source" name="source" class="w-full rounded-lg transition"></select>
 			<p id="modal-source-help" class="text-xs text-slate-400 mt-1">Only configured discovery sources are shown.</p>
 		  </div>
 
-          <!-- Limit -->
-          <div>
-            <label
-              for="modal-limit"
-              class="block text-sm font-medium text-slate-300 mb-2"
-            >
-              Content Limit
-            </label>
-            <input
-              type="number"
-              id="modal-limit"
-              name="limit"
-              min="1"
-              max="1000"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-            />
-            <p class="text-xs text-slate-400 mt-1">
-              Number of items to fetch
-            </p>
+          <div id="modal-list-container" class="job-nested-panel hidden space-y-4 p-4">
+            <div id="modal-letterboxd-warning" class="hidden rounded-md border border-amber-700/60 bg-amber-950/30 p-3 text-xs text-amber-200">
+              Experimental: Letterboxd has no generally available API. This scrapes public pages, may be blocked or stop working without notice, and never supports private lists. MDBList is the reliable alternative.
+            </div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label for="modal-list-kind" class="block mb-2 font-medium">List kind</label>
+                <select id="modal-list-kind" class="w-full rounded-lg transition">
+                  <option value="public_list">Public list</option>
+                  <option value="watchlist">Personal watchlist</option>
+                </select>
+              </div>
+              <div>
+                <label for="modal-list-ordering" class="block mb-2 font-medium">Ordering</label>
+                <select id="modal-list-ordering" class="w-full rounded-lg transition">
+                  <option value="source">Provider order</option>
+                  <option value="rank">Provider rank</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label for="modal-list-owner" class="block mb-2 font-medium">Owner or member</label>
+                <input id="modal-list-owner" class="w-full rounded-lg transition" placeholder="Account name">
+              </div>
+              <div>
+                <label for="modal-list-id" class="block mb-2 font-medium">List ID or slug</label>
+                <input id="modal-list-id" class="w-full rounded-lg transition" placeholder="Provider list identifier">
+              </div>
+            </div>
+            <p class="text-xs text-slate-400">Provider identifiers only. Source-list removals never delete downstream media.</p>
+            <div class="flex items-center gap-3">
+              <button type="button" class="job-secondary-button" data-action="inspect-list" data-scope="modal">Check source</button>
+              <span id="modal-list-result" class="text-xs text-slate-400" aria-live="polite"></span>
+            </div>
+          </div>
+
+          <div id="modal-recommendations-container" class="job-nested-panel hidden space-y-2 p-4">
+            <label for="modal-recommendation-seeds" class="block font-medium">TMDB seed IDs</label>
+            <input id="modal-recommendation-seeds" class="w-full rounded-lg transition" placeholder="550, 680, 155" inputmode="numeric">
+            <p class="text-xs text-slate-400">Up to 20 IDs. Results are deduplicated and expanded exactly one hop.</p>
+            <div class="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3">
+              <select id="modal-recommendation-list-source" aria-label="Seed-list provider" class="rounded-lg transition"><option value="">No seed list</option></select>
+              <input id="modal-recommendation-list-owner" aria-label="Seed-list owner" class="rounded-lg transition" placeholder="Owner (optional)">
+              <input id="modal-recommendation-list-id" aria-label="Seed-list ID or slug" class="rounded-lg transition" placeholder="List ID or slug">
+            </div>
+          </div>
+
+          <div id="modal-series-type-container" class="hidden">
+            <label for="modal-series-type" class="block mb-2 font-medium">Sonarr series type</label>
+            <select id="modal-series-type" class="w-full rounded-lg transition">
+              <option value="standard">Standard</option>
+              <option value="anime">Anime</option>
+              <option value="daily">Daily</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">Anime requires a provider-supplied TVDB identity that Sonarr recognizes.</p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label for="modal-limit" class="block mb-2 font-medium">Discovery limit</label>
+              <input type="number" id="modal-limit" name="limit" min="1" max="1000" class="w-full rounded-lg transition" />
+              <p class="text-xs text-slate-400 mt-1">Candidates fetched per run</p>
+            </div>
+            <div>
+              <label for="modal-delivery-limit" class="block mb-2 font-medium">Job delivery cap</label>
+              <input type="number" id="modal-delivery-limit" name="delivery_limit" min="0" class="w-full rounded-lg transition" />
+              <p class="text-xs text-slate-400 mt-1">Maximum winners this job contributes per run or ranked cycle. Zero is unlimited.</p>
+            </div>
           </div>
 
           <!-- Period field (for favorited/played/watched/collected jobs) - shown in main form -->
           <div id="modal-period-container" class="hidden">
             <label
               for="modal-period"
-              class="block text-sm font-medium text-slate-300 mb-2"
+              class="block mb-2 font-medium"
             >
               Time Period
             </label>
             <select
               id="modal-period"
               name="period"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              class="w-full rounded-lg transition"
             >
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
@@ -647,7 +757,7 @@
             <div>
               <label
                 for="modal-base-rating"
-                class="block text-sm font-medium text-slate-300 mb-2"
+                class="block mb-2 font-medium"
               >
                 Base Minimum Rating
               </label>
@@ -658,7 +768,7 @@
                 min="0"
                 max="10"
                 step="0.1"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                class="w-full rounded-lg transition"
               />
               <p class="text-xs text-slate-400 mt-1">
                 Baseline rating threshold (adjusted by popularity)
@@ -667,7 +777,7 @@
             <div>
               <label
                 for="modal-adjustment-factor"
-                class="block text-sm font-medium text-slate-300 mb-2"
+                class="block mb-2 font-medium"
               >
                 Adjustment Factor
               </label>
@@ -678,7 +788,7 @@
                 min="0"
                 max="5"
                 step="0.1"
-                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                class="w-full rounded-lg transition"
               />
               <p class="text-xs text-slate-400 mt-1">
                 How much to adjust (0.5=mild, 2.0=aggressive)
@@ -691,14 +801,32 @@
             </div>
           </div>
 
+          <section id="modal-filter-settings" class="job-filter-settings" aria-labelledby="modal-filter-heading" tabindex="-1">
+            <div class="job-filter-heading">
+              <div>
+                <h3 id="modal-filter-heading">Rules</h3>
+                <p>Choose the reusable policy this job evaluates.</p>
+              </div>
+            </div>
+            <label class="job-rule-picker" for="modal-rule-set">
+              <span>Rule set</span>
+              <select id="modal-rule-set"></select>
+              <small id="modal-rule-set-summary">Loading compatible rule sets...</small>
+            </label>
+            <div class="job-rule-actions">
+              <button type="button" id="customize-job-rules" data-action="customize-job-rules" class="job-secondary-button">Customize for this job</button>
+              <a id="edit-job-rules" href="/filters" class="job-rule-link">View selected rules</a>
+            </div>
+          </section>
+
           <!-- Advanced Settings -->
           <div class="border-t border-slate-700 pt-4">
             <button
               type="button"
-              onclick="toggleModalAdvanced()"
-              class="flex items-center justify-between w-full text-sm font-medium text-slate-300 hover:text-blue-400 transition-colors"
+              data-action="toggle-advanced"
+              class="flex items-center justify-between w-full text-sm font-medium text-slate-300 hover:text-slate-100 transition-colors"
             >
-              <span>Advanced Settings</span>
+              <span>Delivery &amp; schedule</span>
               <svg
                 id="advanced-chevron"
                 class="w-4 h-4 transition-transform duration-200"
@@ -717,12 +845,12 @@
 
             <div
               id="modal-advanced"
-              class="hidden mt-4 space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700"
+              class="hidden mt-4 job-advanced-fields"
             >
               <div>
                 <label
                   for="modal-interval"
-                  class="block text-sm font-medium text-slate-300 mb-2"
+                  class="block mb-2 font-medium"
                 >
                   Custom Sync Interval
                 </label>
@@ -731,28 +859,53 @@
                   id="modal-interval"
                   name="sync_interval"
                   placeholder="Leave empty to use default"
-                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  class="w-full rounded-lg transition"
                 />
-                <p class="text-xs text-slate-400 mt-1">
+                <p id="modal-interval-help" class="text-xs text-slate-400 mt-1">
                   Override default interval (e.g., 1h, 30m, 0 */2 * * *)
                 </p>
               </div>
 
               <div>
+                <label for="modal-repeat-policy" class="block mb-2 font-medium">Repeat handling</label>
+                <select id="modal-repeat-policy" name="repeat_policy" class="w-full rounded-lg transition">
+                  <option value="">Use global default</option>
+                  <option value="immediate">Re-add immediately</option>
+                  <option value="30_days">Wait 30 days</option>
+                  <option value="90_days">Wait 90 days</option>
+                  <option value="180_days">Wait 180 days</option>
+                  <option value="never">Never re-add</option>
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Current destination duplicates are always skipped.</p>
+              </div>
+
+              <div class="job-selection-field">
+                <label class="job-selection-toggle">
+                  <input type="checkbox" id="modal-selection-cycle" name="selection_cycle" class="mt-1">
+                  <span><strong>Include in ranked selection</strong><small>This job contributes candidates to the shared selection cycle instead of delivering on its own schedule.</small></span>
+                </label>
+                <div class="job-selection-minimum">
+                  <label for="modal-minimum-picks">Minimum picks</label>
+                  <input type="number" id="modal-minimum-picks" name="minimum_picks" min="0" class="w-full rounded-lg transition">
+                  <small>Reserve this many winner slots when qualifying candidates exist.</small>
+                </div>
+              </div>
+
+              <div>
                 <label
                   for="modal-mode"
-                  class="block text-sm font-medium text-slate-300 mb-2"
+                  class="block mb-2 font-medium"
                 >
                   Custom Mode
                 </label>
                 <select
                   id="modal-mode"
                   name="mode"
-                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  class="w-full rounded-lg transition"
                 >
                   <option value="">Use Global Default</option>
                   <option value="direct">Direct (Radarr/Sonarr)</option>
-                  <option value="jellyseerr">Jellyseerr</option>
+                  <option value="jellyseerr">Jellyseerr / Seerr</option>
                 </select>
                 <p class="text-xs text-slate-400 mt-1">
                   Override default integration mode
@@ -763,14 +916,14 @@
               <div id="modal-min-availability-container" class="hidden">
                 <label
                   for="modal-min-availability"
-                  class="block text-sm font-medium text-slate-300 mb-2"
+                  class="block mb-2 font-medium"
                 >
                   Minimum Availability
                 </label>
                 <select
                   id="modal-min-availability"
                   name="minimum_availability"
-                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  class="w-full rounded-lg transition"
                 >
                   <option value="">Use Global Default</option>
                   <option value="announced">Announced</option>
@@ -786,14 +939,14 @@
               <div id="modal-radarr-monitor-container" class="hidden">
                 <label
                   for="modal-radarr-monitor"
-                  class="block text-sm font-medium text-slate-300 mb-2"
+                  class="block mb-2 font-medium"
                 >
                   Monitor
                 </label>
                 <select
                   id="modal-radarr-monitor"
                   name="radarr_monitor"
-                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  class="w-full rounded-lg transition"
                 >
                   <option value="">Use Global Default</option>
                   <option value="movieOnly">Movie Only</option>
@@ -809,14 +962,14 @@
               <div id="modal-sonarr-monitor-container" class="hidden">
                 <label
                   for="modal-sonarr-monitor"
-                  class="block text-sm font-medium text-slate-300 mb-2"
+                  class="block mb-2 font-medium"
                 >
                   Monitor
                 </label>
                 <select
                   id="modal-sonarr-monitor"
                   name="sonarr_monitor"
-                  class="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  class="w-full rounded-lg transition"
                 >
                   <option value="">Use Global Default</option>
                   <option value="all">All Episodes</option>
@@ -842,26 +995,28 @@
           <div id="job-message"></div>
 
           <!-- Action Buttons -->
-          <div class="flex gap-2 pt-4">
+          <div class="grid grid-cols-1 gap-2 pt-4 sm:grid-cols-3">
             <button
               type="submit"
-              class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors duration-200"
+              class="job-save-button"
             >
               Save Changes
             </button>
             <button
               type="button"
-              onclick="previewJob()"
-              class="flex-1 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors duration-200"
+              data-action="preview-job"
+              class="job-secondary-button"
             >
               Preview
             </button>
             <button
               type="button"
-              onclick="runJobNow()"
-              class="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200"
+              id="modal-run-button"
+              data-action="run-job"
+              class="job-run-button"
+              title="{{if .DryRun}}Simulates this job immediately without delivering content{{else}}Runs this job immediately, outside its schedule{{end}}"
             >
-              Run Now
+              {{if .DryRun}}Dry Run{{else}}Run Now{{end}}
             </button>
           </div>
 
@@ -869,7 +1024,7 @@
           <button
             type="button"
             id="toggle-job-button"
-            onclick="toggleJobEnabled()"
+            data-action="toggle-job"
             class="w-full px-4 py-2.5 font-semibold rounded-lg transition-colors duration-200"
           ></button>
           <p
@@ -877,1235 +1032,21 @@
             class="text-xs text-slate-400 text-center -mt-2"
           ></p>
 
-          <!-- Delete Job Button (only for dynamic jobs) -->
-          <button
-            type="button"
-            id="delete-job-button"
-            onclick="deleteCurrentJob()"
-            class="hidden w-full px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-semibold rounded-lg transition-colors duration-200 border border-red-600/50"
-          >
-            Delete Job
+          <button type="button" id="export-job-button" data-action="export-job" class="job-secondary-button w-full">
+            Export job and rules
           </button>
+
+          <!-- Delete Job Button (only for dynamic jobs) -->
+          <div id="delete-job-zone" class="job-danger-zone hidden">
+            <div><strong>Delete job</strong><span>Remove this job and its schedule permanently.</span></div>
+            <button type="button" id="delete-job-button" data-action="delete-current-job" class="job-delete-button">Delete</button>
+          </div>
         </form>
       </div>
     </div>
   </div>
 </div>
 
-<script>
-  // State
-  let allJobs = [];
-  let jobTypes = {};
-  let jobTemplates = [];
-  let currentJob = null;
-  let currentTemplateCategory = 'Movies';
-  let templateSearchQuery = '';
-  let previewData = null;
-  let currentFilter = 'all';
-  const globalMode = "{{.Config.Jobs.Mode}}" || "direct";
-
-  // Job type icons and colors
-  function getTypeIcon(type, className) {
-    const cls = className || 'w-6 h-6';
-    const iconNames = {
-      trending: 'trending-up',
-      popular: 'flame',
-      watched: 'eye',
-      collected: 'archive',
-      favorited: 'heart',
-      played: 'play',
-      anticipated: 'clock-3',
-      box_office: 'ticket',
-      smart_popular: 'brain'
-    };
-    const iconName = iconNames[type] || iconNames.popular;
-    return `<i data-lucide="${iconName}" class="${cls}"></i>`;
-  }
-
-  const typeStyles = {
-    'trending': { color: 'text-yellow-400', bg: 'from-yellow-900/50' },
-    'popular': { color: 'text-red-400', bg: 'from-red-900/50' },
-    'watched': { color: 'text-cyan-400', bg: 'from-cyan-900/50' },
-    'collected': { color: 'text-amber-400', bg: 'from-amber-900/50' },
-    'favorited': { color: 'text-pink-400', bg: 'from-pink-900/50' },
-    'played': { color: 'text-blue-400', bg: 'from-blue-900/50' },
-    'anticipated': { color: 'text-purple-400', bg: 'from-purple-900/50' },
-    'box_office': { color: 'text-green-400', bg: 'from-green-900/50' },
-    'smart_popular': { color: 'text-indigo-400', bg: 'from-indigo-900/50' }
-  };
-
-  // Initialize
-  document.addEventListener('DOMContentLoaded', async function() {
-    await loadData();
-    renderJobsList();
-    renderTemplates();
-
-    const templateSearch = document.getElementById('template-search');
-    if (templateSearch) {
-      templateSearch.addEventListener('input', function(evt) {
-        templateSearchQuery = String(evt.target.value || '').trim().toLowerCase();
-        renderTemplates();
-      });
-    }
-
-    // Add event listener for mode dropdown to show/hide direct mode fields
-    const modeSelect = document.getElementById('modal-mode');
-    if (modeSelect) {
-      modeSelect.addEventListener('change', function() {
-        if (currentJob) {
-          // Create temp job with current form values
-          const tempJob = {
-            ...currentJob,
-            type: document.getElementById('modal-type').value,
-            media: document.getElementById('modal-media').value
-          };
-          updateDirectModeFields(tempJob);
-        }
-      });
-    }
-
-    // Add event listener for media type dropdown to update direct mode fields
-    const mediaSelect = document.getElementById('modal-media');
-    if (mediaSelect) {
-      mediaSelect.addEventListener('change', function() {
-        if (currentJob) {
-          // Create temp job with current form values
-          const tempJob = {
-            ...currentJob,
-            type: document.getElementById('modal-type').value,
-            media: document.getElementById('modal-media').value
-          };
-          updateDirectModeFields(tempJob);
-        }
-      });
-    }
-  });
-
-  async function loadData() {
-    try {
-      // Load all data in parallel
-      const [jobsRes, typesRes, templatesRes] = await Promise.all([
-        fetch('/v1/jobs/list'),
-        fetch('/v1/jobs/types'),
-        fetch('/v1/jobs/templates')
-      ]);
-
-      allJobs = await jobsRes.json();
-      jobTypes = await typesRes.json();
-      jobTemplates = await templatesRes.json();
-
-    } catch (error) {
-      console.error('Failed to load data:', error);
-      showNotification('Failed to load jobs data', 'error');
-    }
-  }
-
-  function renderJobsList() {
-    const activeContainer = document.getElementById('active-jobs-list');
-    const noJobsMsg = document.getElementById('no-jobs-message');
-    const jobsCount = document.getElementById('jobs-count');
-	const unavailableSection = document.getElementById('unavailable-jobs-section');
-	const unavailableContainer = document.getElementById('unavailable-jobs-list');
-	const unavailableCount = document.getElementById('unavailable-jobs-count');
-	const enabledJobs = allJobs.filter(job => job.enabled);
-	const activeJobs = enabledJobs.filter(isJobAvailable);
-	const unavailableJobs = enabledJobs.filter(job => !isJobAvailable(job));
-
-	jobsCount.textContent = activeJobs.length;
-
-    // Check for legacy jobs and show migration banner
-    checkLegacyJobs();
-
-    if (activeJobs.length === 0) {
-      activeContainer.innerHTML = '';
-      noJobsMsg.classList.remove('hidden');
-    } else {
-      noJobsMsg.classList.add('hidden');
-	  activeContainer.innerHTML = renderJobCards(activeJobs, false);
-	}
-
-	if (unavailableJobs.length) {
-	  unavailableCount.textContent = unavailableJobs.length;
-	  unavailableContainer.innerHTML = renderJobCards(unavailableJobs, true);
-	  unavailableSection.classList.remove('hidden');
-	} else {
-	  unavailableContainer.innerHTML = '';
-	  unavailableSection.classList.add('hidden');
-	}
-
-	if (window.renderLucideIcons) {
-	  window.renderLucideIcons(activeContainer);
-	  window.renderLucideIcons(unavailableContainer);
-	}
-  }
-
-  function isJobAvailable(job) {
-	const source = job.source || 'trakt';
-	return jobTypes[job.type]?.sources?.includes(source) || false;
-  }
-
-  function renderJobCards(items, unavailable) {
-	return items.map(job => {
-        const style = typeStyles[job.type] || typeStyles['popular'];
-        const isLegacy = job.id.startsWith('legacy_');
-		const source = job.source || 'trakt';
-		const sourceLabel = source === 'tmdb' ? 'TMDB' : capitalize(source);
-
-        return `
-		  <div class="bg-slate-900/50 rounded-lg border ${unavailable ? 'border-amber-800/60' : 'border-slate-700'} overflow-hidden hover:border-slate-600 transition-colors">
-			<div class="bg-gradient-to-r ${unavailable ? 'from-amber-950/30' : style.bg} to-slate-800/50 p-4">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3 cursor-pointer flex-1" onclick="openJobModal('${job.id}')">
-                  <span class="${style.color}">${getTypeIcon(job.type)}</span>
-                  <div>
-                    <div class="flex items-center gap-2">
-                      <h3 class="text-lg font-semibold text-slate-100">${job.name}</h3>
-                      ${isLegacy ? '<span class="px-2 py-0.5 text-xs rounded bg-slate-600 text-slate-300">Legacy</span>' : ''}
-                    </div>
-                    <div class="flex items-center gap-2 mt-1">
-                      <span class="px-2 py-0.5 text-xs rounded bg-slate-700/50 text-slate-300">${capitalize(job.type)}</span>
-                      <span class="px-2 py-0.5 text-xs rounded ${job.media === 'movie' ? 'bg-blue-900/30 text-blue-300' : 'bg-green-900/30 text-green-300'}">${job.media === 'movie' ? 'Movie' : 'TV Show'}</span>
-					  <span class="px-2 py-0.5 text-xs rounded bg-slate-700/50 text-slate-300">${sourceLabel}</span>
-                      ${job.period ? `<span class="px-2 py-0.5 text-xs rounded bg-slate-700/50 text-slate-400">${capitalize(job.period)}</span>` : ''}
-					  ${unavailable ? '<span class="px-2 py-0.5 text-xs rounded bg-amber-900/50 text-amber-300">Unavailable</span>' : ''}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex items-center gap-3">
-                  <span class="px-3 py-1 text-xs font-semibold rounded-full bg-slate-700/50 text-slate-300">
-                    ${job.limit} items
-                  </span>
-				  ${unavailable ? '' : `<button
-                    onclick="event.stopPropagation(); triggerJob('${job.id}')"
-                    class="p-2 hover:bg-green-500/20 rounded-lg transition-colors group"
-                    title="Run now"
-                  >
-                    <svg class="w-5 h-5 text-slate-400 group-hover:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-				  </button>`}
-                  ${!isLegacy ? `
-                  <button
-                    onclick="event.stopPropagation(); deleteJob('${job.id}')"
-                    class="p-2 hover:bg-red-500/20 rounded-lg transition-colors group"
-                    title="Delete job"
-                  >
-                    <svg class="w-5 h-5 text-slate-400 group-hover:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                  </button>
-                  ` : ''}
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-	}).join('');
-  }
-
-  function capitalize(str) {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ');
-  }
-
-  // Migration functions
-  let migrationDismissed = false;
-
-  function checkLegacyJobs() {
-    if (migrationDismissed) return;
-
-    const legacyJobs = allJobs.filter(job => job.id.startsWith('legacy_'));
-    const banner = document.getElementById('migration-banner');
-    const countEl = document.getElementById('legacy-count');
-
-    if (legacyJobs.length > 0) {
-      countEl.textContent = legacyJobs.length;
-      banner.classList.remove('hidden');
-    } else {
-      banner.classList.add('hidden');
-    }
-  }
-
-  function dismissMigrationBanner() {
-    migrationDismissed = true;
-    document.getElementById('migration-banner').classList.add('hidden');
-  }
-
-  async function migrateJobs() {
-    if (!confirm('This will convert all legacy jobs to the new dynamic format. Your job settings will be preserved. Continue?')) {
-      return;
-    }
-
-    try {
-      const response = await fetch('/v1/jobs/migrate', {
-        method: 'POST'
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Migration failed');
-      }
-
-      if (data.count === 0) {
-        showNotification('No legacy jobs to migrate', 'info');
-      } else {
-        showNotification(`Successfully migrated ${data.count} jobs!`, 'success');
-        // Reload jobs data
-        await loadData();
-        renderJobsList();
-      }
-
-      // Hide the banner
-      document.getElementById('migration-banner').classList.add('hidden');
-    } catch (error) {
-      showNotification(error.message, 'error');
-    }
-  }
-
-  // Add Job Modal
-  function openAddJobModal() {
-    // Reset to templates view
-    templateSearchQuery = '';
-    const templateSearch = document.getElementById('template-search');
-    if (templateSearch) templateSearch.value = '';
-    showTemplatesView();
-    filterTemplates('Movies');
-    document.getElementById('add-job-modal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-  }
-
-  function closeAddJobModal() {
-    document.getElementById('add-job-modal').classList.add('hidden');
-    document.body.style.overflow = 'auto';
-    // Reset custom form
-    document.getElementById('custom-job-form').reset();
-  }
-
-  function updateTabStyles(activeTab) {
-    const tabs = ['tab-movies', 'tab-shows', 'tab-custom'];
-    tabs.forEach(tabId => {
-      const tab = document.getElementById(tabId);
-      if (tabId === activeTab) {
-        tab.className = 'px-4 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white';
-      } else {
-        tab.className = 'px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600';
-      }
-    });
-  }
-
-  function showTemplatesView() {
-    document.getElementById('templates-content').classList.remove('hidden');
-    document.getElementById('custom-job-content').classList.add('hidden');
-  }
-
-  function filterTemplates(category) {
-    currentTemplateCategory = category;
-    showTemplatesView();
-    updateTabStyles(category === 'Movies' ? 'tab-movies' : 'tab-shows');
-    renderTemplates();
-  }
-
-  function showCustomJobForm() {
-    document.getElementById('templates-content').classList.add('hidden');
-    document.getElementById('custom-job-content').classList.remove('hidden');
-    updateTabStyles('tab-custom');
-
-    // Populate job type dropdown
-    const typeSelect = document.getElementById('custom-type');
-    typeSelect.innerHTML = Object.entries(jobTypes).filter(([, def]) => def.sources?.length).map(([key, def]) => {
-      return `<option value="${key}">${def.name}</option>`;
-    }).join('');
-
-    // Trigger initial field update
-    updateCustomFormFields();
-  }
-
-  function updateCustomFormFields() {
-    const typeSelect = document.getElementById('custom-type');
-    const mediaSelect = document.getElementById('custom-media');
-    const periodContainer = document.getElementById('custom-period-container');
-    const smartContainer = document.getElementById('custom-smart-container');
-    const descriptionEl = document.getElementById('custom-type-description');
-    const limitInput = document.getElementById('custom-limit');
-	const sourceSelect = document.getElementById('custom-source');
-
-    const selectedType = typeSelect.value;
-    const typeDef = jobTypes[selectedType];
-
-    if (!typeDef) return;
-	const currentSource = sourceSelect.value;
-	const sources = typeDef.sources || [typeDef.source || 'trakt'];
-	sourceSelect.innerHTML = sources.map(source => `<option value="${source}">${source === 'tmdb' ? 'TMDB' : capitalize(source)}</option>`).join('');
-	if (sources.includes(currentSource)) sourceSelect.value = currentSource;
-	document.getElementById('custom-source-help').textContent = sourceSelect.value === 'simkl'
-	  ? 'Simkl attribution will be shown with sourced results.'
-	  : 'Only configured discovery sources are shown.';
-	const customPeriod = document.getElementById('custom-period');
-	if (sourceSelect.value === 'simkl' && selectedType === 'watched') {
-	  customPeriod.innerHTML = '<option value="weekly">Weekly</option><option value="monthly">Monthly</option>';
-	} else {
-	  customPeriod.innerHTML = '<option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option><option value="all">All Time</option>';
-	}
-
-    // Update description
-    const style = typeStyles[selectedType] || {};
-    descriptionEl.innerHTML = `
-      <div class="flex items-center gap-2">
-        <span class="${style.color || 'text-slate-300'}">${getTypeIcon(selectedType, 'w-5 h-5')}</span>
-        <div>
-          <p class="text-sm font-medium text-slate-200">${typeDef.name}</p>
-          <p class="text-sm text-slate-400">${typeDef.description}</p>
-        </div>
-      </div>
-    `;
-    if (window.renderLucideIcons) {
-      window.renderLucideIcons(descriptionEl);
-    }
-
-    // Update media type options based on supported media
-    const supportedMedia = typeDef.supported_media || ['movie', 'show'];
-    mediaSelect.innerHTML = '';
-    if (supportedMedia.includes('movie')) {
-      mediaSelect.innerHTML += '<option value="movie">Movie</option>';
-    }
-    if (supportedMedia.includes('show')) {
-      mediaSelect.innerHTML += '<option value="show">TV Show</option>';
-    }
-
-    // Show/hide period field
-    if (typeDef.requires_period) {
-      periodContainer.classList.remove('hidden');
-    } else {
-      periodContainer.classList.add('hidden');
-    }
-
-    // Show/hide smart job fields
-    if (typeDef.is_smart_job) {
-      smartContainer.classList.remove('hidden');
-    } else {
-      smartContainer.classList.add('hidden');
-    }
-
-    // Update limit max and description
-    const maxLimit = sourceSelect.value === 'simkl' ? Math.min(typeDef.max_limit || 1000, 500) : (typeDef.max_limit || 1000);
-    limitInput.max = maxLimit;
-    const limitDescription = document.getElementById('custom-limit-description');
-    if (limitDescription) {
-      limitDescription.textContent = `Number of items to fetch (max ${maxLimit})`;
-    }
-    if (parseInt(limitInput.value) > maxLimit) {
-      limitInput.value = maxLimit;
-    }
-  }
-
-  // Custom job form submission
-  document.addEventListener('DOMContentLoaded', function() {
-    const customForm = document.getElementById('custom-job-form');
-    if (customForm) {
-      customForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-
-        const formData = new FormData(e.target);
-        const selectedType = formData.get('type');
-        const typeDef = jobTypes[selectedType];
-
-        const job = {
-          name: formData.get('name'),
-          type: selectedType,
-          media: formData.get('media'),
-          enabled: true,
-          limit: parseInt(formData.get('limit')),
-		  source: formData.get('source') || 'trakt'
-        };
-
-        // Add period if required
-        if (typeDef?.requires_period) {
-          job.period = formData.get('period');
-        }
-
-        // Add smart job fields if applicable
-        if (typeDef?.is_smart_job) {
-          job.base_min_rating = parseFloat(formData.get('base_min_rating'));
-          job.adjustment_factor = parseFloat(formData.get('adjustment_factor'));
-        }
-
-        try {
-          const response = await fetch('/v1/jobs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(job)
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to create job');
-          }
-
-          const newJob = await response.json();
-          allJobs.push(newJob);
-
-          closeAddJobModal();
-          renderJobsList();
-          showNotification(`${job.name} created successfully!`, 'success');
-
-          // Open the edit modal for the new job
-          openJobModal(newJob.id);
-        } catch (error) {
-          showNotification(error.message, 'error');
-        }
-      });
-    }
-  });
-
-  function renderTemplates() {
-    const grid = document.getElementById('templates-grid');
-    const count = document.getElementById('templates-count');
-    const filtered = jobTemplates
-	  .filter(t => jobTypes[t.type]?.sources?.length)
-      .filter(t => t.category === currentTemplateCategory)
-      .filter(t => {
-        if (!templateSearchQuery) return true;
-        const name = String(t.name || '').toLowerCase();
-        const type = String(t.type || '').toLowerCase();
-        const description = String(t.description || '').toLowerCase();
-        return name.includes(templateSearchQuery) || type.includes(templateSearchQuery) || description.includes(templateSearchQuery);
-      })
-      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
-
-    if (count) {
-      count.textContent = `${filtered.length} template${filtered.length === 1 ? '' : 's'} available`;
-    }
-
-    if (!filtered.length) {
-      grid.innerHTML = `
-        <div class="md:col-span-2 rounded-lg border border-slate-700 bg-slate-900/40 p-6 text-center">
-          <p class="text-sm font-medium text-slate-200">No templates found</p>
-          <p class="mt-1 text-xs text-slate-400">Try a different search, or use Custom Job.</p>
-        </div>
-      `;
-      if (window.renderLucideIcons) {
-        window.renderLucideIcons(grid);
-      }
-      return;
-    }
-
-    grid.innerHTML = filtered.map(template => {
-      const style = typeStyles[template.type] || typeStyles['popular'];
-
-      return `
-        <button
-          type="button"
-          onclick="createJobFromTemplate('${template.type}', '${template.media}', '${template.name}', ${template.limit}, '${template.period || ''}')"
-          class="w-full text-left bg-slate-900/50 rounded-lg border border-slate-700 p-4 cursor-pointer hover:border-purple-500 hover:bg-slate-900/80 transition-all"
-        >
-          <div class="flex items-start gap-3">
-            <span class="${style.color}">${getTypeIcon(template.type)}</span>
-            <div class="flex-1">
-              <h3 class="text-lg font-semibold text-slate-100">${template.name}</h3>
-              <p class="text-sm text-slate-400 mt-1">${template.description}</p>
-              <div class="flex items-center gap-2 mt-3">
-                <span class="px-2 py-0.5 text-xs rounded bg-slate-700 text-slate-300">${template.limit} items</span>
-                ${template.period ? `<span class="px-2 py-0.5 text-xs rounded bg-slate-700 text-slate-400">${capitalize(template.period)}</span>` : ''}
-              </div>
-            </div>
-          </div>
-        </button>
-      `;
-    }).join('');
-
-    if (window.renderLucideIcons) {
-      window.renderLucideIcons(grid);
-    }
-  }
-
-  async function createJobFromTemplate(type, media, name, limit, period) {
-	const source = jobTypes[type]?.sources?.[0];
-	if (!source) {
-	  showNotification('Configure a discovery source that supports this job type first.', 'error');
-	  return;
-	}
-    const job = {
-      name: name,
-      type: type,
-      media: media,
-      enabled: true,
-      limit: limit,
-	  source
-    };
-
-    if (period) {
-      job.period = period;
-    }
-
-    try {
-      const response = await fetch('/v1/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(job)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create job');
-      }
-
-      const newJob = await response.json();
-      allJobs.push(newJob);
-
-      closeAddJobModal();
-      renderJobsList();
-      showNotification(`${name} created successfully!`, 'success');
-
-      // Open the edit modal for the new job
-      openJobModal(newJob.id);
-    } catch (error) {
-      showNotification(error.message, 'error');
-    }
-  }
-
-  // Job Configuration Modal
-  function openJobModal(jobId) {
-    const job = allJobs.find(j => j.id === jobId);
-    if (!job) {
-      showNotification('Job not found', 'error');
-      return;
-    }
-
-    currentJob = job;
-    const isLegacy = job.id.startsWith('legacy_');
-    const style = typeStyles[job.type] || typeStyles['popular'];
-    const typeDef = jobTypes[job.type];
-
-    // Set modal values
-    document.getElementById('modal-title').textContent = job.name;
-    document.getElementById('modal-description').textContent = typeDef?.description || '';
-    document.getElementById('modal-job-id').value = job.id;
-    document.getElementById('modal-name').value = job.name;
-    document.getElementById('modal-limit').value = job.limit;
-    document.getElementById('modal-interval').value = job.sync_interval || '';
-    document.getElementById('modal-mode').value = job.mode || '';
-    document.getElementById('modal-source').value = job.source || 'trakt';
-
-    // Populate job type dropdown
-    const typeSelect = document.getElementById('modal-type');
-	const selectableTypes = Object.entries(jobTypes).filter(([key, def]) => def.sources?.length || key === job.type);
-    typeSelect.innerHTML = selectableTypes.map(([key, def]) => {
-      return `<option value="${key}">${def.name}</option>`;
-    }).join('');
-    typeSelect.value = job.type;
-
-    // Populate media dropdown and set value
-    const mediaSelect = document.getElementById('modal-media');
-    mediaSelect.value = job.media;
-
-    // Set badges
-    document.getElementById('modal-badges').innerHTML = `
-      <span class="px-2 py-0.5 text-xs rounded bg-slate-700 text-slate-300">${capitalize(job.type)}</span>
-      <span class="px-2 py-0.5 text-xs rounded ${job.media === 'movie' ? 'bg-blue-900/30 text-blue-300' : 'bg-green-900/30 text-green-300'}">${job.media === 'movie' ? 'Movie' : 'TV Show'}</span>
-	  <span class="px-2 py-0.5 text-xs rounded bg-slate-700 text-slate-300">${job.source === 'tmdb' ? 'TMDB' : capitalize(job.source || 'trakt')}</span>
-      ${isLegacy ? '<span class="px-2 py-0.5 text-xs rounded bg-yellow-900/30 text-yellow-300">Legacy (Read-Only)</span>' : ''}
-    `;
-
-    // Set max limit based on job type
-    const limitInput = document.getElementById('modal-limit');
-    const limitDescription = limitInput.parentElement.querySelector('.text-xs');
-    const maxLimit = typeDef?.max_limit || 100;
-    limitInput.max = maxLimit;
-    limitDescription.textContent = `Number of items to fetch (1-${maxLimit})`;
-
-    // Disable editing for legacy jobs
-    const nameContainer = document.getElementById('modal-name-container');
-    const typeContainer = document.getElementById('modal-type-container');
-    if (isLegacy) {
-      nameContainer.classList.add('opacity-50');
-      typeContainer.classList.add('opacity-50');
-      document.getElementById('modal-name').disabled = true;
-      document.getElementById('modal-type').disabled = true;
-      document.getElementById('modal-media').disabled = true;
-    } else {
-      nameContainer.classList.remove('opacity-50');
-      typeContainer.classList.remove('opacity-50');
-      document.getElementById('modal-name').disabled = false;
-      document.getElementById('modal-type').disabled = false;
-      document.getElementById('modal-media').disabled = false;
-    }
-
-    // Update type-dependent fields (period, smart, media options)
-    updateModalTypeFields();
-
-    // Update direct mode fields
-    updateDirectModeFields(job);
-
-    // Update enable/disable button
-    const toggleButton = document.getElementById('toggle-job-button');
-    const toggleDescription = document.getElementById('toggle-job-description');
-    if (job.enabled) {
-      toggleButton.textContent = 'Disable Job';
-      toggleButton.className = 'w-full px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-semibold rounded-lg transition-colors duration-200 border border-red-600/50';
-      toggleDescription.textContent = 'Pause this job from running';
-    } else {
-      toggleButton.textContent = 'Enable Job';
-      toggleButton.className = 'w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200';
-      toggleDescription.textContent = 'Start this job running on schedule';
-    }
-
-    // Show/hide delete button
-    const deleteButton = document.getElementById('delete-job-button');
-    if (isLegacy) {
-      deleteButton.classList.add('hidden');
-    } else {
-      deleteButton.classList.remove('hidden');
-    }
-
-    document.getElementById('job-modal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-  }
-
-  // Handle job type change in edit modal
-  function onJobTypeChange() {
-    updateModalTypeFields();
-    // Update direct mode fields as media type may have changed
-    if (currentJob) {
-      // Create a temporary job object with updated values for direct mode check
-      const tempJob = {
-        ...currentJob,
-        type: document.getElementById('modal-type').value,
-        media: document.getElementById('modal-media').value
-      };
-      updateDirectModeFields(tempJob);
-    }
-  }
-
-  // Update modal fields based on selected job type
-  function updateModalTypeFields() {
-    const typeSelect = document.getElementById('modal-type');
-    const mediaSelect = document.getElementById('modal-media');
-    const periodContainer = document.getElementById('modal-period-container');
-    const smartContainer = document.getElementById('modal-smart-container');
-	const sourceSelect = document.getElementById('modal-source');
-
-    const selectedType = typeSelect.value;
-    const typeDef = jobTypes[selectedType];
-
-    if (!typeDef) return;
-	const currentSource = sourceSelect.value || currentJob?.source || 'trakt';
-	const sources = typeDef.sources || [typeDef.source || 'trakt'];
-	sourceSelect.innerHTML = sources.map(source => `<option value="${source}">${source === 'tmdb' ? 'TMDB' : capitalize(source)}</option>`).join('');
-	if (sources.includes(currentSource)) sourceSelect.value = currentSource;
-	document.getElementById('modal-source-help').textContent = sources.length
-	  ? (sourceSelect.value === 'simkl' ? 'Simkl attribution will be shown with sourced results.' : 'Only configured discovery sources are shown.')
-	  : 'This job requires a discovery source that is not configured. Change its type or delete it.';
-	const modalPeriod = document.getElementById('modal-period');
-	if (sourceSelect.value === 'simkl' && selectedType === 'watched') {
-	  modalPeriod.innerHTML = '<option value="weekly">Weekly</option><option value="monthly">Monthly</option>';
-	} else {
-	  modalPeriod.innerHTML = '<option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option><option value="all">All Time</option>';
-	}
-	if ([...modalPeriod.options].some(option => option.value === currentJob?.period)) {
-	  modalPeriod.value = currentJob.period;
-	}
-
-    // Update media type options based on supported media
-    const supportedMedia = typeDef.supported_media || ['movie', 'show'];
-    const currentMedia = mediaSelect.value;
-    mediaSelect.innerHTML = '';
-    if (supportedMedia.includes('movie')) {
-      mediaSelect.innerHTML += '<option value="movie">Movie</option>';
-    }
-    if (supportedMedia.includes('show')) {
-      mediaSelect.innerHTML += '<option value="show">TV Show</option>';
-    }
-    // Try to keep current selection if still supported
-    if (supportedMedia.includes(currentMedia)) {
-      mediaSelect.value = currentMedia;
-    }
-
-    // Update max limit based on job type
-    const limitInput = document.getElementById('modal-limit');
-    const limitDescription = limitInput.parentElement.querySelector('.text-xs');
-    const maxLimit = sourceSelect.value === 'simkl' ? Math.min(typeDef.max_limit || 100, 500) : (typeDef.max_limit || 100);
-    limitInput.max = maxLimit;
-    limitDescription.textContent = `Number of items to fetch (1-${maxLimit})`;
-    if (parseInt(limitInput.value) > maxLimit) {
-      limitInput.value = maxLimit;
-    }
-
-    // Show/hide period field
-    if (typeDef.requires_period) {
-      periodContainer.classList.remove('hidden');
-      // Set default period if not already set
-      const periodSelect = document.getElementById('modal-period');
-      if (!periodSelect.value) {
-        periodSelect.value = currentJob?.period || 'weekly';
-      }
-    } else {
-      periodContainer.classList.add('hidden');
-    }
-
-    // Show/hide smart job fields
-    if (typeDef.is_smart_job) {
-      smartContainer.classList.remove('hidden');
-      // Set default values if not already set
-      const baseRating = document.getElementById('modal-base-rating');
-      const adjustmentFactor = document.getElementById('modal-adjustment-factor');
-      if (!baseRating.value || baseRating.value === '0') {
-        baseRating.value = currentJob?.base_min_rating || 6.0;
-      }
-      if (!adjustmentFactor.value || adjustmentFactor.value === '0') {
-        adjustmentFactor.value = currentJob?.adjustment_factor || 0.5;
-      }
-    } else {
-      smartContainer.classList.add('hidden');
-    }
-
-    // Update modal description
-    document.getElementById('modal-description').textContent = typeDef.description || '';
-  }
-
-  function closeJobModal() {
-    document.getElementById('job-modal').classList.add('hidden');
-    document.body.style.overflow = 'auto';
-    document.getElementById('modal-advanced').classList.add('hidden');
-    document.getElementById('advanced-chevron').style.transform = '';
-    currentJob = null;
-  }
-
-  function toggleModalAdvanced() {
-    const advanced = document.getElementById('modal-advanced');
-    const chevron = document.getElementById('advanced-chevron');
-
-    if (advanced.classList.contains('hidden')) {
-      advanced.classList.remove('hidden');
-      chevron.style.transform = 'rotate(180deg)';
-    } else {
-      advanced.classList.add('hidden');
-      chevron.style.transform = 'rotate(0deg)';
-    }
-  }
-
-  function isDirectMode(job) {
-    const modeSelect = document.getElementById('modal-mode');
-    const selectedMode = modeSelect ? modeSelect.value : '';
-    if (selectedMode !== '') {
-      return selectedMode === 'direct';
-    }
-    return (job.mode || globalMode) === 'direct';
-  }
-
-  function updateDirectModeFields(job) {
-    const minAvailContainer = document.getElementById('modal-min-availability-container');
-    const radarrMonitorContainer = document.getElementById('modal-radarr-monitor-container');
-    const sonarrMonitorContainer = document.getElementById('modal-sonarr-monitor-container');
-
-    const directMode = isDirectMode(job);
-    const isMovie = job.media === 'movie';
-
-    // Minimum availability - only for movies in direct mode
-    if (isMovie && directMode) {
-      minAvailContainer.classList.remove('hidden');
-      document.getElementById('modal-min-availability').value = job.minimum_availability || '';
-    } else {
-      minAvailContainer.classList.add('hidden');
-    }
-
-    // Monitor - Radarr for movies, Sonarr for shows, only in direct mode
-    if (isMovie && directMode) {
-      radarrMonitorContainer.classList.remove('hidden');
-      sonarrMonitorContainer.classList.add('hidden');
-      document.getElementById('modal-radarr-monitor').value = job.monitor || '';
-    } else if (!isMovie && directMode) {
-      sonarrMonitorContainer.classList.remove('hidden');
-      radarrMonitorContainer.classList.add('hidden');
-      document.getElementById('modal-sonarr-monitor').value = job.monitor || '';
-    } else {
-      radarrMonitorContainer.classList.add('hidden');
-      sonarrMonitorContainer.classList.add('hidden');
-    }
-  }
-
-  // Form submission
-  document.getElementById('job-config-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    if (!currentJob) return;
-
-    const isLegacy = currentJob.id.startsWith('legacy_');
-    if (isLegacy) {
-      showNotification('Legacy jobs cannot be edited. Please migrate to dynamic jobs.', 'error');
-      return;
-    }
-
-    // Get selected type and its definition
-    const selectedType = document.getElementById('modal-type').value;
-    const selectedMedia = document.getElementById('modal-media').value;
-    const typeDef = jobTypes[selectedType];
-
-    // Build updated job object with type, media, and source
-    const updatedJob = {
-      ...currentJob,
-      name: document.getElementById('modal-name').value,
-      type: selectedType,
-      media: selectedMedia,
-      source: document.getElementById('modal-source').value || 'trakt',
-      limit: parseInt(document.getElementById('modal-limit').value),
-      sync_interval: document.getElementById('modal-interval').value || '',
-      mode: document.getElementById('modal-mode').value || ''
-    };
-
-    // Add period if applicable
-    if (typeDef?.requires_period) {
-      updatedJob.period = document.getElementById('modal-period').value;
-    } else {
-      // Clear period if job type doesn't require it
-      updatedJob.period = '';
-    }
-
-    // Add smart job fields if applicable
-    if (typeDef?.is_smart_job) {
-      updatedJob.base_min_rating = parseFloat(document.getElementById('modal-base-rating').value);
-      updatedJob.adjustment_factor = parseFloat(document.getElementById('modal-adjustment-factor').value);
-    } else {
-      // Clear smart job fields if not a smart job
-      updatedJob.base_min_rating = 0;
-      updatedJob.adjustment_factor = 0;
-    }
-
-    // Add Radarr/Sonarr specific fields based on the UPDATED media type
-    const tempJob = { ...updatedJob };
-    if (isDirectMode(tempJob)) {
-      if (selectedMedia === 'movie') {
-        updatedJob.minimum_availability = document.getElementById('modal-min-availability').value || '';
-        updatedJob.monitor = document.getElementById('modal-radarr-monitor').value || '';
-      } else {
-        updatedJob.minimum_availability = ''; // Clear movie-specific field
-        updatedJob.monitor = document.getElementById('modal-sonarr-monitor').value || '';
-      }
-    }
-
-    try {
-      const response = await fetch(`/v1/jobs/${currentJob.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedJob)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save job');
-      }
-
-      // Update local state
-      const index = allJobs.findIndex(j => j.id === currentJob.id);
-      if (index !== -1) {
-        allJobs[index] = updatedJob;
-      }
-      currentJob = updatedJob;
-
-      renderJobsList();
-      showNotification('Job saved successfully!', 'success');
-    } catch (error) {
-      showNotification(error.message, 'error');
-    }
-  });
-
-  async function toggleJobEnabled() {
-    if (!currentJob) return;
-
-    const isLegacy = currentJob.id.startsWith('legacy_');
-    if (isLegacy) {
-      showNotification('Legacy jobs cannot be modified here. Use the configuration file.', 'error');
-      return;
-    }
-
-    const newEnabled = !currentJob.enabled;
-    const action = newEnabled ? 'enable' : 'disable';
-
-    if (!confirm(`${capitalize(action)} "${currentJob.name}"?`)) return;
-
-    try {
-      const updatedJob = { ...currentJob, enabled: newEnabled };
-      const response = await fetch(`/v1/jobs/${currentJob.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedJob)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update job');
-      }
-
-      // Update local state
-      const index = allJobs.findIndex(j => j.id === currentJob.id);
-      if (index !== -1) {
-        allJobs[index].enabled = newEnabled;
-      }
-
-      closeJobModal();
-      renderJobsList();
-      showNotification(`Job ${action}d successfully!`, 'success');
-    } catch (error) {
-      showNotification(error.message, 'error');
-    }
-  }
-
-  async function deleteJob(jobId) {
-    const job = allJobs.find(j => j.id === jobId);
-    if (!job) return;
-
-    if (job.id.startsWith('legacy_')) {
-      showNotification('Legacy jobs cannot be deleted. Disable them in the configuration.', 'error');
-      return;
-    }
-
-    if (!confirm(`Delete "${job.name}"? This cannot be undone.`)) return;
-
-    try {
-      const response = await fetch(`/v1/jobs/${jobId}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete job');
-      }
-
-      // Remove from local state
-      allJobs = allJobs.filter(j => j.id !== jobId);
-
-      renderJobsList();
-      showNotification('Job deleted successfully!', 'success');
-    } catch (error) {
-      showNotification(error.message, 'error');
-    }
-  }
-
-  function deleteCurrentJob() {
-    if (currentJob) {
-      closeJobModal();
-      deleteJob(currentJob.id);
-    }
-  }
-
-  async function triggerJob(jobId) {
-    const job = allJobs.find(j => j.id === jobId);
-    if (!job) return;
-
-    try {
-      const response = await fetch(`/v1/jobs/${jobId}/trigger`, {
-        method: 'POST'
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to trigger job');
-      }
-
-      showNotification(data.message || `${job.name} started!`, 'success');
-    } catch (error) {
-      showNotification(error.message, 'error');
-    }
-  }
-
-  function runJobNow() {
-    if (currentJob) {
-      triggerJob(currentJob.id);
-    }
-  }
-
-  // Preview functionality
-  function previewJob() {
-    if (!currentJob) return;
-
-    const job = currentJob;
-    closeJobModal();
-
-    setTimeout(async () => {
-      currentFilter = 'all';
-
-      document.getElementById('preview-title').textContent = job.name;
-      document.getElementById('preview-modal').classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
-
-      document.getElementById('preview-content').innerHTML = `
-        <div class="flex items-center justify-center py-12">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"></div>
-        </div>
-      `;
-
-      try {
-        const response = await fetch(`/v1/jobs/${job.id}/preview`, {
-          method: 'POST'
-        });
-
-        previewData = await response.json();
-        renderPreview(previewData);
-      } catch (error) {
-        document.getElementById('preview-content').innerHTML = `
-          <div class="text-center py-12">
-            <svg class="w-16 h-16 mx-auto mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <p class="text-slate-300 text-lg font-medium">Failed to load preview</p>
-            <p class="text-slate-400 text-sm mt-2">${error.message}</p>
-          </div>
-        `;
-      }
-    }, 150);
-  }
-
-  function filterPreview(filter) {
-    currentFilter = filter;
-
-    ['all', 'will_add', 'already_exists', 'filtered_out'].forEach(f => {
-      const btn = document.getElementById(`filter-${f}`);
-      if (f === filter) {
-        btn.className = 'px-4 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white';
-      } else {
-        btn.className = 'px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600';
-      }
-    });
-
-    if (previewData) {
-      renderPreview(previewData, currentFilter);
-    }
-  }
-
-  function closePreviewModal() {
-    document.getElementById('preview-modal').classList.add('hidden');
-    document.body.style.overflow = 'auto';
-  }
-
-  function renderPreview(data, filter) {
-	const source = data.source || 'trakt';
-	const sourceLabel = source === 'tmdb' ? 'TMDB' : capitalize(source);
-	const simklMostWatchedURL = data.media_type === 'show' ? 'https://simkl.com/tv/best-shows/most-watched' : 'https://simkl.com/movies/best-movies/most-watched';
-	document.getElementById('preview-source').innerHTML = source === 'simkl'
-	  ? `Most Watched on <a class="text-blue-400 hover:underline" href="${simklMostWatchedURL}" target="_blank" rel="noopener">Simkl</a>`
-	  : `Preview of what this job will fetch from ${sourceLabel}`;
-    const willAdd = data.total_found - data.already_exists - data.filtered_out;
-    document.getElementById('preview-stats').innerHTML = `
-      <div class="bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg p-4 shadow-lg ring-1 ring-slate-600/50">
-        <div class="text-2xl font-bold text-white">${data.total_found}</div>
-        <div class="text-xs text-slate-200 mt-1">Total Found</div>
-      </div>
-      <div class="bg-gradient-to-br from-green-700 to-green-800 rounded-lg p-4 shadow-lg ring-1 ring-green-600/40">
-        <div class="text-2xl font-bold text-white">${willAdd}</div>
-        <div class="text-xs text-green-100 mt-1">Will Add</div>
-      </div>
-      <div class="bg-gradient-to-br from-blue-700 to-blue-800 rounded-lg p-4 shadow-lg ring-1 ring-blue-600/40">
-        <div class="text-2xl font-bold text-white">${data.already_exists}</div>
-        <div class="text-xs text-blue-100 mt-1">Already Exists</div>
-      </div>
-      <div class="bg-gradient-to-br from-red-700 to-red-800 rounded-lg p-4 shadow-lg ring-1 ring-red-600/40">
-        <div class="text-2xl font-bold text-white">${data.filtered_out}</div>
-        <div class="text-xs text-red-100 mt-1">Filtered Out</div>
-      </div>
-    `;
-
-    let filteredItems;
-    if (data.items && Array.isArray(data.items)) {
-      filteredItems = data.items;
-      if (filter === 'will_add') {
-        filteredItems = filteredItems.filter(item => !item.already_exists && !item.filtered_out);
-      } else if (filter === 'already_exists') {
-        filteredItems = filteredItems.filter(item => item.already_exists);
-      } else if (filter === 'filtered_out') {
-        filteredItems = filteredItems.filter(item => item.filtered_out);
-      }
-    } else {
-      filteredItems = [];
-    }
-
-    if (!filteredItems || filteredItems.length === 0) {
-      document.getElementById('preview-content').innerHTML = `
-        <div class="flex flex-col items-center justify-center py-12" style="min-height: 300px;">
-          <svg class="w-16 h-16 mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-          </svg>
-          <p class="text-slate-400 text-lg font-semibold">No items found for this filter.</p>
-          <p class="text-slate-500 text-sm mt-2">Try another filter or adjust your job settings.</p>
-        </div>
-      `;
-      return;
-    }
-
-    const itemsHtml = filteredItems.map(item => {
-      let statusBadge = '';
-      let statusClass = '';
-
-      if (item.filtered_out) {
-        statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-300 rounded-lg text-xs font-semibold ring-1 ring-red-500/30"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>Filtered</span>`;
-        statusClass = 'opacity-60';
-      } else if (item.already_exists) {
-        statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-blue-300 rounded-lg text-xs font-semibold ring-1 ring-blue-500/30"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Exists</span>`;
-        statusClass = 'opacity-85';
-      } else {
-        statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-300 rounded-lg text-xs font-semibold ring-1 ring-green-500/30"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m-7-7h14"></path></svg>Will Add</span>`;
-      }
-
-      const posterHtml = data.has_posters && item.poster_url
-        ? `<img src="${item.poster_url}" alt="${item.title}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full bg-slate-700\\'><svg class=\\'w-8 h-8 text-slate-500\\' fill=\\'currentColor\\' viewBox=\\'0 0 20 20\\'><path d=\\'M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4z\\' /></svg></div>'">`
-        : `<div class="flex items-center justify-center h-full bg-slate-700"><svg class="w-8 h-8 text-slate-500" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4z" /></svg></div>`;
-
-      return `
-        <div class="rounded-lg border border-slate-700/80 overflow-hidden hover:border-slate-600 transition-all ${statusClass}">
-          <div class="relative flex gap-4 p-4">
-            <div class="absolute inset-0 bg-gradient-to-r from-slate-900/70 via-slate-900/40 to-slate-800/60"></div>
-            <div class="relative z-10 flex-shrink-0 w-24 h-36 rounded-lg overflow-hidden bg-slate-700 shadow-xl ring-1 ring-white/10">
-              ${posterHtml}
-            </div>
-            <div class="relative z-10 flex-1 min-w-0 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-              <div class="min-w-0">
-                <h3 class="text-lg font-semibold text-white truncate">${item.title}</h3>
-                <div class="flex items-center gap-2 mt-1 text-sm text-slate-300 flex-wrap">
-                  ${item.year ? `<span>${item.year}</span>` : ''}
-                  ${item.rating ? `<span class="flex items-center gap-1 text-slate-200">
-                    <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-                    ${item.rating.toFixed(1)}
-                  </span>` : ''}
-                  ${item.votes ? `<span class="text-slate-400">(${item.votes.toLocaleString()} votes)</span>` : ''}
-                  ${item.tmdb_id ? `<a href="https://www.themoviedb.org/${item.tvdb_id ? 'tv' : 'movie'}/${item.tmdb_id}" target="_blank" class="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
-                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
-                    TMDB
-                  </a>` : ''}
-                  ${item.tvdb_id ? `<a href="https://www.thetvdb.com/dereferrer/series/${item.tvdb_id}" target="_blank" class="inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors">
-                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
-                    TVDB
-                  </a>` : ''}
-                </div>
-                ${item.genres && item.genres.length > 0 ? `
-                  <div class="flex flex-wrap gap-1 mt-2">
-                    ${item.genres.slice(0, 4).map(genre => `<span class="px-2 py-0.5 text-xs rounded bg-slate-700/60 text-slate-200 ring-1 ring-slate-600/40">${genre}</span>`).join('')}
-                  </div>
-                ` : ''}
-                ${item.overview ? `<p class="text-sm text-slate-300/90 mt-3 line-clamp-2">${item.overview}</p>` : ''}
-                ${item.filter_reason && item.filtered_out ? `<p class="text-xs text-red-300/90 mt-2">Reason: ${item.filter_reason}</p>` : ''}
-              </div>
-              <div class="flex flex-col items-start lg:items-end gap-2">
-                ${statusBadge}
-                ${item.popularity ? `
-                  <div class="text-xs text-slate-300/80">Popularity: ${item.popularity}</div>
-                ` : ''}
-                ${item.runtime ? `
-                  <div class="text-xs text-slate-300/80">Runtime: ${item.runtime}m</div>
-                ` : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    document.getElementById('preview-content').innerHTML = `
-      <div class="space-y-3">
-        ${itemsHtml}
-      </div>
-    `;
-  }
-</script>
+<script defer src="/static/js/jobs.js"></script>
 
 {{template "components/footer.html" .}} {{end}}

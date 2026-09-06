@@ -7,22 +7,17 @@ import (
 
 func (rg *RouteGroup) RegisterJellyseerrRoutes(group fiber.Router) {
 	// Validate Jellyseerr connection
-	group.Get("/jellyseerr/validate", func(c *fiber.Ctx) error {
-		// Check if test mode
-		testMode := c.Query("test") == "true"
-
+	validate := func(c *fiber.Ctx) error {
 		var url, apiKey string
-
-		if testMode {
-			// Test mode: use form values
-			url = c.Query("url")
-			apiKey = c.Query("api_key")
-
-			if url == "" || apiKey == "" {
-				return c.Status(400).JSON(fiber.Map{
-					"error": "Jellyseerr URL and API key are required",
-				})
+		if c.Method() == fiber.MethodPost {
+			var request struct {
+				URL    string `json:"url"`
+				APIKey string `json:"api_key"`
 			}
+			if err := c.BodyParser(&request); err != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body", "connected": false})
+			}
+			url, apiKey = request.URL, request.APIKey
 		} else {
 			// Normal mode, use saved config
 			cfg := rg.gctx.Config()
@@ -35,6 +30,10 @@ func (rg *RouteGroup) RegisterJellyseerrRoutes(group fiber.Router) {
 					"error":     "Jellyseerr URL or API key is not configured",
 				})
 			}
+		}
+		c.Set(fiber.HeaderCacheControl, "no-store")
+		if url == "" || apiKey == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Jellyseerr URL and API key are required", "connected": false})
 		}
 
 		jellyseerrClient := integrations.NewJellyseerr(integrations.JellyseerrConfig{
@@ -56,5 +55,7 @@ func (rg *RouteGroup) RegisterJellyseerrRoutes(group fiber.Router) {
 			"message":   "Jellyseerr connection successful! Version: " + status.Version,
 			"version":   status.Version,
 		})
-	})
+	}
+	group.Get("/jellyseerr/validate", validate)
+	group.Post("/jellyseerr/validate", validate)
 }

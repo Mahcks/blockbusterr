@@ -1,49 +1,43 @@
 ---
 title: Use Cases
-description: Supported Blockbusterr job and filter examples.
+description: Practical v2 job and rule-set arrangements for common media libraries.
 ---
 
-Filters are global by media type. A movie filter affects every movie job, and a show filter affects every show job.
+## One simple discovery job
 
-## English-language discovery
+Create a TMDB Trending Movies job, assign **Default Movies**, preview it, and enable it. This is enough to run Blockbusterr; additional providers are optional.
 
-```yaml
-filters:
-  movies:
-    allowed_languages: ["en"]
-  shows:
-    allowed_languages: ["en"]
-```
+## Family and personal libraries
 
-## Recent, well-rated movies
+Create two movie rule sets:
 
-```yaml
-filters:
-  movies:
-    blacklisted_min_year: 2020
-    min_rating: 7.0
-    min_votes: 1000
+- **Family Movies:** allowed languages, family-friendly genres, recent-year boundary, and blocked title exceptions.
+- **Personal Movies:** broader genres and a higher minimum rating.
 
-jobs:
-  popular_movies:
-    enabled: true
-    limit: 20
-```
+Assign each set to the jobs feeding its intended library or approval workflow.
 
-## Exclude unwanted genres
+## Provider diversity with one policy
 
-```yaml
-filters:
-  movies:
-    blacklisted_genres: ["documentary", "reality"]
-  shows:
-    blacklisted_genres: ["reality", "talk"]
-```
+Create TMDB Trending, Simkl Trending, and Trakt Anticipated jobs, then assign the same **Current Releases** rule set to all three. Editing that rule set updates every assigned job while each provider continues discovering independently.
 
-Genre inclusion and per-job filters are not currently supported.
+## A special-purpose job
 
-## Different discovery providers
+Start with a shared **Default Movies** assignment, open one job, and choose **Make job-specific copy**. Add required science-fiction genres or keywords to the new copy without changing any other job.
 
-Dynamic jobs created in the Jobs UI can select TMDB, Simkl, or Trakt when the chosen job type supports that provider. The global filters above apply after discovery, regardless of provider.
+## Approval-first automation
 
-Preview a job before enabling it to confirm which titles pass the current filters.
+Set the default delivery mode to Jellyseerr, assign conservative rules, and run a preview. Accepted titles become Jellyseerr or Seerr requests; approval and forwarding remain controlled by that service's user permissions.
+
+## Fully automated library loop
+
+Use Blockbusterr to discover and add suitable content, then use Maintainerr independently to remove or unmonitor stale and unwatched content. Coordinate Blockbusterr title exceptions and Maintainerr cleanup rules so removed titles are not repeatedly rediscovered.
+
+## Tuning workflow
+
+1. Preview the job.
+2. Inspect the accepted and rejected distribution.
+3. Open decision details for unexpected titles.
+4. Adjust the assigned rule set or add a universal title exception.
+5. Preview again before enabling delivery.
+
+After enabling, use **Job Runs** for aggregate health and **Activity Entries** for title-level explanations.

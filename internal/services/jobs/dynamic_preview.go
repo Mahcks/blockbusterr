@@ -3,16 +3,22 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
+	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
 // PreviewDynamicJob uses the same provider selection and fetchers as job execution.
 func PreviewDynamicJob(cfg *config.Config, db *database.Database, job config.DynamicJob) (PreviewResponse, error) {
+	return previewDynamicJob(cfg, db, job, nil)
+}
+
+func previewDynamicJob(cfg *config.Config, db *database.Database, job config.DynamicJob, listSources ListSourceRegistry) (PreviewResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -23,16 +29,29 @@ func PreviewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 	if job.Limit <= 0 {
 		job.Limit = definition.DefaultLimit
 	}
+	cfg, err := configForJob(cfg, job)
+	if err != nil {
+		return PreviewResponse{}, err
+	}
 	mode := DetermineMode(job.Mode, cfg.Jobs.Mode)
+	job.Mode = mode
+	if job.Type == "smart_popular" {
+		if job.BaseMinRating == 0 {
+			job.BaseMinRating = 6
+		}
+		if job.AdjustmentFactor == 0 {
+			job.AdjustmentFactor = .5
+		}
+	}
 	response := PreviewResponse{JobName: job.Name, Source: job.Source, MediaType: job.MediaType, Mode: mode, HasPosters: hasTMDBConfigured(cfg), Items: []PreviewItem{}}
-	executor := &DynamicJobExecutor{Config: cfg, Database: db, DryRun: true}
-	discovery, err := NewDiscoveryClient(cfg, job.Source)
+	executor := &DynamicJobExecutor{Config: cfg, Database: db, DryRun: true, ListSources: listSources}
+	discovery, err := executor.discoveryForJob(job)
 	if err != nil {
 		return response, err
 	}
 
 	if job.MediaType == "movie" {
-		fetcher := executor.getMovieFetcher(job.Type)
+		fetcher := executor.getMovieFetcher(job)
 		if fetcher == nil {
 			return response, fmt.Errorf("no movie fetcher for job type: %s", job.Type)
 		}
@@ -41,13 +60,13 @@ func PreviewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 			return response, err
 		}
 		response.TotalFound = len(movies)
-		if err := previewMovies(ctx, cfg, mode, movies, &response); err != nil {
+		if err := previewMovies(ctx, cfg, db, job, movies, &response); err != nil {
 			return response, err
 		}
 		return response, nil
 	}
 
-	fetcher := executor.getShowFetcher(job.Type)
+	fetcher := executor.getShowFetcher(job)
 	if fetcher == nil {
 		return response, fmt.Errorf("no show fetcher for job type: %s", job.Type)
 	}
@@ -56,13 +75,22 @@ func PreviewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 		return response, err
 	}
 	response.TotalFound = len(shows)
-	if err := previewShows(ctx, cfg, mode, shows, &response); err != nil {
+	if err := previewShows(ctx, cfg, db, job, shows, &response); err != nil {
 		return response, err
 	}
 	return response, nil
 }
 
-func previewMovies(ctx context.Context, cfg *config.Config, mode string, movies []integrations.Movie, response *PreviewResponse) error {
+func previewMovies(ctx context.Context, cfg *config.Config, db *database.Database, job config.DynamicJob, movies []integrations.Movie, response *PreviewResponse) error {
+	mode, repeatPolicy := job.Mode, job.RepeatPolicy
+	var percentiles map[int]float64
+	if job.Type == "smart_popular" {
+		percentiles = filters.CalculateMoviePopularityPercentiles(movies)
+	}
+	if err := enrichMovieCertifications(ctx, cfg, movies); err != nil {
+		return fmt.Errorf("failed to enrich movie certifications: %w", err)
+	}
+	scores := ScoreAndRankMovies(movies, cfg)
 	existing := map[int]bool{}
 	if mode == "direct" {
 		client := integrations.NewRadarr(integrations.RadarrConfig{BaseURL: cfg.Radarr.URL, APIKey: cfg.Radarr.APIKey})
@@ -78,13 +106,32 @@ func previewMovies(ctx context.Context, cfg *config.Config, mode string, movies 
 	if mode == "jellyseerr" {
 		jellyseerr = previewJellyseerr(cfg)
 	}
+	deliveries, err := previewDeliveryHistory(db, movieDeliveryIdentities(movies))
+	if err != nil {
+		return err
+	}
+	policy := effectiveRepeatPolicy(repeatPolicy, cfg.Jobs.RepeatPolicy)
 	for index, movie := range movies {
 		item := createMoviePreviewItem(cfg, movie, len(movies)-index)
-		if passes, reason := filters.MoviePassesFilters(movie, cfg.Filters.Movies); !passes {
-			item.FilteredOut, item.FilterReason = true, reason
+		score := scores[integrations.MovieKey(movie.IDs)]
+		item.Score, item.Rank = score.Score, score.Rank
+		item.ProviderRank = index + 1
+		result := filters.MoviePassesRules(movie, cfg.Filters.Movies, cfg.TitleExceptions)
+		if percentiles != nil {
+			threshold := filters.CalculateAdaptiveRating(job.BaseMinRating, percentiles[movie.IDs.TMDB], job.AdjustmentFactor)
+			result = filters.MoviePassesAdaptiveFilters(movie, cfg.Filters.Movies, threshold, cfg.TitleExceptions)
+		}
+		item.FilterChecks = result.Checks
+		item.DecisionReason = filters.Explain(result)
+		if !result.Passed {
+			item.FilteredOut, item.FilterReason = true, item.DecisionReason
 			response.FilteredOut++
+		} else if reason := previewRepeatReason(policy, deliveries, database.DeliveryIdentity{MediaType: "movie", TMDBID: movie.IDs.TMDB, IMDBID: movie.IDs.IMDB}, time.Now()); reason != "" {
+			item.AlreadyExists, item.RepeatBlocked, item.DecisionReason = true, true, "Skipped: "+reason
+			response.AlreadyExists++
 		} else if mode == "direct" && existing[movie.IDs.TMDB] {
 			item.AlreadyExists = true
+			item.DecisionReason = "Skipped: Already in Radarr"
 			response.AlreadyExists++
 		} else if jellyseerr != nil && movie.IDs.TMDB > 0 {
 			info, err := jellyseerr.GetMovieInfo(movie.IDs.TMDB)
@@ -93,11 +140,14 @@ func previewMovies(ctx context.Context, cfg *config.Config, mode string, movies 
 			}
 			if info.HasMediaInfo() {
 				item.AlreadyExists = true
+				item.DecisionReason = "Skipped: Already in Jellyseerr / Seerr"
 				response.AlreadyExists++
 			} else {
+				item.DecisionReason = previewDeliveryReason(mode, result)
 				response.WillAdd++
 			}
 		} else {
+			item.DecisionReason = previewDeliveryReason(mode, result)
 			response.WillAdd++
 		}
 		response.Items = append(response.Items, item)
@@ -105,7 +155,16 @@ func previewMovies(ctx context.Context, cfg *config.Config, mode string, movies 
 	return nil
 }
 
-func previewShows(ctx context.Context, cfg *config.Config, mode string, shows []integrations.Show, response *PreviewResponse) error {
+func previewShows(ctx context.Context, cfg *config.Config, db *database.Database, job config.DynamicJob, shows []integrations.Show, response *PreviewResponse) error {
+	mode, repeatPolicy := job.Mode, job.RepeatPolicy
+	var percentiles map[int]float64
+	if job.Type == "smart_popular" {
+		percentiles = filters.CalculateShowPopularityPercentiles(shows)
+	}
+	if err := enrichShowCertifications(ctx, cfg, shows); err != nil {
+		return fmt.Errorf("failed to enrich show certifications: %w", err)
+	}
+	scores := ScoreAndRankShows(shows, cfg)
 	existingTVDB, existingTMDB := map[int]bool{}, map[int]bool{}
 	if mode == "direct" {
 		client := integrations.NewSonarr(integrations.SonarrConfig{BaseURL: cfg.Sonarr.URL, APIKey: cfg.Sonarr.APIKey})
@@ -122,13 +181,32 @@ func previewShows(ctx context.Context, cfg *config.Config, mode string, shows []
 	if mode == "jellyseerr" {
 		jellyseerr = previewJellyseerr(cfg)
 	}
+	deliveries, err := previewDeliveryHistory(db, showDeliveryIdentities(shows))
+	if err != nil {
+		return err
+	}
+	policy := effectiveRepeatPolicy(repeatPolicy, cfg.Jobs.RepeatPolicy)
 	for index, show := range shows {
 		item := createShowPreviewItem(cfg, show, len(shows)-index)
-		if passes, reason := filters.ShowPassesFilters(show, cfg.Filters.Shows); !passes {
-			item.FilteredOut, item.FilterReason = true, reason
+		score := scores[integrations.ShowKey(show.IDs)]
+		item.Score, item.Rank = score.Score, score.Rank
+		item.ProviderRank = index + 1
+		result := filters.ShowPassesRules(show, cfg.Filters.Shows, cfg.TitleExceptions)
+		if percentiles != nil {
+			threshold := filters.CalculateAdaptiveRating(job.BaseMinRating, percentiles[show.IDs.TVDB], job.AdjustmentFactor)
+			result = filters.ShowPassesAdaptiveFilters(show, cfg.Filters.Shows, threshold, cfg.TitleExceptions)
+		}
+		item.FilterChecks = result.Checks
+		item.DecisionReason = filters.Explain(result)
+		if !result.Passed {
+			item.FilteredOut, item.FilterReason = true, item.DecisionReason
 			response.FilteredOut++
+		} else if reason := previewRepeatReason(policy, deliveries, database.DeliveryIdentity{MediaType: "show", TMDBID: show.IDs.TMDB, TVDBID: show.IDs.TVDB, IMDBID: show.IDs.IMDB}, time.Now()); reason != "" {
+			item.AlreadyExists, item.RepeatBlocked, item.DecisionReason = true, true, "Skipped: "+reason
+			response.AlreadyExists++
 		} else if mode == "direct" && ((show.IDs.TVDB > 0 && existingTVDB[show.IDs.TVDB]) || (show.IDs.TMDB > 0 && existingTMDB[show.IDs.TMDB])) {
 			item.AlreadyExists = true
+			item.DecisionReason = "Skipped: Already in Sonarr"
 			response.AlreadyExists++
 		} else if jellyseerr != nil && show.IDs.TMDB > 0 {
 			info, err := jellyseerr.GetShowInfo(show.IDs.TMDB)
@@ -137,16 +215,61 @@ func previewShows(ctx context.Context, cfg *config.Config, mode string, shows []
 			}
 			if info.HasMediaInfo() {
 				item.AlreadyExists = true
+				item.DecisionReason = "Skipped: Already in Jellyseerr / Seerr"
 				response.AlreadyExists++
 			} else {
+				item.DecisionReason = previewDeliveryReason(mode, result)
 				response.WillAdd++
 			}
 		} else {
+			item.DecisionReason = previewDeliveryReason(mode, result)
 			response.WillAdd++
 		}
 		response.Items = append(response.Items, item)
 	}
 	return nil
+}
+
+func previewDeliveryReason(mode string, result filters.FilterResult) string {
+	verb := "add"
+	if mode == "jellyseerr" {
+		verb = "request"
+	}
+	return "Will " + verb + ": " + strings.TrimPrefix(filters.Explain(result), "Accepted: ")
+}
+
+func previewDeliveryHistory(db *database.Database, identities []database.DeliveryIdentity) (map[string]time.Time, error) {
+	if db == nil {
+		return map[string]time.Time{}, nil
+	}
+	return db.LatestSuccessfulDeliveries(identities)
+}
+
+func previewRepeatReason(policy enums.RepeatPolicy, deliveries map[string]time.Time, identity database.DeliveryIdentity, now time.Time) string {
+	if policy == enums.RepeatPolicyImmediate {
+		return ""
+	}
+	deliveredAt, ok := deliveries[identity.Key()]
+	if !ok {
+		return ""
+	}
+	return repeatSkipReasonForDelivery(policy, deliveredAt, now)
+}
+
+func movieDeliveryIdentities(movies []integrations.Movie) []database.DeliveryIdentity {
+	identities := make([]database.DeliveryIdentity, 0, len(movies))
+	for _, movie := range movies {
+		identities = append(identities, database.DeliveryIdentity{MediaType: "movie", TMDBID: movie.IDs.TMDB, IMDBID: movie.IDs.IMDB})
+	}
+	return identities
+}
+
+func showDeliveryIdentities(shows []integrations.Show) []database.DeliveryIdentity {
+	identities := make([]database.DeliveryIdentity, 0, len(shows))
+	for _, show := range shows {
+		identities = append(identities, database.DeliveryIdentity{MediaType: "show", TMDBID: show.IDs.TMDB, TVDBID: show.IDs.TVDB, IMDBID: show.IDs.IMDB})
+	}
+	return identities
 }
 
 func previewJellyseerr(cfg *config.Config) *integrations.Jellyseerr {

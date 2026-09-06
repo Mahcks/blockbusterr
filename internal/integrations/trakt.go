@@ -7,12 +7,13 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
 const (
-	TraktAPIBaseURL     = "https://api.trakt.tv"
-	TraktAPIVersion     = "2"
+	TraktAPIBaseURL      = "https://api.trakt.tv"
+	TraktAPIVersion      = "2"
 	TraktDefaultPageSize = 100 // Max items per page for most Trakt endpoints
 )
 
@@ -20,13 +21,26 @@ const (
 type Trakt struct {
 	clientID     string
 	clientSecret string
+	accessToken  string
+	refreshToken string
+	tokenExpires int64
+	onToken      func(TraktToken) error
+	loadToken    func() TraktToken
 	httpClient   *http.Client
 }
+
+// ponytail: one process-wide lock is sufficient; use per-account locks only if refresh contention becomes measurable.
+var traktTokenMu sync.Mutex
 
 // TraktConfig holds configuration for Trakt client
 type TraktConfig struct {
 	ClientID     string
 	ClientSecret string
+	AccessToken  string
+	RefreshToken string
+	TokenExpires int64
+	OnToken      func(TraktToken) error
+	LoadToken    func() TraktToken
 }
 
 // NewTrakt creates a new Trakt API client
@@ -34,6 +48,11 @@ func NewTrakt(config TraktConfig) *Trakt {
 	return &Trakt{
 		clientID:     config.ClientID,
 		clientSecret: config.ClientSecret,
+		accessToken:  config.AccessToken,
+		refreshToken: config.RefreshToken,
+		tokenExpires: config.TokenExpires,
+		onToken:      config.OnToken,
+		loadToken:    config.LoadToken,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -42,6 +61,10 @@ func NewTrakt(config TraktConfig) *Trakt {
 
 // doRequest performs an HTTP request to the Trakt API
 func (t *Trakt) doRequest(ctx context.Context, method, endpoint string, body io.Reader) (*http.Response, error) {
+	accessToken, err := t.accessTokenForRequest(ctx)
+	if err != nil {
+		return nil, err
+	}
 	url := fmt.Sprintf("%s%s", TraktAPIBaseURL, endpoint)
 
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
@@ -53,8 +76,11 @@ func (t *Trakt) doRequest(ctx context.Context, method, endpoint string, body io.
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("trakt-api-version", TraktAPIVersion)
 	req.Header.Set("trakt-api-key", t.clientID)
+	if accessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+	}
 
-	resp, err := t.httpClient.Do(req)
+	resp, err := doRequest(t.httpClient, req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -88,9 +114,9 @@ func (t *Trakt) doRequestPaginated(ctx context.Context, endpoint string, limit i
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
+			err := newAPIError("Trakt", resp)
 			_ = resp.Body.Close()
-			return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+			return nil, err
 		}
 
 		body, err := io.ReadAll(resp.Body)
@@ -332,8 +358,7 @@ func (t *Trakt) Search(ctx context.Context, query string, searchType string, lim
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Trakt", resp)
 	}
 
 	var results []SearchResult
@@ -355,8 +380,7 @@ func (t *Trakt) GetBoxOfficeMovies(ctx context.Context, limit int) ([]BoxOfficeM
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Trakt", resp)
 	}
 
 	var results []BoxOfficeMovie
@@ -663,8 +687,7 @@ func (t *Trakt) GetLanguages(ctx context.Context, mediaType string) ([]Language,
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Trakt", resp)
 	}
 
 	var languages []Language
@@ -686,8 +709,7 @@ func (t *Trakt) GetGenres(ctx context.Context, mediaType string) ([]Genre, error
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Trakt", resp)
 	}
 
 	var genres []Genre
@@ -709,8 +731,7 @@ func (t *Trakt) GetCountries(ctx context.Context, mediaType string) ([]Country, 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Trakt", resp)
 	}
 
 	var countries []Country
@@ -732,8 +753,7 @@ func (t *Trakt) GetNetworks(ctx context.Context) ([]Network, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Trakt", resp)
 	}
 
 	var networks []Network

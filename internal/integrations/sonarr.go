@@ -82,7 +82,7 @@ func (s *Sonarr) doRequest(ctx context.Context, method, endpoint string, body an
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Api-Key", s.apiKey)
 
-	resp, err := s.httpClient.Do(req)
+	resp, err := doRequest(s.httpClient, req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -147,8 +147,7 @@ func (s *Sonarr) GetSystemStatus(ctx context.Context) (*SonarrSystemStatus, erro
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Sonarr", resp)
 	}
 
 	var status SonarrSystemStatus
@@ -168,8 +167,7 @@ func (s *Sonarr) GetQualityProfiles(ctx context.Context) ([]SonarrQualityProfile
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Sonarr", resp)
 	}
 
 	var profiles []SonarrQualityProfile
@@ -189,8 +187,7 @@ func (s *Sonarr) GetRootFolders(ctx context.Context) ([]SonarrRootFolder, error)
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Sonarr", resp)
 	}
 
 	var folders []SonarrRootFolder
@@ -210,8 +207,7 @@ func (s *Sonarr) AddSeries(ctx context.Context, series SonarrSeries) (*SonarrSer
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Sonarr", resp)
 	}
 
 	var addedSeries SonarrSeries
@@ -231,8 +227,7 @@ func (s *Sonarr) GetSeries(ctx context.Context) ([]SonarrSeries, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Sonarr", resp)
 	}
 
 	var series []SonarrSeries
@@ -254,8 +249,7 @@ func (s *Sonarr) LookupSeries(ctx context.Context, term string) ([]SonarrSeries,
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Sonarr", resp)
 	}
 
 	var series []SonarrSeries

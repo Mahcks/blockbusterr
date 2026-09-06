@@ -1,0 +1,87 @@
+---
+title: Rules
+description: Build reusable movie and show policies, assign them to jobs, and manage title exceptions.
+---
+
+Rules decide which discovered titles a job may deliver. Every job references exactly one rule set, and every rule set applies to either movies or shows.
+
+## The v2 model
+
+- **Default Movies** and **Default Shows** are built-in rule sets created automatically.
+- Create additional rule sets for different audiences, libraries, or discovery strategies.
+- Assign the same rule set to several jobs when they should follow the same policy.
+- Use **Make job-specific copy** in the job editor when one job needs independent rules.
+- **Title exceptions** are universal allow/block decisions and take precedence over normal rule evaluation.
+
+Changes to a shared rule set affect every assigned job. The Rules page shows its media type, revision, and assignment count before you save it.
+
+## Evaluation order
+
+Blockbusterr evaluates a candidate in this order:
+
+1. Universal title block
+2. Universal title allow
+3. Regional content-rating rules
+4. Block rules
+5. Allow overrides
+6. Required matches and boundaries such as year, runtime, rating, and votes
+
+A universally blocked title is always rejected, while a universally allowed title bypasses the selected rule set. Within a rule set, content-rating and block rules win over allow overrides. Otherwise, the title must satisfy every configured requirement and boundary.
+
+## Rule groups
+
+### Required matches
+
+Country and language lists narrow accepted content to those values. Required genre, keyword, and network lists express positive requirements. An empty list means that dimension is unrestricted.
+
+### Block rules
+
+Block countries, languages, genres, keywords, networks, or provider IDs. Keyword checks are case-insensitive partial-title matches; provider IDs are exact matches.
+
+### Allow overrides
+
+Allow overrides admit a title that matches a configured country, language, genre, keyword, network, or minimum rating after it clears block rules. Use them sparingly: a matching override bypasses required matches and boundaries.
+
+### Content ratings
+
+Choose a two-letter country, then add allowed or blocked certifications for that region. Movie certifications and TV content ratings are enriched through TMDB only when a rule set uses this feature. If TMDB has multiple ratings for the selected country, any blocked match rejects the title.
+
+Choose an explicit unknown-rating policy. **Allow** preserves v1 behavior when regional metadata is missing; **Reject** fails closed and is recommended for family-focused rules. Preview and Activity identify the country, value, TMDB source, and unknown-rating decision.
+
+### Boundaries
+
+Set minimum or maximum year and runtime plus minimum rating and vote counts. Leave a boundary empty or set it to `0` to disable it.
+
+## Assign rules to a job
+
+1. Open **Jobs** and select a job.
+2. Choose a compatible rule set under **Rules**.
+3. Save the job.
+4. Use **Preview** to inspect accepted, rejected, skipped, and requested outcomes before enabling it.
+
+Only rule sets matching the job's media type can be assigned. Blockbusterr rejects mismatched or missing assignments instead of silently using another policy.
+
+## Make one job independent
+
+Open the job, choose its current shared rule set, and select **Make job-specific copy**. Blockbusterr duplicates the effective rules, names the copy after the job, assigns it immediately, and leaves the original unchanged.
+
+This is the v2 replacement for embedded per-job filters: the result is still isolated to one job, but it remains visible, reusable, and auditable on the Rules page.
+
+## Title exceptions
+
+Use the **Title exceptions** tab to manage universal movie TMDB IDs and show TVDB IDs:
+
+- **Always allow** bypasses normal rule evaluation.
+- **Always block** rejects the title before scoring or delivery.
+
+Activity Entries can add rejected titles to these lists. Review exceptions periodically because they affect every job of that media type.
+
+## YAML compatibility
+
+The UI is recommended. Existing `filters.movies`, `filters.shows`, and embedded custom job filters are migrated into deterministic rule sets at startup. New configurations are stored under `rule_sets`, and jobs reference them through `rule_set_id`.
+
+Legacy fields remain readable for upgrade compatibility; avoid editing both models manually.
+
+## Preview before enabling
+
+Preview uses the same assigned rules as manual and scheduled runs without delivering content. After a live run, use **Activity Entries** for per-title reasons and **Job Runs** for aggregate flow and outcome distribution.

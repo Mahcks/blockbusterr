@@ -1,676 +1,137 @@
 ---
-title: Jobs Overview
-description: Understanding Blockbusterr's automated job system
+title: Jobs
+description: Configure scheduled discovery jobs and route accepted media to your delivery tools.
 ---
 
-import { Tabs, TabItem, Card, CardGrid, Aside, Badge, Steps, Code } from '@astrojs/starlight/components';
+A job is one automated discovery pipeline:
+
+`provider → discovery type → rule set → scoring → delivery target`
 
-Jobs are automated tasks that fetch content from a configured discovery provider and send accepted items to your media stack on a schedule.
+You can run one job or combine several providers and strategies. Each job remains independently configurable and observable.
+
+## Create a job
+
+1. Open **Jobs** and select **New job**.
+2. Choose a ready recipe or open **Custom Job**.
+3. Recipes create a disabled job with an explicit provider, cadence, and job delivery cap. Recipes with meaningful filtering create dedicated rules; recipes without overrides reuse the media default.
+4. Review the automatic preview, adjust the job or its rules, then enable it.
 
-## Available Job Types
+Unavailable recipes remain visible and identify the connection they need. Recipes never silently select a different configured provider.
 
-<Badge text="17 Jobs" variant="success" /> <Badge text="9 Categories" variant="note" />
+## Built-in recipes
 
-<CardGrid>
-<Card title="Trending" icon="star">
-<Badge text="trending_movies" variant="tip" />
-<Badge text="trending_shows" variant="tip" />
+| Outcome | Provider | Default cadence |
+|---|---|---|
+| Balanced Trending movies and shows | TMDB | Daily |
+| New & Well Rated movies | TMDB | Daily |
+| Anticipated With Approval | Trakt + Jellyseerr/Seerr | Daily |
+| Documentary, Science-Fiction, Family, Reality TV, Anime | TMDB | Weekly |
+| Current TV | TMDB | Daily |
+| All-Time Classics | Trakt | Weekly |
+| Personal Watchlist | Connected TMDB account | Every 2 hours |
 
-What's hot **right now** - current buzz and viral content.
+Every recipe is versioned, disabled by default, and preview-first. Creating the same recipe again makes a separately named rule set rather than changing the first job's policy.
 
-**Update frequency:** Every 6 hours
-</Card>
+## Discovery types
 
-<Card title="Popular" icon="heart">
-<Badge text="popular_movies" variant="note" />
-<Badge text="popular_shows" variant="note" />
+| Type | Purpose |
+|---|---|
+| Trending | Content currently receiving attention |
+| Popular | Broad provider popularity |
+| Watched | Most watched for a selected period |
+| Collected | Most collected for a selected period |
+| Favorited | Most favorited for a selected period |
+| Played | Most played for a selected period |
+| Anticipated | Upcoming anticipated releases |
+| Box office | Current movie box-office discovery |
+| Smart Popular | Popularity with an adaptive rating threshold |
+| List or Watchlist | A provider-owned public list or personal watchlist |
+| Recommendations | One-hop TMDB recommendations from explicit seed IDs or a provider seed list |
 
-Most **watched** content over the past week.
+Support varies by provider and media type; the Jobs editor is the source of truth for valid combinations.
 
-**Update frequency:** Daily
-</Card>
+List jobs store a provider owner, list ID, or slug rather than an arbitrary web
+URL. They use the same preview, rules, scoring, duplicate checks, Activity
+Entries, and delivery limits as every other job. Removing an item from the
+source list never deletes media that Blockbusterr already delivered.
 
-<Card title="Smart Popular" icon="rocket">
-<Badge text="smart_popular_movies" variant="success" />
-<Badge text="smart_popular_shows" variant="success" />
+Public Trakt and TMDB lists need their provider application credentials.
+MDBList lists and the personal MDBList watchlist use an MDBList API key.
+Personal Trakt and TMDB watchlists require connecting that provider account in
+Settings; a public Trakt user's watchlist can instead use the account name in
+the job. Use **Check source** before saving to verify the identifier and see a
+movie/show sample without delivering anything.
 
-**Adaptive scoring** - balances mainstream blockbusters with quality control.
+Letterboxd public lists and watchlists are available only after explicitly
+enabling experimental scraping in Settings. Its official API requires selective
+approval, so this fallback may be blocked or break whenever Letterboxd changes
+its pages. It never accesses private content and fails instead of guessing a
+title match. MDBList remains the reliable bridge for lists imported from
+Letterboxd or IMDb.
 
-**Update frequency:** Daily
-</Card>
+Recommendation jobs accept up to 20 explicit TMDB movie or show IDs, an
+existing provider list, or both. Seed lists are normalized to TMDB identities;
+unmapped entries are ignored and a job with no usable seeds fails clearly.
+Seeds and results are deduplicated, seed titles are excluded, and results are
+never recursively expanded.
 
-<Card title="Box Office" icon="trophy">
-<Badge text="box_office" variant="caution" />
+## Job settings
 
-Current **theatrical** box office hits.
+- **Source:** TMDB, Simkl, Trakt, or MDBList when supported.
+- **Media:** Movie or show.
+- **Content limit:** Maximum candidates fetched before rules are evaluated.
+- **Job delivery cap:** Maximum winners a job contributes in one standalone run or ranked cycle; `0` is unlimited.
+- **Period:** Weekly, monthly, yearly, or all time for period-based types.
+- **Rule set:** The reusable policy used by preview and execution.
+- **Sync interval:** Optional Go duration or five-field cron override.
+- **Mode:** Optional `direct` or `jellyseerr` delivery override.
+- **Availability and monitoring:** Optional Radarr/Sonarr overrides.
+- **Sonarr series type:** `standard`, `anime`, or `daily` for show jobs.
+- **Repeat handling:** Optional override for when previously delivered and later removed media becomes eligible again.
+- **Ranked selection:** Opt a job into a shared cycle and optionally reserve a minimum number of picks.
 
-**Update frequency:** Weekly
-</Card>
+## Shared and job-specific rules
 
-<Card title="Anticipated" icon="telescope">
-<Badge text="anticipated_movies" variant="tip" />
-<Badge text="anticipated_shows" variant="tip" />
+Jobs reference one media-compatible rule set. Reuse a rule set when jobs should stay synchronized, or use **Make job-specific copy** to clone the effective policy for one job. See [Rules](/concepts/rules/).
 
-Most **anticipated** upcoming releases.
+The discovery limit controls how many candidates are evaluated. The job delivery cap controls how many winners one job can contribute. Ranked-selection winner slots cap the shared cycle, while global movie and show ceilings remain the final rolling safety limit. Configure shared membership and ceilings under **Settings → Automation**.
 
-**Update frequency:** Weekly
-</Card>
+## Ranked selection cycles
 
-<Card title="Favorited" icon="approve-check">
-<Badge text="favorited_movies" variant="success" />
-<Badge text="favorited_shows" variant="success" />
+Ranked selection is opt-in under **Settings → Automation** and requires content scoring. Membership can be managed there or from an individual job. Participating jobs use the shared cycle cadence instead of their own schedule. At each cycle, Blockbusterr fetches every participating job, applies its assigned rules, merges duplicate media by canonical provider ID, and selects the highest normalized scores up to the movie and show winner slots.
 
-Most **favorited** by community.
+Optional job minimums are allocated first and are validated against cycle capacity. Remaining slots go to the highest scores with provider rank and stable IDs used as deterministic tie-breakers. Preview reports found, rule-rejected, already-present, repeat-blocked, job-capped, duplicate, below-cutoff, and globally blocked candidates. A provider failure is shown for that job while successful providers still compete. Global rolling delivery ceilings remain final safeguards, and all participating jobs retain their normal Activity Entries and Job Runs.
 
-**Update frequency:** Daily
-</Card>
+## Preview, run, and schedule
 
-<Card title="Played" icon="play">
-<Badge text="played_movies" variant="note" />
-<Badge text="played_shows" variant="note" />
+Duration schedules run once when Blockbusterr starts and then repeat at the configured interval. Cron schedules wait for their next matching time and do not run at startup.
 
-Most **played** (total plays, rewatchable).
+- **Preview** discovers and evaluates candidates without delivering them.
+- **Run now** executes the complete pipeline immediately.
+- **Enable/Disable** controls scheduled execution without deleting the job.
+- **Delete** removes the dynamic job after confirmation.
 
-**Update frequency:** Daily
-</Card>
+Manual runs ignore the schedule but use the same provider, rules, scoring, and delivery configuration. Participating ranked-selection jobs cannot run independently because doing so would bypass shared competition and cycle limits.
 
-<Card title="Watched" icon="eye-open">
-<Badge text="watched_movies" variant="tip" />
-<Badge text="watched_shows" variant="tip" />
+## Delivery modes
 
-Most **watched** by unique users.
+In **Direct mode**, accepted movies go to Radarr and shows go to Sonarr. In **Jellyseerr mode**, accepted titles are requested through Jellyseerr or Seerr, which applies its own approval permissions before forwarding them. See [Integration Modes](/concepts/integration-modes/).
 
-**Update frequency:** Daily
-</Card>
+The Anime Discovery recipe uses normal show rules plus Sonarr's `anime` series
+type. TMDB must provide a TVDB identity and Sonarr must return that exact series;
+Blockbusterr reports a mapping failure instead of delivering a title-only guess.
 
-<Card title="Collected" icon="archive">
-<Badge text="collected_movies" variant="caution" />
-<Badge text="collected_shows" variant="caution" />
+## Understand a run
 
-Most **collected** in user libraries (essentials).
+The Activity page has two complementary views:
 
-**Update frequency:** Weekly
-</Card>
-</CardGrid>
+- **Activity Entries:** individual titles with outcome, score, time, source job, and decision details.
+- **Job Runs:** each execution with found, passed, added, requested, rejected, skipped, and failed counts plus the outcome distribution. **Added** means Blockbusterr sent the title directly to Radarr or Sonarr; **Requested** means it submitted the title through Jellyseerr or Seerr. Outcomes with a zero count are hidden.
 
-## Dynamic Job System
+Use Preview while tuning rules, Job Runs to spot pipeline-level problems, and Activity Entries to explain one title.
 
-<Badge text="New in v1.4.0" variant="success" />
+## Upgrade legacy jobs
 
-Create custom jobs with full control over type, media, limits, and settings - all from the UI.
+On first v2 startup, enabled v1 named job sections are upgraded automatically. Blockbusterr creates equivalent dynamic jobs, assigns the appropriate default rule set, preserves supported settings, saves the new configuration atomically, and disables the migrated legacy entries. The untouched v1 configuration remains available as `config.yaml.backup`.
 
-### Creating Jobs
-
-<Tabs>
-<TabItem label="From Template" icon="star">
-
-<Steps>
-
-1. Navigate to **Jobs** page
-2. Click **Add Job**
-3. Select **Movies** or **TV Shows** tab
-4. Click a template card (e.g., "Trending Movies")
-5. Job is created with sensible defaults
-6. Click the job card to customize settings
-
-</Steps>
-
-</TabItem>
-<TabItem label="Custom Job" icon="setting">
-
-<Steps>
-
-1. Navigate to **Jobs** page
-2. Click **Add Job**
-3. Select **Custom** tab
-4. Fill in:
-   - **Name** - Descriptive name for your job
-   - **Type** - trending, popular, watched, etc.
-   - **Media** - Movies or Shows
-   - **Limit** - How many items to fetch (up to 1000)
-   - **Period** - Required for watched/collected/favorited/played
-5. Click **Create Job**
-6. Configure advanced settings as needed
-
-</Steps>
-
-</TabItem>
-</Tabs>
-
-### Job Templates
-
-16 pre-configured templates to get you started:
-
-| Movies | TV Shows |
-|--------|----------|
-| Trending Movies | Trending Shows |
-| Popular Movies | Popular Shows |
-| Anticipated Movies | Anticipated Shows |
-| Favorited Movies | Favorited Shows |
-| Watched Movies | Watched Shows |
-| Collected Movies | Collected Shows |
-| Box Office | - |
-| Smart Popular Movies | Smart Popular Shows |
-
-### Content Limits
-
-<Aside type="tip">
-Jobs can fetch up to **1000 items** per run when supported by the selected job type and provider.
-</Aside>
-
-| Job Type | Default | Maximum |
-|----------|---------|---------|
-| Trending | 50 | 1000 |
-| Popular | 50 | 1000 |
-| Watched/Collected/etc. | 50 | 1000 |
-| Box Office | 10 | 10 |
-| Smart Popular | 50 | 1000 |
-
-### Migrating Legacy Jobs
-
-If you have jobs configured in your `config.yaml`, a migration banner appears on the Jobs page.
-
-<Steps>
-
-1. Click **Migrate Jobs** in the banner
-2. Legacy jobs are converted to dynamic format
-3. All settings (schedule, limits, filters) are preserved
-4. Legacy config remains as backup (no longer used)
-
-</Steps>
-
-<Aside type="note">
-Migration is optional. Legacy jobs continue to work - you can migrate when ready.
-</Aside>
-
-## Job Configuration
-
-<Tabs>
-<TabItem label="Legacy Format" icon="pencil">
-
-Jobs defined directly in config (pre-v1.4.0):
-
-```yaml
-jobs:
-  sync_interval: "6h"     # Default interval for all jobs
-  mode: "direct"          # direct or jellyseerr
-
-  trending_movies:
-    enabled: true
-    limit: 20
-    sync_interval: "6h"   # Override default
-    mode: "direct"
-    minimum_availability: "released"
-    monitor: "movieOnly"
-
-  popular_shows:
-    enabled: true
-    limit: 30
-    monitor: "all"
-```
-
-</TabItem>
-<TabItem label="Dynamic Format" icon="setting">
-
-Dynamic jobs (v1.4.0+) - defined in `jobs.list`:
-
-```yaml
-jobs:
-  sync_interval: "6h"
-  mode: "direct"
-
-  list:
-    - id: "my-trending-movies"
-      name: "My Trending Movies"
-      enabled: true
-      type: "trending"
-      source: "trakt"
-      media: "movie"
-      limit: 50
-      sync_interval: "6h"
-      mode: "direct"
-      minimum_availability: "released"
-      monitor: "movieOnly"
-
-    - id: "weekly-watched"
-      name: "Weekly Most Watched"
-      enabled: true
-      type: "watched"
-      source: "trakt"
-      media: "movie"
-      limit: 30
-      period: "weekly"
-```
-
-</TabItem>
-<TabItem label="Smart Job" icon="rocket">
-
-Smart job with adaptive thresholds:
-
-```yaml
-jobs:
-  list:
-    - id: "smart-movies"
-      name: "Smart Popular Movies"
-      enabled: true
-      type: "smart_popular"
-      source: "trakt"
-      media: "movie"
-      limit: 50
-      base_min_rating: 6.0       # Base rating threshold
-      adjustment_factor: 0.5     # Popularity adjustment (0.1-1.0)
-```
-
-See [Smart Jobs](/concepts/smart-jobs/) for details.
-
-</TabItem>
-</Tabs>
-
-### Configuration Options
-
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `id` | string | No | Unique identifier (auto-generated if omitted) |
-| `name` | string | Yes | Display name for the job |
-| `enabled` | boolean | Yes | Enable or disable the job |
-| `type` | string | Yes | Job type: `trending`, `popular`, `watched`, `collected`, `favorited`, `played`, `anticipated`, `box_office`, `smart_popular` |
-| `media` | string | Yes | `"movie"` or `"show"` |
-| `limit` | integer | No | Max items to fetch (defaults to job type default) |
-| `period` | string | No | Time period for watched/collected/favorited/played: `weekly`, `monthly`, `yearly`, `all` |
-| `sync_interval` | string | No | Custom sync interval (e.g., `6h`, `12h`, `24h`) |
-| `mode` | string | No | Override global mode: `direct` or `jellyseerr` |
-| `minimum_availability` | string | No | For Radarr: `announced`, `in_cinemas`, `released` |
-| `monitor` | string | No | Monitor setting for Radarr/Sonarr |
-| `base_min_rating` | float | No | Smart jobs: base rating threshold |
-| `adjustment_factor` | float | No | Smart jobs: popularity adjustment |
-
-## Scheduling
-
-Jobs run on a configurable interval using duration strings.
-
-<Tabs>
-<TabItem label="Interval Format" icon="document">
-
-The `sync_interval` field uses Go duration format:
-
-| Value | Meaning |
-|-------|---------|
-| `1h` | Every hour |
-| `6h` | Every 6 hours |
-| `12h` | Every 12 hours |
-| `24h` | Once per day |
-| `168h` | Once per week (7 days) |
-
-</TabItem>
-<TabItem label="Recommended Intervals" icon="star">
-
-| Job Type | Recommended Interval | Reason |
-|----------|---------------------|--------|
-| Trending | `6h` | Changes frequently |
-| Popular | `12h` - `24h` | Updates daily |
-| Watched/Collected/etc. | `24h` | Aggregated data, slower updates |
-| Box Office | `24h` - `168h` | Weekly data |
-| Anticipated | `24h` | Upcoming releases |
-| Smart Popular | `12h` - `24h` | Adaptive filtering |
-
-</TabItem>
-<TabItem label="Best Practices" icon="approve-check">
-
-**Use different intervals per job:**
-
-```yaml
-jobs:
-  list:
-    - id: "trending-movies"
-      name: "Trending Movies"
-      type: "trending"
-      media: "movie"
-      sync_interval: "6h"    # Check frequently
-      # ...
-
-    - id: "popular-movies"
-      name: "Popular Movies"
-      type: "popular"
-      media: "movie"
-      sync_interval: "12h"   # Less frequent
-      # ...
-
-    - id: "weekly-watched"
-      name: "Weekly Watched"
-      type: "watched"
-      media: "movie"
-      period: "weekly"
-      sync_interval: "24h"   # Once per day
-      # ...
-```
-
-<Aside type="tip">
-Jobs with longer intervals reduce API calls and server load while still catching new content.
-</Aside>
-
-</TabItem>
-</Tabs>
-
-## Job Workflow
-
-<Steps>
-
-1. **Fetch from the discovery provider**
-
-   The job contacts its selected provider and retrieves the chosen list up to the configured `limit`.
-
-2. **Apply Filters**
-
-   Content is filtered based on your global filter criteria (ratings, genres, countries, languages, runtime, etc.)
-
-3. **Fetch Metadata**
-
-   Retrieve TMDB metadata for poster images and additional details
-
-4. **Check Existing**
-
-   Skip content already in Radarr/Sonarr or Jellyseerr
-
-5. **Add Content**
-
-   Send to Radarr/Sonarr (direct mode) or create Jellyseerr request
-
-6. **Log Activity**
-
-   Record what was added/filtered in the activity log
-
-</Steps>
-
-## Preview Jobs
-
-<Aside type="tip" title="Always Preview First">
-Use the preview feature to see what will be added **before** enabling a job.
-</Aside>
-
-<Tabs>
-<TabItem label="Web UI" icon="laptop">
-
-<Steps>
-
-1. Navigate to **Jobs** page
-2. Configure your job settings
-3. Click **Preview** button
-4. Review the results:
-   - ✅ Items that will be added
-   - ⚠️ Items filtered out (with reasons)
-   - ℹ️ Items already in library
-5. Adjust filters/scoring as needed
-6. Enable when satisfied
-
-</Steps>
-
-</TabItem>
-<TabItem label="API" icon="rocket">
-
-```bash
-# Preview a job
-curl -X POST http://localhost:9090/api/v1/jobs/preview/trending-movies
-
-# Response
-{
-  "would_add": [
-    {
-      "title": "Dune: Part Two",
-      "year": 2024,
-      "score": 87,
-      "reason": "Passes all filters"
-    }
-  ],
-  "filtered_out": [
-    {
-      "title": "Low Budget Horror",
-      "year": 2024,
-      "score": 45,
-      "reason": "Score below threshold (65)"
-    }
-  ],
-  "already_in_library": [
-    {
-      "title": "The Batman",
-      "year": 2022
-    }
-  ],
-  "stats": {
-    "total_fetched": 50,
-    "would_add": 8,
-    "filtered_out": 35,
-    "already_added": 7
-  }
-}
-```
-
-</TabItem>
-</Tabs>
-
-## Manual Triggering
-
-<Tabs>
-<TabItem label="Web UI" icon="laptop">
-
-Click the **▶ Run Now** button next to any enabled job to trigger it immediately.
-
-</TabItem>
-<TabItem label="API" icon="rocket">
-
-```bash
-curl -X POST http://localhost:9090/api/v1/jobs/trigger/trending-movies
-```
-
-</TabItem>
-</Tabs>
-
-<Aside type="note">
-Manual triggers ignore the schedule but respect all filters, scoring, and thresholds.
-</Aside>
-
-## Job Comparison
-
-<Tabs>
-<TabItem label="By Freshness" icon="star">
-
-| Job Type | Update Speed | Best For |
-|----------|--------------|----------|
-| **Trending** | Every 6 hours | Latest buzz, viral moments |
-| **Popular** | Daily | Current favorites |
-| **Box Office** | Weekly | Theatrical releases |
-| **Anticipated** | Weekly | Future releases |
-
-</TabItem>
-<TabItem label="By Quality" icon="approve-check">
-
-| Job Type | Quality Level | Volume |
-|----------|---------------|--------|
-| **Smart Popular** | High (adaptive) | Medium |
-| **Favorited** | High (community-vetted) | Low-Medium |
-| **Watched** | Medium-High (proven) | Medium |
-| **Trending** | Variable | High |
-
-</TabItem>
-<TabItem label="By Use Case" icon="puzzle">
-
-**For Current Events:**
-- Trending (every 6 hours)
-- Popular (daily)
-
-**For Quality Curation:**
-- Smart Popular (adaptive thresholds)
-- Favorited (community favorites)
-- Watched (proven completion)
-
-**For Completionism:**
-- Collected (essentials)
-- Popular + Trending (high volume)
-
-**For Future Planning:**
-- Anticipated (upcoming)
-- Box Office (new releases)
-
-</TabItem>
-</Tabs>
-
-## Example Configurations
-
-<Tabs>
-<TabItem label="Balanced" icon="approve-check">
-
-**Goal:** Good mix of current and quality content.
-
-```yaml
-jobs:
-  sync_interval: "6h"
-  mode: "direct"
-
-  list:
-    - id: "trending-movies"
-      name: "Trending Movies"
-      enabled: true
-      type: "trending"
-      media: "movie"
-      limit: 50
-      sync_interval: "6h"
-
-    - id: "smart-popular-movies"
-      name: "Smart Popular Movies"
-      enabled: true
-      type: "smart_popular"
-      media: "movie"
-      limit: 30
-      sync_interval: "12h"
-      base_min_rating: 6.5
-      adjustment_factor: 0.5
-
-    - id: "favorited-movies"
-      name: "Favorited Movies"
-      enabled: true
-      type: "favorited"
-      media: "movie"
-      limit: 20
-      period: "weekly"
-      sync_interval: "24h"
-```
-
-**Result:** ~10-15 movies/week, mix of current and quality
-
-</TabItem>
-<TabItem label="Quality Focus" icon="star">
-
-**Goal:** Only the best content with smart filtering.
-
-```yaml
-jobs:
-  list:
-    - id: "smart-movies"
-      name: "Smart Popular Movies"
-      enabled: true
-      type: "smart_popular"
-      media: "movie"
-      limit: 100
-      sync_interval: "24h"
-      base_min_rating: 7.0     # Higher rating bar
-      adjustment_factor: 0.3   # Less adjustment for popularity
-
-    - id: "all-time-favorites"
-      name: "All-Time Favorites"
-      enabled: true
-      type: "favorited"
-      media: "movie"
-      limit: 50
-      period: "all"
-      sync_interval: "168h"    # Weekly
-```
-
-**Result:** ~5-8 excellent movies/week
-
-</TabItem>
-<TabItem label="High Volume" icon="rocket">
-
-**Goal:** Catch everything trending.
-
-```yaml
-jobs:
-  list:
-    - id: "trending-movies"
-      name: "Trending Movies"
-      enabled: true
-      type: "trending"
-      media: "movie"
-      limit: 200
-      sync_interval: "6h"
-
-    - id: "popular-movies"
-      name: "Popular Movies"
-      enabled: true
-      type: "popular"
-      media: "movie"
-      limit: 150
-      sync_interval: "12h"
-
-    - id: "trending-shows"
-      name: "Trending Shows"
-      enabled: true
-      type: "trending"
-      media: "show"
-      limit: 100
-      sync_interval: "6h"
-```
-
-**Result:** High volume (requires storage!)
-
-</TabItem>
-</Tabs>
-
-## Best Practices
-
-<CardGrid>
-<Card title="Start Conservative" icon="approve-check">
-Begin with strict global filters (min_rating, min_votes), then relax as needed.
-</Card>
-<Card title="Preview Everything" icon="magnifier">
-Always preview jobs before enabling to avoid unwanted content.
-</Card>
-<Card title="Use Different Intervals" icon="rocket">
-Use longer sync_intervals for slower-updating lists (collected, anticipated).
-</Card>
-<Card title="Monitor Activity" icon="laptop">
-Check the Activity log weekly to see what's being added.
-</Card>
-<Card title="Use Smart Jobs" icon="star">
-Smart Popular jobs automatically balance quality and popularity.
-</Card>
-<Card title="Set Reasonable Limits" icon="setting">
-Start with lower limits (20-50) and increase gradually.
-</Card>
-</CardGrid>
-
-## Troubleshooting
-
-<Aside type="caution" title="No Content Being Added?">
-Common issues:
-- Global filters too strict (check min_rating, min_votes in filters section)
-- Content already in library (check activity log)
-- Job not enabled (verify `enabled: true`)
-- Selected discovery provider is not configured
-- Period required but not set (for watched/collected/favorited/played jobs)
-</Aside>
-
-## Next Steps
-
-<CardGrid>
-<Card title="Filters & Scoring" icon="setting" href="/concepts/filters">
-Configure filtering and scoring rules
-</Card>
-<Card title="Smart Jobs" icon="rocket" href="/concepts/smart-jobs">
-Learn about adaptive smart jobs
-</Card>
-<Card title="Integration Modes" icon="puzzle" href="/concepts/integration-modes">
-Choose Direct or Jellyseerr mode
-</Card>
-<Card title="Use Cases" icon="star" href="/examples/use-cases">
-See real-world examples
-</Card>
-</CardGrid>
+Review the generated jobs and rules after startup. Do not delete the automatic backup until the installation has completed at least one expected schedule cycle. See [Upgrading to v2](/getting-started/upgrading-to-v2/).

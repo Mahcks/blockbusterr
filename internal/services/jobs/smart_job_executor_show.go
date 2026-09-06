@@ -49,7 +49,6 @@ func (e *SmartShowJobExecutor) Execute(
 		log.Errorf("Failed to configure discovery source for %s: %v", jobConfig.JobName, err)
 		return err
 	}
-
 	// Fetch shows using the provided fetcher
 	shows, err := fetcher(ctx, discoveryClient, jobConfig.Limit, "")
 	if err != nil {
@@ -71,6 +70,13 @@ func (e *SmartShowJobExecutor) Execute(
 		}
 		return err
 	}
+	if err := enrichShowCertifications(ctx, e.Config, shows); err != nil {
+		err = fmt.Errorf("failed to enrich show certifications: %w", err)
+		if e.Database != nil && e.currentRunID > 0 {
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", len(shows), 0, 0, 0, 0, 0, 1, err.Error())
+		}
+		return err
+	}
 
 	log.Infof("Found %d shows from %s for %s", len(shows), discoveryClient.Source(), jobConfig.JobName)
 
@@ -88,6 +94,7 @@ func (e *SmartShowJobExecutor) Execute(
 
 	// Apply adaptive filters with decision tracking
 	filteredShows, scoreMap, showDecisions := e.evaluateShowsWithAdaptiveFilters(
+		ctx,
 		shows,
 		percentiles,
 		jobConfig,
@@ -97,12 +104,16 @@ func (e *SmartShowJobExecutor) Execute(
 
 	// Convert to regular JobConfig for execution
 	regularJobConfig := JobConfig{
-		JobID:     jobConfig.JobID,
-		JobName:   jobConfig.JobName,
-		Source:    jobConfig.Source,
-		MediaType: jobConfig.MediaType,
-		Mode:      jobConfig.Mode,
-		Limit:     jobConfig.Limit,
+		JobID:         jobConfig.JobID,
+		JobName:       jobConfig.JobName,
+		Source:        jobConfig.Source,
+		MediaType:     jobConfig.MediaType,
+		Mode:          jobConfig.Mode,
+		Limit:         jobConfig.Limit,
+		DeliveryLimit: jobConfig.DeliveryLimit,
+		RepeatPolicy:  jobConfig.RepeatPolicy,
+		Monitor:       jobConfig.Monitor,
+		SeriesType:    jobConfig.SeriesType,
 	}
 
 	// Route to appropriate handler based on mode
@@ -115,8 +126,11 @@ func (e *SmartShowJobExecutor) Execute(
 	}
 
 	var executionErr error
-	if jobConfig.Mode == "jellyseerr" {
+	if ctx.Err() != nil {
+		executionErr = ctx.Err()
+	} else if jobConfig.Mode == "jellyseerr" {
 		showExecutor.executeShowsJellyseerr(ctx, regularJobConfig, filteredShows, scoreMap)
+		executionErr = ctx.Err()
 	} else {
 		executionErr = showExecutor.executeShowsDirect(ctx, regularJobConfig, filteredShows, scoreMap)
 	}
@@ -149,14 +163,18 @@ func (e *SmartShowJobExecutor) Execute(
 
 // evaluateShowsWithAdaptiveFilters evaluates shows with adaptive rating thresholds
 func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
+	ctx context.Context,
 	shows []integrations.Show,
 	percentiles map[int]float64,
 	jobConfig SmartJobConfig,
-) ([]integrations.Show, map[int]ScoreInfo, []ContentDecision) {
+) ([]integrations.Show, map[string]ScoreInfo, []ContentDecision) {
 	decisions := make([]ContentDecision, 0, len(shows))
 	passedShows := make([]integrations.Show, 0)
 
 	for _, show := range shows {
+		if ctx.Err() != nil {
+			break
+		}
 		decision := ContentDecision{
 			Title:       show.Title,
 			Year:        show.Year,
@@ -176,7 +194,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 		}
 
 		// Get popularity percentile for this show
-		percentile, hasPercentile := percentiles[show.IDs.TMDB]
+		percentile, hasPercentile := percentiles[show.IDs.TVDB]
 		if !hasPercentile {
 			percentile = 0.5 // Default to middle if not found
 		}
@@ -193,6 +211,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 			show,
 			e.Config.Filters.Shows,
 			adaptiveMinRating,
+			e.Config.TitleExceptions,
 		)
 		decision.PassedFilters = filterResult.Passed
 
@@ -221,7 +240,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 			decision.Action = "rejected"
 			decision.ActionReason = fmt.Sprintf(
 				"%s (percentile: %.0f%%, threshold: %.1f)",
-				filterResult.Reason,
+				filters.Explain(filterResult),
 				percentile*100,
 				adaptiveMinRating,
 			)
@@ -239,7 +258,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 	// Update decisions with scores
 	for i := range decisions {
 		if decisions[i].PassedFilters {
-			if scoreInfo, ok := scoreMap[decisions[i].TVDBID]; ok {
+			if scoreInfo, ok := scoreMap[integrations.ShowKey(integrations.IDs{TVDB: decisions[i].TVDBID, TMDB: decisions[i].TMDBID, IMDB: decisions[i].IMDBID})]; ok {
 				decisions[i].Score = scoreInfo.Score
 				decisions[i].Rank = scoreInfo.Rank
 			}

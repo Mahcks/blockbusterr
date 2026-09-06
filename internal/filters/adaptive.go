@@ -137,13 +137,13 @@ func MoviePassesAdaptiveFilters(
 	movie integrations.Movie,
 	filters config.MovieFilters,
 	adjustedMinRating float64,
+	exceptions config.TitleExceptions,
 ) FilterResult {
 	// Create a copy of filters with the adjusted rating
 	adaptiveFilters := filters
 	adaptiveFilters.MinRating = adjustedMinRating
 
-	// Use the existing detailed filter logic
-	result := MoviePassesFiltersDetailed(movie, adaptiveFilters)
+	result := MoviePassesRules(movie, adaptiveFilters, exceptions)
 
 	// Update the rating check message to show it was adaptive
 	for i := range result.Checks {
@@ -173,13 +173,13 @@ func ShowPassesAdaptiveFilters(
 	show integrations.Show,
 	filters config.ShowFilters,
 	adjustedMinRating float64,
+	exceptions config.TitleExceptions,
 ) FilterResult {
 	// Create a copy of filters with the adjusted rating
 	adaptiveFilters := filters
 	adaptiveFilters.MinRating = adjustedMinRating
 
-	// Use the existing detailed filter logic
-	result := ShowPassesFiltersDetailed(show, adaptiveFilters)
+	result := ShowPassesRules(show, adaptiveFilters, exceptions)
 
 	// Update the rating check message to show it was adaptive
 	for i := range result.Checks {

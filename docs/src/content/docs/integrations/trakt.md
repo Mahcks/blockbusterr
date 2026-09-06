@@ -1,99 +1,41 @@
 ---
-title: Trakt Integration
-description: Configure Trakt for fetching trending and popular content
+title: Trakt
+description: Configure Trakt as an optional Blockbusterr discovery provider.
 ---
 
-Trakt is one supported discovery source, providing trending, popular, and Trakt-specific list data.
+Trakt is one of Blockbusterr's discovery sources. It is optional when every enabled job uses TMDB or Simkl.
 
-## Overview
+## Create credentials
 
-Trakt is optional. Existing Trakt jobs remain supported, while dynamic jobs can use TMDB or Simkl where the selected job type supports them.
+1. Sign in to Trakt and create an API application.
+2. Copy the client ID and, when provided, client secret.
+3. Enter them under **Settings → Discovery → Trakt**.
+4. Test and save the connection.
+5. To use your personal watchlist, select **Connect account** and approve the
+   displayed device code on Trakt.
 
-## Getting Trakt Credentials
-
-### Step 1: Create a Trakt Application
-
-1. Go to [trakt.tv/oauth/applications](https://trakt.tv/oauth/applications)
-2. Click **"New Application"**
-3. Fill out the form:
-   - **Name**: Blockbusterr
-   - **Description**: Media automation tool
-   - **Redirect URI**: `http://localhost:9090/auth/trakt/callback`
-   - **Permissions**: Check all boxes
-4. Click **"Save App"**
-
-### Step 2: Copy Credentials
-
-After creating the application, you'll receive:
-- **Client ID** - Copy this
-- **Client Secret** - Copy this
-
-### Step 3: Configure Blockbusterr
-
-**Via Configuration File:**
+Application credentials are enough for public discovery and public lists.
+Account authorization is required only for your private watchlist. OAuth
+tokens are stored in the private configuration and are never returned by the
+settings API or included in shareable exports.
 
 ```yaml
 trakt:
-  client_id: "your_client_id_here"
-  client_secret: "your_client_secret_here"
+  client_id: your_client_id
+  client_secret: your_client_secret
 ```
 
-**Via Web UI:**
+## Supported discovery
 
-1. Open `http://localhost:9090`
-2. Go to **Configuration** tab
-3. Find **Trakt** section
-4. Paste Client ID and Client Secret
-5. Click **Save**
-6. Click **"Authorize with Trakt"** to complete OAuth flow
+Trakt supplies several trending, popular, watched, collected, played, favorited, anticipated, and metadata paths. Availability depends on the selected media and job type; the Jobs UI only shows valid combinations.
 
-### Step 4: Authorize
-
-Complete the OAuth authorization:
-
-1. Click **"Authorize with Trakt"** in the UI
-2. You'll be redirected to Trakt
-3. Log in and approve the authorization
-4. You'll be redirected back to Blockbusterr
-
-The `access_token` and `refresh_token` will be automatically saved.
-
-## Configuration
-
-```yaml
-trakt:
-  client_id: "your_client_id"
-  client_secret: "your_client_secret"
-  access_token: ""     # Auto-populated after OAuth
-  refresh_token: ""    # Auto-populated after OAuth
-```
-
-## Testing
-
-Verify Trakt integration:
-
-```bash
-curl "http://localhost:9090/v1/trakt/trending/movies?limit=5"
-```
-
-You should see trending movies data.
+List jobs support global public lists, a user's public lists, public user
+watchlists, and the connected account's watchlist. Enter provider identifiers
+instead of copied web URLs, then use **Check source** in the Jobs editor.
 
 ## Troubleshooting
 
-**"Invalid client credentials"**
-- Verify Client ID and Client Secret are correct
-- Ensure no extra spaces
-
-**"Access token expired"**
-- Blockbusterr automatically refreshes tokens
-- If issues persist, re-authorize through the UI
-
-**"Rate limit exceeded"**
-- Trakt has API rate limits
-- Reduce job frequency if hitting limits
-
-## Next Steps
-
-- Configure [Radarr integration](/integrations/radarr/)
-- Configure [Sonarr integration](/integrations/sonarr/)
-- Set up your [first job](/getting-started/quickstart/)
+- Confirm the client ID is copied without surrounding whitespace.
+- Confirm the Blockbusterr container can reach `api.trakt.tv`.
+- Check Jobs after saving; Trakt should appear only for supported types.
+- Use Preview to verify discovery before enabling delivery.

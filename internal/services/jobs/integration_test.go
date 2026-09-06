@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -76,6 +77,67 @@ func TestShowJobExecutorStructure(t *testing.T) {
 	}
 	if !executor.DryRun {
 		t.Error("Executor should be in dry run mode")
+	}
+}
+
+func TestShowDryRunNeverPostsToSonarr(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodPost {
+			t.Fatalf("dry-run show attempted Sonarr mutation: %s", request.URL.Path)
+		}
+		requests++
+		w.Header().Set("Content-Type", "application/json")
+		if request.URL.Path == "/api/v3/series/lookup" {
+			_, _ = w.Write([]byte(`[{"title":"Test Show","year":2025,"tvdbId":123}]`))
+			return
+		}
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := &config.Config{}
+	cfg.Sonarr.URL, cfg.Sonarr.APIKey = server.URL, "key"
+	executor := &ShowJobExecutor{Config: cfg, DryRun: true, discovery: &DiscoveryClient{}}
+	err := executor.Execute(t.Context(), JobConfig{JobName: "Dry show", MediaType: "show", Mode: "direct", Limit: 1, SeriesType: "anime"}, func(context.Context, *DiscoveryClient, int, string) ([]integrations.Show, error) {
+		return []integrations.Show{{Title: "Test Show", Year: 2025, IDs: integrations.IDs{TVDB: 123}}}, nil
+	})
+	if err != nil || requests != 2 {
+		t.Fatalf("dry-run error=%v requests=%d", err, requests)
+	}
+}
+
+func TestSelectedMovieExecutionDoesNotFetchProviderAgain(t *testing.T) {
+	var deliveredTMDB int
+	radarr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if request.Method == http.MethodGet {
+			_, _ = w.Write([]byte("[]"))
+			return
+		}
+		var movie integrations.RadarrMovie
+		if err := json.NewDecoder(request.Body).Decode(&movie); err != nil {
+			t.Fatal(err)
+		}
+		deliveredTMDB = movie.TmdbID
+		_ = json.NewEncoder(w).Encode(movie)
+	}))
+	t.Cleanup(radarr.Close)
+
+	cfg := &config.Config{}
+	cfg.Scoring.Enabled = true
+	cfg.Radarr.URL, cfg.Radarr.APIKey = radarr.URL, "key"
+	source := &fakeListSource{result: ListResult{Movies: []integrations.Movie{{Title: "Changed", IDs: integrations.IDs{TMDB: 99}}}}}
+	discovery := newListDiscoveryClient("fake", source)
+	planned := integrations.Movie{Title: "Planned", Year: 2025, IDs: integrations.IDs{TMDB: 42}}
+	job := config.DynamicJob{ID: "ranked", Name: "Ranked", Type: "list", Source: "fake", MediaType: "movie", List: &config.ListLocator{Kind: "public_list", ListID: "test"}}
+	executor := DynamicJobExecutor{Config: cfg, Movies: []integrations.Movie{planned}, Selection: map[string]ScoreInfo{"movie:tmdb:42": {Score: .8, Rank: 1}}}
+	summary, err := executor.executeMovieJob(t.Context(), job, JobConfig{JobID: job.ID, JobName: job.Name, Source: job.Source, MediaType: "movie", Mode: "direct", Limit: 1}, discovery)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source.calls != 0 || deliveredTMDB != 42 || summary.Delivered() != 1 {
+		t.Fatalf("provider calls=%d delivered TMDB=%d summary=%+v", source.calls, deliveredTMDB, summary)
 	}
 }
 

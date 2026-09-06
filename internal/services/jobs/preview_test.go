@@ -6,8 +6,19 @@ import (
 	"testing"
 
 	"github.com/mahcks/blockbusterr/config"
+	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
+
+func TestPreviewDeliveryReasonMatchesMode(t *testing.T) {
+	result := filters.FilterResult{Passed: true}
+	if got := previewDeliveryReason("direct", result); got != "Will add: Passed all configured rules" {
+		t.Fatalf("direct reason = %q", got)
+	}
+	if got := previewDeliveryReason("jellyseerr", result); got != "Will request: Passed all configured rules" {
+		t.Fatalf("Jellyseerr reason = %q", got)
+	}
+}
 
 func TestPreviewMoviesReturnsRadarrLookupError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -18,7 +29,7 @@ func TestPreviewMoviesReturnsRadarrLookupError(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.Radarr.URL = server.URL
 	response := PreviewResponse{}
-	if err := previewMovies(t.Context(), cfg, "direct", nil, &response); err == nil {
+	if err := previewMovies(t.Context(), cfg, nil, config.DynamicJob{Mode: "direct"}, nil, &response); err == nil {
 		t.Fatal("expected Radarr lookup error")
 	}
 }
@@ -234,5 +245,18 @@ func TestPreviewItemFiltered(t *testing.T) {
 	}
 	if item.FilterReason != "Rating 3.0 below minimum threshold" {
 		t.Errorf("FilterReason = %s, want 'Rating 3.0 below minimum threshold'", item.FilterReason)
+	}
+}
+
+func TestPreviewExplainsCertificationDecision(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Filters.Movies = config.MovieFilters{CertificationCountry: "US", AllowedCertifications: []string{"PG"}, UnknownCertification: "reject"}
+	response := PreviewResponse{}
+	movies := []integrations.Movie{{Title: "Rated", IDs: integrations.IDs{TMDB: 1}, Certifications: []integrations.Certification{{Value: "R", Country: "US", Source: "tmdb"}}}}
+	if err := previewMovies(t.Context(), cfg, nil, config.DynamicJob{}, movies, &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(response.Items) != 1 || !response.Items[0].FilteredOut || len(response.Items[0].FilterChecks) == 0 || response.Items[0].FilterChecks[0].Message != "US certification R is not allowed (TMDB)" {
+		t.Fatalf("preview = %#v", response)
 	}
 }

@@ -23,6 +23,9 @@ type SmartJobConfig struct {
 	MinimumAvailability string // Radarr only
 	Monitor             string // For Radarr: "movieOnly", "movieAndCollection", "none"; For Sonarr: "all", "future", "missing", "existing", "pilot", "firstSeason", "latestSeason", "none"
 	Limit               int
+	DeliveryLimit       int
+	RepeatPolicy        string
+	SeriesType          string
 	BaseMinRating       float64
 	AdjustmentFactor    float64
 }
@@ -63,7 +66,6 @@ func (e *SmartMovieJobExecutor) Execute(
 		log.Errorf("Failed to configure discovery source for %s: %v", jobConfig.JobName, err)
 		return err
 	}
-
 	// Fetch movies using the provided fetcher
 	movies, err := fetcher(ctx, discoveryClient, jobConfig.Limit, "")
 	if err != nil {
@@ -85,6 +87,13 @@ func (e *SmartMovieJobExecutor) Execute(
 		}
 		return err
 	}
+	if err := enrichMovieCertifications(ctx, e.Config, movies); err != nil {
+		err = fmt.Errorf("failed to enrich movie certifications: %w", err)
+		if e.Database != nil && e.currentRunID > 0 {
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", len(movies), 0, 0, 0, 0, 0, 1, err.Error())
+		}
+		return err
+	}
 
 	log.Infof("Found %d movies from %s for %s", len(movies), discoveryClient.Source(), jobConfig.JobName)
 
@@ -102,6 +111,7 @@ func (e *SmartMovieJobExecutor) Execute(
 
 	// Apply adaptive filters with decision tracking
 	filteredMovies, scoreMap, movieDecisions := e.evaluateMoviesWithAdaptiveFilters(
+		ctx,
 		movies,
 		percentiles,
 		jobConfig,
@@ -119,6 +129,9 @@ func (e *SmartMovieJobExecutor) Execute(
 		MinimumAvailability: jobConfig.MinimumAvailability,
 		Monitor:             jobConfig.Monitor,
 		Limit:               jobConfig.Limit,
+		DeliveryLimit:       jobConfig.DeliveryLimit,
+		RepeatPolicy:        jobConfig.RepeatPolicy,
+		SeriesType:          jobConfig.SeriesType,
 	}
 
 	// Route to appropriate handler based on mode
@@ -131,8 +144,11 @@ func (e *SmartMovieJobExecutor) Execute(
 	}
 
 	var executionErr error
-	if jobConfig.Mode == "jellyseerr" {
+	if ctx.Err() != nil {
+		executionErr = ctx.Err()
+	} else if jobConfig.Mode == "jellyseerr" {
 		movieExecutor.executeMoviesJellyseerr(ctx, regularJobConfig, filteredMovies, scoreMap)
+		executionErr = ctx.Err()
 	} else {
 		executionErr = movieExecutor.executeMoviesDirect(ctx, regularJobConfig, filteredMovies, scoreMap)
 	}
@@ -165,14 +181,18 @@ func (e *SmartMovieJobExecutor) Execute(
 
 // evaluateMoviesWithAdaptiveFilters evaluates movies with adaptive rating thresholds
 func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
+	ctx context.Context,
 	movies []integrations.Movie,
 	percentiles map[int]float64,
 	jobConfig SmartJobConfig,
-) ([]integrations.Movie, map[int]ScoreInfo, []ContentDecision) {
+) ([]integrations.Movie, map[string]ScoreInfo, []ContentDecision) {
 	decisions := make([]ContentDecision, 0, len(movies))
 	passedMovies := make([]integrations.Movie, 0)
 
 	for _, movie := range movies {
+		if ctx.Err() != nil {
+			break
+		}
 		decision := ContentDecision{
 			Title:       movie.Title,
 			Year:        movie.Year,
@@ -208,6 +228,7 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 			movie,
 			e.Config.Filters.Movies,
 			adaptiveMinRating,
+			e.Config.TitleExceptions,
 		)
 		decision.PassedFilters = filterResult.Passed
 
@@ -236,7 +257,7 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 			decision.Action = "rejected"
 			decision.ActionReason = fmt.Sprintf(
 				"%s (percentile: %.0f%%, threshold: %.1f)",
-				filterResult.Reason,
+				filters.Explain(filterResult),
 				percentile*100,
 				adaptiveMinRating,
 			)
@@ -254,7 +275,7 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 	// Update decisions with scores
 	for i := range decisions {
 		if decisions[i].PassedFilters {
-			if scoreInfo, ok := scoreMap[decisions[i].TMDBID]; ok {
+			if scoreInfo, ok := scoreMap[integrations.MovieKey(integrations.IDs{TMDB: decisions[i].TMDBID, IMDB: decisions[i].IMDBID})]; ok {
 				decisions[i].Score = scoreInfo.Score
 				decisions[i].Rank = scoreInfo.Rank
 			}

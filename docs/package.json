@@ -6,10 +6,13 @@
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
+    "test:archive": "node scripts/archive-v1.test.mjs",
+    "check:v2-links": "node scripts/check-versioned-links.mjs",
     "preview": "astro preview",
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/markdown-remark": "^7.2.2",
     "@astrojs/starlight": "^0.41.6",
     "astro": "^7.1.6",
     "sharp": "^0.35.3"
