@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/integrations"
@@ -64,8 +63,11 @@ func init() {
 			return nil, fmt.Errorf("trakt client ID is not configured")
 		}
 		client := integrations.NewTrakt(integrations.TraktConfig{ClientID: cfg.Trakt.ClientID, ClientSecret: cfg.Trakt.ClientSecret, AccessToken: cfg.Trakt.AccessToken, RefreshToken: cfg.Trakt.RefreshToken, TokenExpires: cfg.Trakt.TokenExpires, LoadToken: func() integrations.TraktToken {
-			now := time.Now().Unix()
-			return integrations.TraktToken{AccessToken: cfg.Trakt.AccessToken, RefreshToken: cfg.Trakt.RefreshToken, CreatedAt: now, ExpiresIn: max(0, cfg.Trakt.TokenExpires-now)}
+			access, refresh, expires := cfg.Trakt.AccessToken, cfg.Trakt.RefreshToken, cfg.Trakt.TokenExpires
+			if cfg.LoadTraktToken != nil {
+				access, refresh, expires = cfg.LoadTraktToken()
+			}
+			return integrations.TraktToken{AccessToken: access, RefreshToken: refresh, CreatedAt: expires, ExpiresIn: 0}
 		}, OnToken: func(token integrations.TraktToken) error {
 			if cfg.UpdateTraktToken != nil {
 				return cfg.UpdateTraktToken(token.AccessToken, token.RefreshToken, token.ExpiresAt())

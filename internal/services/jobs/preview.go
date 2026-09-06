@@ -1737,7 +1737,7 @@ func PreviewSmartPopularMovies(cfg *config.Config, db *database.Database) Previe
 			cfg.Jobs.SmartPopularMovies.AdjustmentFactor,
 		)
 
-		filterResult := filters.MoviePassesAdaptiveFilters(movie, cfg.Filters.Movies, adaptiveMinRating)
+		filterResult := filters.MoviePassesAdaptiveFilters(movie, cfg.Filters.Movies, adaptiveMinRating, cfg.TitleExceptions)
 		if !filterResult.Passed {
 			item.FilteredOut = true
 			item.FilterReason = fmt.Sprintf("%s (%.0f%%, %.1f)", filterResult.Reason, percentile*100, adaptiveMinRating)
@@ -1832,7 +1832,7 @@ func PreviewSmartPopularShows(cfg *config.Config, db *database.Database) Preview
 			cfg.Jobs.SmartPopularShows.AdjustmentFactor,
 		)
 
-		filterResult := filters.ShowPassesAdaptiveFilters(show, cfg.Filters.Shows, adaptiveMinRating)
+		filterResult := filters.ShowPassesAdaptiveFilters(show, cfg.Filters.Shows, adaptiveMinRating, cfg.TitleExceptions)
 		if !filterResult.Passed {
 			item.FilteredOut = true
 			item.FilterReason = fmt.Sprintf("%s (%.0f%%, %.1f)", filterResult.Reason, percentile*100, adaptiveMinRating)

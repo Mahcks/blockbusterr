@@ -77,6 +77,80 @@ test('failed job saves preserve the user draft', async ({ page }) => {
   await expect(page.getByText('Test save failure')).toBeVisible();
 });
 
+test('disabled jobs remain reachable and can be re-enabled', async ({ page, request }) => {
+  const disabled = { ...jobs[0], enabled: false };
+  expect((await request.put(`/v1/jobs/${disabled.id}`, { data: disabled })).ok()).toBeTruthy();
+  await page.goto('/jobs');
+  const row = page.locator('.job-row').filter({ hasText: disabled.name });
+  await expect(row).toContainText('Disabled');
+  await expect(row.locator('[data-action="trigger-job"]')).toHaveCount(0);
+  await row.getByText(disabled.name, { exact: true }).click();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Enable Job', exact: true }).click();
+  await expect(row.locator('[data-action="trigger-job"]')).toBeVisible();
+  await row.getByText(disabled.name, { exact: true }).click();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Disable Job', exact: true }).click();
+  await expect(row).toContainText('Disabled');
+  await page.reload();
+  await row.getByText(disabled.name, { exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Enable Job', exact: true })).toBeVisible();
+});
+
+test('smart job tuning is isolated between editor sessions', async ({ page }) => {
+  const smartJobs = jobs.map((job, index) => ({
+    ...job, type: 'smart_popular', base_min_rating: index ? 4 : 8, adjustment_factor: index ? 0 : 1.5,
+  }));
+  await page.route('**/v1/jobs/list', (route) => route.fulfill({ json: smartJobs }));
+  await page.route('**/v1/jobs/types', (route) => route.fulfill({ json: {
+    smart_popular: { name: 'Smart Popular', sources: ['tmdb'], supported_media: ['movie'], is_smart_job: true, max_limit: 100 },
+  } }));
+  await page.route('**/v1/jobs/dynamic/*', (route) => route.fulfill({ json: smartJobs.find((job) => route.request().url().endsWith(`/${job.id}`)) }));
+  let saved;
+  await page.route('**/v1/jobs/browser-two', (route) => {
+    saved = route.request().postDataJSON();
+    return route.fulfill({ json: saved });
+  });
+  await page.goto('/jobs');
+  await page.getByText('Browser One', { exact: true }).click();
+  await expect(page.locator('#job-modal')).toBeVisible();
+  await expect(page.locator('#modal-base-rating')).toHaveValue('8');
+  await page.getByRole('button', { name: 'Close job editor' }).click();
+  await page.getByText('Browser Two', { exact: true }).click();
+  await expect(page.locator('#job-modal')).toBeVisible();
+  await expect(page.locator('#modal-base-rating')).toHaveValue('4');
+  await expect(page.locator('#modal-adjustment-factor')).toHaveValue('0');
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect.poll(() => saved?.base_min_rating).toBe(4);
+  expect(saved.adjustment_factor).toBe(0);
+});
+
+for (const source of ['tmdb', 'trakt']) {
+  test(`first recommendation edit preserves ${source} seed list`, async ({ page }) => {
+    const job = { ...jobs[0], type: 'recommendations', recommendation_seeds: [123], recommendation_list: {
+      source, list: { kind: 'public_list', owner: 'test-owner', list_id: '456', ordering: 'source' },
+    } };
+    await page.route('**/v1/jobs/list', (route) => route.fulfill({ json: [job] }));
+    await page.route('**/v1/jobs/dynamic/*', (route) => route.fulfill({ json: job }));
+    await page.route('**/v1/jobs/types', (route) => route.fulfill({ json: {
+      recommendations: { name: 'Recommendations', sources: ['tmdb'], supported_media: ['movie'], max_limit: 100 },
+      list: { name: 'List', sources: ['tmdb'] },
+    } }));
+    let saved;
+    await page.route('**/v1/jobs/browser-one', (route) => {
+      saved = route.request().postDataJSON();
+      return route.fulfill({ json: saved });
+    });
+    await page.goto('/jobs');
+    await page.getByText(job.name, { exact: true }).click();
+    await expect(page.locator('#job-modal')).toBeVisible();
+    await expect(page.locator('#modal-recommendation-list-source')).toHaveValue(source);
+    if (source === 'trakt') await expect(page.locator('#modal-recommendation-list-source option:checked')).toContainText('unavailable');
+    await page.getByRole('button', { name: 'Save Changes' }).click();
+    await expect.poll(() => saved?.recommendation_list).toEqual(job.recommendation_list);
+  });
+}
+
 test('title-exception media changes require an explicit discard', async ({ page }) => {
   await page.goto('/filters');
   await page.getByRole('tab', { name: 'Title exceptions' }).click();

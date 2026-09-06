@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/mahcks/blockbusterr/config"
+	"github.com/mahcks/blockbusterr/internal/filters"
+	"github.com/mahcks/blockbusterr/internal/integrations"
 )
 
 func TestGetAvailableJobTypesFiltersSources(t *testing.T) {
@@ -56,6 +58,24 @@ func TestJobTemplatesAreValidRecipes(t *testing.T) {
 			config.ApplyRuleSetDefaults(&rules)
 			if err := cfg.ValidateRuleSet(rules, ""); err != nil {
 				t.Fatalf("recipe %s rules: %v", recipe.ID, err)
+			}
+		}
+	}
+}
+
+func TestGenreRecipesAcceptProviderGenres(t *testing.T) {
+	genres := map[string]string{"documentary-discovery": "documentary", "science-fiction-discovery": "science-fiction", "family-movies": "family", "reality-tv-discovery": "reality", "anime-discovery": "animation"}
+	for _, recipe := range JobTemplates {
+		if recipe.Movies != nil && len(recipe.Movies.RequiredGenres) > 0 {
+			result := filters.MoviePassesRules(integrations.Movie{Title: "Sample", Rating: 8, Votes: 1000, Genres: []string{genres[recipe.ID]}, Certifications: []integrations.Certification{{Country: "US", Value: "PG"}}}, *recipe.Movies, config.TitleExceptions{})
+			if !result.Passed {
+				t.Errorf("%s rejects canonical genre: %s", recipe.ID, filters.Explain(result))
+			}
+		}
+		if recipe.Shows != nil && len(recipe.Shows.RequiredGenres) > 0 {
+			result := filters.ShowPassesRules(integrations.Show{Title: "Sample", Rating: 8, Votes: 1000, Country: "jp", Genres: []string{genres[recipe.ID]}}, *recipe.Shows, config.TitleExceptions{})
+			if !result.Passed {
+				t.Errorf("%s rejects canonical genre: %s", recipe.ID, filters.Explain(result))
 			}
 		}
 	}

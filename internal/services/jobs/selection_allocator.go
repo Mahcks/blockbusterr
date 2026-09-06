@@ -40,11 +40,16 @@ type SelectionAllocation struct {
 
 // AllocateSelection deterministically deduplicates and selects candidates.
 func AllocateSelection(candidates []SelectionCandidate, capacity int, minimumPicks map[string]int) (SelectionAllocation, error) {
-	if capacity < 0 {
-		return SelectionAllocation{}, fmt.Errorf("selection capacity cannot be negative")
-	}
 	if capacity == 0 {
 		capacity = len(candidates)
+	}
+	return allocateSelection(candidates, capacity, minimumPicks)
+}
+
+// allocateSelection uses an exact remaining capacity; zero means no slots remain.
+func allocateSelection(candidates []SelectionCandidate, capacity int, minimumPicks map[string]int) (SelectionAllocation, error) {
+	if capacity < 0 {
+		return SelectionAllocation{}, fmt.Errorf("selection capacity cannot be negative")
 	}
 	minimumTotal := 0
 	for jobID, minimum := range minimumPicks {

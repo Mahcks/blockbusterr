@@ -79,10 +79,12 @@ func TestTMDBShowEnrichmentIsBoundedAndConcurrent(t *testing.T) {
 
 func TestTMDBRecommendationsAreOneHopAndDeduplicated(t *testing.T) {
 	client := NewTMDB(TMDBConfig{APIKey: "key"})
-	requests := 0
+	var requests atomic.Int32
 	client.httpClient.Transport = roundTripFunc(func(request *http.Request) (*http.Response, error) {
-		requests++
+		requests.Add(1)
 		switch request.URL.Path {
+		case "/3/movie/30", "/3/movie/40":
+			return jsonResponse(http.StatusOK, `{}`), nil
 		case "/3/movie/10/recommendations":
 			return jsonResponse(http.StatusOK, `{"page":1,"total_pages":1,"results":[{"id":10,"title":"Seed"},{"id":30,"title":"Shared"}]}`), nil
 		case "/3/movie/20/recommendations":
@@ -97,8 +99,8 @@ func TestTMDBRecommendationsAreOneHopAndDeduplicated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if requests != 2 || len(movies) != 2 || movies[0].IDs.TMDB != 30 || movies[1].IDs.TMDB != 40 {
-		t.Fatalf("requests=%d movies=%#v", requests, movies)
+	if requests.Load() != 4 || len(movies) != 2 || movies[0].IDs.TMDB != 30 || movies[1].IDs.TMDB != 40 {
+		t.Fatalf("requests=%d movies=%#v", requests.Load(), movies)
 	}
 }
 
@@ -124,5 +126,50 @@ func TestTMDBEnrichmentFailureIsExplicit(t *testing.T) {
 	})
 	if err := client.EnrichShowCertifications(t.Context(), []Show{{IDs: IDs{TMDB: 20}}}); err == nil {
 		t.Fatal("expected enrichment error")
+	}
+}
+
+func TestTMDBMovieMetadataAcrossSources(t *testing.T) {
+	for _, source := range []string{"chart", "recommendations", "list", "watchlist"} {
+		t.Run(source, func(t *testing.T) {
+			client := NewTMDB(TMDBConfig{APIKey: "key", SessionID: "session", AccountID: 1})
+			client.httpClient.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Path == "/3/movie/42" {
+					return jsonResponse(http.StatusOK, `{"runtime":112,"origin_country":["US","CA"],"imdb_id":"tt42"}`), nil
+				}
+				return jsonResponse(http.StatusOK, `{"page":1,"total_pages":1,"results":[{"media_type":"movie","id":42,"title":"Movie"}]}`), nil
+			})
+			var movies []Movie
+			var err error
+			switch source {
+			case "chart":
+				movies, err = client.getMovies(t.Context(), "/movie/popular", 1)
+			case "recommendations":
+				movies, err = client.GetMovieRecommendations(t.Context(), []int{1}, 1)
+			default:
+				var items TMDBListItems
+				items, err = client.GetListItems(t.Context(), "1", source == "watchlist", "movie", 1)
+				movies = items.Movies
+			}
+			if err != nil || len(movies) != 1 {
+				t.Fatalf("movies=%v err=%v", movies, err)
+			}
+			if movies[0].Runtime != 112 || movies[0].Country != "us" || movies[0].IDs.IMDB != "tt42" {
+				t.Fatalf("metadata missing: %+v", movies[0])
+			}
+		})
+	}
+}
+
+func TestTMDBMovieMetadataFailureIsExplicit(t *testing.T) {
+	client := NewTMDB(TMDBConfig{APIKey: "key"})
+	client.httpClient.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.URL.Path == "/3/movie/42" {
+			return jsonResponse(http.StatusServiceUnavailable, `{}`), nil
+		}
+		return jsonResponse(http.StatusOK, `{"page":1,"total_pages":1,"results":[{"id":42}]}`), nil
+	})
+	if _, err := client.getMovies(t.Context(), "/movie/popular", 1); err == nil {
+		t.Fatal("missing metadata silently accepted")
 	}
 }

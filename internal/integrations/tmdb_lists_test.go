@@ -10,6 +10,9 @@ func TestTMDBPublicListPaginatesMixedMedia(t *testing.T) {
 	client := NewTMDB(TMDBConfig{APIKey: "key"})
 	pages := 0
 	client.httpClient.Transport = roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if request.URL.Path == "/3/movie/10" {
+			return jsonResponse(http.StatusOK, `{}`), nil
+		}
 		if request.URL.Path == "/3/tv/20" {
 			return jsonResponse(http.StatusOK, `{"episode_run_time":[42],"external_ids":{"tvdb_id":200}}`), nil
 		}
@@ -64,6 +67,9 @@ func TestTMDBListErrors(t *testing.T) {
 func TestTMDBConnectedWatchlist(t *testing.T) {
 	client := NewTMDB(TMDBConfig{APIKey: "key", SessionID: "session", AccountID: 4})
 	client.httpClient.Transport = roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if request.URL.Path == "/3/movie/7" {
+			return jsonResponse(http.StatusOK, `{}`), nil
+		}
 		if request.URL.Path == "/3/account/4/watchlist/movies" {
 			return jsonResponse(http.StatusOK, `{"page":1,"total_pages":1,"results":[{"id":7,"title":"Saved"}]}`), nil
 		}

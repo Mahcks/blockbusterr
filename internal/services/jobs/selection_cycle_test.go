@@ -153,3 +153,56 @@ func TestSelectionCycleStatusCoversPartialFailureAndCancellation(t *testing.T) {
 		t.Fatalf("cancelled status = %s", got)
 	}
 }
+
+func TestSelectionPlanDistinguishesUnlimitedAndExhaustedCapacity(t *testing.T) {
+	for _, tc := range []struct {
+		name                               string
+		cycle, global, used, minimum, want int
+	}{
+		{"exhausted", 2, 1, 1, 1, 0},
+		{"one slot", 2, 2, 1, 1, 1},
+		{"unlimited", 0, 0, 0, 1, 2},
+		{"unlimited cycle bounded globally", 0, 1, 0, 1, 1},
+		{"unlimited cycle exhausted", 0, 1, 1, 1, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db, err := database.New(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = db.Close() }()
+			cfg := &config.Config{}
+			cfg.Scoring.Enabled = true
+			cfg.Jobs.Selection.Enabled = true
+			cfg.Jobs.Selection.MovieLimit = tc.cycle
+			cfg.Jobs.GlobalLimitMovies = tc.global
+			cfg.Simkl.ClientID = "test"
+			cfg.Jobs.List = []config.DynamicJob{{ID: "job", Enabled: true, SelectionCycle: true, Source: "simkl", MediaType: "movie", MinimumPicks: tc.minimum}}
+			for i := 0; i < tc.used; i++ {
+				if _, _, err := db.TryReserveDelivery(1, "previous", "movie", 0, tc.global, time.Now().Add(-24*time.Hour)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			capacity, err := remainingSelectionCapacity(cfg, db, "movie", tc.cycle)
+			if err != nil {
+				t.Fatal(err)
+			}
+			plan, err := planSelectionCycleWithPreview(cfg, func(config.DynamicJob) (PreviewResponse, error) {
+				return PreviewResponse{Items: []PreviewItem{{TMDBID: 1, Score: .8}, {TMDBID: 2, Score: .7}}}, nil
+			}, capacity, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(plan.Movies.Winners) != tc.want {
+				t.Fatalf("winners=%d want=%d", len(plan.Movies.Winners), tc.want)
+			}
+			if tc.global > 0 && tc.want < 2 {
+				for _, excluded := range plan.Movies.Excluded {
+					if excluded.Reason != enums.SelectionReasonBudget {
+						t.Fatalf("wrong exclusion: %+v", excluded)
+					}
+				}
+			}
+		})
+	}
+}

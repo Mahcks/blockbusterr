@@ -133,7 +133,7 @@ func (j *Jellyseerr) login() error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := j.client.Do(req)
+	resp, err := doRequest(j.client, req)
 	if err != nil {
 		return fmt.Errorf("failed to execute login request: %w", err)
 	}
@@ -212,7 +212,7 @@ func (j *Jellyseerr) doRequestContext(ctx context.Context, method, path string, 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := j.client.Do(req)
+	resp, err := doRequest(j.client, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}

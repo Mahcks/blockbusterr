@@ -43,7 +43,7 @@ func TestRepeatPolicyUsesSuccessfulDeliveryHistory(t *testing.T) {
 		t.Fatalf("never override result: reason=%q err=%v", reason, err)
 	}
 	preview := PreviewResponse{}
-	if err := previewMovies(t.Context(), cfg, db, "", "", []integrations.Movie{{Title: "Delivered", IDs: integrations.IDs{TMDB: 20}}}, &preview); err != nil {
+	if err := previewMovies(t.Context(), cfg, db, config.DynamicJob{}, []integrations.Movie{{Title: "Delivered", IDs: integrations.IDs{TMDB: 20}}}, &preview); err != nil {
 		t.Fatal(err)
 	}
 	if len(preview.Items) != 1 || !preview.Items[0].AlreadyExists || preview.WillAdd != 0 {

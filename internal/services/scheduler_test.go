@@ -70,3 +70,35 @@ func TestOldSchedulerGenerationCannotDeleteReplacement(t *testing.T) {
 		t.Fatal("owning generation did not clear bookkeeping")
 	}
 }
+
+func TestRunnableListJobsIncludeStandaloneAndRanked(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.MDBList.APIKey = "configured"
+	cfg.TMDB.APIKey = "configured"
+	cfg.Letterboxd.ExperimentalScraping = true
+	cfg.Jobs.Selection.Enabled = true
+	cfg.Jobs.List = []config.DynamicJob{
+		{ID: "mdb", Type: "list", Source: "mdblist", Enabled: true},
+		{ID: "letterboxd", Type: "list", Source: "letterboxd", Enabled: true, SelectionCycle: true},
+	}
+	cycle, standalone := splitSelectionJobs(cfg, runnableJobs(cfg))
+	if len(cycle) != 1 || cycle[0].ID != "letterboxd" || len(standalone) != 1 || standalone[0].ID != "mdb" {
+		t.Fatalf("cycle=%+v standalone=%+v", cycle, standalone)
+	}
+}
+
+func TestInvalidSavedScheduleStopsWithoutRunning(t *testing.T) {
+	for _, interval := range []string{"-1s", "0s", "0 0 31 2 *", "invalid"} {
+		t.Run(interval, func(t *testing.T) {
+			if runsAtStartup(interval) {
+				t.Fatal("invalid schedule runs at startup")
+			}
+			s := &Scheduler{ctx: context.Background(), jobStops: map[string]context.CancelFunc{}, jobGenerations: map[string]uint64{}}
+			s.startJobScheduler(jobConfig{id: "invalid", syncInterval: interval, runFunc: func(context.Context) { t.Error("invalid job ran") }})
+			s.wg.Wait()
+			if len(s.jobStops) != 0 {
+				t.Fatal("invalid schedule remains registered")
+			}
+		})
+	}
+}

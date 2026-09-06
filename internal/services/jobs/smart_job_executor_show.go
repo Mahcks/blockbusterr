@@ -111,6 +111,9 @@ func (e *SmartShowJobExecutor) Execute(
 		Mode:          jobConfig.Mode,
 		Limit:         jobConfig.Limit,
 		DeliveryLimit: jobConfig.DeliveryLimit,
+		RepeatPolicy:  jobConfig.RepeatPolicy,
+		Monitor:       jobConfig.Monitor,
+		SeriesType:    jobConfig.SeriesType,
 	}
 
 	// Route to appropriate handler based on mode
@@ -191,7 +194,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 		}
 
 		// Get popularity percentile for this show
-		percentile, hasPercentile := percentiles[show.IDs.TMDB]
+		percentile, hasPercentile := percentiles[show.IDs.TVDB]
 		if !hasPercentile {
 			percentile = 0.5 // Default to middle if not found
 		}
@@ -208,6 +211,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 			show,
 			e.Config.Filters.Shows,
 			adaptiveMinRating,
+			e.Config.TitleExceptions,
 		)
 		decision.PassedFilters = filterResult.Passed
 

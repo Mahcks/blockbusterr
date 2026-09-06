@@ -24,6 +24,8 @@ type SmartJobConfig struct {
 	Monitor             string // For Radarr: "movieOnly", "movieAndCollection", "none"; For Sonarr: "all", "future", "missing", "existing", "pilot", "firstSeason", "latestSeason", "none"
 	Limit               int
 	DeliveryLimit       int
+	RepeatPolicy        string
+	SeriesType          string
 	BaseMinRating       float64
 	AdjustmentFactor    float64
 }
@@ -128,6 +130,8 @@ func (e *SmartMovieJobExecutor) Execute(
 		Monitor:             jobConfig.Monitor,
 		Limit:               jobConfig.Limit,
 		DeliveryLimit:       jobConfig.DeliveryLimit,
+		RepeatPolicy:        jobConfig.RepeatPolicy,
+		SeriesType:          jobConfig.SeriesType,
 	}
 
 	// Route to appropriate handler based on mode
@@ -224,6 +228,7 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 			movie,
 			e.Config.Filters.Movies,
 			adaptiveMinRating,
+			e.Config.TitleExceptions,
 		)
 		decision.PassedFilters = filterResult.Passed
 

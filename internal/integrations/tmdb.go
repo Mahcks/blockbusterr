@@ -110,7 +110,10 @@ type tmdbShowDetails struct {
 }
 
 type tmdbMovieCertifications struct {
-	ReleaseDates struct {
+	Runtime       int      `json:"runtime"`
+	OriginCountry []string `json:"origin_country"`
+	IMDBID        string   `json:"imdb_id"`
+	ReleaseDates  struct {
 		Results []struct {
 			Country string `json:"iso_3166_1"`
 			Dates   []struct {
@@ -132,7 +135,7 @@ func (t *TMDB) get(ctx context.Context, endpoint string, query url.Values, targe
 	if err != nil {
 		return fmt.Errorf("failed to create TMDB request: %w", err)
 	}
-	resp, err := t.httpClient.Do(req)
+	resp, err := doRequest(t.httpClient, req)
 	if err != nil {
 		return fmt.Errorf("TMDB request failed: %w", err)
 	}
@@ -181,7 +184,7 @@ func (t *TMDB) getMovies(ctx context.Context, endpoint string, limit int) ([]Mov
 			break
 		}
 	}
-	return result, nil
+	return result, t.enrichMovies(ctx, result, true)
 }
 
 func (t *TMDB) getShows(ctx context.Context, endpoint string, limit int) ([]Show, error) {
@@ -229,7 +232,7 @@ func (t *TMDB) GetMovieRecommendations(ctx context.Context, seeds []int, limit i
 				seen[item.ID] = true
 				result = append(result, Movie{Title: item.Title, Year: yearFromDate(item.ReleaseDate), IDs: IDs{TMDB: item.ID}, Genres: genreNames(item.GenreIDs, tmdbMovieGenres), Language: item.OriginalLanguage, Overview: item.Overview, Rating: item.VoteAverage, Votes: item.VoteCount})
 				if len(result) == limit {
-					return result, nil
+					return result, t.enrichMovies(ctx, result, true)
 				}
 			}
 			if page >= response.TotalPages || len(response.Results) == 0 {
@@ -237,7 +240,7 @@ func (t *TMDB) GetMovieRecommendations(ctx context.Context, seeds []int, limit i
 			}
 		}
 	}
-	return result, nil
+	return result, t.enrichMovies(ctx, result, true)
 }
 
 func (t *TMDB) GetShowRecommendations(ctx context.Context, seeds []int, limit int) ([]Show, error) {
@@ -310,12 +313,16 @@ func (t *TMDB) enrichShows(ctx context.Context, shows []Show) error {
 }
 
 func (t *TMDB) EnrichMovieCertifications(ctx context.Context, movies []Movie) error {
+	return t.enrichMovies(ctx, movies, false)
+}
+
+func (t *TMDB) enrichMovies(ctx context.Context, movies []Movie, includeMetadata bool) error {
 	var waitGroup sync.WaitGroup
 	semaphore := make(chan struct{}, 8)
 	var errorMu sync.Mutex
 	var enrichmentErrors []error
 	for index := range movies {
-		if movies[index].IDs.TMDB <= 0 || len(movies[index].Certifications) > 0 {
+		if movies[index].IDs.TMDB <= 0 || (!includeMetadata && len(movies[index].Certifications) > 0) {
 			continue
 		}
 		waitGroup.Go(func() {
@@ -329,6 +336,11 @@ func (t *TMDB) EnrichMovieCertifications(ctx context.Context, movies []Movie) er
 				return
 			}
 			movies[index].Certifications = movieCertifications(details)
+			if includeMetadata {
+				movies[index].Runtime = details.Runtime
+				movies[index].Country = joinCountry(details.OriginCountry)
+				movies[index].IDs.IMDB = details.IMDBID
+			}
 		})
 	}
 	waitGroup.Wait()
@@ -423,7 +435,7 @@ func (t *TMDB) GetMoviePosterURL(ctx context.Context, tmdbID int) (string, error
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := t.httpClient.Do(req)
+	resp, err := doRequest(t.httpClient, req)
 	if err != nil {
 		return "", fmt.Errorf("request failed: %w", err)
 	}
@@ -463,7 +475,7 @@ func (t *TMDB) GetShowPosterURL(ctx context.Context, tmdbID int) (string, error)
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := t.httpClient.Do(req)
+	resp, err := doRequest(t.httpClient, req)
 	if err != nil {
 		return "", fmt.Errorf("request failed: %w", err)
 	}

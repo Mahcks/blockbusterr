@@ -163,7 +163,7 @@ func (t *Trakt) authJSONStatus(ctx context.Context, endpoint string, payload any
 		return 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := t.httpClient.Do(req)
+	resp, err := doRequest(t.httpClient, req)
 	if err != nil {
 		return 0, fmt.Errorf("Trakt authentication request failed: %w", err)
 	}

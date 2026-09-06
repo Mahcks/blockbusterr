@@ -13,7 +13,6 @@ import (
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/services/jobs"
-	"github.com/robfig/cron/v3"
 )
 
 type jobConfig struct {
@@ -217,26 +216,30 @@ func (s *Scheduler) startJobScheduler(jc jobConfig) {
 		defer s.wg.Done()
 		defer s.clearJobSchedule(jc.id, generation)
 
-		duration, cronSchedule, _ := parseSyncInterval(jc.syncInterval)
+		duration, cronSchedule, err := config.ParseSyncInterval(jc.syncInterval)
+		if err != nil {
+			log.Errorf("Job %s has an invalid interval: %v", jc.id, err)
+			return
+		}
 
 		// Log job startup
 		if cronSchedule != nil {
-			nextRun := (*cronSchedule).Next(time.Now())
+			nextRun := cronSchedule.Next(time.Now())
 			log.Infof("Job '%s' scheduled with cron '%s' (%s mode), next run at %s",
 				formatJobLabel(jc.name, jc.id), jc.syncInterval, jc.mode, nextRun.Format(time.RFC3339))
 		} else {
-			if duration == 0 {
-				log.Warnf("Invalid sync interval '%s' for job '%s', defaulting to 1h", jc.syncInterval, formatJobLabel(jc.name, jc.id))
-				duration = 1 * time.Hour
-			}
 			log.Infof("Job '%s' scheduled every %s (%s mode)", formatJobLabel(jc.name, jc.id), duration, jc.mode)
 		}
 
 		// Create ticker
 		var ticker *time.Ticker
 		if cronSchedule != nil {
-			nextRun := (*cronSchedule).Next(time.Now())
+			nextRun := cronSchedule.Next(time.Now())
 			waitDuration := time.Until(nextRun)
+			if nextRun.IsZero() || waitDuration <= 0 {
+				log.Errorf("Job %s has no future cron occurrence", jc.id)
+				return
+			}
 			ticker = time.NewTicker(waitDuration)
 		} else {
 			ticker = time.NewTicker(duration)
@@ -254,8 +257,12 @@ func (s *Scheduler) startJobScheduler(jc jobConfig) {
 
 				// If using cron, calculate next run time
 				if cronSchedule != nil {
-					nextRun := (*cronSchedule).Next(time.Now())
+					nextRun := cronSchedule.Next(time.Now())
 					waitDuration := time.Until(nextRun)
+					if nextRun.IsZero() || waitDuration <= 0 {
+						log.Errorf("Job %s has no future cron occurrence", jc.id)
+						return
+					}
 					ticker.Reset(waitDuration)
 				}
 			}
@@ -335,7 +342,7 @@ func runnableJobs(cfg *config.Config) []config.DynamicJob {
 	enabled := cfg.GetEnabledJobs()
 	runnable := make([]config.DynamicJob, 0, len(enabled))
 	for _, job := range enabled {
-		if jobs.IsProviderConfigured(cfg, job.Source) {
+		if jobs.IsJobSourceConfigured(cfg, job) {
 			runnable = append(runnable, job)
 		}
 	}
@@ -361,23 +368,8 @@ func getJobMode(jobMode, defaultMode string) string {
 }
 
 func runsAtStartup(interval string) bool {
-	_, cronSchedule, _ := parseSyncInterval(interval)
-	return cronSchedule == nil
-}
-
-func parseSyncInterval(interval string) (time.Duration, *cron.Schedule, error) {
-	// Try parsing as duration first
-	if duration, err := time.ParseDuration(interval); err == nil {
-		return duration, nil, nil
-	}
-
-	// Try parsing as cron expression
-	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
-	if schedule, err := parser.Parse(interval); err == nil {
-		return 0, &schedule, nil
-	}
-
-	return 0, nil, nil
+	_, cronSchedule, err := config.ParseSyncInterval(interval)
+	return err == nil && cronSchedule == nil
 }
 
 func jobSignature(job config.DynamicJob) string {

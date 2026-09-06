@@ -390,6 +390,7 @@ type Config struct {
 
 	// Internal field to track config file path
 	ConfigFilePath   string                                            `mapstructure:"-" json:"-" yaml:"-"`
+	LoadTraktToken   func() (access, refresh string, expires int64)    `mapstructure:"-" json:"-" yaml:"-"`
 	UpdateTraktToken func(access, refresh string, expires int64) error `mapstructure:"-" json:"-" yaml:"-"`
 }
 
@@ -405,6 +406,7 @@ func (c *Config) Clone() (*Config, error) {
 	}
 	clone.ConfigFilePath = c.ConfigFilePath
 	clone.UpdateTraktToken = c.UpdateTraktToken
+	clone.LoadTraktToken = c.LoadTraktToken
 	return clone, nil
 }
 

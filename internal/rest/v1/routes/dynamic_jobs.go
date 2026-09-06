@@ -232,57 +232,59 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 	})
 
 	router.Post("/jobs/recipes/:id", func(c *fiber.Ctx) error {
-		cfg := gctx.Config()
 		recipe, ok := jobs.GetTemplate(c.Params("id"))
 		if !ok {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Recipe not found"})
 		}
-		for _, available := range jobs.GetAllTemplates(cfg) {
-			if available.ID == recipe.ID && !available.Ready {
-				return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": available.Missing})
+		var job config.DynamicJob
+		var missing string
+		err := global.UpdateConfig(gctx, func(cfg *config.Config) error {
+			for _, available := range jobs.GetAllTemplates(cfg) {
+				if available.ID == recipe.ID && !available.Ready {
+					missing = available.Missing
+					return fmt.Errorf("%s", missing)
+				}
 			}
-		}
 
-		candidate := *cfg
-		candidate.RuleSets = append([]config.RuleSet(nil), cfg.RuleSets...)
-		candidate.Jobs.List = append([]config.DynamicJob(nil), cfg.Jobs.List...)
-		ruleSetID := config.DefaultMoviesRuleSetID
-		if recipe.MediaType == "show" {
-			ruleSetID = config.DefaultShowsRuleSetID
-		}
-		if !recipe.DefaultRules {
-			rules := config.RuleSet{ID: uuid.NewString(), Name: availableRecipeRuleName(&candidate, recipe.RuleSetName, recipe.MediaType), Media: recipe.MediaType, Revision: 1}
-			if recipe.Movies != nil {
-				filters := *recipe.Movies
-				rules.Movies = &filters
+			ruleSetID := config.DefaultMoviesRuleSetID
+			if recipe.MediaType == "show" {
+				ruleSetID = config.DefaultShowsRuleSetID
 			}
-			if recipe.Shows != nil {
-				filters := *recipe.Shows
-				rules.Shows = &filters
+			if !recipe.DefaultRules {
+				rules := config.RuleSet{ID: uuid.NewString(), Name: availableRecipeRuleName(cfg, recipe.RuleSetName, recipe.MediaType), Media: recipe.MediaType, Revision: 1}
+				if recipe.Movies != nil {
+					filters := *recipe.Movies
+					rules.Movies = &filters
+				}
+				if recipe.Shows != nil {
+					filters := *recipe.Shows
+					rules.Shows = &filters
+				}
+				config.ApplyRuleSetDefaults(&rules)
+				if err := cfg.ValidateRuleSet(rules, ""); err != nil {
+					return fmt.Errorf("recipe rules are invalid: %w", err)
+				}
+				cfg.RuleSets = append(cfg.RuleSets, rules)
+				ruleSetID = rules.ID
 			}
-			config.ApplyRuleSetDefaults(&rules)
-			if err := candidate.ValidateRuleSet(rules, ""); err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Recipe rules are invalid: " + err.Error()})
+			job = config.DynamicJob{ID: uuid.NewString(), Name: recipe.Name, Enabled: false, Type: recipe.Type, Source: recipe.Source, MediaType: recipe.MediaType, Limit: recipe.Limit, DeliveryLimit: recipe.DeliveryLimit, Period: recipe.Period, SyncInterval: recipe.SyncInterval, Mode: recipe.Mode, SeriesType: recipe.SeriesType, RuleSetID: ruleSetID}
+			if recipe.List != nil {
+				locator := *recipe.List
+				job.List = &locator
 			}
-			candidate.RuleSets = append(candidate.RuleSets, rules)
-			ruleSetID = rules.ID
-		}
-		job := config.DynamicJob{ID: uuid.NewString(), Name: recipe.Name, Enabled: false, Type: recipe.Type, Source: recipe.Source, MediaType: recipe.MediaType, Limit: recipe.Limit, DeliveryLimit: recipe.DeliveryLimit, Period: recipe.Period, SyncInterval: recipe.SyncInterval, Mode: recipe.Mode, SeriesType: recipe.SeriesType, RuleSetID: ruleSetID}
-		if recipe.List != nil {
-			locator := *recipe.List
-			job.List = &locator
-		}
-		if err := validateDynamicJob(&candidate, job); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Recipe job is invalid: " + err.Error()})
-		}
-		candidate.Jobs.List = append(candidate.Jobs.List, job)
-		if err := global.UpdateConfig(gctx, func(current *config.Config) error {
-			candidate.ConfigFilePath = current.ConfigFilePath
-			*current = candidate
+			if err := validateDynamicJob(cfg, job); err != nil {
+				return fmt.Errorf("recipe job is invalid: %w", err)
+			}
+			cfg.Jobs.List = append(cfg.Jobs.List, job)
 			return nil
-		}); err != nil {
+		})
+		if missing != "" {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": missing})
+		}
+		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save recipe: " + err.Error()})
 		}
+
 		return c.Status(fiber.StatusCreated).JSON(job)
 	})
 
@@ -646,6 +648,9 @@ func registerAccountAuthRoutes(router fiber.Router, gctx global.Context) {
 
 // validateDynamicJob validates a DynamicJob configuration
 func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
+	if err := validateAutomationInterval("job", job.SyncInterval); err != nil {
+		return err
+	}
 	if job.Type == "" {
 		return fmt.Errorf("job type is required")
 	}

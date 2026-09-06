@@ -15,7 +15,6 @@ import (
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/pkg/enums"
-	"github.com/robfig/cron/v3"
 	"gopkg.in/yaml.v3"
 )
 
@@ -128,15 +127,19 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
-		candidate, err := importedShareableConfig(gctx.Config(), data)
-		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
-		}
+		var candidate *config.Config
+		var validationErr error
 		if err := global.UpdateConfig(gctx, func(current *config.Config) error {
-			candidate.ConfigFilePath = current.ConfigFilePath
+			candidate, validationErr = importedShareableConfig(current, data)
+			if validationErr != nil {
+				return validationErr
+			}
 			*current = *candidate
 			return nil
 		}); err != nil {
+			if validationErr != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Error()})
+			}
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": fmt.Sprintf("Failed to save config: %v", err),
 			})
@@ -152,15 +155,20 @@ func RegisterConfigRoutes(router fiber.Router, gctx global.Context) {
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
-		candidate, importedJob, err := importedJobBundle(gctx.Config(), data)
-		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
-		}
+		var candidate *config.Config
+		var importedJob config.DynamicJob
+		var validationErr error
 		if err := global.UpdateConfig(gctx, func(current *config.Config) error {
-			candidate.ConfigFilePath = current.ConfigFilePath
+			candidate, importedJob, validationErr = importedJobBundle(current, data)
+			if validationErr != nil {
+				return validationErr
+			}
 			*current = *candidate
 			return nil
 		}); err != nil {
+			if validationErr != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Error()})
+			}
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Failed to save config: %v", err)})
 		}
 		rules, _ := candidate.RuleSetByID(importedJob.RuleSetID)
@@ -426,14 +434,10 @@ func validateAutomationInterval(label, interval string) error {
 	if interval == "" {
 		return nil
 	}
-	if duration, err := time.ParseDuration(interval); err == nil && duration > 0 {
-		return nil
+	if _, _, err := config.ParseSyncInterval(interval); err != nil {
+		return fmt.Errorf("%s: %w", label, err)
 	}
-	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
-	if _, err := parser.Parse(interval); err == nil {
-		return nil
-	}
-	return fmt.Errorf("%s interval must be a positive duration or five-field cron expression", label)
+	return nil
 }
 
 func availableRuleSetName(cfg *config.Config, name string) string {

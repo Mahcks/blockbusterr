@@ -104,7 +104,7 @@ func (s *Simkl) trending(ctx context.Context, mediaType, timeframe string, limit
 		return nil, fmt.Errorf("failed to create Simkl request: %w", err)
 	}
 	req.Header.Set("User-Agent", "blockbusterr/1")
-	resp, err := s.httpClient.Do(req)
+	resp, err := doRequest(s.httpClient, req)
 	if err != nil {
 		return nil, fmt.Errorf("Simkl request failed: %w", err)
 	}

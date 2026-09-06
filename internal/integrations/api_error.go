@@ -1,6 +1,7 @@
 package integrations
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -77,4 +78,27 @@ func providerErrorCode(body []byte) string {
 	}
 	_ = json.Unmarshal(body, &item)
 	return item.Code
+}
+
+// requestError keeps credential-bearing request URLs out of logs and history.
+// Unwrap retains cancellation, timeout, and transport error inspection.
+type requestError struct{ cause error }
+
+func (err *requestError) Error() string {
+	if errors.Is(err.cause, context.Canceled) {
+		return "HTTP request canceled"
+	}
+	if errors.Is(err.cause, context.DeadlineExceeded) {
+		return "HTTP request deadline exceeded"
+	}
+	return "HTTP transport failed"
+}
+func (err *requestError) Unwrap() error { return err.cause }
+
+func doRequest(client *http.Client, req *http.Request) (*http.Response, error) {
+	response, err := client.Do(req)
+	if err != nil {
+		return response, &requestError{cause: err}
+	}
+	return response, nil
 }

@@ -80,7 +80,7 @@ func (t *Trakt) doRequest(ctx context.Context, method, endpoint string, body io.
 		req.Header.Set("Authorization", "Bearer "+accessToken)
 	}
 
-	resp, err := t.httpClient.Do(req)
+	resp, err := doRequest(t.httpClient, req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}

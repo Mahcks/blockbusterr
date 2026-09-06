@@ -163,6 +163,12 @@ func New(
 }
 
 func (g *gCtx) bindConfigCallbacks(cfg *config.Config) {
+	cfg.LoadTraktToken = func() (string, string, int64) {
+		g.cfgMu.RLock()
+		defer g.cfgMu.RUnlock()
+		return g.cfg.Trakt.AccessToken, g.cfg.Trakt.RefreshToken, g.cfg.Trakt.TokenExpires
+	}
+
 	cfg.UpdateTraktToken = func(access, refresh string, expires int64) error {
 		return g.UpdateConfig(func(candidate *config.Config) error {
 			candidate.Trakt.AccessToken = access

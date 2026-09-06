@@ -135,7 +135,7 @@ func (client *MDBList) get(ctx context.Context, endpoint string, query url.Value
 	if err != nil {
 		return err
 	}
-	response, err := client.httpClient.Do(req)
+	response, err := doRequest(client.httpClient, req)
 	if err != nil {
 		return fmt.Errorf("MDBList request failed: %w", err)
 	}

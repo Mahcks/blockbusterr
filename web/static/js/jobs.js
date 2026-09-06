@@ -205,9 +205,8 @@
 	const unavailableSection = document.getElementById('unavailable-jobs-section');
 	const unavailableContainer = document.getElementById('unavailable-jobs-list');
 	const unavailableCount = document.getElementById('unavailable-jobs-count');
-	const enabledJobs = allJobs.filter(job => job.enabled);
-	const activeJobs = enabledJobs.filter(isJobAvailable);
-	const unavailableJobs = enabledJobs.filter(job => !isJobAvailable(job));
+	const activeJobs = allJobs.filter(isJobAvailable);
+	const unavailableJobs = allJobs.filter(job => !isJobAvailable(job));
 
 	jobsCount.textContent = activeJobs.length;
 
@@ -258,6 +257,7 @@
                 <span class="flex min-w-0 items-center gap-2">
                   <span class="truncate text-sm font-medium text-slate-100">${escapeHTML(job.name)}</span>
                   ${isLegacy ? '<span class="text-xs text-slate-500">Legacy</span>' : ''}
+                  ${job.enabled ? '' : '<span class="text-xs text-slate-500">Disabled</span>'}
                   ${unavailable ? '<span class="text-xs font-medium text-amber-300">Setup required</span>' : ''}
                 </span>
                 <span class="mt-0.5 block truncate text-xs text-slate-500">${escapeHTML(capitalize(job.type))} · ${job.limit} items${job.selection_cycle === true ? ' · Ranked selection' : ''}</span>
@@ -270,7 +270,7 @@
               <small>${assignedRules ? `Revision ${assignedRules.revision}` : 'Check assignment'}</small>
             </button>
             <div class="job-row-actions">
-				  ${unavailable ? '' : `<button
+				  ${unavailable || !job.enabled ? '' : `<button
                     data-action="trigger-job"
                     data-job-id="${escapeHTML(job.id)}"
                     class="icon-button hover:text-green-300"
@@ -800,10 +800,12 @@
 	document.getElementById('modal-list-owner').value = job.list?.owner || '';
 	document.getElementById('modal-list-id').value = job.list?.list_id || job.list?.slug || '';
 	document.getElementById('modal-recommendation-seeds').value = (job.recommendation_seeds || []).join(', ');
-	document.getElementById('modal-recommendation-list-source').value = job.recommendation_list?.source || '';
+	populateRecommendationListSources('modal', job.recommendation_list?.source || '');
 	document.getElementById('modal-recommendation-list-owner').value = job.recommendation_list?.list?.owner || '';
 	document.getElementById('modal-recommendation-list-id').value = job.recommendation_list?.list?.list_id || '';
 	document.getElementById('modal-series-type').value = job.series_type || 'standard';
+    document.getElementById('modal-base-rating').value = job.base_min_rating ?? 6.0;
+    document.getElementById('modal-adjustment-factor').value = job.adjustment_factor ?? 0.5;
 
     // Populate job type dropdown
     const typeSelect = document.getElementById('modal-type');
@@ -990,11 +992,11 @@
       // Set default values if not already set
       const baseRating = document.getElementById('modal-base-rating');
       const adjustmentFactor = document.getElementById('modal-adjustment-factor');
-      if (!baseRating.value || baseRating.value === '0') {
-        baseRating.value = currentJob?.base_min_rating || 6.0;
+      if (!baseRating.value) {
+        baseRating.value = currentJob?.base_min_rating ?? 6.0;
       }
-      if (!adjustmentFactor.value || adjustmentFactor.value === '0') {
-        adjustmentFactor.value = currentJob?.adjustment_factor || 0.5;
+      if (!adjustmentFactor.value) {
+        adjustmentFactor.value = currentJob?.adjustment_factor ?? 0.5;
       }
     } else {
       smartContainer.classList.add('hidden');
@@ -1054,13 +1056,14 @@
 	return [...new Set(String(value || '').split(/[\s,]+/).filter(Boolean).map(Number).filter(Number.isInteger))];
   }
 
-  function populateRecommendationListSources(scope) {
+  function populateRecommendationListSources(scope, selectedSource) {
 	const select = document.getElementById(`${scope}-recommendation-list-source`);
 	if (!select) return;
-	const current = select.value;
+	const current = selectedSource ?? select.value;
 	const sources = jobTypes.list?.sources || [];
 	select.replaceChildren(new Option('No seed list', ''), ...sources.map(source => new Option(source === 'tmdb' ? 'TMDB list' : `${capitalize(source)} list`, source)));
-	if (sources.includes(current)) select.value = current;
+	if (current && !sources.includes(current)) select.add(new Option(`${capitalize(current)} list (unavailable)`, current));
+	select.value = current;
   }
 
   function recommendationListFromForm(scope) {

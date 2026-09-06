@@ -82,7 +82,7 @@ func (s *Sonarr) doRequest(ctx context.Context, method, endpoint string, body an
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Api-Key", s.apiKey)
 
-	resp, err := s.httpClient.Do(req)
+	resp, err := doRequest(s.httpClient, req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}

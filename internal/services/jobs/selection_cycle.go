@@ -281,15 +281,21 @@ func planSelectionCycleWithPreview(cfg *config.Config, previewJob func(config.Dy
 	if err != nil {
 		return plan, err
 	}
-	plan.Movies, err = AllocateSelection(movieCandidates, movieCapacity, fitMinimums(movieMinima, movieCapacity))
+	if cfg.Jobs.Selection.MovieLimit == 0 && cfg.Jobs.GlobalLimitMovies <= 0 {
+		movieCapacity = len(movieCandidates)
+	}
+	if cfg.Jobs.Selection.ShowLimit == 0 && cfg.Jobs.GlobalLimitShows <= 0 {
+		showCapacity = len(showCandidates)
+	}
+	plan.Movies, err = allocateSelection(movieCandidates, movieCapacity, fitMinimums(movieMinima, movieCapacity))
 	if err != nil {
 		return plan, err
 	}
-	plan.Shows, err = AllocateSelection(showCandidates, showCapacity, fitMinimums(showMinima, showCapacity))
-	if movieCapacity < cfg.Jobs.Selection.MovieLimit {
+	plan.Shows, err = allocateSelection(showCandidates, showCapacity, fitMinimums(showMinima, showCapacity))
+	if movieCapacity < len(fullMovies.Winners) {
 		markBudgetExclusions(plan.Movies.Excluded, fullMovies.Winners)
 	}
-	if showCapacity < cfg.Jobs.Selection.ShowLimit {
+	if showCapacity < len(fullShows.Winners) {
 		markBudgetExclusions(plan.Shows.Excluded, fullShows.Winners)
 	}
 	return plan, err
@@ -315,7 +321,11 @@ func remainingSelectionCapacity(cfg *config.Config, db *database.Database, media
 	if err != nil {
 		return 0, err
 	}
-	return min(cycleLimit, max(0, globalLimit-used)), nil
+	remaining := max(0, globalLimit-used)
+	if cycleLimit == 0 {
+		return remaining, nil
+	}
+	return min(cycleLimit, remaining), nil
 }
 
 func limitSelectionCandidates(candidates []SelectionCandidate, limits map[string]int) []SelectionCandidate {

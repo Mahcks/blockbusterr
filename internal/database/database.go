@@ -131,7 +131,11 @@ func New(dataDir string) (*Database, error) {
 	database := &Database{db: db, path: dbPath}
 
 	// Initialize schema
-	if err := database.initSchema(); err != nil {
+	err = database.initSchema()
+	if err == nil {
+		err = database.recoverInterruptedRuns()
+	}
+	if err != nil {
 		schemaErr := err
 		if closeErr := db.Close(); closeErr != nil {
 			return nil, fmt.Errorf("failed to initialize schema (%v) and close db: %w", schemaErr, closeErr)
@@ -143,6 +147,25 @@ func New(dataDir string) (*Database, error) {
 	}
 
 	return database, nil
+}
+
+// No execution survives reopening this single-process database. Preserve
+// delivery history and uncertain cycle accounting; never retry automatically.
+func (d *Database) recoverInterruptedRuns() error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	now := time.Now()
+	message := "Interrupted before completion; application restarted"
+	if _, err := tx.Exec(`UPDATE job_runs SET status = ?, finished_at = ?, error_message = ? WHERE status = ?`, enums.JobRunStatusFailed, now, message, enums.JobRunStatusRunning); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE selection_cycles SET status = ?, finished_at = ?, error_message = ?, accounting_complete = 0 WHERE status = ?`, enums.SelectionCycleFailed, now, message, enums.SelectionCycleRunning); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func isDatabaseWritePermissionError(err error) bool {

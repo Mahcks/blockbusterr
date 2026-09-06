@@ -158,6 +158,8 @@ func (e *DynamicJobExecutor) executeMovieJob(ctx context.Context, job config.Dyn
 			Monitor:             jobConfig.Monitor,
 			Limit:               jobConfig.Limit,
 			DeliveryLimit:       jobConfig.DeliveryLimit,
+			RepeatPolicy:        jobConfig.RepeatPolicy,
+			SeriesType:          jobConfig.SeriesType,
 			BaseMinRating:       job.BaseMinRating,
 			AdjustmentFactor:    job.AdjustmentFactor,
 		}
@@ -217,6 +219,8 @@ func (e *DynamicJobExecutor) executeShowJob(ctx context.Context, job config.Dyna
 			Monitor:          jobConfig.Monitor,
 			Limit:            jobConfig.Limit,
 			DeliveryLimit:    jobConfig.DeliveryLimit,
+			RepeatPolicy:     jobConfig.RepeatPolicy,
+			SeriesType:       jobConfig.SeriesType,
 			BaseMinRating:    job.BaseMinRating,
 			AdjustmentFactor: job.AdjustmentFactor,
 		}

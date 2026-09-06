@@ -12,6 +12,16 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 - Updated Go to 1.25.13 to address six reachable standard-library vulnerabilities.
 - Updated stable installation examples and preserved versioned documentation.
 
+### Fixed
+
+- Disabled jobs remain editable; smart-job tuning and recommendation seed lists restore correctly in the editor.
+- List providers participate in scheduled and ranked jobs; exhausted budgets select no further winners.
+- Smart jobs preserve delivery settings and apply the same adaptive rules in previews and execution.
+- TMDB movie discovery includes country and runtime metadata; Trakt list pagination retains refreshed authentication.
+- Configuration updates preserve concurrent changes, invalid schedules are rejected, and interrupted runs recover on restart.
+- Provider transport diagnostics omit credential-bearing request URLs.
+- Corrected the Science-Fiction Discovery recipe's genre filter.
+
 ## [2.0.0-beta.7] - 2026-08-09
 
 ### Added

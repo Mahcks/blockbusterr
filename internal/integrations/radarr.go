@@ -82,7 +82,7 @@ func (r *Radarr) doRequest(ctx context.Context, method, endpoint string, body an
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Api-Key", r.apiKey)
 
-	resp, err := r.httpClient.Do(req)
+	resp, err := doRequest(r.httpClient, req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}

@@ -139,7 +139,7 @@ func (client *Letterboxd) getHTML(ctx context.Context, path string, maxBytes int
 	}
 	req.Header.Set("Accept", "text/html")
 	req.Header.Set("User-Agent", "Blockbusterr/2 (+https://github.com/Mahcks/blockbusterr)")
-	response, err := client.httpClient.Do(req)
+	response, err := doRequest(client.httpClient, req)
 	if err != nil {
 		return "", fmt.Errorf("Letterboxd request failed: %w", err)
 	}

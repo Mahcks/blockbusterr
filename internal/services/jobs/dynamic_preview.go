@@ -34,6 +34,15 @@ func previewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 		return PreviewResponse{}, err
 	}
 	mode := DetermineMode(job.Mode, cfg.Jobs.Mode)
+	job.Mode = mode
+	if job.Type == "smart_popular" {
+		if job.BaseMinRating == 0 {
+			job.BaseMinRating = 6
+		}
+		if job.AdjustmentFactor == 0 {
+			job.AdjustmentFactor = .5
+		}
+	}
 	response := PreviewResponse{JobName: job.Name, Source: job.Source, MediaType: job.MediaType, Mode: mode, HasPosters: hasTMDBConfigured(cfg), Items: []PreviewItem{}}
 	executor := &DynamicJobExecutor{Config: cfg, Database: db, DryRun: true, ListSources: listSources}
 	discovery, err := executor.discoveryForJob(job)
@@ -51,7 +60,7 @@ func previewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 			return response, err
 		}
 		response.TotalFound = len(movies)
-		if err := previewMovies(ctx, cfg, db, mode, job.RepeatPolicy, movies, &response); err != nil {
+		if err := previewMovies(ctx, cfg, db, job, movies, &response); err != nil {
 			return response, err
 		}
 		return response, nil
@@ -66,13 +75,18 @@ func previewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 		return response, err
 	}
 	response.TotalFound = len(shows)
-	if err := previewShows(ctx, cfg, db, mode, job.RepeatPolicy, shows, &response); err != nil {
+	if err := previewShows(ctx, cfg, db, job, shows, &response); err != nil {
 		return response, err
 	}
 	return response, nil
 }
 
-func previewMovies(ctx context.Context, cfg *config.Config, db *database.Database, mode, repeatPolicy string, movies []integrations.Movie, response *PreviewResponse) error {
+func previewMovies(ctx context.Context, cfg *config.Config, db *database.Database, job config.DynamicJob, movies []integrations.Movie, response *PreviewResponse) error {
+	mode, repeatPolicy := job.Mode, job.RepeatPolicy
+	var percentiles map[int]float64
+	if job.Type == "smart_popular" {
+		percentiles = filters.CalculateMoviePopularityPercentiles(movies)
+	}
 	if err := enrichMovieCertifications(ctx, cfg, movies); err != nil {
 		return fmt.Errorf("failed to enrich movie certifications: %w", err)
 	}
@@ -103,6 +117,10 @@ func previewMovies(ctx context.Context, cfg *config.Config, db *database.Databas
 		item.Score, item.Rank = score.Score, score.Rank
 		item.ProviderRank = index + 1
 		result := filters.MoviePassesRules(movie, cfg.Filters.Movies, cfg.TitleExceptions)
+		if percentiles != nil {
+			threshold := filters.CalculateAdaptiveRating(job.BaseMinRating, percentiles[movie.IDs.TMDB], job.AdjustmentFactor)
+			result = filters.MoviePassesAdaptiveFilters(movie, cfg.Filters.Movies, threshold, cfg.TitleExceptions)
+		}
 		item.FilterChecks = result.Checks
 		item.DecisionReason = filters.Explain(result)
 		if !result.Passed {
@@ -137,7 +155,12 @@ func previewMovies(ctx context.Context, cfg *config.Config, db *database.Databas
 	return nil
 }
 
-func previewShows(ctx context.Context, cfg *config.Config, db *database.Database, mode, repeatPolicy string, shows []integrations.Show, response *PreviewResponse) error {
+func previewShows(ctx context.Context, cfg *config.Config, db *database.Database, job config.DynamicJob, shows []integrations.Show, response *PreviewResponse) error {
+	mode, repeatPolicy := job.Mode, job.RepeatPolicy
+	var percentiles map[int]float64
+	if job.Type == "smart_popular" {
+		percentiles = filters.CalculateShowPopularityPercentiles(shows)
+	}
 	if err := enrichShowCertifications(ctx, cfg, shows); err != nil {
 		return fmt.Errorf("failed to enrich show certifications: %w", err)
 	}
@@ -169,6 +192,10 @@ func previewShows(ctx context.Context, cfg *config.Config, db *database.Database
 		item.Score, item.Rank = score.Score, score.Rank
 		item.ProviderRank = index + 1
 		result := filters.ShowPassesRules(show, cfg.Filters.Shows, cfg.TitleExceptions)
+		if percentiles != nil {
+			threshold := filters.CalculateAdaptiveRating(job.BaseMinRating, percentiles[show.IDs.TVDB], job.AdjustmentFactor)
+			result = filters.ShowPassesAdaptiveFilters(show, cfg.Filters.Shows, threshold, cfg.TitleExceptions)
+		}
 		item.FilterChecks = result.Checks
 		item.DecisionReason = filters.Explain(result)
 		if !result.Passed {

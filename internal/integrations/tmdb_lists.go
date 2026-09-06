@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -70,7 +71,7 @@ func (t *TMDB) GetListItems(ctx context.Context, listID string, watchlist bool, 
 		}
 	}
 	keepRequestedListMedia(mediaType, &result.Movies, &result.Shows)
-	return result, t.enrichShows(ctx, result.Shows)
+	return result, errors.Join(t.enrichMovies(ctx, result.Movies, true), t.enrichShows(ctx, result.Shows))
 }
 
 func (t *TMDB) getWatchlist(ctx context.Context, mediaType string, limit int) (TMDBListItems, error) {
@@ -107,7 +108,7 @@ func (t *TMDB) getWatchlist(ctx context.Context, mediaType string, limit int) (T
 		}
 	}
 	keepRequestedListMedia(mediaType, &result.Movies, &result.Shows)
-	return result, t.enrichShows(ctx, result.Shows)
+	return result, errors.Join(t.enrichMovies(ctx, result.Movies, true), t.enrichShows(ctx, result.Shows))
 }
 
 func keepRequestedListMedia(mediaType string, movies *[]Movie, shows *[]Show) {
@@ -188,7 +189,7 @@ func (t *TMDB) post(ctx context.Context, endpoint string, query url.Values, payl
 }
 
 func (t *TMDB) do(req *http.Request, target any) error {
-	resp, err := t.httpClient.Do(req)
+	resp, err := doRequest(t.httpClient, req)
 	if err != nil {
 		return fmt.Errorf("TMDB request failed: %w", err)
 	}
