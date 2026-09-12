@@ -335,6 +335,9 @@ func importedJobBundle(current *config.Config, data []byte) (*config.Config, con
 }
 
 func validatePortableAutomation(candidate *config.Config) error {
+	if err := candidate.ValidateJSON(); err != nil {
+		return err
+	}
 	if _, err := candidate.MigrateLegacyJobs(); err != nil {
 		return fmt.Errorf("legacy job migration: %w", err)
 	}

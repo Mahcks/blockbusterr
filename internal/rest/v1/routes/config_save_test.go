@@ -194,3 +194,14 @@ func TestConfigSaveUpdatesRankedSelectionMembership(t *testing.T) {
 		t.Fatalf("membership not applied: %+v", cfg.Jobs.List)
 	}
 }
+
+func TestConfigSaveRejectsNonFiniteNumbers(t *testing.T) {
+	for _, value := range []string{"NaN", "+Inf", "-Inf"} {
+		app, cfg := newConfigSaveTestApp(t)
+		before := cfg.Scoring.RatingWeight
+		rec, _ := postConfigSave(t, app, map[string]string{"scoring.rating_weight": value})
+		if rec.Code != fiber.StatusBadRequest || cfg.Scoring.RatingWeight != before {
+			t.Fatalf("value=%s status=%d: invalid settings accepted", value, rec.Code)
+		}
+	}
+}

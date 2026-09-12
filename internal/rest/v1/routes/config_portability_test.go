@@ -301,3 +301,33 @@ func TestFullRestoreAllowsUnlimitedRankedSelectionWithMinimumPicks(t *testing.T)
 		t.Fatal("restore changed unlimited selection settings")
 	}
 }
+
+func TestImportsRejectNonFiniteNumbersWithoutChangingConfig(t *testing.T) {
+	for _, endpoint := range []string{"/config/import", "/config/restore"} {
+		for _, field := range []string{"scoring:\n  rating_weight: .nan\n", "scoring:\n  rating_scale: .inf\n", "filters:\n  movies:\n    min_rating: .nan\n"} {
+			cfg := portableTestConfig(t)
+			if err := cfg.Save(); err != nil {
+				t.Fatal(err)
+			}
+			before, err := os.ReadFile(cfg.ConfigFilePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			data := "version: 2.0.0\nschema_version: 2\njobs: {}\n" + field
+			if strings.HasPrefix(field, "scoring:") {
+				data += "filters: {}\n"
+			} else {
+				data += "scoring: {}\n"
+			}
+			response := uploadConfig(t, configRoutesTestApp(cfg), endpoint, []byte(data))
+			_ = response.Body.Close()
+			if response.StatusCode != fiber.StatusBadRequest {
+				t.Fatalf("%s accepted nonfinite value: status=%d", endpoint, response.StatusCode)
+			}
+			after, err := os.ReadFile(cfg.ConfigFilePath)
+			if err != nil || !bytes.Equal(before, after) || len(cfg.Jobs.List) != 1 {
+				t.Fatal("rejected import changed configuration")
+			}
+		}
+	}
+}

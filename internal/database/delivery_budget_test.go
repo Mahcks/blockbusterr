@@ -53,3 +53,49 @@ func TestUnlimitedDeliveriesCountWhenGlobalLimitEnabled(t *testing.T) {
 		t.Fatalf("tightened limit: %q, %v", reason, err)
 	}
 }
+
+func TestConcurrentDeliveryBudgetSurvivesInterruptedRun(t *testing.T) {
+	dir := t.TempDir()
+	db, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	since := time.Now().Add(-time.Hour)
+	runID, err := db.StartJobRun("interrupted", "Interrupted", "movie", "direct", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := make(chan struct{})
+	results := make(chan bool, 20)
+	for range 20 {
+		go func() {
+			<-start
+			id, reason, err := db.TryReserveDelivery(runID, "interrupted", "movie", 0, 3, since)
+			if err != nil {
+				t.Error(err)
+			}
+			results <- id != 0 && reason == "" && err == nil
+		}()
+	}
+	close(start)
+	allowed := 0
+	for range 20 {
+		if <-results {
+			allowed++
+		}
+	}
+	if allowed != 3 {
+		t.Fatalf("concurrent reservations = %d, want 3", allowed)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, reason, err := db.TryReserveDelivery(runID+1, "next", "movie", 0, 3, since); err != nil || reason != "Global delivery limit reached" {
+		t.Fatalf("restart forgot uncertain deliveries: %q, %v", reason, err)
+	}
+}

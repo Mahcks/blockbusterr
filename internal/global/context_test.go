@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -41,6 +42,13 @@ func TestConfigUpdatesAreCopyOnWrite(t *testing.T) {
 	wg.Wait()
 	if got := gctx.Config().Jobs.GlobalLimitMovies; got != 11 {
 		t.Fatalf("serialized updates = %d, want 11", got)
+	}
+	t.Setenv("CONFIG_PATH", filepath.Dir(cfg.ConfigFilePath))
+	if err := gctx.ReloadConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if got := gctx.Config().Jobs.GlobalLimitMovies; got != 11 {
+		t.Fatalf("serialized updates lost after reload: %d", got)
 	}
 }
 
@@ -104,5 +112,64 @@ func TestTraktAdaptersRefreshFromLiveConfiguration(t *testing.T) {
 	}
 	if got := gctx.Config().Trakt.RefreshToken; got != "rotated" {
 		t.Fatal("refresh not persisted")
+	}
+}
+
+func TestRestoreFailurePreservesActiveConfigAndRecoverySurvivesRestart(t *testing.T) {
+	dir := t.TempDir()
+	cfg := &config.Config{Version: "2.0.0", ConfigFilePath: filepath.Join(dir, "config.yaml")}
+	cfg.Jobs.GlobalLimitMovies = 1
+	if err := cfg.Save(); err != nil {
+		t.Fatal(err)
+	}
+	gctx := New(context.Background(), cfg, nil, "2.0.0", "", nil)
+	candidate := gctx.Config()
+	candidate.Jobs.GlobalLimitMovies = 9
+	// A directory at the backup destination simulates an unwritable recovery file.
+	if err := os.Mkdir(cfg.ConfigFilePath+".backup", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := RestoreConfig(gctx, candidate); err == nil {
+		t.Fatal("expected backup failure")
+	}
+	t.Setenv("CONFIG_PATH", dir)
+	restarted, err := config.New("2.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gctx.Config().Jobs.GlobalLimitMovies != 1 || restarted.Jobs.GlobalLimitMovies != 1 {
+		t.Fatal("failed restore changed active or persisted configuration")
+	}
+	if err := os.Remove(cfg.ConfigFilePath + ".backup"); err != nil {
+		t.Fatal(err)
+	}
+	if err := RestoreConfig(gctx, candidate); err != nil {
+		t.Fatal(err)
+	}
+	if err := gctx.ReloadConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if gctx.Config().Jobs.GlobalLimitMovies != 9 {
+		t.Fatal("restored settings lost after restart")
+	}
+	backup, err := os.ReadFile(cfg.ConfigFilePath + ".backup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	recovery, err := config.Parse(backup, cfg.ConfigFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recovery.Jobs.GlobalLimitMovies != 1 {
+		t.Fatal("recovery copy does not contain pre-restore configuration")
+	}
+	if err := RestoreConfig(gctx, recovery); err != nil {
+		t.Fatal(err)
+	}
+	if err := gctx.ReloadConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if gctx.Config().Jobs.GlobalLimitMovies != 1 {
+		t.Fatal("recovery copy could not restore original settings")
 	}
 }

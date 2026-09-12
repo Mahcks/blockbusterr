@@ -1,7 +1,9 @@
 package jobs
 
 import (
+	"errors"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/mahcks/blockbusterr/config"
@@ -71,6 +73,17 @@ func (b *deliveryBudget) reserve(mediaType string) (int64, bool, string) {
 	}
 	b.used++
 	return id, true, ""
+}
+
+// A lost response can follow a successful delivery. Only an explicit client
+// rejection proves the slot is safe to reuse; a timeout is still uncertain.
+func (b *deliveryBudget) releaseRejected(id int64, err error) {
+	var apiErr *integrations.APIError
+	if errors.As(err, &apiErr) && apiErr.StatusCode >= http.StatusBadRequest && apiErr.StatusCode < http.StatusInternalServerError && apiErr.StatusCode != http.StatusRequestTimeout {
+		b.release(id)
+		return
+	}
+	slog.Warn("Delivery outcome uncertain; retaining budget reservation", "reservation_id", id, "job_id", b.jobID)
 }
 
 func (b *deliveryBudget) release(id int64) {

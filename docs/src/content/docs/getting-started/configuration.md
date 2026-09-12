@@ -119,7 +119,7 @@ Delivery budgets are enforced immediately before Blockbusterr calls Radarr, Sona
 - `jobs.global_period` uses a rolling `daily` (24-hour), `weekly` (7-day), or `monthly` (30-day) window.
 - Each job's `delivery_limit` caps successful deliveries within that run.
 
-Zero means unlimited. Only successful additions and requests consume a slot. Rejected, skipped, duplicate, failed, and previewed titles do not count. When both limits apply, the first exhausted budget skips that delivery and records the reason in Activity Entries.
+Zero means unlimited. Successful additions and requests consume a slot. Rejected, skipped, duplicate, and previewed titles do not count. A lost response, timeout, malformed success response, or server error may follow a successful delivery, so its reservation is retained conservatively. Check the downstream service before retrying; a failed Activity Entry does not prove the title was rejected. Rolling reservations expire with the configured window. When both limits apply, the first exhausted budget skips that delivery and records the reason in Activity Entries.
 
 ## Repeat handling
 

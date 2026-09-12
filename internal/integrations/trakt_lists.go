@@ -138,6 +138,9 @@ func (t *Trakt) accessTokenForRequest(ctx context.Context) (string, error) {
 }
 
 func (t *Trakt) storeToken(token TraktToken) error {
+	if strings.TrimSpace(token.AccessToken) == "" || strings.TrimSpace(token.RefreshToken) == "" || token.ExpiresIn <= 0 {
+		return fmt.Errorf("Trakt authentication returned an incomplete token")
+	}
 	t.accessToken, t.refreshToken, t.tokenExpires = token.AccessToken, token.RefreshToken, token.ExpiresAt()
 	if t.onToken != nil {
 		return t.onToken(token)

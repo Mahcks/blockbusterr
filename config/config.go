@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -445,6 +446,9 @@ func New(version string) (*Config, error) {
 		return nil, fmt.Errorf("config environment: %w", err)
 	}
 
+	if err := c.ValidateJSON(); err != nil {
+		return nil, err
+	}
 	c.applyDefaults()
 	if c.ConfigFilePath != "" {
 		migrated, err := c.MigrateLegacyJobs()
@@ -468,6 +472,9 @@ func Parse(data []byte, path string) (*Config, error) {
 	c := &Config{ConfigFilePath: path}
 	if err := yaml.Unmarshal(data, c); err != nil {
 		return nil, fmt.Errorf("config load error: %w", err)
+	}
+	if err := c.ValidateJSON(); err != nil {
+		return nil, err
 	}
 	c.applyDefaults()
 	return c, nil
@@ -552,8 +559,20 @@ func applyEnvironment(value reflect.Value, path []string) error {
 	return nil
 }
 
+// ValidateJSON rejects values such as YAML NaN and infinity that cannot be served
+// by the configuration API or safely used in scoring and rating comparisons.
+func (c *Config) ValidateJSON() error {
+	if _, err := json.Marshal(c); err != nil {
+		return fmt.Errorf("invalid configuration value: %w", err)
+	}
+	return nil
+}
+
 // Save writes the current config back to the config file
 func (c *Config) Save() error {
+	if err := c.ValidateJSON(); err != nil {
+		return err
+	}
 	if c.ConfigFilePath == "" {
 		return fmt.Errorf("no config file path set, cannot save")
 	}

@@ -95,12 +95,10 @@ func (t *Trakt) doRequestPaginated(ctx context.Context, endpoint string, limit i
 
 	page := 1
 	remaining := limit
-	pageSize := TraktDefaultPageSize
+	// Keep the page size fixed: changing it also changes the provider's page offset.
+	requestLimit := min(limit, TraktDefaultPageSize)
 
 	for remaining > 0 {
-		// Calculate how many items to request this page
-		requestLimit := min(remaining, pageSize)
-
 		// Build paginated endpoint
 		separator := "?"
 		if strings.Contains(endpoint, "?") {

@@ -11,6 +11,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
+	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
 // SmartJobConfig extends JobConfig with adaptive rating parameters
@@ -64,6 +65,9 @@ func (e *SmartMovieJobExecutor) Execute(
 	discoveryClient, err := NewDiscoveryClient(e.Config, jobConfig.Source)
 	if err != nil {
 		log.Errorf("Failed to configure discovery source for %s: %v", jobConfig.JobName, err)
+		if e.Database != nil && e.currentRunID > 0 {
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), string(enums.JobRunStatusFailed), 0, 0, 0, 0, 0, 0, 1, err.Error())
+		}
 		return err
 	}
 	// Fetch movies using the provided fetcher
@@ -152,9 +156,12 @@ func (e *SmartMovieJobExecutor) Execute(
 	} else {
 		executionErr = movieExecutor.executeMoviesDirect(ctx, regularJobConfig, filteredMovies, scoreMap)
 	}
+	if executionErr == nil {
+		executionErr = ctx.Err()
+	}
 	if executionErr != nil {
 		if e.Database != nil && e.currentRunID > 0 {
-			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", runDecisions.TotalFound, runDecisions.PassedFilters, 0, 0, 0, runDecisions.Rejected, 1, executionErr.Error())
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", runDecisions.TotalFound, runDecisions.PassedFilters, runDecisions.Added, runDecisions.Requested, runDecisions.Skipped, runDecisions.TotalFound-runDecisions.PassedFilters, max(1, runDecisions.Failed), executionErr.Error())
 		}
 		return executionErr
 	}

@@ -14,12 +14,25 @@ v2 upgrades a supported v1 installation on first startup. It preserves the origi
 
 The backup must include the YAML configuration and SQLite database. Do not test an upgrade against your only copy.
 
+For the standard container named `blockbusterr`, this backs up its actual `/app/data` mount, whether it is a named volume (including Compose's project-prefixed volume) or a bind mount:
+
+```bash
+docker stop blockbusterr
+docker run --rm \
+  --volumes-from blockbusterr:ro \
+  -v "$PWD:/backup" \
+  alpine:3.22 tar -czf /backup/blockbusterr-pre-v2.tar.gz -C /app/data .
+tar -tzf blockbusterr-pre-v2.tar.gz
+```
+
+Run this from a directory outside the data mount. Use a new backup filename if one already exists. If configuration lives outside `/app/data`, back up that mount too. Keep the stopped container until the backup is complete.
+
 ## Upgrade
 
-1. Pull the v2 image or replace the binary.
+1. Set the image to `ghcr.io/mahcks/blockbusterr:v2.0.0`. For Compose, update `image:` and run `docker compose pull blockbusterr`; a pull alone does not change a pinned tag.
 2. Optionally set `BLOCKBUSTERR_AUTH_TOKEN` to a random value of at least 32 characters and save it in your password manager.
 3. Docker users should leave the container user unset. The v2 entrypoint will repair ownership left by root-running v1 containers only for the mounted data directory and Blockbusterr's known writable files, then immediately run the application as UID/GID `10001:10001`.
-4. Start Blockbusterr with the existing configuration and data mounts.
+4. Set `BLOCKBUSTERR_DRY_RUN=true` and start Blockbusterr with the existing configuration and data mounts. For Compose, use `docker compose up -d blockbusterr`. Duration schedules can run at startup, so enable dry-run before the first v2 start.
 5. If authentication is enabled, sign in with username `blockbusterr` and the owner token. Open **Settings** and confirm discovery and delivery connections.
 6. Open **Jobs** and confirm the enabled v1 jobs appear with their schedules and delivery settings.
 7. Open **Rules** and review Default Movies, Default Shows, migrated job-specific rule sets, and title exceptions.
@@ -48,7 +61,7 @@ For each enabled job:
 1. Confirm type, source, media, limit, period, and assigned rules.
 2. Confirm any schedule or delivery-mode override.
 3. Run Preview and inspect accepted and rejected decisions.
-4. Run one job manually.
+4. After previews look correct, remove `BLOCKBUSTERR_DRY_RUN` or set it to `false`, recreate the container, and run one job manually with a small delivery limit. Recheck other enabled duration schedules before restarting; they can also run at startup.
 5. Confirm the Job Run completes and its Activity Entries match the delivery target.
 
 Also test configuration backup/download after migration.
@@ -61,6 +74,8 @@ Also test configuration backup/download after migration.
 4. Start the service and verify its integrations.
 
 Do not combine a v2-written configuration with an older database or vice versa. Restore the pair from the same backup.
+
+Restore into an empty directory or new volume, rather than extracting over v2 data: stale SQLite journal/WAL files must not be mixed with the old snapshot. Point the previous image at the restored mount. Never run two instances against the same data directory.
 
 ## After verification
 

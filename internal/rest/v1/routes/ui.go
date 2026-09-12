@@ -2,6 +2,7 @@ package routes
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -241,7 +242,7 @@ func RegisterUIRoutes(rg *RouteGroup, app *fiber.App) {
 					return fallback
 				}
 				val, err := strconv.ParseFloat(raw, 64)
-				if err != nil {
+				if err != nil || math.IsNaN(val) || math.IsInf(val, 0) {
 					fieldErrors = append(fieldErrors, field+" must be a number")
 					return fallback
 				}

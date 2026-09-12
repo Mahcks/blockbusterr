@@ -4,8 +4,26 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-12
+
+### Added
+
+- Stable v2 release with reusable Rules, preview-first Jobs, ranked selection, lists/watchlists, delivery budgets, repeat handling, and configuration portability.
+- Unattended v1 migration with automatic backups and versioned documentation.
+
+### Upgrade notes
+
+- Pin `ghcr.io/mahcks/blockbusterr:v2.0.0`; publishing stable advances `latest` from v1 to v2.
+- Back up the complete data directory, start with `BLOCKBUSTERR_DRY_RUN=true`, and review migrated jobs and rules before enabling delivery.
+- See the [v2 upgrade guide](https://blockbusterr.dev/getting-started/upgrading-to-v2/) for backup and rollback instructions.
+
 ### Fixed
 
+- Health responses report the running release version rather than a stale or missing configuration version.
+- Interrupted or ambiguous deliveries retain budget reservations; explicit rejections release them.
+- Failed discovery initialization closes Job Runs, and cancellation preserves completed delivery totals.
+- Trakt pagination preserves page offsets, incomplete OAuth responses preserve credentials, and upstream diagnostics omit untrusted response bodies.
+- Configuration loading, imports, and settings reject nonfinite numbers; recovery checks cover failed backups and concurrent saves.
 - Unlimited ranked selection permits job edits and configuration restore, and handles sources returning fewer candidates than minimum picks.
 - Configuration imports reject empty or unrelated documents and immediately migrate legacy jobs; removed migrated title exceptions stay removed after restart.
 - Show deliveries preserve repeat-protection identities and recognize older TVDB-only history when that ID is known; Sonarr title matching rejects conflicting provider IDs.
@@ -140,7 +158,8 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 - The beta image is published as `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.1` and `ghcr.io/mahcks/blockbusterr:latest-beta`; `latest` remains on v1 until the stable release.
 - See the [v2 upgrade guide](https://blockbusterr.dev/v2/getting-started/upgrading-to-v2/).
 
-[Unreleased]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-rc.1...HEAD
+[Unreleased]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-rc.1...v2.0.0
 [2.0.0-rc.1]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.7...v2.0.0-rc.1
 [2.0.0-beta.7]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.6...v2.0.0-beta.7
 [2.0.0-beta.6]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.5...v2.0.0-beta.6

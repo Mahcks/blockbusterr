@@ -1,8 +1,10 @@
 package integrations
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -14,9 +16,13 @@ func TestAPIErrorDuplicateClassificationAndRedaction(t *testing.T) {
 	if !IsDuplicateError(duplicate) || IsDuplicateError(errors.New("movie already exists")) || IsDuplicateError(&APIError{Provider: "Radarr", StatusCode: http.StatusInternalServerError, Code: "already"}) {
 		t.Fatal("duplicate classification used message text or ignored provider status/code")
 	}
-	diagnostic := redactedDiagnostic([]byte(`{"message":"bad","apiKey":"secret","nested":{"password":"hidden"}}`))
-	if strings.Contains(diagnostic, "secret") || strings.Contains(diagnostic, "hidden") {
-		t.Fatalf("diagnostic was not redacted: %s", diagnostic)
+	var output bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&output, nil)))
+	defer slog.SetDefault(previous)
+	err := newAPIError("Radarr", jsonResponse(http.StatusBadRequest, `{"message":"synthetic-secret","headers":{"Authorization":"synthetic-secret"},"errorCode":"synthetic-secret"}`))
+	if strings.Contains(output.String(), "synthetic-secret") || strings.Contains(err.Error(), "synthetic-secret") {
+		t.Fatal("upstream diagnostic exposed credentials")
 	}
 }
 

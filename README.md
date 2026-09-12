@@ -1,7 +1,7 @@
 # Blockbusterr
 
 > [!IMPORTANT]
-> **Blockbusterr v2.0.0-rc.1 is a release candidate.** Stable `latest` remains on v1; `latest-beta` follows prereleases. Read the [documentation](https://blockbusterr.dev/) and [release notes](https://github.com/Mahcks/blockbusterr/releases/tag/v2.0.0-rc.1). Upgrading from v1? Back up your complete data directory and follow the [upgrade guide](https://blockbusterr.dev/getting-started/upgrading-to-v2/).
+> **Blockbusterr v2.0.0** introduces reusable rules, preview-first jobs, and delivery safeguards. `latest` follows stable releases; `latest-beta` follows prereleases. Read the [documentation](https://blockbusterr.dev/) and [release notes](https://github.com/Mahcks/blockbusterr/releases/tag/v2.0.0). Upgrading from v1? Back up your complete data directory and follow the [upgrade guide](https://blockbusterr.dev/getting-started/upgrading-to-v2/).
 
 **Automated media discovery with rule-based decision making for self-hosted libraries.**
 
@@ -82,7 +82,7 @@ docker run -d \
   --restart unless-stopped \
   -p 9090:9090 \
   -v blockbusterr-data:/app/data \
-  ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
+  ghcr.io/mahcks/blockbusterr:v2.0.0
 ```
 
 Open `http://localhost:9090`, connect one discovery provider and one delivery target, then create and preview a job.

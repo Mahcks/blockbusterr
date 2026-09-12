@@ -11,6 +11,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/filters"
 	"github.com/mahcks/blockbusterr/internal/integrations"
+	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
 // MovieJobExecutor handles execution of movie jobs with unified logic
@@ -53,6 +54,9 @@ func (e *MovieJobExecutor) Execute(
 		discoveryClient, err = NewDiscoveryClient(e.Config, jobConfig.Source)
 		if err != nil {
 			log.Errorf("Failed to configure discovery source for %s: %v", jobLabel, err)
+			if e.Database != nil && e.currentRunID > 0 {
+				_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), string(enums.JobRunStatusFailed), 0, 0, 0, 0, 0, 0, 1, err.Error())
+			}
 			return err
 		}
 	}
@@ -125,9 +129,12 @@ func (e *MovieJobExecutor) Execute(
 	} else {
 		executionErr = e.executeMoviesDirect(ctx, jobConfig, filteredMovies, scoreMap)
 	}
+	if executionErr == nil {
+		executionErr = ctx.Err()
+	}
 	if executionErr != nil {
 		if e.Database != nil && e.currentRunID > 0 {
-			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", runDecisions.TotalFound, runDecisions.PassedFilters, 0, 0, 0, runDecisions.Rejected, 1, executionErr.Error())
+			_ = e.Database.CompleteJobRun(e.currentRunID, time.Now(), "failed", runDecisions.TotalFound, runDecisions.PassedFilters, runDecisions.Added, runDecisions.Requested, runDecisions.Skipped, runDecisions.TotalFound-runDecisions.PassedFilters, max(1, runDecisions.Failed), executionErr.Error())
 		}
 		return executionErr
 	}
@@ -308,7 +315,7 @@ func (e *MovieJobExecutor) executeMoviesDirect(
 		} else {
 			addedMovie, err := radarrClient.AddMovie(ctx, radarrMovie)
 			if err != nil {
-				budget.release(reservationID)
+				budget.releaseRejected(reservationID, err)
 				// Check if it's a duplicate error
 				if integrations.IsDuplicateError(err) {
 					log.Debugf("Movie '%s (%d)' already exists in Radarr", movie.Title, movie.Year)
@@ -521,7 +528,7 @@ func (e *MovieJobExecutor) executeMoviesJellyseerr(
 		} else {
 			result, err := jellyseerrClient.RequestMovieContext(ctx, movie.IDs.TMDB)
 			if err != nil {
-				budget.release(reservationID)
+				budget.releaseRejected(reservationID, err)
 				// Check if it's a duplicate error
 				if integrations.IsDuplicateError(err) {
 					log.Debugf("Movie '%s (%d)' already requested in Jellyseerr", movie.Title, movie.Year)

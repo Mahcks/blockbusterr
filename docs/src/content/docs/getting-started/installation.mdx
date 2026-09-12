@@ -18,7 +18,7 @@ Blockbusterr can use an optional owner token, but you should still keep port 909
 Docker 20.10+ or Docker Desktop
 </Card>
 <Card title="Persistent storage" icon="laptop">
-A writable host directory mounted at `/app/data`
+A named Docker volume or writable host directory mounted at `/app/data`
 </Card>
 <Card title="Network" icon="star">
 Access to at least one discovery provider (TMDB, Simkl, Trakt, or MDBList) and your delivery stack
@@ -30,7 +30,7 @@ Configure any one supported discovery provider: TMDB, Simkl, Trakt, or MDBList. 
 </Aside>
 
 <Aside type="caution" title="Installing v2">
-Use `ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1` to test this release candidate. Stable `latest` remains on v1; `latest-beta` follows prereleases. Before upgrading from v1, back up the complete data directory and follow the [upgrade guide](/getting-started/upgrading-to-v2/).
+Pin `ghcr.io/mahcks/blockbusterr:v2.0.0` for this release. `latest` follows stable releases and can move across major versions; `latest-beta` follows prereleases. Before upgrading from v1, back up the complete data directory and follow the [upgrade guide](/getting-started/upgrading-to-v2/).
 </Aside>
 
 <Aside type="tip" title="Using a NAS or container UI">
@@ -46,10 +46,10 @@ See [Deployment platforms](/getting-started/deployment-platforms/) for field-by-
 
 <Steps>
 
-1. Pull the latest image:
+1. Pull the release image:
 
    ```bash
-   docker pull ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
+   docker pull ghcr.io/mahcks/blockbusterr:v2.0.0
    ```
 
 2. Run the container:
@@ -60,7 +60,7 @@ See [Deployment platforms](/getting-started/deployment-platforms/) for field-by-
      -p 9090:9090 \
      -v blockbusterr-data:/app/data \
      -e TZ=America/New_York \
-     ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
+     ghcr.io/mahcks/blockbusterr:v2.0.0
    ```
 
 3. Access the web UI at `http://localhost:9090`
@@ -83,7 +83,7 @@ Use `docker logs blockbusterr -f` to view live logs and verify startup.
    ```yaml
    services:
      blockbusterr:
-       image: ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
+       image: ghcr.io/mahcks/blockbusterr:v2.0.0
        container_name: blockbusterr
        ports:
          - "9090:9090"
@@ -124,7 +124,7 @@ networks:
 
 services:
   blockbusterr:
-    image: ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
+    image: ghcr.io/mahcks/blockbusterr:v2.0.0
     container_name: blockbusterr
     networks:
       - media
@@ -189,7 +189,7 @@ When using container networking, use container names in URLs:
    cd blockbusterr
    ```
 
-2. Install dependencies:
+2. Install Go 1.25.13 or newer and a C compiler for SQLite, then download dependencies:
 
    ```bash
    go mod download
@@ -209,7 +209,7 @@ When using container networking, use container names in URLs:
 
 </Steps>
 
-**Development mode with hot reload:**
+**Run from source (restart after Go code changes):**
 
 ```bash
 make dev
@@ -242,7 +242,7 @@ docker run -d \
   -e DATA_DIR=/app/data \
   -e TZ=Europe/London \
   -v $(pwd)/data:/app/data \
-  ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
+  ghcr.io/mahcks/blockbusterr:v2.0.0
 ```
 
 ## Health Check
@@ -250,14 +250,14 @@ docker run -d \
 Verify Blockbusterr is running correctly:
 
 ```bash
-curl -u blockbusterr:$BLOCKBUSTERR_AUTH_TOKEN http://localhost:9090/v1/
+curl -u "blockbusterr:$BLOCKBUSTERR_AUTH_TOKEN" http://localhost:9090/v1/
 ```
 
 Expected response:
 
 ```json
 {
-  "version": "2.0.0",
+  "version": "v2.0.0",
   "uptime": "1785518792000"
 }
 ```
@@ -268,7 +268,7 @@ Expected response:
 <TabItem label="Docker" icon="seti:docker">
 
 ```bash
-docker pull ghcr.io/mahcks/blockbusterr:v2.0.0-rc.1
+docker pull ghcr.io/mahcks/blockbusterr:v2.0.0
 docker stop blockbusterr
 docker rm blockbusterr
 # Then run the original docker run command
@@ -276,6 +276,8 @@ docker rm blockbusterr
 
 </TabItem>
 <TabItem label="Docker Compose" icon="seti:yml">
+
+Update `image:` in your Compose file to the intended version before pulling. For this release, use `ghcr.io/mahcks/blockbusterr:v2.0.0`.
 
 ```bash
 docker compose pull blockbusterr
@@ -297,14 +299,14 @@ make build
 </Tabs>
 
 <Aside type="caution" title="Backup Before Updating">
-Always backup your `data` directory before major version upgrades:
+Back up the stopped container's actual data mount before major version upgrades. Run from outside the data directory and use a new filename for each backup:
 
 ```bash
 docker stop blockbusterr
 docker run --rm \
-  -v blockbusterr-data:/data:ro \
+  --volumes-from blockbusterr:ro \
   -v "$PWD:/backup" \
-  alpine tar -czf /backup/blockbusterr-data.tar.gz -C /data .
+  alpine:3.22 tar -czf /backup/blockbusterr-data.tar.gz -C /app/data .
 ```
 </Aside>
 

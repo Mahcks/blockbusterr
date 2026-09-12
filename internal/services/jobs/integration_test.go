@@ -401,3 +401,36 @@ func TestAllShowJobFunctions(t *testing.T) {
 		})
 	}
 }
+
+func TestExecutorDiscoveryFailureCompletesRun(t *testing.T) {
+	for _, media := range []string{"movie", "show", "smart_movie", "smart_show"} {
+		t.Run(media, func(t *testing.T) {
+			db, err := database.New(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = db.Close() }()
+			job := JobConfig{JobID: "invalid-source", JobName: "Invalid source", Source: "invalid", MediaType: media}
+			switch media {
+			case "smart_movie":
+				err = (&SmartMovieJobExecutor{Config: &config.Config{}, Database: db}).Execute(t.Context(), SmartJobConfig{JobID: job.JobID, Source: job.Source, MediaType: "movie"}, nil)
+			case "smart_show":
+				err = (&SmartShowJobExecutor{Config: &config.Config{}, Database: db}).Execute(t.Context(), SmartJobConfig{JobID: job.JobID, Source: job.Source, MediaType: "show"}, nil)
+			case "movie":
+				err = (&MovieJobExecutor{Config: &config.Config{}, Database: db}).Execute(t.Context(), job, nil)
+			default:
+				err = (&ShowJobExecutor{Config: &config.Config{}, Database: db}).Execute(t.Context(), job, nil)
+			}
+			if err == nil {
+				t.Fatal("expected discovery configuration error")
+			}
+			runs, err := db.GetRecentJobRuns(10, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(runs) != 1 || runs[0].Status != "failed" || runs[0].FinishedAt == nil {
+				t.Fatalf("unclosed run: %+v", runs)
+			}
+		})
+	}
+}
