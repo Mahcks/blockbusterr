@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -744,6 +745,21 @@ func (c *Config) RuleSetUsage(id string) int {
 
 // MigrateRuleSets upgrades global and embedded job filters deterministically in memory.
 func (c *Config) MigrateRuleSets() {
+	// Move legacy global blocks once, including copies made by earlier v2 migrations.
+	c.TitleExceptions.BlockedMovieTMDBIDs = appendUniqueInts(c.TitleExceptions.BlockedMovieTMDBIDs, c.Filters.Movies.BlacklistedTMDBIds...)
+	c.TitleExceptions.BlockedShowTVDBIDs = appendUniqueInts(c.TitleExceptions.BlockedShowTVDBIDs, c.Filters.Shows.BlacklistedTVDBIds...)
+	if rules, ok := c.RuleSetByID(DefaultMoviesRuleSetID); ok && rules.Movies != nil {
+		rules.Movies.BlacklistedTMDBIds = slices.DeleteFunc(rules.Movies.BlacklistedTMDBIds, func(id int) bool {
+			return slices.Contains(c.Filters.Movies.BlacklistedTMDBIds, id)
+		})
+	}
+	if rules, ok := c.RuleSetByID(DefaultShowsRuleSetID); ok && rules.Shows != nil {
+		rules.Shows.BlacklistedTVDBIds = slices.DeleteFunc(rules.Shows.BlacklistedTVDBIds, func(id int) bool {
+			return slices.Contains(c.Filters.Shows.BlacklistedTVDBIds, id)
+		})
+	}
+	c.Filters.Movies.BlacklistedTMDBIds = nil
+	c.Filters.Shows.BlacklistedTVDBIds = nil
 	if _, ok := c.RuleSetByID(DefaultMoviesRuleSetID); !ok {
 		filters := c.Filters.Movies
 		c.RuleSets = append(c.RuleSets, RuleSet{ID: DefaultMoviesRuleSetID, Name: "Default Movies", Media: "movie", Revision: 1, Movies: &filters})
@@ -777,8 +793,6 @@ func (c *Config) MigrateRuleSets() {
 			job.RuleSetID = id
 		}
 	}
-	c.TitleExceptions.BlockedMovieTMDBIDs = appendUniqueInts(c.TitleExceptions.BlockedMovieTMDBIDs, c.Filters.Movies.BlacklistedTMDBIds...)
-	c.TitleExceptions.BlockedShowTVDBIDs = appendUniqueInts(c.TitleExceptions.BlockedShowTVDBIDs, c.Filters.Shows.BlacklistedTVDBIds...)
 }
 
 func appendUniqueInts(dst []int, values ...int) []int {

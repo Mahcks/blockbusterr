@@ -1730,7 +1730,7 @@ func PreviewSmartPopularMovies(cfg *config.Config, db *database.Database) Previe
 	for i, movie := range popularMovies {
 		item := createMoviePreviewItem(cfg, movie, len(popularMovies)-i)
 
-		percentile := percentiles[movie.IDs.TMDB]
+		percentile := percentiles[integrations.MovieKey(movie.IDs)]
 		adaptiveMinRating := filters.CalculateAdaptiveRating(
 			cfg.Jobs.SmartPopularMovies.BaseMinRating,
 			percentile,
@@ -1825,7 +1825,7 @@ func PreviewSmartPopularShows(cfg *config.Config, db *database.Database) Preview
 	for i, show := range popularShows {
 		item := createShowPreviewItem(cfg, show, len(popularShows)-i)
 
-		percentile := percentiles[show.IDs.TMDB]
+		percentile := percentiles[integrations.ShowKey(show.IDs)]
 		adaptiveMinRating := filters.CalculateAdaptiveRating(
 			cfg.Jobs.SmartPopularShows.BaseMinRating,
 			percentile,

@@ -52,6 +52,29 @@ func TestPlanSelectionCycleRequiresParticipatingJob(t *testing.T) {
 	}
 }
 
+func TestPlanSelectionCycleUnlimitedSourceShortage(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Scoring.Enabled = true
+	cfg.Jobs.Selection.Enabled = true
+	cfg.TMDB.APIKey = "configured"
+	cfg.Jobs.List = []config.DynamicJob{
+		{ID: "movies", Enabled: true, SelectionCycle: true, Source: "tmdb", MediaType: "movie", MinimumPicks: 3},
+		{ID: "shows", Enabled: true, SelectionCycle: true, Source: "tmdb", MediaType: "show", MinimumPicks: 3},
+	}
+	plan, err := planSelectionCycleWithPreview(cfg, func(job config.DynamicJob) (PreviewResponse, error) {
+		if job.MediaType == "movie" {
+			return PreviewResponse{}, nil
+		}
+		return PreviewResponse{Items: []PreviewItem{{TMDBID: 1, Score: .8, Rank: 1}}}, nil
+	}, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Movies.Winners) != 0 || len(plan.Shows.Winners) != 1 {
+		t.Fatalf("source shortage plan = %+v", plan)
+	}
+}
+
 func TestSelectionCapacityHonorsRollingBudget(t *testing.T) {
 	db, err := database.New(t.TempDir())
 	if err != nil {

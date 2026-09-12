@@ -350,10 +350,6 @@ func (d *Database) ensureTableColumn(table, definition string) error {
 // TryReserveDelivery atomically claims one delivery slot. Zero means unlimited.
 // The caller releases the reservation when the downstream delivery does not succeed.
 func (d *Database) TryReserveDelivery(runID int64, jobID, mediaType string, perRunLimit, globalLimit int, since time.Time) (int64, string, error) {
-	if perRunLimit <= 0 && globalLimit <= 0 {
-		return 0, "", nil
-	}
-
 	tx, err := d.db.Begin()
 	if err != nil {
 		return 0, "", err
@@ -502,16 +498,9 @@ func (d *Database) LogActivity(log ActivityLog) error {
 // LatestSuccessfulDelivery returns the most recent time Blockbusterr delivered a title.
 func (d *Database) LatestSuccessfulDelivery(mediaType string, tmdbID, tvdbID int) (time.Time, bool, error) {
 	identity := DeliveryIdentity{MediaType: mediaType, TMDBID: tmdbID, TVDBID: tvdbID}
-	key := identity.Key()
-	if key == "" {
-		return time.Time{}, false, nil
-	}
-	var deliveredAt time.Time
-	err := d.db.QueryRow("SELECT delivered_at FROM delivery_memory WHERE media_key = ?", key).Scan(&deliveredAt)
-	if err == sql.ErrNoRows {
-		return time.Time{}, false, nil
-	}
-	return deliveredAt, err == nil, err
+	deliveries, err := d.LatestSuccessfulDeliveries([]DeliveryIdentity{identity})
+	deliveredAt, found := deliveries[identity.Key()]
+	return deliveredAt, found, err
 }
 
 func isSuccessfulDelivery(status, message string) bool {
@@ -607,14 +596,23 @@ func (d *Database) LatestSuccessfulDeliveries(identities []DeliveryIdentity) (ma
 	result := make(map[string]time.Time, len(identities))
 	keys := make([]string, 0, len(identities))
 	seen := make(map[string]struct{}, len(identities))
+	legacyKeys := make(map[string]string)
 	for _, identity := range identities {
 		key := identity.Key()
 		if key == "" {
 			continue
 		}
-		if _, ok := seen[key]; !ok {
-			seen[key] = struct{}{}
-			keys = append(keys, key)
+		lookupKeys := []string{key}
+		if identity.MediaType == string(enums.MediaTypeShow) && identity.TMDBID > 0 && identity.TVDBID > 0 {
+			legacyKey := (DeliveryIdentity{MediaType: identity.MediaType, TVDBID: identity.TVDBID}).Key()
+			legacyKeys[key] = legacyKey
+			lookupKeys = append(lookupKeys, legacyKey)
+		}
+		for _, lookupKey := range lookupKeys {
+			if _, ok := seen[lookupKey]; !ok {
+				seen[lookupKey] = struct{}{}
+				keys = append(keys, lookupKey)
+			}
 		}
 	}
 	if len(keys) == 0 {
@@ -638,7 +636,17 @@ func (d *Database) LatestSuccessfulDeliveries(identities []DeliveryIdentity) (ma
 		}
 		result[key] = deliveredAt
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Older show deliveries recorded only TVDB IDs. Reuse that known identity
+	// without guessing a TMDB mapping or ignoring a more recent delivery.
+	for key, legacyKey := range legacyKeys {
+		if deliveredAt, found := result[legacyKey]; found && deliveredAt.After(result[key]) {
+			result[key] = deliveredAt
+		}
+	}
+	return result, nil
 }
 
 // GetRecentActivityFiltered retrieves recent activity logs with optional filters

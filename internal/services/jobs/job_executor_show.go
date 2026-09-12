@@ -240,6 +240,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 					Title:         show.Title,
 					Year:          show.Year,
 					Language:      show.Language,
+					TMDBID:        show.IDs.TMDB,
 					TVDBID:        show.IDs.TVDB,
 					IMDBID:        show.IDs.IMDB,
 					PosterURL:     posterURL,
@@ -274,6 +275,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 					Title:         show.Title,
 					Year:          show.Year,
 					Language:      show.Language,
+					TMDBID:        show.IDs.TMDB,
 					TVDBID:        show.IDs.TVDB,
 					IMDBID:        show.IDs.IMDB,
 					PosterURL:     posterURL,
@@ -349,6 +351,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 					Title:         show.Title,
 					Year:          show.Year,
 					Language:      show.Language,
+					TMDBID:        show.IDs.TMDB,
 					TVDBID:        show.IDs.TVDB,
 					IMDBID:        show.IDs.IMDB,
 					PosterURL:     posterURL,
@@ -384,6 +387,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 							Title:         show.Title,
 							Year:          show.Year,
 							Language:      show.Language,
+							TMDBID:        show.IDs.TMDB,
 							TVDBID:        show.IDs.TVDB,
 							IMDBID:        show.IDs.IMDB,
 							PosterURL:     posterURL,
@@ -413,6 +417,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 							Title:     show.Title,
 							Year:      show.Year,
 							Language:  show.Language,
+							TMDBID:    show.IDs.TMDB,
 							TVDBID:    series.TvdbID,
 							IMDBID:    show.IDs.IMDB,
 							Score:     scoreInfo.Score,
@@ -445,6 +450,7 @@ func (e *ShowJobExecutor) executeShowsDirect(
 					Title:     addedSeries.Title,
 					Year:      addedSeries.Year,
 					Language:  show.Language,
+					TMDBID:    show.IDs.TMDB,
 					TVDBID:    addedSeries.TvdbID,
 					IMDBID:    addedSeries.ImdbID,
 					PosterURL: posterURL,
@@ -478,6 +484,10 @@ func matchingSonarrSeries(show integrations.Show, results []integrations.SonarrS
 		}
 	}
 	for _, series := range results {
+		if (show.IDs.TVDB > 0 && series.TvdbID > 0 && show.IDs.TVDB != series.TvdbID) ||
+			(show.IDs.TMDB > 0 && series.TmdbID > 0 && show.IDs.TMDB != series.TmdbID) {
+			continue
+		}
 		if strings.EqualFold(strings.TrimSpace(series.Title), strings.TrimSpace(show.Title)) && (show.Year == 0 || series.Year == 0 || series.Year == show.Year) {
 			return series, true
 		}
@@ -531,6 +541,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 					Title:         show.Title,
 					Year:          show.Year,
 					Language:      show.Language,
+					TMDBID:        show.IDs.TMDB,
 					TVDBID:        show.IDs.TVDB,
 					IMDBID:        show.IDs.IMDB,
 					PosterURL:     posterURL,
@@ -582,6 +593,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 					Title:         show.Title,
 					Year:          show.Year,
 					Language:      show.Language,
+					TMDBID:        show.IDs.TMDB,
 					TVDBID:        show.IDs.TVDB,
 					IMDBID:        show.IDs.IMDB,
 					PosterURL:     posterURL,
@@ -617,6 +629,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 							Title:         show.Title,
 							Year:          show.Year,
 							Language:      show.Language,
+							TMDBID:        show.IDs.TMDB,
 							TVDBID:        show.IDs.TVDB,
 							IMDBID:        show.IDs.IMDB,
 							PosterURL:     posterURL,
@@ -648,6 +661,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 							Title:         show.Title,
 							Year:          show.Year,
 							Language:      show.Language,
+							TMDBID:        show.IDs.TMDB,
 							TVDBID:        show.IDs.TVDB,
 							IMDBID:        show.IDs.IMDB,
 							Score:         scoreInfo.Score,
@@ -681,6 +695,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 						Title:         show.Title,
 						Year:          show.Year,
 						Language:      show.Language,
+						TMDBID:        show.IDs.TMDB,
 						TVDBID:        show.IDs.TVDB,
 						IMDBID:        show.IDs.IMDB,
 						PosterURL:     posterURL,
@@ -714,6 +729,7 @@ func (e *ShowJobExecutor) executeShowsJellyseerr(
 						Title:         show.Title,
 						Year:          show.Year,
 						Language:      show.Language,
+						TMDBID:        show.IDs.TMDB,
 						TVDBID:        show.IDs.TVDB,
 						IMDBID:        show.IDs.IMDB,
 						PosterURL:     posterURL,

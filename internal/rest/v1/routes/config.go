@@ -241,7 +241,7 @@ func importedFullConfig(data []byte, path string) (*config.Config, error) {
 	if err := yaml.Unmarshal(data, &document); err != nil {
 		return nil, fmt.Errorf("invalid YAML format: %w", err)
 	}
-	if len(document) == 0 || document["version"].Kind == 0 || document["jobs"].Kind == 0 {
+	if document["version"].Kind != yaml.ScalarNode || document["jobs"].Kind != yaml.MappingNode {
 		return nil, fmt.Errorf("file is not a Blockbusterr configuration backup")
 	}
 	var header struct {
@@ -270,6 +270,15 @@ func supportedRestoreVersion(version string) bool {
 }
 
 func importedShareableConfig(current *config.Config, data []byte) (*config.Config, error) {
+	var document map[string]yaml.Node
+	if err := yaml.Unmarshal(data, &document); err != nil {
+		return nil, fmt.Errorf("invalid YAML format: %w", err)
+	}
+	for _, section := range []string{"jobs", "filters", "scoring"} {
+		if document[section].Kind != yaml.MappingNode {
+			return nil, fmt.Errorf("file is not a complete Blockbusterr shareable configuration: missing %s", section)
+		}
+	}
 	var header struct {
 		Version int `yaml:"schema_version"`
 	}
@@ -326,6 +335,9 @@ func importedJobBundle(current *config.Config, data []byte) (*config.Config, con
 }
 
 func validatePortableAutomation(candidate *config.Config) error {
+	if _, err := candidate.MigrateLegacyJobs(); err != nil {
+		return fmt.Errorf("legacy job migration: %w", err)
+	}
 	if candidate.Jobs.GlobalLimitMovies < 0 || candidate.Jobs.GlobalLimitShows < 0 {
 		return fmt.Errorf("global delivery limits cannot be negative")
 	}

@@ -139,3 +139,54 @@ func TestRestoreBackupFailureLeavesActiveConfigUntouched(t *testing.T) {
 		t.Fatalf("active config=%q err=%v", got, err)
 	}
 }
+
+func TestMigratedGlobalBlocksCanBeRemovedPermanently(t *testing.T) {
+	for _, previouslyMigrated := range []bool{false, true} {
+		cfg := &Config{ConfigFilePath: filepath.Join(t.TempDir(), "config.yaml")}
+		cfg.Filters.Movies.BlacklistedTMDBIds = []int{42}
+		cfg.Filters.Shows.BlacklistedTVDBIds = []int{84}
+		if previouslyMigrated {
+			cfg.RuleSets = []RuleSet{
+				{ID: DefaultMoviesRuleSetID, Media: "movie", Movies: &MovieFilters{BlacklistedTMDBIds: []int{42, 99}}},
+				{ID: DefaultShowsRuleSetID, Media: "show", Shows: &ShowFilters{BlacklistedTVDBIds: []int{84, 199}}},
+			}
+		}
+		cfg.MigrateRuleSets()
+		if len(cfg.TitleExceptions.BlockedMovieTMDBIDs) != 1 || len(cfg.TitleExceptions.BlockedShowTVDBIDs) != 1 {
+			t.Fatal("legacy blocks were not migrated")
+		}
+		cfg.TitleExceptions = TitleExceptions{}
+		if err := cfg.Save(); err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(cfg.ConfigFilePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		reloaded, err := Parse(data, cfg.ConfigFilePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(reloaded.TitleExceptions.BlockedMovieTMDBIDs)+len(reloaded.TitleExceptions.BlockedShowTVDBIDs) != 0 {
+			t.Fatal("removed title exceptions returned after reload")
+		}
+		_, movies, err := reloaded.ResolveRuleSet(DynamicJob{MediaType: "movie"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, shows, err := reloaded.ResolveRuleSet(DynamicJob{MediaType: "show"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := 0
+		if previouslyMigrated {
+			want = 1
+		}
+		if len(movies.Movies.BlacklistedTMDBIds) != want || len(shows.Shows.BlacklistedTVDBIds) != want {
+			t.Fatal("default rules retained migrated blocks or lost their own blocks")
+		}
+		if previouslyMigrated && (movies.Movies.BlacklistedTMDBIds[0] != 99 || shows.Shows.BlacklistedTVDBIds[0] != 199) {
+			t.Fatal("default rules lost their own blocked IDs")
+		}
+	}
+}

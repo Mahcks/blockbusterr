@@ -193,3 +193,54 @@ func TestRetentionPreservesRunningHistoryAndDeliveryMemory(t *testing.T) {
 		t.Fatalf("memory found=%v err=%v", found, err)
 	}
 }
+
+func TestShowDeliveryMemoryFindsLegacyTVDBIdentity(t *testing.T) {
+	db, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	now := time.Now()
+	for _, log := range []ActivityLog{
+		{Timestamp: now, MediaType: "show", TVDBID: 123, Title: "Legacy", Status: string(enums.ActivityStatusAdded)},
+		{Timestamp: now.Add(-time.Hour), MediaType: "show", TMDBID: 42, TVDBID: 123, Title: "Older canonical", Status: string(enums.ActivityStatusAdded)},
+		{Timestamp: now.Add(time.Hour), MediaType: "show", TMDBID: 43, TVDBID: 124, Title: "Newer canonical", Status: string(enums.ActivityStatusRequested)},
+		{Timestamp: now, MediaType: "show", TVDBID: 124, Title: "Older legacy", Status: string(enums.ActivityStatusAdded)},
+	} {
+		if err := db.LogActivity(log); err != nil {
+			t.Fatal(err)
+		}
+	}
+	identities := []DeliveryIdentity{
+		{MediaType: "show", TMDBID: 42, TVDBID: 123},
+		{MediaType: "show", TMDBID: 43, TVDBID: 124},
+		{MediaType: "show", TMDBID: 44, TVDBID: 123},
+		{MediaType: "show", TMDBID: 45, TVDBID: 999},
+	}
+	batch, err := db.LatestSuccessfulDeliveries(identities)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, identity := range identities {
+		got, found, err := db.LatestSuccessfulDelivery(identity.MediaType, identity.TMDBID, identity.TVDBID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if i == 3 {
+			if found {
+				t.Fatal("matched unrelated identity")
+			}
+			if _, ok := batch[identity.Key()]; ok {
+				t.Fatal("batch matched unrelated identity")
+			}
+			continue
+		}
+		want := now
+		if i == 1 {
+			want = now.Add(time.Hour)
+		}
+		if !found || !got.Equal(want) || !batch[identity.Key()].Equal(want) {
+			t.Fatalf("identity %+v: single %v, found %t, batch %v; want %v", identity, got, found, batch[identity.Key()], want)
+		}
+	}
+}

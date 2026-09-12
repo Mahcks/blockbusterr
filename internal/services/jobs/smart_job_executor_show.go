@@ -165,7 +165,7 @@ func (e *SmartShowJobExecutor) Execute(
 func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 	ctx context.Context,
 	shows []integrations.Show,
-	percentiles map[int]float64,
+	percentiles map[string]float64,
 	jobConfig SmartJobConfig,
 ) ([]integrations.Show, map[string]ScoreInfo, []ContentDecision) {
 	decisions := make([]ContentDecision, 0, len(shows))
@@ -194,7 +194,7 @@ func (e *SmartShowJobExecutor) evaluateShowsWithAdaptiveFilters(
 		}
 
 		// Get popularity percentile for this show
-		percentile, hasPercentile := percentiles[show.IDs.TVDB]
+		percentile, hasPercentile := percentiles[integrations.ShowKey(show.IDs)]
 		if !hasPercentile {
 			percentile = 0.5 // Default to middle if not found
 		}

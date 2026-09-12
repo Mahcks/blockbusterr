@@ -41,7 +41,7 @@ type SelectionAllocation struct {
 // AllocateSelection deterministically deduplicates and selects candidates.
 func AllocateSelection(candidates []SelectionCandidate, capacity int, minimumPicks map[string]int) (SelectionAllocation, error) {
 	if capacity == 0 {
-		capacity = len(candidates)
+		capacity = math.MaxInt
 	}
 	return allocateSelection(candidates, capacity, minimumPicks)
 }

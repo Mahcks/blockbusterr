@@ -4,6 +4,15 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 
 ## [Unreleased]
 
+### Fixed
+
+- Unlimited ranked selection permits job edits and configuration restore, and handles sources returning fewer candidates than minimum picks.
+- Configuration imports reject empty or unrelated documents and immediately migrate legacy jobs; removed migrated title exceptions stay removed after restart.
+- Show deliveries preserve repeat-protection identities and recognize older TVDB-only history when that ID is known; Sonarr title matching rejects conflicting provider IDs.
+- Deliveries made without limits count toward subsequently enabled rolling budgets.
+- TMDB show country filters behave consistently across discovery sources, and smart-job popularity uses stable identities in previews and execution.
+- Updated documentation dependencies to clear security advisories, enabled SQLite support in production builds, and corrected release upgrade commands.
+
 ## [2.0.0-rc.1] - 2026-09-05
 
 ### Changed
@@ -131,8 +140,8 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 - The beta image is published as `ghcr.io/mahcks/blockbusterr:v2.0.0-beta.1` and `ghcr.io/mahcks/blockbusterr:latest-beta`; `latest` remains on v1 until the stable release.
 - See the [v2 upgrade guide](https://blockbusterr.dev/v2/getting-started/upgrading-to-v2/).
 
-[Unreleased]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0...HEAD
-[2.0.0]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.7...v2.0.0
+[Unreleased]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-rc.1...HEAD
+[2.0.0-rc.1]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.7...v2.0.0-rc.1
 [2.0.0-beta.7]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.6...v2.0.0-beta.7
 [2.0.0-beta.6]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.5...v2.0.0-beta.6
 [2.0.0-beta.5]: https://github.com/Mahcks/blockbusterr/compare/v2.0.0-beta.4...v2.0.0-beta.5

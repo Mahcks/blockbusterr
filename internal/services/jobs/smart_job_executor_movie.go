@@ -183,7 +183,7 @@ func (e *SmartMovieJobExecutor) Execute(
 func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 	ctx context.Context,
 	movies []integrations.Movie,
-	percentiles map[int]float64,
+	percentiles map[string]float64,
 	jobConfig SmartJobConfig,
 ) ([]integrations.Movie, map[string]ScoreInfo, []ContentDecision) {
 	decisions := make([]ContentDecision, 0, len(movies))
@@ -211,7 +211,7 @@ func (e *SmartMovieJobExecutor) evaluateMoviesWithAdaptiveFilters(
 		}
 
 		// Get popularity percentile for this movie
-		percentile, hasPercentile := percentiles[movie.IDs.TMDB]
+		percentile, hasPercentile := percentiles[integrations.MovieKey(movie.IDs)]
 		if !hasPercentile {
 			percentile = 0.5 // Default to middle if not found
 		}

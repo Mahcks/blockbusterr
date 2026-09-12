@@ -77,6 +77,25 @@ func TestValidateDynamicJobRejectsUnconfiguredProvider(t *testing.T) {
 	}
 }
 
+func TestValidateDynamicJobRankedCapacity(t *testing.T) {
+	for _, media := range []string{"movie", "show"} {
+		for _, capacity := range []int{-1, 0, 1, 3} {
+			cfg := &config.Config{}
+			cfg.TMDB.APIKey = "configured"
+			cfg.Scoring.Enabled = true
+			cfg.Jobs.Selection.Enabled = true
+			cfg.Jobs.Selection.MovieLimit = capacity
+			cfg.Jobs.Selection.ShowLimit = capacity
+			job := config.DynamicJob{ID: "ranked", Name: "Ranked", Type: "popular", Source: "tmdb", MediaType: media, Limit: 20, SelectionCycle: true, MinimumPicks: 2}
+			err := validateDynamicJob(cfg, job)
+			wantErr := capacity < 0 || capacity == 1
+			if (err != nil) != wantErr {
+				t.Fatalf("media=%s capacity=%d err=%v", media, capacity, err)
+			}
+		}
+	}
+}
+
 func TestValidateDynamicJobRejectsInvalidCustomFilters(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.TMDB.APIKey = "configured"

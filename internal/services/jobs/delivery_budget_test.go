@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"testing"
+	"time"
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
@@ -38,5 +39,20 @@ func TestDeliveryBudgetEnforcesGlobalAndPerRunLimits(t *testing.T) {
 	}
 	if _, allowed, reason = dryRun.reserve("movie"); allowed || reason != "Job delivery limit reached" {
 		t.Fatalf("per-run limit = (%t, %q)", allowed, reason)
+	}
+}
+
+func TestUnlimitedDryRunDoesNotConsumeDeliveryBudget(t *testing.T) {
+	db, err := database.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	budget := newDeliveryBudget(&config.Config{}, db, "dry", 1, 0, true)
+	if _, allowed, reason := budget.reserve("movie"); !allowed {
+		t.Fatalf("dry run blocked: %s", reason)
+	}
+	if count, err := db.CountDeliveriesSince("movie", time.Now().Add(-time.Hour)); err != nil || count != 0 {
+		t.Fatalf("dry run consumed budget: %d, %v", count, err)
 	}
 }

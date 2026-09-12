@@ -119,6 +119,7 @@ func TestFullRestoreValidation(t *testing.T) {
 		{name: "documented v1 backup", data: v1},
 		{name: "empty YAML", data: nil, wantErr: true},
 		{name: "unrelated YAML", data: []byte("hello: world\n"), wantErr: true},
+		{name: "null jobs", data: []byte("version: 2.0.0\njobs: null\n"), wantErr: true},
 		{name: "unknown version", data: []byte("version: 9.0.0\njobs: {}\nfilters: {}\n"), wantErr: true},
 		{name: "dangling rules", data: danglingYAML, wantErr: true},
 		{name: "invalid interval", data: []byte("version: 2.0.0\njobs:\n  sync_interval: tomorrow\nfilters: {}\n"), wantErr: true},
@@ -233,5 +234,70 @@ func TestJobBundleImportRegeneratesIDsAndDisablesJob(t *testing.T) {
 	rules, ok := target.RuleSetByID(job.RuleSetID)
 	if !ok || !strings.HasPrefix(rules.Name, "Quality") {
 		t.Fatalf("imported rules missing: %+v", rules)
+	}
+}
+
+func TestRejectedShareableImportPreservesConfiguration(t *testing.T) {
+	for _, data := range []string{"", "hello: world\n", "schema_version: 2\n", "jobs: {}\nfilters: {}\nscoring: null\n"} {
+		cfg := portableTestConfig(t)
+		if err := cfg.Save(); err != nil {
+			t.Fatal(err)
+		}
+		before, err := os.ReadFile(cfg.ConfigFilePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response := uploadConfig(t, configRoutesTestApp(cfg), "/config/import", []byte(data))
+		_ = response.Body.Close()
+		if response.StatusCode != fiber.StatusBadRequest {
+			t.Fatalf("invalid import status=%d", response.StatusCode)
+		}
+		after, err := os.ReadFile(cfg.ConfigFilePath)
+		if err != nil || !bytes.Equal(before, after) || len(cfg.Jobs.List) != 1 {
+			t.Fatal("rejected import changed configuration")
+		}
+	}
+}
+
+func TestLegacyConfigurationImportsMaterializeJobs(t *testing.T) {
+	data := []byte("version: 1.5.0\njobs:\n  trending_movies:\n    enabled: true\n    limit: 25\nfilters: {}\nscoring: {}\n")
+	for _, endpoint := range []string{"/config/restore", "/config/import"} {
+		cfg := portableTestConfig(t)
+		response := uploadConfig(t, configRoutesTestApp(cfg), endpoint, data)
+		if response.StatusCode != fiber.StatusOK {
+			body, _ := io.ReadAll(response.Body)
+			t.Fatalf("%s status=%d body=%s", endpoint, response.StatusCode, body)
+		}
+		_ = response.Body.Close()
+		job := cfg.GetDynamicJobByID("trending_movies")
+		if job == nil || !job.Enabled || job.Limit != 25 || cfg.Jobs.TrendingMovies.Enabled {
+			t.Fatal("legacy import did not create an editable, schedulable dynamic job")
+		}
+		if _, _, err := cfg.ResolveRuleSet(*job); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestFullRestoreAllowsUnlimitedRankedSelectionWithMinimumPicks(t *testing.T) {
+	cfg := portableTestConfig(t)
+	cfg.Scoring.Enabled = true
+	cfg.Jobs.Selection.Enabled = true
+	cfg.Jobs.List = []config.DynamicJob{
+		{ID: "movies", Name: "Movies", Enabled: true, Type: "popular", Source: "tmdb", MediaType: "movie", Limit: 20, RuleSetID: config.DefaultMoviesRuleSetID, SelectionCycle: true, MinimumPicks: 3},
+		{ID: "shows", Name: "Shows", Enabled: true, Type: "popular", Source: "tmdb", MediaType: "show", Limit: 20, RuleSetID: config.DefaultShowsRuleSetID, SelectionCycle: true, MinimumPicks: 4},
+	}
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := uploadConfig(t, configRoutesTestApp(cfg), "/config/restore", data)
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != fiber.StatusOK {
+		body, _ := io.ReadAll(response.Body)
+		t.Fatalf("status=%d body=%s", response.StatusCode, body)
+	}
+	if cfg.Jobs.Selection.MovieLimit != 0 || cfg.Jobs.Selection.ShowLimit != 0 || cfg.Jobs.List[0].MinimumPicks != 3 || cfg.Jobs.List[1].MinimumPicks != 4 {
+		t.Fatal("restore changed unlimited selection settings")
 	}
 }

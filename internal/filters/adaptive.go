@@ -17,23 +17,23 @@ type PopularityPercentile struct {
 }
 
 // CalculateMoviePopularityPercentiles calculates popularity percentiles for a set of movies
-// based on their vote counts. Returns a map of TMDB ID to percentile (0.0-1.0)
-func CalculateMoviePopularityPercentiles(movies []integrations.Movie) map[int]float64 {
+// based on their vote counts. Returns a map of movie identity to percentile (0.0-1.0)
+func CalculateMoviePopularityPercentiles(movies []integrations.Movie) map[string]float64 {
 	if len(movies) == 0 {
-		return make(map[int]float64)
+		return make(map[string]float64)
 	}
 
-	// Create a slice of vote counts with their TMDB IDs
+	// Create a slice of vote counts with their movie identities
 	type movieVotes struct {
-		TMDBID int
-		Votes  int
+		Key   string
+		Votes int
 	}
 
 	votesData := make([]movieVotes, len(movies))
 	for i, movie := range movies {
 		votesData[i] = movieVotes{
-			TMDBID: movie.IDs.TMDB,
-			Votes:  movie.Votes,
+			Key:   integrations.MovieKey(movie.IDs),
+			Votes: movie.Votes,
 		}
 	}
 
@@ -43,7 +43,7 @@ func CalculateMoviePopularityPercentiles(movies []integrations.Movie) map[int]fl
 	})
 
 	// Calculate percentile for each movie
-	percentiles := make(map[int]float64)
+	percentiles := make(map[string]float64)
 	totalMovies := float64(len(votesData))
 
 	for rank, data := range votesData {
@@ -57,30 +57,30 @@ func CalculateMoviePopularityPercentiles(movies []integrations.Movie) map[int]fl
 			percentile = 0.5 // Single item defaults to middle
 		}
 
-		percentiles[data.TMDBID] = percentile
+		percentiles[data.Key] = percentile
 	}
 
 	return percentiles
 }
 
 // CalculateShowPopularityPercentiles calculates popularity percentiles for a set of shows
-// based on their vote counts. Returns a map of TVDB ID to percentile (0.0-1.0)
-func CalculateShowPopularityPercentiles(shows []integrations.Show) map[int]float64 {
+// based on their vote counts. Returns a map of show identity to percentile (0.0-1.0)
+func CalculateShowPopularityPercentiles(shows []integrations.Show) map[string]float64 {
 	if len(shows) == 0 {
-		return make(map[int]float64)
+		return make(map[string]float64)
 	}
 
-	// Create a slice of vote counts with their TVDB IDs
+	// Create a slice of vote counts with their show identities
 	type showVotes struct {
-		TVDBID int
-		Votes  int
+		Key   string
+		Votes int
 	}
 
 	votesData := make([]showVotes, len(shows))
 	for i, show := range shows {
 		votesData[i] = showVotes{
-			TVDBID: show.IDs.TVDB,
-			Votes:  show.Votes,
+			Key:   integrations.ShowKey(show.IDs),
+			Votes: show.Votes,
 		}
 	}
 
@@ -90,7 +90,7 @@ func CalculateShowPopularityPercentiles(shows []integrations.Show) map[int]float
 	})
 
 	// Calculate percentile for each show
-	percentiles := make(map[int]float64)
+	percentiles := make(map[string]float64)
 	totalShows := float64(len(votesData))
 
 	for rank, data := range votesData {
@@ -101,7 +101,7 @@ func CalculateShowPopularityPercentiles(shows []integrations.Show) map[int]float
 			percentile = 0.5
 		}
 
-		percentiles[data.TVDBID] = percentile
+		percentiles[data.Key] = percentile
 	}
 
 	return percentiles

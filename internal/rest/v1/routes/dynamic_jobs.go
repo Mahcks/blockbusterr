@@ -708,7 +708,7 @@ func validateDynamicJob(cfg *config.Config, job config.DynamicJob) error {
 					minima += existing.MinimumPicks
 				}
 			}
-			if capacity <= 0 || minima > capacity {
+				if capacity < 0 || (capacity > 0 && minima > capacity) {
 				return fmt.Errorf("ranked %s minimum picks require capacity %d or greater", job.MediaType, minima)
 			}
 		}

@@ -164,7 +164,7 @@ check: fmt-check vet lint
 # Build for production
 build-prod:
 	@echo "Building for production..."
-	@CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o bin/blockbusterr cmd/app/main.go
+	@CGO_ENABLED=1 GOOS=linux go build -ldflags="-w -s" -o bin/blockbusterr cmd/app/main.go
 	@echo "✓ Production build complete"
 
 # Show application status

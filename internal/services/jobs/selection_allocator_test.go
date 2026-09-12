@@ -74,3 +74,12 @@ func TestAllocateSelectionZeroCapacityIsUnlimited(t *testing.T) {
 		t.Fatalf("unlimited allocation = %+v", allocation)
 	}
 }
+
+func TestAllocateSelectionUnlimitedSourceShortage(t *testing.T) {
+	for _, candidates := range [][]SelectionCandidate{nil, {{Key: "movie:1", JobID: "job", Score: .9}}} {
+		allocation, err := AllocateSelection(candidates, 0, map[string]int{"job": 3})
+		if err != nil || len(allocation.Winners) != len(candidates) || len(allocation.Excluded) != 0 {
+			t.Fatalf("allocation=%+v err=%v", allocation, err)
+		}
+	}
+}

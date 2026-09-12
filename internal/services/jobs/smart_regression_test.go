@@ -107,3 +107,34 @@ func TestSmartPreviewMatchesAdaptiveRules(t *testing.T) {
 		}
 	}
 }
+
+func TestSmartPopularityUsesAvailableIdentity(t *testing.T) {
+	cfg := &config.Config{}
+	movies := []integrations.Movie{
+		{Title: "Unpopular", IDs: integrations.IDs{IMDB: "tt1"}, Rating: 6, Votes: 1},
+		{Title: "Popular", IDs: integrations.IDs{IMDB: "tt2"}, Rating: 6, Votes: 100},
+	}
+	shows := []integrations.Show{
+		{Title: "Unpopular", IDs: integrations.IDs{TMDB: 1}, Rating: 6, Votes: 1},
+		{Title: "Popular", IDs: integrations.IDs{TMDB: 2}, Rating: 6, Votes: 100},
+	}
+	job := config.DynamicJob{Type: "smart_popular", BaseMinRating: 6, AdjustmentFactor: 1}
+	moviePreview, showPreview := PreviewResponse{}, PreviewResponse{}
+	if err := previewMovies(t.Context(), cfg, nil, job, movies, &moviePreview); err != nil {
+		t.Fatal(err)
+	}
+	if err := previewShows(t.Context(), cfg, nil, job, shows, &showPreview); err != nil {
+		t.Fatal(err)
+	}
+	smart := SmartJobConfig{BaseMinRating: 6, AdjustmentFactor: 1}
+	_, _, movieDecisions := (&SmartMovieJobExecutor{Config: cfg}).evaluateMoviesWithAdaptiveFilters(t.Context(), movies, filters.CalculateMoviePopularityPercentiles(movies), smart)
+	_, _, showDecisions := (&SmartShowJobExecutor{Config: cfg}).evaluateShowsWithAdaptiveFilters(t.Context(), shows, filters.CalculateShowPopularityPercentiles(shows), smart)
+	for i, want := range []bool{false, true} {
+		if movieDecisions[i].PassedFilters != want || moviePreview.Items[i].FilteredOut == want {
+			t.Errorf("movie %s: preview/run acceptance must be %v", movies[i].Title, want)
+		}
+		if showDecisions[i].PassedFilters != want || showPreview.Items[i].FilteredOut == want {
+			t.Errorf("show %s: preview/run acceptance must be %v", shows[i].Title, want)
+		}
+	}
+}

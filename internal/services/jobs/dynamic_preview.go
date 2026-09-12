@@ -83,7 +83,7 @@ func previewDynamicJob(cfg *config.Config, db *database.Database, job config.Dyn
 
 func previewMovies(ctx context.Context, cfg *config.Config, db *database.Database, job config.DynamicJob, movies []integrations.Movie, response *PreviewResponse) error {
 	mode, repeatPolicy := job.Mode, job.RepeatPolicy
-	var percentiles map[int]float64
+	var percentiles map[string]float64
 	if job.Type == "smart_popular" {
 		percentiles = filters.CalculateMoviePopularityPercentiles(movies)
 	}
@@ -118,7 +118,7 @@ func previewMovies(ctx context.Context, cfg *config.Config, db *database.Databas
 		item.ProviderRank = index + 1
 		result := filters.MoviePassesRules(movie, cfg.Filters.Movies, cfg.TitleExceptions)
 		if percentiles != nil {
-			threshold := filters.CalculateAdaptiveRating(job.BaseMinRating, percentiles[movie.IDs.TMDB], job.AdjustmentFactor)
+			threshold := filters.CalculateAdaptiveRating(job.BaseMinRating, percentiles[integrations.MovieKey(movie.IDs)], job.AdjustmentFactor)
 			result = filters.MoviePassesAdaptiveFilters(movie, cfg.Filters.Movies, threshold, cfg.TitleExceptions)
 		}
 		item.FilterChecks = result.Checks
@@ -157,7 +157,7 @@ func previewMovies(ctx context.Context, cfg *config.Config, db *database.Databas
 
 func previewShows(ctx context.Context, cfg *config.Config, db *database.Database, job config.DynamicJob, shows []integrations.Show, response *PreviewResponse) error {
 	mode, repeatPolicy := job.Mode, job.RepeatPolicy
-	var percentiles map[int]float64
+	var percentiles map[string]float64
 	if job.Type == "smart_popular" {
 		percentiles = filters.CalculateShowPopularityPercentiles(shows)
 	}
@@ -193,7 +193,7 @@ func previewShows(ctx context.Context, cfg *config.Config, db *database.Database
 		item.ProviderRank = index + 1
 		result := filters.ShowPassesRules(show, cfg.Filters.Shows, cfg.TitleExceptions)
 		if percentiles != nil {
-			threshold := filters.CalculateAdaptiveRating(job.BaseMinRating, percentiles[show.IDs.TVDB], job.AdjustmentFactor)
+			threshold := filters.CalculateAdaptiveRating(job.BaseMinRating, percentiles[integrations.ShowKey(show.IDs)], job.AdjustmentFactor)
 			result = filters.ShowPassesAdaptiveFilters(show, cfg.Filters.Shows, threshold, cfg.TitleExceptions)
 		}
 		item.FilterChecks = result.Checks

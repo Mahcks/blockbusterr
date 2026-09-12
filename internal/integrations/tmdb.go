@@ -195,7 +195,7 @@ func (t *TMDB) getShows(ctx context.Context, endpoint string, limit int) ([]Show
 			return nil, err
 		}
 		for _, item := range response.Results {
-			show := Show{Title: item.Name, Year: yearFromDate(item.FirstAirDate), IDs: IDs{TMDB: item.ID}, Genres: genreNames(item.GenreIDs, tmdbShowGenres), Language: item.OriginalLanguage, Country: strings.ToLower(strings.Join(item.OriginCountry, ",")), Overview: item.Overview, Rating: item.VoteAverage, Votes: item.VoteCount}
+			show := Show{Title: item.Name, Year: yearFromDate(item.FirstAirDate), IDs: IDs{TMDB: item.ID}, Genres: genreNames(item.GenreIDs, tmdbShowGenres), Language: item.OriginalLanguage, Country: joinCountry(item.OriginCountry), Overview: item.Overview, Rating: item.VoteAverage, Votes: item.VoteCount}
 			result = append(result, show)
 			if len(result) == limit {
 				break
@@ -265,7 +265,7 @@ func (t *TMDB) GetShowRecommendations(ctx context.Context, seeds []int, limit in
 					continue
 				}
 				seen[item.ID] = true
-				result = append(result, Show{Title: item.Name, Year: yearFromDate(item.FirstAirDate), IDs: IDs{TMDB: item.ID}, Genres: genreNames(item.GenreIDs, tmdbShowGenres), Language: item.OriginalLanguage, Country: strings.ToLower(strings.Join(item.OriginCountry, ",")), Overview: item.Overview, Rating: item.VoteAverage, Votes: item.VoteCount})
+				result = append(result, Show{Title: item.Name, Year: yearFromDate(item.FirstAirDate), IDs: IDs{TMDB: item.ID}, Genres: genreNames(item.GenreIDs, tmdbShowGenres), Language: item.OriginalLanguage, Country: joinCountry(item.OriginCountry), Overview: item.Overview, Rating: item.VoteAverage, Votes: item.VoteCount})
 				if len(result) == limit {
 					return result, t.enrichShows(ctx, result)
 				}

@@ -173,3 +173,35 @@ func TestTMDBMovieMetadataFailureIsExplicit(t *testing.T) {
 		t.Fatal("missing metadata silently accepted")
 	}
 }
+
+func TestTMDBShowCountryAcrossSources(t *testing.T) {
+	for _, source := range []string{"chart", "recommendations", "list", "watchlist"} {
+		t.Run(source, func(t *testing.T) {
+			client := NewTMDB(TMDBConfig{APIKey: "key", SessionID: "session", AccountID: 1})
+			client.httpClient.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Path == "/3/tv/42" {
+					return jsonResponse(http.StatusOK, `{}`), nil
+				}
+				return jsonResponse(http.StatusOK, `{"page":1,"total_pages":1,"results":[{"media_type":"tv","id":42,"name":"Show","origin_country":["US","GB"]}]}`), nil
+			})
+			var shows []Show
+			var err error
+			switch source {
+			case "chart":
+				shows, err = client.getShows(t.Context(), "/tv/popular", 1)
+			case "recommendations":
+				shows, err = client.GetShowRecommendations(t.Context(), []int{1}, 1)
+			default:
+				var items TMDBListItems
+				items, err = client.GetListItems(t.Context(), "1", source == "watchlist", "show", 1)
+				shows = items.Shows
+			}
+			if err != nil || len(shows) != 1 {
+				t.Fatalf("shows=%v err=%v", shows, err)
+			}
+			if shows[0].Country != "us" {
+				t.Fatalf("country=%q, want primary country us", shows[0].Country)
+			}
+		})
+	}
+}
