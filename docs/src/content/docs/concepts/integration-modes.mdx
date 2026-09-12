@@ -9,10 +9,10 @@ Blockbusterr supports two delivery modes. Discovery is separate: each job can us
 
 <CardGrid>
 <Card title="Direct mode" icon="rocket">
-Adds movies to Radarr and shows to Sonarr immediately. This is best for a personal server where you trust your global filters.
+Adds movies to Radarr and shows to Sonarr immediately. This is best when you trust the job's assigned rules to deliver without approval.
 </Card>
-<Card title="Jellyseerr mode" icon="approve-check">
-Creates Jellyseerr requests. Approval and request limits are controlled by the Jellyseerr user associated with the request.
+<Card title="Jellyseerr / Seerr mode" icon="approve-check">
+  Creates Jellyseerr or Seerr requests. Approval and request limits are controlled by the user associated with the request.
 </Card>
 </CardGrid>
 
@@ -45,7 +45,9 @@ radarr:
 
 The `mode` on an individual job overrides `jobs.mode`. Direct movie jobs require Radarr; direct show jobs require Sonarr.
 
-## Jellyseerr mode
+## Jellyseerr / Seerr mode
+
+Both servers use the same compatible integration. The config section and mode are still named `jellyseerr` for backward compatibility; the configured URL may point to Jellyseerr or Seerr.
 
 ```yaml
 jobs:
@@ -65,10 +67,10 @@ jellyseerr:
   api_key: your_jellyseerr_api_key
 ```
 
-Blockbusterr applies its global movie or show filters before creating a request. Jellyseerr then decides whether that request is automatically approved based on the requesting user's permissions.
+Blockbusterr applies the job's assigned movie or show rule set before creating a request. Jellyseerr or Seerr then decides whether that request is automatically approved based on the requesting user's permissions.
 
 <Aside type="note">
-Blockbusterr does not send a score threshold to Jellyseerr. Configure auto-approval and request limits in Jellyseerr.
+Blockbusterr does not send a score threshold to Jellyseerr or Seerr. Configure auto-approval and request limits in the request server.
 </Aside>
 
 ## Per-job mode
@@ -89,4 +91,4 @@ jobs:
       mode: direct
 ```
 
-Changing a mode affects future runs only. Existing Radarr, Sonarr, and Jellyseerr entries are not moved.
+Changing a mode affects future runs only. Existing Radarr, Sonarr, Jellyseerr, and Seerr entries are not moved.

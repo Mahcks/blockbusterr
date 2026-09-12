@@ -1,6 +1,12 @@
 package jobs
 
-import "slices"
+import (
+	"slices"
+	"time"
+
+	"github.com/mahcks/blockbusterr/config"
+	"github.com/mahcks/blockbusterr/pkg/enums"
+)
 
 // JobTypeDefinition describes a job type that can be instantiated as a DynamicJob
 type JobTypeDefinition struct {
@@ -9,6 +15,7 @@ type JobTypeDefinition struct {
 	Description    string   `json:"description"`     // UI description
 	Source         string   `json:"source"`          // Data source: "trakt", "tmdb", etc.
 	Sources        []string `json:"sources"`         // Supported discovery sources.
+	KnownSources   []string `json:"known_sources"`   // Sources shown disabled until their adapter is available.
 	SupportedMedia []string `json:"supported_media"` // ["movie"], ["show"], or ["movie", "show"]
 	RequiresPeriod bool     `json:"requires_period"` // Whether this job type uses period parameter
 	IsSmartJob     bool     `json:"is_smart_job"`    // Whether this is a smart job with adaptive filters
@@ -20,6 +27,27 @@ type JobTypeDefinition struct {
 // Note: MaxLimit is set high (1000) for most types since Trakt supports pagination.
 // Box Office is limited to 10 as that's all Trakt returns for that endpoint.
 var JobTypeRegistry = map[string]JobTypeDefinition{
+	string(enums.JobTypeRecommendations): {
+		Type:           string(enums.JobTypeRecommendations),
+		Name:           "Recommendations",
+		Description:    "One-hop TMDB recommendations from explicit seed titles",
+		Source:         "tmdb",
+		Sources:        []string{"tmdb"},
+		KnownSources:   []string{"tmdb"},
+		SupportedMedia: []string{"movie", "show"},
+		DefaultLimit:   50,
+		MaxLimit:       500,
+	},
+	string(enums.JobTypeList): {
+		Type:           string(enums.JobTypeList),
+		Name:           "List or Watchlist",
+		Description:    "Discover content from a provider list or personal watchlist",
+		Sources:        []string{"trakt", "tmdb", "letterboxd", "mdblist"},
+		KnownSources:   []string{"trakt", "tmdb", "letterboxd", "mdblist"},
+		SupportedMedia: []string{"movie", "show"},
+		DefaultLimit:   100,
+		MaxLimit:       1000,
+	},
 	"trending": {
 		Type:           "trending",
 		Name:           "Trending",
@@ -132,137 +160,47 @@ var JobTypeRegistry = map[string]JobTypeDefinition{
 
 // JobTemplate represents a pre-configured job template for quick setup
 type JobTemplate struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Type        string `json:"type"`
-	MediaType   string `json:"media"`
-	Limit       int    `json:"limit"`
-	Period      string `json:"period,omitempty"`
-	Category    string `json:"category"` // "Movies" or "TV Shows"
+	ID            string               `json:"id"`
+	Version       int                  `json:"version"`
+	Name          string               `json:"name"`
+	Description   string               `json:"description"`
+	Type          string               `json:"type"`
+	MediaType     string               `json:"media"`
+	Source        string               `json:"source"`
+	Limit         int                  `json:"limit"`
+	DeliveryLimit int                  `json:"delivery_limit"`
+	Period        string               `json:"period,omitempty"`
+	SyncInterval  string               `json:"sync_interval"`
+	Mode          string               `json:"mode,omitempty"`
+	SeriesType    string               `json:"series_type,omitempty"`
+	Category      string               `json:"category"` // "Movies" or "TV Shows"
+	RuleSetName   string               `json:"rule_set_name"`
+	DefaultRules  bool                 `json:"default_rules,omitempty"`
+	List          *config.ListLocator  `json:"list,omitempty"`
+	Movies        *config.MovieFilters `json:"-"`
+	Shows         *config.ShowFilters  `json:"-"`
+}
+
+type AvailableJobTemplate struct {
+	JobTemplate
+	Ready   bool   `json:"ready"`
+	Missing string `json:"missing,omitempty"`
 }
 
 // JobTemplates contains pre-defined job configurations for common use cases
 var JobTemplates = []JobTemplate{
-	// Movie Templates
-	{
-		Name:        "Weekly Trending Movies",
-		Description: "Top 10 trending movies this week",
-		Type:        "trending",
-		MediaType:   "movie",
-		Limit:       10,
-		Category:    "Movies",
-	},
-	{
-		Name:        "Monthly Popular Movies",
-		Description: "Top 20 popular movies this month",
-		Type:        "popular",
-		MediaType:   "movie",
-		Limit:       20,
-		Category:    "Movies",
-	},
-	{
-		Name:        "Weekly Watched Movies",
-		Description: "Most watched movies this week",
-		Type:        "watched",
-		MediaType:   "movie",
-		Limit:       20,
-		Period:      "weekly",
-		Category:    "Movies",
-	},
-	{
-		Name:        "Monthly Watched Movies",
-		Description: "Most watched movies this month",
-		Type:        "watched",
-		MediaType:   "movie",
-		Limit:       30,
-		Period:      "monthly",
-		Category:    "Movies",
-	},
-	{
-		Name:        "All-Time Top 50 Movies",
-		Description: "Top 50 most watched movies of all time",
-		Type:        "watched",
-		MediaType:   "movie",
-		Limit:       50,
-		Period:      "all",
-		Category:    "Movies",
-	},
-	{
-		Name:        "Box Office Hits",
-		Description: "Top 10 box office movies",
-		Type:        "box_office",
-		MediaType:   "movie",
-		Limit:       10,
-		Category:    "Movies",
-	},
-	{
-		Name:        "Anticipated Movies",
-		Description: "Top 25 most anticipated upcoming movies",
-		Type:        "anticipated",
-		MediaType:   "movie",
-		Limit:       25,
-		Category:    "Movies",
-	},
-	{
-		Name:        "Smart Popular Movies",
-		Description: "Popular movies with adaptive quality filtering",
-		Type:        "smart_popular",
-		MediaType:   "movie",
-		Limit:       50,
-		Category:    "Movies",
-	},
-
-	// TV Show Templates
-	{
-		Name:        "Weekly Trending Shows",
-		Description: "Top 10 trending shows this week",
-		Type:        "trending",
-		MediaType:   "show",
-		Limit:       10,
-		Category:    "TV Shows",
-	},
-	{
-		Name:        "Monthly Popular Shows",
-		Description: "Top 20 popular shows this month",
-		Type:        "popular",
-		MediaType:   "show",
-		Limit:       20,
-		Category:    "TV Shows",
-	},
-	{
-		Name:        "Weekly Watched Shows",
-		Description: "Most watched shows this week",
-		Type:        "watched",
-		MediaType:   "show",
-		Limit:       20,
-		Period:      "weekly",
-		Category:    "TV Shows",
-	},
-	{
-		Name:        "All-Time Top 50 Shows",
-		Description: "Top 50 most watched shows of all time",
-		Type:        "watched",
-		MediaType:   "show",
-		Limit:       50,
-		Period:      "all",
-		Category:    "TV Shows",
-	},
-	{
-		Name:        "Anticipated Shows",
-		Description: "Top 25 most anticipated upcoming shows",
-		Type:        "anticipated",
-		MediaType:   "show",
-		Limit:       25,
-		Category:    "TV Shows",
-	},
-	{
-		Name:        "Smart Popular Shows",
-		Description: "Popular shows with adaptive quality filtering",
-		Type:        "smart_popular",
-		MediaType:   "show",
-		Limit:       50,
-		Category:    "TV Shows",
-	},
+	{ID: "balanced-trending-movies", Version: 1, Name: "Balanced Trending", Description: "A measured feed of current movies with baseline quality checks.", Type: "trending", MediaType: "movie", Source: "tmdb", Limit: 50, DeliveryLimit: 5, SyncInterval: "24h", Category: "Movies", RuleSetName: "Balanced Trending Movies", Movies: &config.MovieFilters{MinRating: 6.5, MinVotes: 250}},
+	{ID: "new-well-rated-movies", Version: 1, Name: "New & Well Rated", Description: "Popular recent movies with stronger rating and vote requirements.", Type: "popular", MediaType: "movie", Source: "tmdb", Limit: 100, DeliveryLimit: 5, SyncInterval: "24h", Category: "Movies", RuleSetName: "New & Well Rated Movies", Movies: &config.MovieFilters{BlacklistedMinYear: time.Now().Year() - 1, MinRating: 7, MinVotes: 500}},
+	{ID: "anticipated-approval", Version: 1, Name: "Anticipated With Approval", Description: "Upcoming movies sent through Jellyseerr or Seerr for approval.", Type: "anticipated", MediaType: "movie", Source: "trakt", Limit: 50, DeliveryLimit: 5, SyncInterval: "24h", Mode: "jellyseerr", Category: "Movies", RuleSetName: "Anticipated Movies", Movies: &config.MovieFilters{MinVotes: 100}},
+	{ID: "documentary-discovery", Version: 1, Name: "Documentary Discovery", Description: "Well-rated documentary movies from TMDB.", Type: "popular", MediaType: "movie", Source: "tmdb", Limit: 100, DeliveryLimit: 3, SyncInterval: "168h", Category: "Movies", RuleSetName: "Documentary Movies", Movies: &config.MovieFilters{RequiredGenres: []string{"Documentary"}, MinRating: 6.5, MinVotes: 100}},
+	{ID: "science-fiction-discovery", Version: 1, Name: "Science-Fiction Discovery", Description: "Quality science-fiction movies with enough audience signal.", Type: "popular", MediaType: "movie", Source: "tmdb", Limit: 100, DeliveryLimit: 5, SyncInterval: "168h", Category: "Movies", RuleSetName: "Science-Fiction Movies", Movies: &config.MovieFilters{RequiredGenres: []string{"science-fiction"}, MinRating: 6.5, MinVotes: 250}},
+	{ID: "family-movies", Version: 1, Name: "Family Movies", Description: "US G and PG family movies with unknown ratings rejected.", Type: "popular", MediaType: "movie", Source: "tmdb", Limit: 100, DeliveryLimit: 5, SyncInterval: "168h", Category: "Movies", RuleSetName: "Family Movies", Movies: &config.MovieFilters{RequiredGenres: []string{"Family"}, CertificationCountry: "US", AllowedCertifications: []string{"G", "PG"}, UnknownCertification: string(enums.CertificationUnknownReject)}},
+	{ID: "all-time-classics", Version: 1, Name: "All-Time Classics", Description: "A small weekly selection from Trakt's all-time most watched movies.", Type: "watched", MediaType: "movie", Source: "trakt", Limit: 100, DeliveryLimit: 3, Period: "all", SyncInterval: "168h", Category: "Movies", RuleSetName: "All-Time Classics", Movies: &config.MovieFilters{BlacklistedMaxYear: time.Now().Year() - 10, MinRating: 7.5, MinVotes: 1000}},
+	{ID: "personal-watchlist", Version: 1, Name: "Personal Watchlist", Description: "Sync your connected TMDB movie watchlist.", Type: string(enums.JobTypeList), MediaType: "movie", Source: "tmdb", Limit: 250, DeliveryLimit: 10, SyncInterval: "2h", Category: "Movies", RuleSetName: "Default Movies", DefaultRules: true, List: &config.ListLocator{Kind: string(enums.ListKindWatchlist), Ordering: "source"}},
+	{ID: "balanced-trending-shows", Version: 1, Name: "Balanced Trending", Description: "Current TV with baseline quality checks and a conservative delivery cap.", Type: "trending", MediaType: "show", Source: "tmdb", Limit: 50, DeliveryLimit: 5, SyncInterval: "24h", Category: "TV Shows", RuleSetName: "Balanced Trending Shows", Shows: &config.ShowFilters{MinRating: 6.5, MinVotes: 100}},
+	{ID: "reality-tv-discovery", Version: 1, Name: "Reality TV Discovery", Description: "Popular reality shows from TMDB.", Type: "popular", MediaType: "show", Source: "tmdb", Limit: 100, DeliveryLimit: 5, SyncInterval: "168h", Category: "TV Shows", RuleSetName: "Reality TV", Shows: &config.ShowFilters{RequiredGenres: []string{"Reality"}, MinRating: 6}},
+	{ID: "current-tv", Version: 1, Name: "Current TV", Description: "Trending shows first aired within the last two years.", Type: "trending", MediaType: "show", Source: "tmdb", Limit: 100, DeliveryLimit: 5, SyncInterval: "24h", Category: "TV Shows", RuleSetName: "Current TV", Shows: &config.ShowFilters{BlacklistedMinYear: time.Now().Year() - 1, MinRating: 6.5}},
+	{ID: "anime-discovery", Version: 1, Name: "Anime Discovery", Description: "Japanese animation that must map cleanly into Sonarr.", Type: "popular", MediaType: "show", Source: "tmdb", Limit: 100, DeliveryLimit: 5, SyncInterval: "168h", Category: "TV Shows", RuleSetName: "Anime Discovery", SeriesType: "anime", Shows: &config.ShowFilters{AllowedCountries: []string{"JP"}, RequiredGenres: []string{"Animation"}, MinRating: 6.5}},
 }
 
 // GetJobTypeDefinition returns the definition for a job type
@@ -293,11 +231,18 @@ func SupportsMediaType(jobType, mediaType string) bool {
 
 // GetAvailableJobTypes limits each definition to configured providers. Empty
 // definitions are retained so existing jobs remain understandable in the UI.
-func GetAvailableJobTypes(providers []string) map[string]JobTypeDefinition {
+func GetAvailableJobTypes(providers, listProviders []string) map[string]JobTypeDefinition {
 	definitions := make(map[string]JobTypeDefinition, len(JobTypeRegistry))
 	for jobType, definition := range JobTypeRegistry {
+		if len(definition.KnownSources) == 0 {
+			definition.KnownSources = slices.Clone(definition.Sources)
+		}
+		available := providers
+		if jobType == string(enums.JobTypeList) {
+			available = listProviders
+		}
 		definition.Sources = slices.DeleteFunc(slices.Clone(definition.Sources), func(source string) bool {
-			return !slices.Contains(providers, source)
+			return !slices.Contains(available, source)
 		})
 		definitions[jobType] = definition
 	}
@@ -305,6 +250,41 @@ func GetAvailableJobTypes(providers []string) map[string]JobTypeDefinition {
 }
 
 // GetAllTemplates returns all job templates
-func GetAllTemplates() []JobTemplate {
-	return JobTemplates
+func GetAllTemplates(cfg *config.Config) []AvailableJobTemplate {
+	result := make([]AvailableJobTemplate, 0, len(JobTemplates))
+	for _, recipe := range JobTemplates {
+		ready, missing := recipeReadiness(cfg, recipe)
+		result = append(result, AvailableJobTemplate{JobTemplate: recipe, Ready: ready, Missing: missing})
+	}
+	return result
+}
+
+func GetTemplate(id string) (JobTemplate, bool) {
+	for _, recipe := range JobTemplates {
+		if recipe.ID == id {
+			return recipe, true
+		}
+	}
+	return JobTemplate{}, false
+}
+
+func recipeReadiness(cfg *config.Config, recipe JobTemplate) (bool, string) {
+	job := config.DynamicJob{Type: recipe.Type, Source: recipe.Source}
+	if !IsJobSourceConfigured(cfg, job) {
+		return false, "Connect " + recipe.Source
+	}
+	if recipe.Type == string(enums.JobTypeList) && recipe.List != nil && enums.ListKind(recipe.List.Kind) == enums.ListKindWatchlist && (cfg.TMDB.SessionID == "" || cfg.TMDB.AccountID == 0) {
+		return false, "Connect your TMDB account"
+	}
+	mode := DetermineMode(recipe.Mode, cfg.Jobs.Mode)
+	if mode == "jellyseerr" && (cfg.Jellyseerr.URL == "" || cfg.Jellyseerr.APIKey == "") {
+		return false, "Connect Jellyseerr or Seerr"
+	}
+	if mode == "direct" && recipe.MediaType == "movie" && (cfg.Radarr.URL == "" || cfg.Radarr.APIKey == "") {
+		return false, "Connect Radarr"
+	}
+	if mode == "direct" && recipe.MediaType == "show" && (cfg.Sonarr.URL == "" || cfg.Sonarr.APIKey == "") {
+		return false, "Connect Sonarr"
+	}
+	return true, ""
 }

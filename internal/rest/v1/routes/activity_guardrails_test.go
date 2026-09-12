@@ -1,9 +1,14 @@
 package routes
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,7 +30,7 @@ func setupActivityTestApp(t *testing.T) (*fiber.App, *database.Database) {
 	})
 
 	cfg := &config.Config{}
-	gctx := global.New(context.Background(), cfg, db, "test", "test")
+	gctx := global.New(context.Background(), cfg, db, "test", "test", nil)
 
 	app := fiber.New()
 	RegisterActivityRoutes(app.Group("/v1"), gctx)
@@ -43,6 +48,177 @@ func TestActivityLogsRejectsInvalidStatusFilter(t *testing.T) {
 	}
 	if resp.StatusCode != fiber.StatusBadRequest {
 		t.Fatalf("status code = %d, want %d", resp.StatusCode, fiber.StatusBadRequest)
+	}
+}
+
+func TestClearAllActivityHistoryRequiresConfirmationAndClearsRuns(t *testing.T) {
+	t.Parallel()
+
+	app, db := setupActivityTestApp(t)
+	if err := db.LogActivity(database.ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "movie", Title: "Test", Status: "skipped"}); err != nil {
+		t.Fatal(err)
+	}
+	completedRun, err := db.StartJobRun("job-a", "Job A", "movie", "direct", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.CompleteJobRun(completedRun, time.Now(), "completed", 0, 0, 0, 0, 0, 0, 0, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.StartJobRun("job-running", "Running Job", "movie", "direct", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := app.Test(httptest.NewRequest("DELETE", "/v1/activity/logs?scope=all", nil), -1)
+	if err != nil || resp.StatusCode != fiber.StatusBadRequest {
+		t.Fatalf("unconfirmed clear status = %d, error = %v", resp.StatusCode, err)
+	}
+	resp, err = app.Test(httptest.NewRequest("DELETE", "/v1/activity/logs?scope=all&confirm=CLEAR", nil), -1)
+	if err != nil || resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("confirmed clear status = %d, error = %v", resp.StatusCode, err)
+	}
+	if runs, err := db.GetRecentJobRuns(10, ""); err != nil || len(runs) != 1 || runs[0].Status != "running" {
+		t.Fatalf("remaining runs = %#v, error = %v", runs, err)
+	}
+	stats, err := db.GetActivityStats()
+	if err != nil || stats["total_skipped"] != 0 {
+		t.Fatalf("activity stats after clear = %#v, error = %v", stats, err)
+	}
+}
+
+func TestActivityBlockWritesUniversalTitleException(t *testing.T) {
+	db, err := database.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(configPath, []byte("version: test\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{ConfigFilePath: configPath}
+	gctx := global.New(context.Background(), cfg, db, "test", "test", nil)
+	app := fiber.New()
+	RegisterActivityRoutes(app.Group("/v1"), gctx)
+	if err := db.LogActivity(database.ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "movie", Title: "Blocked", TMDBID: 42, Status: "rejected"}); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		resp, err := app.Test(httptest.NewRequest("POST", "/v1/activity/1/block", nil), -1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != fiber.StatusOK {
+			t.Fatalf("status = %d", resp.StatusCode)
+		}
+	}
+	current := gctx.Config()
+	if got := current.TitleExceptions.BlockedMovieTMDBIDs; len(got) != 1 || got[0] != 42 {
+		t.Fatalf("universal blocks = %v, want [42]", got)
+	}
+	if len(current.Filters.Movies.BlacklistedTMDBIds) != 0 {
+		t.Fatalf("legacy filters were mutated: %v", current.Filters.Movies.BlacklistedTMDBIds)
+	}
+}
+
+func TestActivityBulkBlockWritesUniversalTitleExceptionsAndSkipsMissingIDs(t *testing.T) {
+	db, err := database.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(configPath, []byte("version: test\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{ConfigFilePath: configPath}
+	gctx := global.New(context.Background(), cfg, db, "test", "test", nil)
+	app := fiber.New()
+	RegisterActivityRoutes(app.Group("/v1"), gctx)
+
+	if err := db.LogActivity(database.ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "movie", Title: "Movie A", TMDBID: 1, Status: "rejected"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.LogActivity(database.ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "show", Title: "Show B", TVDBID: 2, Status: "rejected"}); err != nil {
+		t.Fatal(err)
+	}
+	// No TMDB ID: should be skipped, not fail the whole batch.
+	if err := db.LogActivity(database.ActivityLog{Timestamp: time.Now(), JobType: "test", MediaType: "movie", Title: "No ID", Status: "rejected"}); err != nil {
+		t.Fatal(err)
+	}
+
+	body := bytes.NewReader([]byte(`{"ids":[1,2,3,9999]}`))
+	req := httptest.NewRequest("POST", "/v1/activity/bulk-block", body)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("app.Test() error = %v", err)
+	}
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+
+	var payload struct {
+		Blocked int `json:"blocked"`
+		Skipped []struct {
+			ID     int64  `json:"id"`
+			Reason string `json:"reason"`
+		} `json:"skipped"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Blocked != 2 {
+		t.Fatalf("blocked = %d, want 2", payload.Blocked)
+	}
+	if len(payload.Skipped) != 2 {
+		t.Fatalf("skipped = %#v, want 2 entries (no TMDB ID + not found)", payload.Skipped)
+	}
+
+	current := gctx.Config()
+	if got := current.TitleExceptions.BlockedMovieTMDBIDs; len(got) != 1 || got[0] != 1 {
+		t.Fatalf("blocked movie IDs = %v, want [1]", got)
+	}
+	if got := current.TitleExceptions.BlockedShowTVDBIDs; len(got) != 1 || got[0] != 2 {
+		t.Fatalf("blocked show IDs = %v, want [2]", got)
+	}
+
+	movieLog, err := db.GetActivityLogByID(1)
+	if err != nil || movieLog == nil || movieLog.Status != "blocked" {
+		t.Fatalf("movie log status = %#v, error = %v, want status=blocked", movieLog, err)
+	}
+	skippedLog, err := db.GetActivityLogByID(3)
+	if err != nil || skippedLog == nil || skippedLog.Status != "rejected" {
+		t.Fatalf("skipped (no TMDB ID) log status = %#v, error = %v, want unchanged status=rejected", skippedLog, err)
+	}
+}
+
+func TestActivityBulkBlockRejectsEmptyAndOversizedRequests(t *testing.T) {
+	t.Parallel()
+
+	app, _ := setupActivityTestApp(t)
+
+	resp, err := app.Test(httptest.NewRequest("POST", "/v1/activity/bulk-block", bytes.NewReader([]byte(`{"ids":[]}`))), -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != fiber.StatusBadRequest {
+		t.Fatalf("empty ids status = %d, want %d", resp.StatusCode, fiber.StatusBadRequest)
+	}
+
+	ids := make([]string, 501)
+	for i := range ids {
+		ids[i] = strconv.Itoa(i + 1)
+	}
+	oversized := "{\"ids\":[" + strings.Join(ids, ",") + "]}"
+	req := httptest.NewRequest("POST", "/v1/activity/bulk-block", bytes.NewReader([]byte(oversized)))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err = app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != fiber.StatusBadRequest {
+		t.Fatalf("oversized ids status = %d, want %d", resp.StatusCode, fiber.StatusBadRequest)
 	}
 }
 
@@ -167,6 +343,39 @@ func TestActivityLogsYesterdayExcludesToday(t *testing.T) {
 		if item.Log.Title == "Today Movie" {
 			t.Fatal("today log should not be included for date_range=yesterday")
 		}
+	}
+}
+
+func TestActivityLogsApplyCombinedSQLFiltersAndSorting(t *testing.T) {
+	t.Parallel()
+	app, db := setupActivityTestApp(t)
+	runID := int64(77)
+	for _, log := range []database.ActivityLog{
+		{Timestamp: time.Now().Add(-2 * time.Hour), RunID: runID, JobID: "target", JobType: "Target", MediaType: "movie", Title: "Needle Low", Language: "fr", Score: .2, Status: "rejected"},
+		{Timestamp: time.Now().Add(-time.Hour), RunID: runID, JobID: "target", JobType: "Target", MediaType: "movie", Title: "Needle High", Language: "fr", Score: .9, Status: "rejected"},
+		{Timestamp: time.Now(), RunID: runID, JobID: "other", JobType: "Other", MediaType: "movie", Title: "Needle Other", Language: "fr", Score: 1, Status: "rejected"},
+	} {
+		if err := db.LogActivity(log); err != nil {
+			t.Fatal(err)
+		}
+	}
+	req := httptest.NewRequest("GET", "/v1/activity/logs?status=rejected&media=movie&job=target&language=fr&search=needle&run_id=77&sort=score&order=asc&dedupe=false&pageSize=1&page=2", nil)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body struct {
+		Logs []struct {
+			Log database.ActivityLog `json:"Log"`
+		} `json:"logs"`
+		Total int `json:"total_records"`
+		Page  int `json:"page"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Total != 2 || body.Page != 2 || len(body.Logs) != 1 || body.Logs[0].Log.Title != "Needle High" {
+		t.Fatalf("response=%+v", body)
 	}
 }
 

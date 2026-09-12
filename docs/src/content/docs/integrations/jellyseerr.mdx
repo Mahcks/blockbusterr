@@ -1,18 +1,20 @@
 ---
-title: Jellyseerr Integration
-description: Configure request-based delivery through Jellyseerr
+title: Jellyseerr / Seerr Integration
+description: Configure request-based delivery through Jellyseerr or Seerr
 ---
 
 import { Aside, Steps } from '@astrojs/starlight/components';
 
-Jellyseerr mode creates requests instead of adding content directly to Radarr or Sonarr. Jellyseerr owns approval, quotas, notifications, quality profiles, and root-folder selection.
+Jellyseerr mode creates requests instead of adding content directly to Radarr or Sonarr. It supports both **Jellyseerr and Seerr** because they expose the same compatible request API. The selected request server owns approval, quotas, notifications, quality profiles, and root-folder selection.
+
+The configuration key and job mode remain named `jellyseerr` for backward compatibility; point the URL at either a Jellyseerr or Seerr server.
 
 ## Prerequisites
 
 <Steps>
-1. Configure Radarr and/or Sonarr inside Jellyseerr.
-2. Copy the Jellyseerr API key from **Settings → General**.
-3. Ensure Blockbusterr can reach the Jellyseerr URL.
+1. Configure Radarr and/or Sonarr inside Jellyseerr or Seerr.
+2. Copy its API key from **Settings → General**.
+3. Ensure Blockbusterr can reach the request server URL.
 </Steps>
 
 ## Configuration
@@ -30,7 +32,7 @@ When the containers share a Docker network, use the container name rather than `
 
 ### Request as a specific user
 
-An API key normally creates requests with its own permissions. You can set a Jellyseerr user ID:
+An API key normally creates requests with its own permissions. You can set a Jellyseerr/Seerr user ID:
 
 ```yaml
 jellyseerr:
@@ -71,20 +73,20 @@ jobs:
       sync_interval: "0 8 * * *"
 ```
 
-The job's discovery source does not change the request workflow. Blockbusterr fetches candidates, applies the global movie filters, and creates Jellyseerr requests for accepted items.
+The job's discovery source does not change the request workflow. Blockbusterr fetches candidates, applies the job's assigned movie or show rule set, and creates Jellyseerr/Seerr requests for accepted items.
 
 ## Approval behavior
 
-Blockbusterr does not provide Jellyseerr with score-based approval thresholds. To control approval:
+Blockbusterr does not provide Jellyseerr or Seerr with score-based approval thresholds. To control approval:
 
-- Configure movie and show auto-approval on the Jellyseerr user.
-- Configure request quotas in Jellyseerr.
-- Use Blockbusterr's global filters to reject unwanted candidates before requesting them.
+- Configure movie and show auto-approval on the Jellyseerr/Seerr user.
+- Configure request quotas in Jellyseerr or Seerr.
+- Use the job's assigned Blockbusterr rules to reject unwanted candidates before requesting them.
 
 ## Troubleshooting
 
 - Verify the URL from the Blockbusterr host or container.
-- Verify the API key in Jellyseerr.
+- Verify the API key in Jellyseerr or Seerr.
 - Confirm the selected user can request the media type.
 - Check Activity Entries for filtered, duplicate, or failed items.
 - Confirm the job's discovery provider is configured.

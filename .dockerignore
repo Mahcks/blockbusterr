@@ -38,6 +38,15 @@ data/*.db
 # Documentation
 *.md
 LICENSE
+docs/
+
+# Local development and agent files
+.codex/
+.claude/
+plans/
+reference-docs/
+node_modules/
+*.log
 
 # Go test files
 *.test

@@ -82,7 +82,7 @@ func (r *Radarr) doRequest(ctx context.Context, method, endpoint string, body an
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Api-Key", r.apiKey)
 
-	resp, err := r.httpClient.Do(req)
+	resp, err := doRequest(r.httpClient, req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -143,8 +143,7 @@ func (r *Radarr) GetSystemStatus(ctx context.Context) (*SystemStatus, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Radarr", resp)
 	}
 
 	var status SystemStatus
@@ -164,8 +163,7 @@ func (r *Radarr) GetQualityProfiles(ctx context.Context) ([]QualityProfile, erro
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Radarr", resp)
 	}
 
 	var profiles []QualityProfile
@@ -185,8 +183,7 @@ func (r *Radarr) GetRootFolders(ctx context.Context) ([]RootFolder, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Radarr", resp)
 	}
 
 	var folders []RootFolder
@@ -206,8 +203,7 @@ func (r *Radarr) AddMovie(ctx context.Context, movie RadarrMovie) (*RadarrMovie,
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Radarr", resp)
 	}
 
 	var addedMovie RadarrMovie
@@ -227,8 +223,7 @@ func (r *Radarr) GetMovies(ctx context.Context) ([]RadarrMovie, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Radarr", resp)
 	}
 
 	var movies []RadarrMovie
@@ -250,8 +245,7 @@ func (r *Radarr) LookupMovie(ctx context.Context, term string) ([]RadarrMovie, e
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Radarr", resp)
 	}
 
 	var movies []RadarrMovie

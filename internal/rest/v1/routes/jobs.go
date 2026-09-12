@@ -90,8 +90,7 @@ func AddJobsRoutes(router fiber.Router, gctx global.Context) {
 	router.Post("/jobs/trigger/:job", func(c *fiber.Ctx) error {
 		jobName := c.Params("job")
 		cfg := gctx.Config()
-		// Manual triggers should always add content (not dry-run)
-		dryRun := false
+		dryRun := jobs.DryRunEnabled(gctx.Metadata().Version)
 
 		switch jobName {
 		case "trending-movies":

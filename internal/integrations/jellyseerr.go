@@ -2,6 +2,7 @@ package integrations
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -132,15 +133,14 @@ func (j *Jellyseerr) login() error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := j.client.Do(req)
+	resp, err := doRequest(j.client, req)
 	if err != nil {
 		return fmt.Errorf("failed to execute login request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("login failed with status %d: %s", resp.StatusCode, string(body))
+		return newAPIError("Jellyseerr / Seerr", resp)
 	}
 
 	var loginResp LoginResponse
@@ -177,6 +177,10 @@ func (j *Jellyseerr) ensureAuthenticated() error {
 
 // doRequest performs an HTTP request with proper headers
 func (j *Jellyseerr) doRequest(method, path string, body any) (*http.Response, error) {
+	return j.doRequestContext(context.Background(), method, path, body)
+}
+
+func (j *Jellyseerr) doRequestContext(ctx context.Context, method, path string, body any) (*http.Response, error) {
 	var reqBody io.Reader
 	if body != nil {
 		jsonData, err := json.Marshal(body)
@@ -187,7 +191,7 @@ func (j *Jellyseerr) doRequest(method, path string, body any) (*http.Response, e
 	}
 
 	url := fmt.Sprintf("%s/api/v1%s", j.config.URL, path)
-	req, err := http.NewRequest(method, url, reqBody)
+	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -208,7 +212,7 @@ func (j *Jellyseerr) doRequest(method, path string, body any) (*http.Response, e
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := j.client.Do(req)
+	resp, err := doRequest(j.client, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
@@ -225,8 +229,7 @@ func (j *Jellyseerr) GetStatus() (*StatusResponse, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("jellyseerr returned status %d: %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Jellyseerr / Seerr", resp)
 	}
 
 	var status StatusResponse
@@ -239,6 +242,10 @@ func (j *Jellyseerr) GetStatus() (*StatusResponse, error) {
 
 // RequestMovie requests a movie by TMDB ID
 func (j *Jellyseerr) RequestMovie(tmdbID int) (*RequestResponse, error) {
+	return j.RequestMovieContext(context.Background(), tmdbID)
+}
+
+func (j *Jellyseerr) RequestMovieContext(ctx context.Context, tmdbID int) (*RequestResponse, error) {
 	payload := MovieRequest{
 		MediaType: "movie",
 		MediaID:   tmdbID,
@@ -252,18 +259,17 @@ func (j *Jellyseerr) RequestMovie(tmdbID int) (*RequestResponse, error) {
 		}
 	}
 
-	resp, err := j.doRequest("POST", "/request", payload)
+	resp, err := j.doRequestContext(ctx, "POST", "/request", payload)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, _ := io.ReadAll(resp.Body)
-
 	// Jellyseerr returns 201 for new requests, 200 for existing
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("jellyseerr returned status %d: %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Jellyseerr / Seerr", resp)
 	}
+	body, _ := io.ReadAll(resp.Body)
 
 	var result RequestResponse
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -278,6 +284,10 @@ func (j *Jellyseerr) RequestMovie(tmdbID int) (*RequestResponse, error) {
 
 // RequestShow requests a TV show by TMDB ID
 func (j *Jellyseerr) RequestShow(tmdbID int) (*RequestResponse, error) {
+	return j.RequestShowContext(context.Background(), tmdbID)
+}
+
+func (j *Jellyseerr) RequestShowContext(ctx context.Context, tmdbID int) (*RequestResponse, error) {
 	payload := ShowRequest{
 		MediaType: "tv",
 		MediaID:   tmdbID,
@@ -292,18 +302,17 @@ func (j *Jellyseerr) RequestShow(tmdbID int) (*RequestResponse, error) {
 		}
 	}
 
-	resp, err := j.doRequest("POST", "/request", payload)
+	resp, err := j.doRequestContext(ctx, "POST", "/request", payload)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, _ := io.ReadAll(resp.Body)
-
 	// Jellyseerr returns 201 for new requests, 200 for existing
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("jellyseerr returned status %d: %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Jellyseerr / Seerr", resp)
 	}
+	body, _ := io.ReadAll(resp.Body)
 
 	var result RequestResponse
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -336,8 +345,12 @@ func (m *MediaInfo) HasMediaInfo() bool {
 
 // GetMovieInfo gets information about a movie from Jellyseerr
 func (j *Jellyseerr) GetMovieInfo(tmdbID int) (*MediaInfo, error) {
+	return j.GetMovieInfoContext(context.Background(), tmdbID)
+}
+
+func (j *Jellyseerr) GetMovieInfoContext(ctx context.Context, tmdbID int) (*MediaInfo, error) {
 	path := fmt.Sprintf("/movie/%d", tmdbID)
-	resp, err := j.doRequest("GET", path, nil)
+	resp, err := j.doRequestContext(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -349,8 +362,7 @@ func (j *Jellyseerr) GetMovieInfo(tmdbID int) (*MediaInfo, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("jellyseerr returned status %d: %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Jellyseerr / Seerr", resp)
 	}
 
 	var mediaInfo MediaInfo
@@ -363,8 +375,12 @@ func (j *Jellyseerr) GetMovieInfo(tmdbID int) (*MediaInfo, error) {
 
 // GetShowInfo gets information about a TV show from Jellyseerr
 func (j *Jellyseerr) GetShowInfo(tmdbID int) (*MediaInfo, error) {
+	return j.GetShowInfoContext(context.Background(), tmdbID)
+}
+
+func (j *Jellyseerr) GetShowInfoContext(ctx context.Context, tmdbID int) (*MediaInfo, error) {
 	path := fmt.Sprintf("/tv/%d", tmdbID)
-	resp, err := j.doRequest("GET", path, nil)
+	resp, err := j.doRequestContext(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -376,8 +392,7 @@ func (j *Jellyseerr) GetShowInfo(tmdbID int) (*MediaInfo, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("jellyseerr returned status %d: %s", resp.StatusCode, string(body))
+		return nil, newAPIError("Jellyseerr / Seerr", resp)
 	}
 
 	var mediaInfo MediaInfo

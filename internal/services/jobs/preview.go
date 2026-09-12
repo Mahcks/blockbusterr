@@ -61,6 +61,7 @@ func createMoviePreviewItem(cfg *config.Config, movie integrations.Movie, popula
 		Popularity: popularity,
 		Genres:     movie.Genres,
 		Runtime:    movie.Runtime,
+		movie:      &movie,
 	}
 }
 
@@ -79,26 +80,35 @@ func createShowPreviewItem(cfg *config.Config, show integrations.Show, popularit
 		Popularity: popularity,
 		Genres:     show.Genres,
 		Runtime:    show.Runtime,
+		show:       &show,
 	}
 }
 
 // PreviewItem represents a single item in the preview
 type PreviewItem struct {
-	Title         string   `json:"title"`
-	Year          int      `json:"year"`
-	TMDBID        int      `json:"tmdb_id,omitempty"`
-	TVDBID        int      `json:"tvdb_id,omitempty"`
-	IMDBID        string   `json:"imdb_id,omitempty"`
-	PosterURL     string   `json:"poster_url,omitempty"`
-	Overview      string   `json:"overview,omitempty"`
-	Rating        float64  `json:"rating,omitempty"`
-	Votes         int      `json:"votes,omitempty"`
-	Popularity    int      `json:"popularity,omitempty"`
-	Genres        []string `json:"genres,omitempty"`
-	Runtime       int      `json:"runtime,omitempty"`
-	AlreadyExists bool     `json:"already_exists"`
-	FilteredOut   bool     `json:"filtered_out,omitempty"`
-	FilterReason  string   `json:"filter_reason,omitempty"`
+	Title          string                `json:"title"`
+	Year           int                   `json:"year"`
+	TMDBID         int                   `json:"tmdb_id,omitempty"`
+	TVDBID         int                   `json:"tvdb_id,omitempty"`
+	IMDBID         string                `json:"imdb_id,omitempty"`
+	PosterURL      string                `json:"poster_url,omitempty"`
+	Overview       string                `json:"overview,omitempty"`
+	Rating         float64               `json:"rating,omitempty"`
+	Votes          int                   `json:"votes,omitempty"`
+	Popularity     int                   `json:"popularity,omitempty"`
+	Genres         []string              `json:"genres,omitempty"`
+	Runtime        int                   `json:"runtime,omitempty"`
+	AlreadyExists  bool                  `json:"already_exists"`
+	RepeatBlocked  bool                  `json:"repeat_blocked,omitempty"`
+	FilteredOut    bool                  `json:"filtered_out,omitempty"`
+	FilterReason   string                `json:"filter_reason,omitempty"`
+	DecisionReason string                `json:"decision_reason,omitempty"`
+	Score          float64               `json:"score,omitempty"`
+	Rank           int                   `json:"rank,omitempty"`
+	ProviderRank   int                   `json:"provider_rank,omitempty"`
+	FilterChecks   []filters.FilterCheck `json:"filter_checks,omitempty"`
+	movie          *integrations.Movie
+	show           *integrations.Show
 }
 
 // PreviewResponse represents the response for a job preview
@@ -1720,14 +1730,14 @@ func PreviewSmartPopularMovies(cfg *config.Config, db *database.Database) Previe
 	for i, movie := range popularMovies {
 		item := createMoviePreviewItem(cfg, movie, len(popularMovies)-i)
 
-		percentile := percentiles[movie.IDs.TMDB]
+		percentile := percentiles[integrations.MovieKey(movie.IDs)]
 		adaptiveMinRating := filters.CalculateAdaptiveRating(
 			cfg.Jobs.SmartPopularMovies.BaseMinRating,
 			percentile,
 			cfg.Jobs.SmartPopularMovies.AdjustmentFactor,
 		)
 
-		filterResult := filters.MoviePassesAdaptiveFilters(movie, cfg.Filters.Movies, adaptiveMinRating)
+		filterResult := filters.MoviePassesAdaptiveFilters(movie, cfg.Filters.Movies, adaptiveMinRating, cfg.TitleExceptions)
 		if !filterResult.Passed {
 			item.FilteredOut = true
 			item.FilterReason = fmt.Sprintf("%s (%.0f%%, %.1f)", filterResult.Reason, percentile*100, adaptiveMinRating)
@@ -1815,14 +1825,14 @@ func PreviewSmartPopularShows(cfg *config.Config, db *database.Database) Preview
 	for i, show := range popularShows {
 		item := createShowPreviewItem(cfg, show, len(popularShows)-i)
 
-		percentile := percentiles[show.IDs.TMDB]
+		percentile := percentiles[integrations.ShowKey(show.IDs)]
 		adaptiveMinRating := filters.CalculateAdaptiveRating(
 			cfg.Jobs.SmartPopularShows.BaseMinRating,
 			percentile,
 			cfg.Jobs.SmartPopularShows.AdjustmentFactor,
 		)
 
-		filterResult := filters.ShowPassesAdaptiveFilters(show, cfg.Filters.Shows, adaptiveMinRating)
+		filterResult := filters.ShowPassesAdaptiveFilters(show, cfg.Filters.Shows, adaptiveMinRating, cfg.TitleExceptions)
 		if !filterResult.Passed {
 			item.FilteredOut = true
 			item.FilterReason = fmt.Sprintf("%s (%.0f%%, %.1f)", filterResult.Reason, percentile*100, adaptiveMinRating)

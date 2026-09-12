@@ -39,6 +39,36 @@ func TestDynamicExecutorReturnsProviderConfigurationError(t *testing.T) {
 	}
 }
 
+func TestConfigForJobUsesAssignedRuleSet(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Filters.Movies.MinRating = 7
+	cfg.Filters.Movies.BlacklistedTMDBIds = []int{1}
+	cfg.MigrateRuleSets()
+	job := config.DynamicJob{MediaType: "movie"}
+	effective, err := configForJob(cfg, job)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := effective.Filters.Movies.MinRating; got != 7 {
+		t.Fatalf("inherited minimum rating = %v, want 7", got)
+	}
+	if blocked := effective.Filters.Movies.BlacklistedTMDBIds; len(blocked) != 1 || blocked[0] != 1 {
+		t.Fatalf("migrated blocked TMDB IDs = %v, want [1]", blocked)
+	}
+	cfg.TitleExceptions.BlockedMovieTMDBIDs = []int{2}
+	effective, err = configForJob(cfg, job)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked := effective.Filters.Movies.BlacklistedTMDBIds
+	if len(blocked) != 1 || blocked[0] != 2 {
+		t.Fatalf("effective blocked TMDB IDs = %v, want [2] after replacing title exceptions", blocked)
+	}
+	if cfg.Filters.Movies.MinRating != 7 {
+		t.Fatal("custom filters mutated the global config")
+	}
+}
+
 func TestSupportsSource(t *testing.T) {
 	if !SupportsSource("trending", "tmdb") || !SupportsSource("watched", "simkl") {
 		t.Fatal("expected supported source")

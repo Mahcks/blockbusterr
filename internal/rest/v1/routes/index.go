@@ -16,7 +16,7 @@ type HealthResponse struct {
 
 func (rg *RouteGroup) Index(ctx *fiber.Ctx) error {
 	return ctx.JSON(HealthResponse{
-		Version: rg.gctx.Config().Version,
+		Version: rg.gctx.Metadata().Version,
 		Uptime:  strconv.Itoa(int(uptime.UnixMilli())),
 	})
 }

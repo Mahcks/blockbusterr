@@ -28,6 +28,7 @@ func RegisterTraktRoutes(rg *RouteGroup, group fiber.Router) {
 
 	// GET /v1/trakt/validate - Test connection
 	trakt.Get("/validate", rg.ValidateTrakt)
+	trakt.Post("/validate", rg.ValidateTrakt)
 
 	// Metadata endpoints for filters
 	// GET /v1/trakt/languages/movies
@@ -168,21 +169,23 @@ func (rg *RouteGroup) SearchTrakt(c *fiber.Ctx) error {
 
 // ValidateTrakt validates the Trakt API connection
 func (rg *RouteGroup) ValidateTrakt(c *fiber.Ctx) error {
-	// Check if we're in test mode (testing form values)
-	testMode := c.Query("test") == "true"
-
 	var clientID, clientSecret string
-
-	if testMode {
-		// In test mode, require query parameters
-		clientID = c.Query("client_id")
-		clientSecret = c.Query("client_secret")
+	if c.Method() == fiber.MethodPost {
+		var request struct {
+			ClientID     string `json:"client_id"`
+			ClientSecret string `json:"client_secret"`
+		}
+		if err := c.BodyParser(&request); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body", "connected": false})
+		}
+		clientID, clientSecret = request.ClientID, request.ClientSecret
 	} else {
 		// Normal mode, use saved config
 		cfg := rg.gctx.Config()
 		clientID = cfg.Trakt.ClientID
 		clientSecret = cfg.Trakt.ClientSecret
 	}
+	c.Set(fiber.HeaderCacheControl, "no-store")
 
 	if clientID == "" || clientSecret == "" {
 		return c.Status(400).JSON(fiber.Map{

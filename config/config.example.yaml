@@ -1,261 +1,169 @@
-# Blockbusterr Configuration
-# Copy this file to config.yaml and fill in your settings
-# Web UI runs on port 9090 by default (change with Docker port mapping)
-# To disable Web UI, set environment variable: DISABLE_UI=true
+# Blockbusterr v2 example configuration
+# Copy to config.yaml, then use the Settings, Jobs, and Rules pages.
+# Every example job is disabled so the first start cannot deliver content.
 
+version: "2.0.0"
+
+# Configure at least one discovery provider.
 trakt:
-  # Get your Trakt API credentials from https://trakt.tv/oauth/applications
   client_id: ""
   client_secret: ""
+  # User authorization is completed from Settings; tokens are stored here automatically.
 
 tmdb:
-  # Free key from https://www.themoviedb.org/settings/api
   api_key: ""
+  # User authorization is completed from Settings; the session is stored here automatically.
 
 simkl:
-  # App client ID from https://simkl.com/settings/developer/
   client_id: ""
 
-radarr:
-  # Radarr connection settings
-  url: ""  # Example: http://localhost:7878
+# Optional list and watchlist discovery provider.
+mdblist:
   api_key: ""
-  quality_profile: 1  # Update after connecting - check Radarr Settings > Profiles
-  root_folder: ""  # Example: /movies
-  minimum_availability: "released" # Options: "announced", "in_cinemas", "released"
-  monitor: "movieOnly" # Options: "movieOnly", "movieAndCollection", "none"
+
+# Experimental: scrapes public pages and may stop working without notice.
+letterboxd:
+  experimental_scraping: false
+
+# Direct delivery targets. Configure Radarr for movies and Sonarr for shows.
+radarr:
+  url: "" # Example: http://radarr:7878
+  api_key: ""
+  quality_profile: 0
+  root_folder: ""
+  minimum_availability: released
+  monitor: movieOnly
 
 sonarr:
-  # Sonarr connection settings
-  url: ""  # Example: http://localhost:8989
+  url: "" # Example: http://sonarr:8989
   api_key: ""
-  quality_profile: 1  # Update after connecting - check Sonarr Settings > Profiles
-  root_folder: ""  # Example: /tv
-  monitor: "" # Default monitoring option for added shows, options: "all", "future", missing", "existing", "firstSeason", "lastSeason", "latestSeason", "pilot", "recent", "monitorSpecials", "unmonitorSpecials", "none"
+  quality_profile: 0
+  root_folder: ""
+  monitor: all
 
+# Optional alternative delivery target for request-based workflows.
 jellyseerr:
-  # Jellyseerr/Overseerr connection settings (optional - alternative to direct Radarr/Sonarr)
-  url: ""  # Example: http://localhost:5055
+  url: "" # Jellyseerr or Seerr; example: http://jellyseerr:5055
   api_key: ""
-  user_id: ""  # Optional: Request as specific user ID (leave empty for default user)
+  user_id: ""
+  request_credentials:
+    email: ""
+    password: ""
 
 scoring:
-  # Content scoring system - ranks content by rating, popularity, and recency
-  # Used by global limits to select top N items across all jobs
   enabled: true
-  rating_weight: 0.6       # 60% weight on rating (must sum to 1.0 with other weights)
-  popularity_weight: 0.3   # 30% weight on popularity (vote count)
-  recency_weight: 0.1      # 10% weight on how recent it is
-  rating_scale: 10         # Rating scale (10 for Trakt's 0-10 scale)
-  popularity_metric: "votes" # Options: votes, views, watchers
-  recency_days: 365        # Content from last 365 days gets full recency score
-
-  # Preset configurations:
-  # Quality-focused:  rating: 0.8, popularity: 0.1, recency: 0.1
-  # Trending-focused: rating: 0.3, popularity: 0.6, recency: 0.1
-  # New releases:     rating: 0.4, popularity: 0.2, recency: 0.4
+  rating_weight: 0.6
+  popularity_weight: 0.3
+  recency_weight: 0.1
+  rating_scale: 10
+  popularity_metric: votes
+  recency_days: 365
 
 jobs:
-  # Default sync interval for all jobs (can be overridden per job)
-  # Supports duration format (e.g. "1h", "30m", "2h30m") or cron expressions (e.g. "0 */2 * * *")
-  # Examples:
-  #   "1h" - Every 1 hour
-  #   "30m" - Every 30 minutes  
-  #   "0 */2 * * *" - Every 2 hours (at minute 0)
-  #   "0 0 * * *" - Daily at midnight
-  #   "0 2 * * *" - Daily at 2 AM
-  #   "0 */6 * * *" - Every 6 hours
+  # Wait before redelivering media that Blockbusterr previously added or requested and is now absent.
+  # Options: immediate, 30_days, 90_days, 180_days, never
+  repeat_policy: 90_days
   sync_interval: 24h
+  mode: direct # direct or jellyseerr
+  global_limit_movies: 0 # Successful deliveries in the rolling period; zero is unlimited
+  global_limit_shows: 0
+  global_period: daily # daily (24h), weekly (7d), or monthly (30d)
+  selection:
+    enabled: false # Opt-in: rank participating jobs together by normalized score
+    sync_interval: 24h
+    movie_limit: 0 # Winners per cycle; at least one limit is required when enabled
+    show_limit: 0
+  list:
+    - id: trending-movies
+      name: Trending Movies
+      enabled: false
+      type: trending
+      source: tmdb
+      media: movie
+      limit: 20
+      delivery_limit: 0 # Successful additions or requests per run; zero is unlimited
+      selection_cycle: false
+      minimum_picks: 0
+      rule_set_id: default-movies
 
-  # Default mode: "direct" (add directly to Radarr/Sonarr) or "jellyseerr" (request via Jellyseerr)
-  # Can be overridden per job
-  mode: direct
+    - id: trending-shows
+      name: Trending Shows
+      enabled: false
+      type: trending
+      source: tmdb
+      media: show
+      limit: 20
+      delivery_limit: 0
+      rule_set_id: default-shows
 
-  # Global Limits (optional)
-  # Aggregate results from all enabled jobs and only add the top N highest-scored items
-  # Leave at 0 to disable global limits (jobs will add items independently)
-  global_limit_movies: 0  # Maximum movies to add per period (0 = no limit)
-  global_limit_shows: 0   # Maximum shows to add per period (0 = no limit)
-  global_period: "weekly" # Options: "sync" (per-sync, no tracking), "daily", "weekly", "monthly"
+# Rule sets are reusable and media-specific. Assign one to each job.
+rule_sets:
+  - id: default-movies
+    name: Default Movies
+    media: movie
+    revision: 1
+    movies:
+      allowed_countries: []
+      allowed_languages: []
+      blacklisted_countries: []
+      blacklisted_languages: []
+      blacklisted_genres: []
+      blacklisted_keywords: []
+      required_genres: []
+      required_keywords: []
+      allow_countries: []
+      allow_languages: []
+      allow_genres: []
+      allow_keywords: []
+      allow_min_rating: 0
+      blacklisted_tmdb_ids: []
+      blacklisted_min_runtime: 0
+      blacklisted_max_runtime: 0
+      blacklisted_min_year: 0
+      blacklisted_max_year: 0
+      min_rating: 0
+      min_votes: 0
+      certification_country: US
+      allowed_certifications: []
+      blocked_certifications: []
+      unknown_certification: allow
 
-  # Movie Jobs
-  # Each job can optionally have its own sync_interval and mode
-  # If not specified, uses the default values above
-  trending_movies:
-    enabled: false
-    limit: 20
-    # sync_interval: 1h  # Optional: Override default interval
-    # mode: jellyseerr   # Optional: Override default mode
-  
-  popular_movies:
-    enabled: false
-    limit: 20
-    # sync_interval: 6h
-    # mode: direct
-  
-  box_office:
-    enabled: false
-    limit: 10
-  
-  favorited_movies:
-    enabled: false
-    limit: 20
-    period: weekly  # Options: weekly, monthly, yearly, all
-  
-  played_movies:
-    enabled: false
-    limit: 20
-    period: weekly
-  
-  watched_movies:
-    enabled: false
-    limit: 20
-    period: weekly
-  
-  collected_movies:
-    enabled: false
-    limit: 20
-    period: weekly
-  
-  anticipated_movies:
-    enabled: false
-    limit: 20
+  - id: default-shows
+    name: Default Shows
+    media: show
+    revision: 1
+    shows:
+      allowed_countries: []
+      allowed_languages: []
+      blacklisted_countries: []
+      blacklisted_languages: []
+      blacklisted_genres: []
+      blacklisted_keywords: []
+      blacklisted_networks: []
+      required_genres: []
+      required_keywords: []
+      required_networks: []
+      allow_countries: []
+      allow_languages: []
+      allow_genres: []
+      allow_keywords: []
+      allow_networks: []
+      allow_min_rating: 0
+      blacklisted_tvdb_ids: []
+      blacklisted_min_runtime: 0
+      blacklisted_max_runtime: 0
+      blacklisted_min_year: 0
+      blacklisted_max_year: 0
+      min_rating: 0
+      min_votes: 0
+      certification_country: US
+      allowed_certifications: []
+      blocked_certifications: []
+      unknown_certification: allow
 
-  # Smart Popular Jobs
-  # These jobs use adaptive rating thresholds based on popularity percentiles
-  # More popular content (higher votes) gets lower rating requirements
-  # Less popular content (lower votes) gets higher rating requirements
-  # Formula: threshold = base_min_rating - ((percentile - 0.5) * adjustment_factor)
-  # Example: base=7.0, factor=2.0 → popular (90th percentile) needs 6.2, unpopular (10th percentile) needs 7.8
-  smart_popular_movies:
-    enabled: false
-    limit: 20
-    base_min_rating: 7.0      # Base rating requirement (adjusted by popularity)
-    adjustment_factor: 2.0     # How much to adjust (0.5 = mild, 2.0 = aggressive)
-    # sync_interval: 6h
-    # mode: direct
-
-  # TV Show Jobs
-  trending_shows:
-    enabled: false
-    limit: 10
-  
-  popular_shows:
-    enabled: false
-    limit: 10
-  
-  favorited_shows:
-    enabled: false
-    limit: 10
-    period: weekly  # Options: weekly, monthly, yearly, all
-  
-  played_shows:
-    enabled: false
-    limit: 10
-    period: weekly
-  
-  watched_shows:
-    enabled: false
-    limit: 10
-    period: weekly
-  
-  collected_shows:
-    enabled: false
-    limit: 10
-    period: weekly
-  
-  anticipated_shows:
-    enabled: false
-    limit: 10
-
-  smart_popular_shows:
-    enabled: false
-    limit: 10
-    base_min_rating: 7.0      # Base rating requirement (adjusted by popularity)
-    adjustment_factor: 2.0     # How much to adjust (0.5 = mild, 2.0 = aggressive)
-    # sync_interval: 6h
-    # mode: direct
-
-# Content Filters
-# Filter out unwanted content based on various criteria
-filters:
-  movies:
-    # Only add movies from these countries (2-letter country codes: us, gb, ca, etc.)
-    # Leave empty [] to allow all countries, or use ["ignore"] to allow movies with no country specified
-    allowed_countries: []
-    
-    # Only add movies with these languages (2-letter language codes: en, ja, es, etc.)
-    # Leave empty [] to allow all languages, or use ["ignore"] to allow movies with no language specified
-    allowed_languages: []
-    
-    # Blacklist specific genres (documentary, animation, music, etc.)
-    # Leave empty [] to allow all genres, or use ["ignore"] to allow movies with no genres specified
-    blacklisted_genres: []
-    
-    # Blacklist movies with these keywords in the title
-    blacklisted_keywords: []
-    
-    # Blacklist specific TMDB IDs
-    blacklisted_tmdb_ids: []
-    
-    # Minimum runtime in minutes (0 to disable)
-    blacklisted_min_runtime: 0
-    
-    # Maximum runtime in minutes (0 to disable)
-    blacklisted_max_runtime: 0
-    
-    # Only add movies released after this year (0 to disable)
-    blacklisted_min_year: 0
-    
-    # Only add movies released before this year (0 to disable)
-    blacklisted_max_year: 0
-    
-    # Rating threshold filters
-    # Minimum rating (0-10 scale, 0 to disable)
-    min_rating: 0  # Example: 6.5 to only add movies rated 6.5 or higher
-    
-    # Minimum number of votes/ratings required (0 to disable)
-    # Helps filter out niche content with unreliable ratings
-    min_votes: 0  # Example: 1000 to require at least 1000 votes
-  
-  shows:
-    # Only add shows from these countries (2-letter country codes: us, gb, ca, etc.)
-    # Leave empty [] to allow all countries, or use ["ignore"] to allow shows with no country specified
-    allowed_countries: []
-    
-    # Only add shows with these languages (2-letter language codes: en, ja, es, etc.)
-    # Leave empty [] to allow all languages, or use ["ignore"] to allow shows with no language specified
-    allowed_languages: []
-    
-    # Blacklist specific genres (reality, anime, talk-show, documentary, etc.)
-    # Leave empty [] to allow all genres, or use ["ignore"] to allow shows with no genres specified
-    blacklisted_genres: []
-    
-    # Blacklist shows with these keywords in the title
-    blacklisted_keywords: []
-    
-    # Blacklist specific networks (nickelodeon, hallmark, disney, etc.)
-    blacklisted_networks: []
-    
-    # Blacklist specific TVDB IDs
-    blacklisted_tvdb_ids: []
-    
-    # Minimum runtime in minutes (0 to disable)
-    blacklisted_min_runtime: 0
-    
-    # Maximum runtime in minutes (0 to disable)
-    blacklisted_max_runtime: 0
-    
-    # Only add shows that premiered after this year (0 to disable)
-    blacklisted_min_year: 0
-    
-    # Only add shows that premiered before this year (0 to disable)
-    blacklisted_max_year: 0
-
-    # Rating threshold filters
-    # Minimum rating (0-10 scale, 0 to disable)
-    min_rating: 0  # Example: 7.0 to only add shows rated 7.0 or higher
-    
-    # Minimum number of votes/ratings required (0 to disable)
-    # Helps filter out niche content with unreliable ratings
-    min_votes: 0  # Example: 500 to require at least 500 votes
+# Universal exceptions take precedence over assigned rule sets.
+title_exceptions:
+  allowed_movie_tmdb_ids: []
+  blocked_movie_tmdb_ids: []
+  allowed_show_tvdb_ids: []
+  blocked_show_tvdb_ids: []

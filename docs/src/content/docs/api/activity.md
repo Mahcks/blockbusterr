@@ -1,264 +1,59 @@
 ---
 title: Activity API
-description: API endpoints for viewing and managing activity logs
+description: Query Activity Entries, Job Runs, charts, statistics, and title actions.
 ---
 
-The Activity API provides access to activity logs and statistics about content added to your library.
+The Activity API exposes individual title decisions and aggregate job executions.
 
-## Get Activity Logs
+## Activity Entries
 
-Retrieve recent activity logs with optional filtering.
+`GET /v1/activity/logs`
 
-**Endpoint:** `GET /v1/activity/logs`
-
-**Query Parameters:**
-- `page` (optional) - Page number, starting at 1
-- `pageSize` (optional) - Entries per page (default: 50, max: 200)
-- `limit` (optional) - Legacy alternative to `pageSize`
-- `media` (optional) - Filter by `movie` or `show`
-- `job` (optional) - Filter by job type
-- `status` (optional) - Filter by a supported activity status
-- `language` (optional) - Filter by stored language code
-- `search` (optional) - Case-insensitive title search
-- `date_range` (optional) - `today`, `yesterday`, `week`, or `month`
-- `run_id` (optional) - Filter by Job Run ID
-- `dedupe` (optional) - Group repeated entries; defaults to `true`
-
-**Example Requests:**
+Supported query parameters include limit, page, search, status, media type, job type, language, date range, and sort options used by the Activity UI.
 
 ```bash
-# Get last 100 activity logs
-curl "http://localhost:9090/v1/activity/logs?limit=100"
-
-# Get only movies
-curl "http://localhost:9090/v1/activity/logs?media=movie"
-
-# Get trending movies only
-curl "http://localhost:9090/v1/activity/logs?job=trending"
-
-# Get failed adds
-curl "http://localhost:9090/v1/activity/logs?status=failed"
+curl "http://localhost:9090/v1/activity/logs?limit=50&status=rejected"
 ```
 
-**Example Response:**
+Each entry contains its job identity, media identity, outcome, decision message, optional score/rank, provider IDs, poster metadata, and structured filter details when available.
 
-```json
-{
-  "logs": [
-    {
-      "id": 123,
-      "timestamp": "2026-01-08T15:30:45Z",
-      "job_type": "trending_movies",
-      "media_type": "movie",
-      "title": "Dune: Part Two",
-      "year": 2024,
-      "tmdb_id": 693134,
-      "imdb_id": "tt15239678",
-      "poster_url": "https://www.themoviedb.org/movie/693134",
-      "status": "added"
-    },
-    {
-      "id": 124,
-      "timestamp": "2026-01-08T15:31:12Z",
-      "job_type": "popular_shows",
-      "media_type": "show",
-      "title": "The Last of Us",
-      "year": 2023,
-      "tmdb_id": 100088,
-      "tvdb_id": 392256,
-      "poster_url": "https://www.themoviedb.org/tv/100088",
-      "status": "requested"
-    }
-  ],
-  "grouped": true,
-  "page": 1,
-  "page_size": 50,
-  "total_records": 100,
-  "total_pages": 2
-}
-```
+## Job Runs
 
-**Response Fields:**
-- `id` - Activity log ID
-- `timestamp` - When the content was added (ISO 8601)
-- `job_type` - Which job added it
-- `media_type` - `movie` or `show`
-- `title` - Content title
-- `year` - Release year
-- `tmdb_id` - TMDB ID (movies and shows)
-- `tvdb_id` - TVDB ID (shows only)
-- `imdb_id` - IMDB ID
-- `poster_url` - Link to content page
-- `status` - `added` (direct mode) or `requested` (Jellyseerr mode)
+`GET /v1/activity/runs`
 
-## Get Activity Statistics
+Returns executions with start/finish timing and found, passed, added, requested, rejected, skipped, and failed totals. The response also includes recent ranked-selection cycle summaries when that opt-in feature is enabled.
 
-Get statistics about content added over different time periods.
+The UI reports direct Radarr/Sonarr additions as **Added**, Jellyseerr/Seerr submissions as **Requested**, and their combined global total as **Delivered**. The API preserves the separate `added` and `requested` fields.
 
-**Endpoint:** `GET /v1/activity/stats`
+## Supporting data
 
-**Example Request:**
+- `GET /v1/activity/languages`
+- `GET /v1/activity/chart`
+- `GET /v1/activity/stats`
+- `GET /v1/activity/rejection-breakdown`
 
-```bash
-curl http://localhost:9090/v1/activity/stats
-```
+These endpoints power the Activity filters, overview metrics, trend chart, and rejection summaries.
 
-**Example Response:**
+## Retention
 
-```json
-{
-  "total_items": 1523,
-  "movies_added": 892,
-  "shows_added": 631,
-  "last_24h": 45,
-  "last_7d": 312,
-  "last_30d": 891,
-  "by_job": {
-    "trending_movies": 234,
-    "popular_movies": 189,
-    "smart_popular_movies": 156,
-    "trending_shows": 178,
-    "popular_shows": 142
-  }
-}
-```
+`DELETE /v1/activity/logs?days=30`
 
-**Response Fields:**
-- `total_items` - Total content added all-time
-- `movies_added` - Total movies added
-- `shows_added` - Total shows added
-- `last_24h` - Items added in last 24 hours
-- `last_7d` - Items added in last 7 days
-- `last_30d` - Items added in last 30 days
-- `by_job` - Breakdown by job type
+Deletes Activity Entries older than the requested retention period. This operation is irreversible unless the database is restored from backup.
 
-## Clear Activity Logs
+## Add anyway
 
-Delete activity logs older than specified days.
+`POST /v1/activity/:id/add-anyway`
 
-**Endpoint:** `DELETE /v1/activity/logs`
+Attempts delivery for an eligible rejected entry using the configured integration mode and updates the recorded outcome when successful.
 
-**Query Parameters:**
-- `days` (required) - Delete logs older than N days
+## Block a title
 
-**Example Request:**
+`POST /v1/activity/:id/block`
 
-```bash
-# Delete logs older than 30 days
-curl -X DELETE "http://localhost:9090/v1/activity/logs?days=30"
-```
+Adds the title's provider ID to the universal block exceptions for its media type. Future jobs evaluate that exception before their assigned rule set.
 
-**Example Response:**
+## Debug
 
-```json
-{
-  "message": "Deleted 234 activity logs older than 30 days",
-  "deleted_count": 234
-}
-```
+`GET /v1/activity/debug`
 
-## Add Media Anyway (Manual Override)
-
-Manually add media that was rejected by filters. This allows you to override filter decisions for specific items shown in the activity log.
-
-**Endpoint:** `POST /v1/activity/:id/add-anyway`
-
-**Path Parameters:**
-- `id` (required) - Activity log entry ID
-
-**Behavior:**
-- In `jellyseerr` mode: Creates a request in Jellyseerr
-- In `direct` mode: Adds directly to Radarr (movies) or Sonarr (shows)
-- Updates the activity log status to "added" with message "Manually added by user"
-
-**Example Request:**
-
-```bash
-# Manually add a rejected movie (using activity log ID)
-curl -X POST "http://localhost:9090/v1/activity/123/add-anyway"
-```
-
-**Example Response:**
-
-```json
-{
-  "success": true,
-  "message": "Stranger Things has been added successfully"
-}
-```
-
-**Error Responses:**
-
-```json
-{
-  "error": "Activity log not found"
-}
-```
-
-```json
-{
-  "error": "Failed to add media: no TMDB ID available for movie"
-}
-```
-
-**Use Case:**
-
-This endpoint is useful when a filter incorrectly rejects content. For example, if "Stranger Things" is rejected because it contains the "horror" genre, but you want to add it anyway:
-
-1. View the rejected item in the Activity Log UI
-2. Click the "Add Anyway" button (available for `rejected` status items)
-3. The content is added to Jellyseerr or *arr based on your mode
-4. The activity log updates in place to show "Added" status
-
-## Advanced Examples
-
-### Get Today's Activity
-
-```bash
-curl -s "http://localhost:9090/v1/activity/logs?limit=500" \
-  | jq '.logs[] | select(.timestamp >= "'$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%S)'Z")'
-```
-
-### Count by Media Type
-
-```bash
-curl -s "http://localhost:9090/v1/activity/stats" \
-  | jq '{movies: .movies_added, shows: .shows_added}'
-```
-
-### Get Failed Adds
-
-```bash
-curl -s "http://localhost:9090/v1/activity/logs?status=failed&limit=100" \
-  | jq '.logs[] | {title, year, job_type}'
-```
-
-### Export to CSV
-
-```bash
-curl -s "http://localhost:9090/v1/activity/logs?limit=500" \
-  | jq -r '.logs[] | [.timestamp, .title, .year, .media_type, .job_type] | @csv' \
-  > activity.csv
-```
-
-## Error Responses
-
-**Invalid Media Type (400):**
-```json
-{
-  "error": "invalid media type: invalid"
-}
-```
-
-**Missing Required Parameter (400):**
-```json
-{
-  "error": "Parameter 'days' is required"
-}
-```
-
-## Next Steps
-
-- Explore [Jobs API](/api/jobs/)
-- Review [Configuration API](/api/config/)
-- Learn about [Integration Modes](/concepts/integration-modes/)
+Returns installation diagnostics for maintainers. Avoid exposing it outside a trusted network.

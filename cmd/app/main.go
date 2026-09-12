@@ -15,6 +15,7 @@ import (
 	"github.com/mahcks/blockbusterr/internal/global"
 	"github.com/mahcks/blockbusterr/internal/rest"
 	"github.com/mahcks/blockbusterr/internal/services"
+	"github.com/mahcks/blockbusterr/internal/services/jobs"
 )
 
 var (
@@ -72,12 +73,14 @@ func main() {
 	}
 
 	baseCtx, cancel := context.WithCancel(context.Background())
+	executions := jobs.NewExecutionCoordinator(baseCtx)
 	gctx := global.New(
 		baseCtx,
 		cfg,
 		db,
 		Version,
 		Commit,
+		executions,
 	)
 	if gctx.Database() == nil {
 		slog.Error("database is nil in global context after initialization")
@@ -91,7 +94,7 @@ func main() {
 	wg := sync.WaitGroup{}
 
 	// Start the job scheduler
-	scheduler := services.NewScheduler(gctx.Config, db, Version)
+	scheduler := services.NewScheduler(gctx.Config, db, Version, executions)
 	scheduler.Start()
 
 	go func() {
@@ -101,15 +104,18 @@ func main() {
 		go func() {
 			select {
 			case <-time.After(time.Minute):
+				slog.Warn("Force shutdown - timed out")
 			case <-interrupt:
+				slog.Warn("Force shutdown - second signal received")
 			}
-			slog.Warn("Force shutdown - timed out")
+			os.Exit(1)
 		}()
 
 		slog.Warn("Shutting down...")
 
 		// Stop the scheduler
 		scheduler.Stop()
+		executions.Stop()
 
 		wg.Wait()
 

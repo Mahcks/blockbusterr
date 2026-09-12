@@ -2,7 +2,7 @@ name: Deploy Docs to GitHub Pages
 
 on:
   push:
-    branches: [main, release/v2.0.0]
+    branches: [main]
     paths:
       - 'docs/**'
       - '.github/workflows/deploy-docs.yml'
@@ -24,13 +24,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: v1.5.2
           path: v1
 
       - name: Checkout v2
         uses: actions/checkout@v4
         with:
-          ref: release/v2.0.0
           path: v2
 
       - name: Setup Node
@@ -53,16 +52,22 @@ jobs:
 
       - name: Build v1 and v2 with Astro
         run: |
-          npm run build --prefix v1/docs
+          cp v2/docs/src/components/VersionedSiteTitle.astro v1/docs/src/components/VersionedSiteTitle.astro
+          npm run build --prefix v1/docs -- --base /v1/
+          node v2/docs/scripts/archive-v1.mjs v1/docs/dist
+          npm run build --prefix v2/docs
+          mkdir -p site/v1
+          cp -a v2/docs/dist/. site/
+          cp -a v1/docs/dist/. site/v1/
           DOCS_BASE=/v2/ npm run build --prefix v2/docs
           npm run check:v2-links --prefix v2/docs
-          mkdir -p v1/docs/dist/v2
-          cp -a v2/docs/dist/. v1/docs/dist/v2/
+          mkdir -p site/v2
+          cp -a v2/docs/dist/. site/v2/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./v1/docs/dist
+          path: ./site
 
   deploy:
     environment:

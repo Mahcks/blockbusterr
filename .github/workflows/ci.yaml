@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, release/v2.0.0]
   pull_request:
-    branches: [main]
+    branches: [main, release/v2.0.0]
 
 jobs:
   lint:
@@ -16,7 +16,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25.6"
+          go-version: "1.25.13"
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
@@ -37,13 +37,57 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25.6"
+          go-version: "1.25.13"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.12.0"
+          cache: npm
+
+      - name: Verify frontend assets
+        run: npm ci && npm run check:assets
 
       - name: Download dependencies
         run: go mod download
 
       - name: Build
         run: go build -v ./...
+
+      - name: Verify v1 container ownership upgrade
+        run: |
+          docker build --build-arg VERSION=v2.0.0-ci -t blockbusterr:ci .
+          legacy_data="$(mktemp -d)"
+          chmod 0775 "$legacy_data"
+          original_group="$(stat -c %g "$legacy_data")"
+          sudo touch "$legacy_data/config.yaml" "$legacy_data/blockbusterr.db" "$legacy_data/unrelated.txt"
+          sudo chmod 0644 "$legacy_data/config.yaml" "$legacy_data/blockbusterr.db" "$legacy_data/unrelated.txt"
+
+          docker run --rm \
+            -e DATA_DIR=/data \
+            -v "$legacy_data:/data" \
+            blockbusterr:ci \
+            sh -c 'test "$(id -u)" = 10001 && test "$(id -g)" = 10001 && touch /data/runtime-write-test'
+
+          test "$(stat -c %u "$legacy_data")" = 10001
+          test "$(stat -c %g "$legacy_data")" = "$original_group"
+          test "$(stat -c %u "$legacy_data/config.yaml")" = 10001
+          test "$(stat -c %u "$legacy_data/blockbusterr.db")" = 10001
+          test "$(stat -c %u "$legacy_data/unrelated.txt")" = 0
+          test "$(stat -c %u "$legacy_data/runtime-write-test")" = 10001
+          if docker run --rm -e DATA_DIR=/ blockbusterr:ci true; then
+            echo "entrypoint accepted unsafe DATA_DIR=/" >&2
+            exit 1
+          fi
+
+      - name: Verify unattended v1 to v2 upgrade
+        run: scripts/test-v1-upgrade.sh blockbusterr:ci
+
+      - name: Smoke runtime image
+        run: scripts/test-container-smoke.sh blockbusterr:ci
+
+      - name: Verify release metadata rules
+        run: scripts/test-release-metadata.sh
 
   test:
     name: Test
@@ -54,7 +98,56 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25.6"
+          go-version: "1.25.13"
 
       - name: Run tests
         run: go test -v -race ./...
+
+  security:
+    name: Dependency security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.13"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.12.0"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            docs/package-lock.json
+
+      - name: Scan reachable Go vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+      - name: Audit application assets
+        run: npm ci && npm audit
+
+      - name: Audit and build documentation
+        working-directory: docs
+        run: npm ci && npm audit && npm run test:archive && npm run build
+
+  browser:
+    name: Browser smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.13"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.12.0"
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser

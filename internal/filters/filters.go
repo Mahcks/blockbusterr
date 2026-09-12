@@ -7,6 +7,7 @@ import (
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/integrations"
+	"github.com/mahcks/blockbusterr/pkg/enums"
 )
 
 // FilterCheck represents a single filter check result
@@ -21,6 +22,190 @@ type FilterResult struct {
 	Passed bool          `json:"passed"`
 	Reason string        `json:"reason,omitempty"` // Overall reason if failed
 	Checks []FilterCheck `json:"checks"`
+}
+
+// Explain turns an evaluation into the same concise, user-facing decision
+// sentence used by previews and persisted Activity Entries.
+func Explain(result FilterResult) string {
+	if result.Passed {
+		for _, check := range result.Checks {
+			if check.Name == "Title exceptions" && check.Passed {
+				return "Accepted: Universal title exception"
+			}
+			if check.Name == "Allow override" && check.Passed {
+				return "Accepted: " + check.Message
+			}
+		}
+		return "Accepted: Passed all configured rules"
+	}
+	for _, check := range slices.Backward(result.Checks) {
+		if !check.Passed && check.Message != "" {
+			return "Rejected: " + check.Message
+		}
+	}
+	if result.Reason != "" {
+		return "Rejected: " + result.Reason
+	}
+	return "Rejected: Did not pass the configured rules"
+}
+
+func MoviePassesRules(movie integrations.Movie, rules config.MovieFilters, exceptions config.TitleExceptions) FilterResult {
+	if slices.Contains(exceptions.BlockedMovieTMDBIDs, movie.IDs.TMDB) {
+		return FilterResult{Passed: false, Reason: "blocked title", Checks: []FilterCheck{{Name: "Title exceptions", Passed: false, Message: "Title is globally blocked"}}}
+	}
+	if slices.Contains(exceptions.AllowedMovieTMDBIDs, movie.IDs.TMDB) {
+		return FilterResult{Passed: true, Checks: []FilterCheck{{Name: "Title exceptions", Passed: true, Message: "Title is globally allowed"}}}
+	}
+	certification := certificationCheck(movie.Certifications, rules.CertificationCountry, rules.AllowedCertifications, rules.BlockedCertifications, rules.UnknownCertification)
+	if certification != nil && !certification.Passed {
+		return *certification
+	}
+	if blocked := movieHardBlock(movie, rules); blocked != nil {
+		return *blocked
+	}
+	if allowed := movieAllowOverride(movie, rules); allowed != nil {
+		if certification != nil {
+			allowed.Checks = append(certification.Checks, allowed.Checks...)
+		}
+		return *allowed
+	}
+	result := MoviePassesFiltersDetailed(movie, rules)
+	if certification != nil {
+		result.Checks = append(certification.Checks, result.Checks...)
+	}
+	return result
+}
+
+func ShowPassesRules(show integrations.Show, rules config.ShowFilters, exceptions config.TitleExceptions) FilterResult {
+	if slices.Contains(exceptions.BlockedShowTVDBIDs, show.IDs.TVDB) {
+		return FilterResult{Passed: false, Reason: "blocked title", Checks: []FilterCheck{{Name: "Title exceptions", Passed: false, Message: "Title is globally blocked"}}}
+	}
+	if slices.Contains(exceptions.AllowedShowTVDBIDs, show.IDs.TVDB) {
+		return FilterResult{Passed: true, Checks: []FilterCheck{{Name: "Title exceptions", Passed: true, Message: "Title is globally allowed"}}}
+	}
+	certification := certificationCheck(show.Certifications, rules.CertificationCountry, rules.AllowedCertifications, rules.BlockedCertifications, rules.UnknownCertification)
+	if certification != nil && !certification.Passed {
+		return *certification
+	}
+	if blocked := showHardBlock(show, rules); blocked != nil {
+		return *blocked
+	}
+	if allowed := showAllowOverride(show, rules); allowed != nil {
+		if certification != nil {
+			allowed.Checks = append(certification.Checks, allowed.Checks...)
+		}
+		return *allowed
+	}
+	result := ShowPassesFiltersDetailed(show, rules)
+	if certification != nil {
+		result.Checks = append(certification.Checks, result.Checks...)
+	}
+	return result
+}
+
+func certificationCheck(certifications []integrations.Certification, country string, allowed, blocked []string, unknown string) *FilterResult {
+	if len(allowed) == 0 && len(blocked) == 0 {
+		return nil
+	}
+	country = strings.ToUpper(strings.TrimSpace(country))
+	values := []string{}
+	source := "TMDB"
+	for _, certification := range certifications {
+		if strings.EqualFold(certification.Country, country) && certification.Value != "" && !containsIgnoreCase(values, certification.Value) {
+			values = append(values, strings.ToUpper(certification.Value))
+			if certification.Source != "" {
+				source = strings.ToUpper(certification.Source)
+			}
+		}
+	}
+	if len(values) == 0 {
+		if unknown == "" || enums.CertificationUnknownPolicy(unknown) == enums.CertificationUnknownAllow {
+			return &FilterResult{Passed: true, Checks: []FilterCheck{{Name: "Content certification", Passed: true, Message: fmt.Sprintf("TMDB has no %s certification; unknown ratings are allowed", country)}}}
+		}
+		return failed("Content certification", fmt.Sprintf("TMDB has no %s certification; unknown ratings are rejected", country))
+	}
+	if match := firstMatch(blocked, values); match != "" {
+		return failed("Content certification", fmt.Sprintf("%s certification %s is blocked (%s)", country, match, source))
+	}
+	if len(allowed) > 0 && firstMatch(allowed, values) == "" {
+		return failed("Content certification", fmt.Sprintf("%s certification %s is not allowed (%s)", country, strings.Join(values, ", "), source))
+	}
+	return &FilterResult{Passed: true, Checks: []FilterCheck{{Name: "Content certification", Passed: true, Message: fmt.Sprintf("%s certification %s is allowed (%s)", country, strings.Join(values, ", "), source)}}}
+}
+
+func movieHardBlock(movie integrations.Movie, rules config.MovieFilters) *FilterResult {
+	if slices.Contains(rules.BlacklistedTMDBIds, movie.IDs.TMDB) {
+		return failed("Blocked title", fmt.Sprintf("TMDB ID %d is blocked", movie.IDs.TMDB))
+	}
+	if containsIgnoreCase(rules.BlacklistedCountries, movie.Country) {
+		return failed("Blocked country", fmt.Sprintf("Blocked country matched: %s", movie.Country))
+	}
+	if containsIgnoreCase(rules.BlacklistedLanguages, movie.Language) {
+		return failed("Blocked language", fmt.Sprintf("Blocked language matched: %s", movie.Language))
+	}
+	if match := firstMatch(rules.BlacklistedGenres, movie.Genres); match != "" {
+		return failed("Blocked genre", fmt.Sprintf("Blocked genre matched: %s", match))
+	}
+	if match := matchingKeyword(rules.BlacklistedKeywords, movie.Title); match != "" {
+		return failed("Blocked keyword", fmt.Sprintf("Blocked title keyword matched: %s", match))
+	}
+	return nil
+}
+
+func showHardBlock(show integrations.Show, rules config.ShowFilters) *FilterResult {
+	if slices.Contains(rules.BlacklistedTVDBIds, show.IDs.TVDB) {
+		return failed("Blocked title", fmt.Sprintf("TVDB ID %d is blocked", show.IDs.TVDB))
+	}
+	if containsIgnoreCase(rules.BlacklistedCountries, show.Country) {
+		return failed("Blocked country", fmt.Sprintf("Blocked country matched: %s", show.Country))
+	}
+	if containsIgnoreCase(rules.BlacklistedLanguages, show.Language) {
+		return failed("Blocked language", fmt.Sprintf("Blocked language matched: %s", show.Language))
+	}
+	if match := firstMatch(rules.BlacklistedGenres, show.Genres); match != "" {
+		return failed("Blocked genre", fmt.Sprintf("Blocked genre matched: %s", match))
+	}
+	if containsIgnoreCase(rules.BlacklistedNetworks, show.Network) {
+		return failed("Blocked network", fmt.Sprintf("Blocked network matched: %s", show.Network))
+	}
+	if match := matchingKeyword(rules.BlacklistedKeywords, show.Title); match != "" {
+		return failed("Blocked keyword", fmt.Sprintf("Blocked title keyword matched: %s", match))
+	}
+	return nil
+}
+
+func movieAllowOverride(movie integrations.Movie, rules config.MovieFilters) *FilterResult {
+	return allowOverride(movie.Country, movie.Language, movie.Genres, movie.Title, "", movie.Rating, rules.AllowCountries, rules.AllowLanguages, rules.AllowGenres, rules.AllowKeywords, nil, rules.AllowMinRating)
+}
+
+func showAllowOverride(show integrations.Show, rules config.ShowFilters) *FilterResult {
+	return allowOverride(show.Country, show.Language, show.Genres, show.Title, show.Network, show.Rating, rules.AllowCountries, rules.AllowLanguages, rules.AllowGenres, rules.AllowKeywords, rules.AllowNetworks, rules.AllowMinRating)
+}
+
+func allowOverride(country, language string, genres []string, title, network string, rating float64, countries, languages, allowedGenres, keywords, networks []string, minRating float64) *FilterResult {
+	name, value := "", ""
+	switch {
+	case containsIgnoreCase(countries, country):
+		name, value = "country", country
+	case containsIgnoreCase(languages, language):
+		name, value = "language", language
+	case firstMatch(allowedGenres, genres) != "":
+		name, value = "genre", firstMatch(allowedGenres, genres)
+	case matchingKeyword(keywords, title) != "":
+		name, value = "title keyword", matchingKeyword(keywords, title)
+	case containsIgnoreCase(networks, network):
+		name, value = "network", network
+	case minRating > 0 && rating >= minRating:
+		name, value = "minimum rating", fmt.Sprintf("%.1f", minRating)
+	default:
+		return nil
+	}
+	message := fmt.Sprintf("Allow override matched %s: %s", name, value)
+	return &FilterResult{Passed: true, Reason: message, Checks: []FilterCheck{{Name: "Allow override", Passed: true, Message: message}}}
+}
+
+func failed(name, message string) *FilterResult {
+	return &FilterResult{Passed: false, Reason: strings.ToLower(message), Checks: []FilterCheck{{Name: name, Passed: false, Message: message}}}
 }
 
 // MoviePassesFilters checks if a movie passes all configured filters
@@ -54,9 +239,18 @@ func MoviePassesFiltersDetailed(movie integrations.Movie, filters config.MovieFi
 			Message: "Not in TMDB blacklist",
 		})
 	}
+	if containsIgnoreCase(filters.BlacklistedCountries, movie.Country) {
+		return *failed("Blocked country", fmt.Sprintf("Blocked country matched: %s", movie.Country))
+	}
+	if containsIgnoreCase(filters.BlacklistedLanguages, movie.Language) {
+		return *failed("Blocked language", fmt.Sprintf("Blocked language matched: %s", movie.Language))
+	}
 
 	// Check country filter
 	if len(filters.AllowedCountries) > 0 && !slices.Contains(filters.AllowedCountries, "ignore") {
+		if movie.Country == "" {
+			return FilterResult{Passed: false, Reason: "country metadata unavailable", Checks: []FilterCheck{{Name: "Allowed Countries", Passed: false, Message: "Country metadata is unavailable"}}}
+		}
 		if movie.Country != "" {
 			if !containsIgnoreCase(filters.AllowedCountries, movie.Country) {
 				result.Checks = append(result.Checks, FilterCheck{
@@ -78,6 +272,9 @@ func MoviePassesFiltersDetailed(movie integrations.Movie, filters config.MovieFi
 
 	// Check language filter
 	if len(filters.AllowedLanguages) > 0 && !slices.Contains(filters.AllowedLanguages, "ignore") {
+		if movie.Language == "" {
+			return FilterResult{Passed: false, Reason: "language metadata unavailable", Checks: []FilterCheck{{Name: "Allowed Languages", Passed: false, Message: "Language metadata is unavailable"}}}
+		}
 		if movie.Language != "" {
 			if !containsIgnoreCase(filters.AllowedLanguages, movie.Language) {
 				result.Checks = append(result.Checks, FilterCheck{
@@ -148,6 +345,12 @@ func MoviePassesFiltersDetailed(movie integrations.Movie, filters config.MovieFi
 			Message: "No blacklisted keywords in title",
 		})
 	}
+
+	required, failure := requiredChecks(movie.Genres, movie.Title, "", filters.RequiredGenres, filters.RequiredKeywords, nil)
+	if failure != nil {
+		return *failure
+	}
+	result.Checks = append(result.Checks, required...)
 
 	// Check runtime filters
 	if movie.Runtime > 0 {
@@ -279,9 +482,18 @@ func ShowPassesFiltersDetailed(show integrations.Show, filters config.ShowFilter
 			Message: "TVDB ID not in blacklist",
 		})
 	}
+	if containsIgnoreCase(filters.BlacklistedCountries, show.Country) {
+		return *failed("Blocked country", fmt.Sprintf("Blocked country matched: %s", show.Country))
+	}
+	if containsIgnoreCase(filters.BlacklistedLanguages, show.Language) {
+		return *failed("Blocked language", fmt.Sprintf("Blocked language matched: %s", show.Language))
+	}
 
 	// Check country filter
 	if len(filters.AllowedCountries) > 0 && !slices.Contains(filters.AllowedCountries, "ignore") {
+		if show.Country == "" {
+			return FilterResult{Passed: false, Reason: "country metadata unavailable", Checks: []FilterCheck{{Name: "Allowed Countries", Passed: false, Message: "Country metadata is unavailable"}}}
+		}
 		if show.Country != "" && !containsIgnoreCase(filters.AllowedCountries, show.Country) {
 			result.Checks = append(result.Checks, FilterCheck{
 				Name:    "Allowed Countries",
@@ -301,6 +513,9 @@ func ShowPassesFiltersDetailed(show integrations.Show, filters config.ShowFilter
 
 	// Check language filter
 	if len(filters.AllowedLanguages) > 0 && !slices.Contains(filters.AllowedLanguages, "ignore") {
+		if show.Language == "" {
+			return FilterResult{Passed: false, Reason: "language metadata unavailable", Checks: []FilterCheck{{Name: "Allowed Languages", Passed: false, Message: "Language metadata is unavailable"}}}
+		}
 		if show.Language != "" && !containsIgnoreCase(filters.AllowedLanguages, show.Language) {
 			result.Checks = append(result.Checks, FilterCheck{
 				Name:    "Allowed Languages",
@@ -379,6 +594,12 @@ func ShowPassesFiltersDetailed(show integrations.Show, filters config.ShowFilter
 			Message: "No blacklisted keywords in title",
 		})
 	}
+
+	required, failure := requiredChecks(show.Genres, show.Title, show.Network, filters.RequiredGenres, filters.RequiredKeywords, filters.RequiredNetworks)
+	if failure != nil {
+		return *failure
+	}
+	result.Checks = append(result.Checks, required...)
 
 	// Check runtime filters
 	if show.Runtime > 0 {
@@ -499,4 +720,51 @@ func containsIgnoreCase(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func firstMatch(wanted, actual []string) string {
+	for _, value := range actual {
+		if containsIgnoreCase(wanted, value) {
+			return value
+		}
+	}
+	return ""
+}
+
+func matchingKeyword(keywords []string, title string) string {
+	title = strings.ToLower(title)
+	for _, keyword := range keywords {
+		if keyword != "" && strings.Contains(title, strings.ToLower(keyword)) {
+			return keyword
+		}
+	}
+	return ""
+}
+
+func requiredChecks(genres []string, title, network string, requiredGenres, requiredKeywords, requiredNetworks []string) ([]FilterCheck, *FilterResult) {
+	checks := make([]FilterCheck, 0, 3)
+	if len(requiredGenres) > 0 {
+		match := firstMatch(requiredGenres, genres)
+		if match == "" {
+			return nil, failed("Required genre", "Required genre not matched: "+strings.Join(requiredGenres, ", "))
+		}
+		checks = append(checks, FilterCheck{Name: "Required genre", Passed: true, Message: "Required genre matched: " + match})
+	}
+	if len(requiredKeywords) > 0 {
+		match := matchingKeyword(requiredKeywords, title)
+		if match == "" {
+			return nil, failed("Required keyword", "Required title keyword not matched: "+strings.Join(requiredKeywords, ", "))
+		}
+		checks = append(checks, FilterCheck{Name: "Required keyword", Passed: true, Message: "Required title keyword matched: " + match})
+	}
+	if len(requiredNetworks) > 0 {
+		if !containsIgnoreCase(requiredNetworks, network) {
+			return nil, failed("Required network", "Required network not matched: "+strings.Join(requiredNetworks, ", "))
+		}
+		checks = append(checks, FilterCheck{Name: "Required network", Passed: true, Message: "Required network matched: " + network})
+	}
+	if len(checks) == 0 {
+		return nil, nil
+	}
+	return checks, nil
 }

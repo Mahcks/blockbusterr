@@ -1,15 +1,36 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { unified } from '@astrojs/markdown-remark';
+
+const base = process.env.DOCS_BASE || '/';
+const isVersioned = base !== '/';
+const basePath = base.replace(/\/$/, '');
+
+function prefixVersionedLinks() {
+	return (tree) => {
+		const walk = (node) => {
+			if (node.type === 'link' && node.url?.startsWith('/') && !node.url.startsWith('//')) {
+				node.url = `${basePath}${node.url}`;
+			}
+			node.children?.forEach(walk);
+		};
+		walk(tree);
+	};
+}
 
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://blockbusterr.dev',
-	base: '/',
+	base,
+	redirects: {
+		'/concepts/filters': `${base}concepts/rules/`,
+	},
+	markdown: { processor: unified({ remarkPlugins: [prefixVersionedLinks] }) },
 	integrations: [
 		starlight({
-			title: 'Blockbusterr',
-			description: 'Automate your media library with smart filters and scoring',
+			title: isVersioned ? 'Blockbusterr v2' : 'Blockbusterr',
+			description: 'Automate media discovery with reusable rules and observable delivery',
 			tagline: 'Smart content discovery for your media server',
 			components: {
 				SiteTitle: './src/components/VersionedSiteTitle.astro',
@@ -58,7 +79,7 @@ export default defineConfig({
 			
 			// Edit link (optional - links to GitHub)
 			editLink: {
-				baseUrl: 'https://github.com/mahcks/blockbusterr/edit/master/docs/',
+				baseUrl: 'https://github.com/mahcks/blockbusterr/edit/main/docs/',
 			},
 			
 			// Last updated timestamp
@@ -74,14 +95,16 @@ export default defineConfig({
 						{ label: 'Introduction', slug: 'index' },
 						{ label: 'Quick Start', slug: 'getting-started/quickstart' },
 						{ label: 'Installation', slug: 'getting-started/installation' },
+						{ label: 'Deployment platforms', slug: 'getting-started/deployment-platforms' },
 						{ label: 'Configuration', slug: 'getting-started/configuration' },
+						{ label: 'Upgrading to v2', slug: 'getting-started/upgrading-to-v2' },
 					],
 				},
 				{
 					label: 'Core Concepts',
 					items: [
 						{ label: 'Jobs Overview', slug: 'concepts/jobs' },
-						{ label: 'Filters & Scoring', slug: 'concepts/filters' },
+						{ label: 'Rules', slug: 'concepts/rules' },
 						{ label: 'Smart Jobs', slug: 'concepts/smart-jobs' },
 						{ label: 'Integration Modes', slug: 'concepts/integration-modes' },
 					],
@@ -100,6 +123,7 @@ export default defineConfig({
 						{ label: 'Jellyseerr/Seerr', slug: 'integrations/jellyseerr' },
 						{ label: 'TMDB (Optional)', slug: 'integrations/tmdb' },
 						{ label: 'Simkl (Optional)', slug: 'integrations/simkl' },
+						{ label: 'MDBList (Optional)', slug: 'integrations/mdblist' },
 						{ label: 'Trakt (Optional)', slug: 'integrations/trakt' },
 					],
 				},
@@ -108,6 +132,7 @@ export default defineConfig({
 					items: [
 						{ label: 'Overview', slug: 'api/overview' },
 						{ label: 'Jobs API', slug: 'api/jobs' },
+						{ label: 'Rules API', slug: 'api/rules' },
 						{ label: 'Activity API', slug: 'api/activity' },
 						{ label: 'Configuration API', slug: 'api/config' },
 					],

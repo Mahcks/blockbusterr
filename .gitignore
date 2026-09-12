@@ -71,7 +71,10 @@ temp/
 *~
 
 # Dependencies
-vendor/
+/vendor/
+node_modules/
+playwright-report/
+test-results/
 
 # Docs
 docs/node_modules/
@@ -83,3 +86,6 @@ CLAUDE.md
 AGENTS.md
 .codex
 .claude
+
+# Local planning
+/plans/

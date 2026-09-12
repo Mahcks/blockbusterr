@@ -11,6 +11,7 @@ func RegisterRadarrRoutes(rg *RouteGroup, group fiber.Router) {
 
 	// GET /v1/radarr/validate - Test connection
 	radarr.Get("/validate", rg.ValidateRadarr)
+	radarr.Post("/validate", rg.ValidateRadarr)
 
 	// GET /v1/radarr/movies - List all movies
 	radarr.Get("/movies", rg.GetRadarrMovies)
@@ -30,21 +31,23 @@ func RegisterRadarrRoutes(rg *RouteGroup, group fiber.Router) {
 
 // ValidateRadarr validates the Radarr API connection
 func (rg *RouteGroup) ValidateRadarr(c *fiber.Ctx) error {
-	// Check if we're in test mode (testing form values)
-	testMode := c.Query("test") == "true"
-
 	var url, apiKey string
-
-	if testMode {
-		// In test mode, require query parameters
-		url = c.Query("url")
-		apiKey = c.Query("api_key")
+	if c.Method() == fiber.MethodPost {
+		var request struct {
+			URL    string `json:"url"`
+			APIKey string `json:"api_key"`
+		}
+		if err := c.BodyParser(&request); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body", "connected": false})
+		}
+		url, apiKey = request.URL, request.APIKey
 	} else {
 		// Normal mode, use saved config
 		cfg := rg.gctx.Config()
 		url = cfg.Radarr.URL
 		apiKey = cfg.Radarr.APIKey
 	}
+	c.Set(fiber.HeaderCacheControl, "no-store")
 
 	if url == "" || apiKey == "" {
 		return c.Status(400).JSON(fiber.Map{

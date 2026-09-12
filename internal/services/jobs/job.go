@@ -2,11 +2,24 @@ package jobs
 
 import (
 	"context"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/mahcks/blockbusterr/config"
 	"github.com/mahcks/blockbusterr/internal/database"
 	"github.com/mahcks/blockbusterr/internal/integrations"
 )
+
+// DryRunEnabled keeps development builds safe and allows any release build to
+// simulate delivery when BLOCKBUSTERR_DRY_RUN is explicitly enabled.
+func DryRunEnabled(version string) bool {
+	if version == "dev" {
+		return true
+	}
+	enabled, err := strconv.ParseBool(strings.TrimSpace(os.Getenv("BLOCKBUSTERR_DRY_RUN")))
+	return err == nil && enabled
+}
 
 // JobConfig contains common configuration for all jobs
 type JobConfig struct {
@@ -21,9 +34,12 @@ type JobConfig struct {
 
 		For Sonarr: "all", "future", "missing", "existing", "pilot", "firstSeason", "latestSeason", "none"
 	*/
-	Monitor string
-	Limit   int
-	Period  string // For watched/collected/played jobs
+	Monitor       string
+	Limit         int
+	DeliveryLimit int
+	RepeatPolicy  string
+	Period        string // For watched/collected/played jobs
+	SeriesType    string // Sonarr series type: standard, daily, or anime
 }
 
 // FormatJobLabel returns a human-readable job label for logs.
