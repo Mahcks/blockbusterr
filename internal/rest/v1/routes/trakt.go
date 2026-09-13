@@ -179,6 +179,10 @@ func (rg *RouteGroup) ValidateTrakt(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body", "connected": false})
 		}
 		clientID, clientSecret = request.ClientID, request.ClientSecret
+		cfg := rg.gctx.Config()
+		if clientSecret == "" && clientID == cfg.Trakt.ClientID {
+			clientSecret = cfg.Trakt.ClientSecret
+		}
 	} else {
 		// Normal mode, use saved config
 		cfg := rg.gctx.Config()

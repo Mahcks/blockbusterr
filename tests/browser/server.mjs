@@ -13,11 +13,18 @@ jobs:
   list: []
 `);
 
+const containerImage = process.env.BLOCKBUSTERR_BROWSER_IMAGE;
+const containerName = `blockbusterr-browser-${process.pid}`;
 const binary = join(dataDir, 'blockbusterr');
-const build = spawnSync('go', ['build', '-o', binary, './cmd/app'], { stdio: 'inherit' });
-if (build.status !== 0) process.exit(build.status ?? 1);
+if (!containerImage) {
+  const build = spawnSync('go', ['build', '-o', binary, './cmd/app'], { stdio: 'inherit' });
+  if (build.status !== 0) process.exit(build.status ?? 1);
+}
 
-const child = spawn(binary, [], {
+const child = spawn(containerImage ? 'docker' : binary, containerImage ? [
+  'run', '--rm', '--name', containerName, '--network', 'host',
+  '--tmpfs', '/app/data', '-e', 'BLOCKBUSTERR_DRY_RUN=true', containerImage,
+] : [], {
   stdio: 'inherit',
   env: {
     ...process.env,
@@ -29,7 +36,8 @@ const child = spawn(binary, [], {
 
 async function stop(signal) {
   try {
-    child.kill('SIGKILL');
+    if (containerImage) spawnSync('docker', ['stop', containerName], { stdio: 'ignore' });
+    else child.kill('SIGKILL');
   } catch (error) {
     if (error.code !== 'ESRCH') throw error;
   }

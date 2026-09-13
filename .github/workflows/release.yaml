@@ -74,6 +74,11 @@ jobs:
       - name: Smoke runtime image
         run: scripts/test-container-smoke.sh blockbusterr:release-candidate
 
+      - name: Verify fresh-install settings in the release image
+        run: |
+          npx playwright install --with-deps chromium
+          BLOCKBUSTERR_BROWSER_IMAGE=blockbusterr:release-candidate npm run test:browser
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
