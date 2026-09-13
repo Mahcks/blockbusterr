@@ -1,94 +1,83 @@
 ---
 title: Integration Modes
-description: Choose how discovered content reaches your media stack
+description: Connect Radarr, Sonarr, Jellyseerr, or Seerr and choose where each job sends its matches.
 ---
 
-import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+Delivery is what happens after a discovered title passes a job's rules. Choose **Direct** to add movies to Radarr or shows to Sonarr, or **Jellyseerr / Seerr** to create requests through your request server.
 
-Blockbusterr supports two delivery modes. Discovery is separate: each job can use any source supported by its job type, including Trakt, TMDB, or Simkl.
+Your discovery source is independent of this choice. A TMDB job can deliver directly or create requests; you do not need Trakt to use either mode.
 
-<CardGrid>
-<Card title="Direct mode" icon="rocket">
-Adds movies to Radarr and shows to Sonarr immediately. This is best when you trust the job's assigned rules to deliver without approval.
-</Card>
-<Card title="Jellyseerr / Seerr mode" icon="approve-check">
-  Creates Jellyseerr or Seerr requests. Approval and request limits are controlled by the user associated with the request.
-</Card>
-</CardGrid>
+| Mode | Movies go to | Shows go to | What a successful run records |
+|---|---|---|---|
+| Direct | Radarr | Sonarr | Added |
+| Jellyseerr / Seerr | Request server | Request server | Requested |
 
-## Direct mode
+An addition or request is not proof that a download finished. Your media services handle availability, searching, downloading, and importing.
 
-Configure Radarr for movie jobs and Sonarr for show jobs:
+## Set up direct movie delivery
 
-```yaml
-jobs:
-  mode: direct
-  sync_interval: 24h
-  list:
-    - id: weekly-popular-movies
-      name: Weekly Popular Movies
-      enabled: true
-      type: popular
-      source: tmdb
-      media: movie
-      limit: 50
-      sync_interval: "0 8 * * 0"
+1. Open **Settings → Connections → Radarr**.
+2. Enter the **Server URL** that Blockbusterr can reach and Radarr's **API key**. In a shared Docker network, the URL might be `http://radarr:7878`; `localhost` inside a container refers to that container.
+3. Select **Test connection**, then choose the quality profile and root folder from your Radarr setup. The root folder is a path Radarr understands, such as `/movies`.
+4. Review minimum availability and monitoring. These are Radarr delivery settings, not discovery filters.
+5. Save your settings. Under **Settings → Automation**, select the direct delivery mode and save.
+6. Open a movie job, preview its matches, and confirm its mode uses the global default or **Direct (Radarr/Sonarr)**.
+7. Use **Run Now** when ready to add the previewed kind of content. Check both **Activity → Job Runs** and Radarr afterward.
 
-radarr:
-  url: http://radarr:7878
-  api_key: your_radarr_api_key
-  quality_profile: 1
-  root_folder: /movies
-  minimum_availability: announced
-  monitor: movieOnly
-```
+For TV, follow the same process with **Settings → Connections → Sonarr**, its quality profile and root folder, and a TV Show job. You only need the destination for the media type you use.
 
-The `mode` on an individual job overrides `jobs.mode`. Direct movie jobs require Radarr; direct show jobs require Sonarr.
+### Availability, monitoring, and series type
 
-## Jellyseerr / Seerr mode
+Movie jobs can override **Minimum Availability** and monitoring under **Delivery & schedule**. Availability controls when Radarr considers a movie available; it does not restrict the discovery source to released films. Monitoring tells the destination what to follow.
 
-Both servers use the same compatible integration. The config section and mode are still named `jellyseerr` for backward compatibility; the configured URL may point to Jellyseerr or Seerr.
+Show jobs can select Sonarr series type `standard`, `anime`, or `daily`. The **Anime Discovery** recipe selects `anime` and uses Japanese animation rules. A show must map to the TVDB identity Sonarr recognizes; Blockbusterr reports a mapping failure rather than guessing from the title.
 
-```yaml
-jobs:
-  mode: jellyseerr
-  sync_interval: 24h
-  list:
-    - id: trending-shows
-      name: Trending Shows
-      enabled: true
-      type: trending
-      source: simkl
-      media: show
-      limit: 30
+Root folders and quality profiles belong to the configured Radarr or Sonarr connection. Separate jobs do not provide separate Radarr instances or per-job library root folders. You can vary rules and delivery modes by job.
 
-jellyseerr:
-  url: http://jellyseerr:5055
-  api_key: your_jellyseerr_api_key
-```
+## Set up requests through Jellyseerr or Seerr
 
-Blockbusterr applies the job's assigned movie or show rule set before creating a request. Jellyseerr or Seerr then decides whether that request is automatically approved based on the requesting user's permissions.
+1. Open **Settings → Connections → Jellyseerr / Seerr**.
+2. Enter the request server's URL and API key. A Docker-network example is `http://seerr:5055`.
+3. Test the connection and save.
+4. For manual approval, expand **Request as a specific user** and provide that account's **Request email** and **Request password**. Configure Radarr and Sonarr in the request server so it can forward approved requests.
+5. Under **Settings → Automation**, choose **Jellyseerr / Seerr** as the default delivery mode and save.
+6. Preview a job, then run it when ready. A successful submission appears as **Requested** in Blockbusterr; inspect the request server for its approval status.
 
-<Aside type="note">
-Blockbusterr does not send a score threshold to Jellyseerr or Seerr. Configure auto-approval and request limits in the request server.
-</Aside>
+Choosing this mode does **not** guarantee a manual approval queue. API-key-only requests use administrative behavior and auto-approve. The optional Request user ID does not by itself switch to permission-respecting login. To review every suggestion, supply request email/password for an account without auto-approval permissions and verify the behavior with a small first run.
 
-## Per-job mode
+Blockbusterr applies its own rules before submission. The request server controls approval and request limits; Blockbusterr does not send it a score threshold. Both Jellyseerr and Seerr use the configuration key and API mode value `jellyseerr`.
 
-You can mix modes by setting `mode` on a job:
+## Use a different mode for one job
 
-```yaml
-jobs:
-  mode: jellyseerr
-  list:
-    - id: direct-trending-movies
-      name: Direct Trending Movies
-      enabled: true
-      type: trending
-      source: tmdb
-      media: movie
-      limit: 20
-      mode: direct
-```
+For example, automatically add trusted science-fiction matches to Radarr while sending broader discovery through your approval workflow:
 
-Changing a mode affects future runs only. Existing Radarr, Sonarr, Jellyseerr, and Seerr entries are not moved.
+1. Configure both Radarr and Jellyseerr / Seerr.
+2. Set the global delivery mode to **Jellyseerr / Seerr**.
+3. Open the science-fiction job and expand **Delivery & schedule**.
+4. Set **Custom Mode** to **Direct (Radarr/Sonarr)** and save.
+5. Leave the other jobs on **Use Global Default**.
+6. Preview each job and check its destination before enabling it.
+
+The override affects future runs. Changing modes does not move or remove existing entries in your media services.
+
+## Preview and dry-run before delivery
+
+**Preview** fetches candidates and explains their decisions without adding or requesting media. It is the easiest way to tune one job.
+
+For testing executions across an installation, start Blockbusterr with `BLOCKBUSTERR_DRY_RUN=true`. Dry-run performs discovery and evaluation but simulates delivery. Development builds also use dry-run mode. It still needs usable provider connections and can make read-only requests to destination services; it is not an offline demo.
+
+See [Jobs](/concepts/jobs/#preview-run-and-schedule) for schedules, limits, and how to read outcomes.
+
+## When nothing reaches the destination
+
+| Observation | What to check |
+|---|---|
+| Preview rejects every title | Open the assigned rules and read each rejection reason |
+| Titles already exist | Blockbusterr skips destination duplicates |
+| Titles passed rules but were skipped | Check repeat handling, the job delivery cap, and global delivery ceilings |
+| Run reports simulated delivery | Check the dry-run environment variable and build type |
+| Request is pending | Review approval permissions in Jellyseerr or Seerr |
+| Title is in Radarr/Sonarr but no file appears | Check availability, monitoring, quality profile, indexers, and download client there |
+| Connection test fails in Docker | Use a hostname and port reachable from Blockbusterr's container |
+
+Use **Job Runs** for execution totals and **Activity Entries** for the explanation attached to a particular title.

@@ -48,7 +48,7 @@ volumes:
 
 Start it with `docker compose up -d`, then open `http://<server-address>:9090`.
 
-Remove `BLOCKBUSTERR_DRY_RUN` after you have previewed a job and are ready to permit real delivery.
+After you have previewed a job and are ready for real delivery, remove `BLOCKBUSTERR_DRY_RUN` and run `docker compose up -d blockbusterr` again. Keep the volume unchanged. Check enabled jobs first: duration schedules can run when the container starts.
 
 </TabItem>
 <TabItem label="Unraid">
@@ -107,5 +107,7 @@ Blockbusterr does not currently publish native Linux packages or standalone bina
 3. Configure one discovery provider and one delivery integration.
 4. Create a job and use **Preview** before enabling it.
 5. Back up the complete volume or host directory mounted at `/app/data` before upgrades.
+
+After removing dry-run on Unraid, TrueNAS, or Portainer, apply or redeploy the container settings and confirm the banner is gone. Merely changing the value in the editor does not update the running container.
 
 Continue with the [Quick Start](/getting-started/quickstart/) or [upgrade an existing v1 installation](/getting-started/upgrading-to-v2/).

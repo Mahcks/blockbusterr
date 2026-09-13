@@ -1,75 +1,125 @@
 ---
-title: Quick Start
-description: Install Blockbusterr, connect one provider and delivery target, then preview your first job.
+title: Your first movie job
+description: Connect TMDB and Radarr, preview a small movie job, and turn on automatic additions when you are ready.
 ---
 
-import { Aside, Steps } from '@astrojs/starlight/components';
+This walkthrough sets up a movie job using **TMDB → Blockbusterr → Radarr**. You do not need Trakt, MDBList, Sonarr, or a request manager to follow it.
 
-## Start the container
+You should already have Radarr working with a root folder and quality profile. Blockbusterr chooses movies to send there; it does not configure Radarr's indexers or download client.
+
+If you want shows, use [Sonarr](/integrations/sonarr/) and a TV Show job instead. For requests, follow [Jellyseerr/Seerr](/integrations/jellyseerr/).
+
+## 1. Start Blockbusterr with dry-run enabled
+
+For a new Docker installation:
 
 ```bash
 docker run -d \
   --name blockbusterr \
   -p 9090:9090 \
   -v blockbusterr-data:/app/data \
+  -e BLOCKBUSTERR_DRY_RUN=true \
+  -e TZ=America/Chicago \
   --restart unless-stopped \
   ghcr.io/mahcks/blockbusterr:v2.0.1
 ```
 
-Open `http://localhost:9090`. To enable owner authentication, add `-e BLOCKBUSTERR_AUTH_TOKEN="replace-with-at-least-32-random-characters"` and sign in as `blockbusterr`.
+Replace the timezone with yours. Open `http://localhost:9090` if Docker runs on your computer, or `http://YOUR-SERVER-IP:9090` if it runs on a NAS or another machine. Open **Jobs** and check that the **Dry-run mode is active** banner appears.
 
-<Aside type="caution">
-The single-owner token is optional. If you omit it, keep Blockbusterr on a trusted network or behind an authenticated HTTPS reverse proxy or VPN.
-</Aside>
+Dry-run lets jobs evaluate titles and record what they would do without sending additions or requests. This matters because **Custom Job creates an enabled job**, while ready-made recipes create disabled jobs.
 
-## Configure the first pipeline
+Already installed? Add `BLOCKBUSTERR_DRY_RUN=true` to the existing container's environment and recreate it with the **same data mount**. Do not create a second instance against that mount. See [Installation](/getting-started/installation/) or [Deployment platforms](/getting-started/deployment-platforms/) for Compose and NAS instructions.
 
-<Steps>
-1. **Choose a discovery provider**
+:::caution[Access to the web interface]
+Keep the app on a trusted network. You can enable a login by setting `BLOCKBUSTERR_AUTH_TOKEN` to a random value of at least 32 characters; the username is `blockbusterr`. See [Configuration](/getting-started/configuration/) for details.
+:::
 
-   In Settings, configure at least one of TMDB, Simkl, Trakt, or MDBList. Only providers supported by a selected job type appear in the Jobs editor.
+## 2. Connect TMDB
 
-2. **Choose delivery**
+1. Get the API credential described in the [TMDB setup guide](/integrations/tmdb/).
+2. Open **Settings → Connections → TMDB**.
+3. Enter the credential and save Settings.
 
-   Configure Radarr for direct movie delivery, Sonarr for direct show delivery, or Jellyseerr/Seerr for request-based delivery. Test the connection and load any required profiles or root folders.
+This supplies the movies and their metadata. TMDB jobs use TMDB audience ratings on a 0–10 scale. You do not need to build a movie list on another website.
 
-3. **Save Settings**
+## 3. Connect Radarr
 
-   Correct any validation errors before leaving the page. Credentials are stored in your local configuration; protect the mounted data directory.
+1. In Radarr, copy the API key from **Settings → General**.
+2. In Blockbusterr, open **Settings → Connections → Radarr**.
+3. Enter Radarr's URL and API key, then test the connection.
+4. Load and choose a **quality profile** and **root folder**. These come from Radarr, so create them there first if needed.
+5. In **Settings → Automation**, choose **Direct** as the delivery mode, then save Settings.
 
-4. **Create a job**
+If both containers share a Docker network and the Radarr service is named `radarr`, its URL can be `http://radarr:7878`. Otherwise use an address reachable from Blockbusterr, such as `http://YOUR-SERVER-IP:7878`. Inside a container, `localhost` means that container, not your NAS or another app.
 
-   Open Jobs, choose **New job**, then select a ready recipe. Blockbusterr creates it disabled with dedicated rules and opens Preview immediately. Use **Custom Job** when you need a combination outside the recipe catalog.
+The root folder is a path **inside Radarr**, such as `/movies`. Blockbusterr does not need your movie folder mounted into its own container. The [Radarr guide](/integrations/radarr/) covers these fields in more detail.
 
-5. **Review Rules**
+## 4. Make a small rule set
 
-   Default Movies and Default Shows are created automatically. Edit the appropriate default or create a reusable rule set for this job. Use a job-specific copy when only one job should change.
+Open **Rules**, create a Movie rule set from **Empty rule set**, and name it `My first movies`.
 
-6. **Preview**
+Use these example preferences:
 
-   Open the job and select **Preview**. Review accepted, rejected, skipped, and already-present titles. Decision details identify the exact rule or delivery check involved.
+| Setting | Example value | What it means |
+| --- | --- | --- |
+| Required matches → Languages | `en` | Keep titles whose supplied original language is English |
+| Boundaries → Minimum rating | `6` | Require at least 6/10 from this source |
+| Boundaries → Minimum votes | `100` | Avoid deciding on only a handful of audience votes |
 
-7. **Enable and run**
+Save the rule set. These are starting preferences, not recommended settings for everyone. Leave other conditions empty while learning how results change. Do not use **Allow overrides** for this walkthrough: those are exceptions that can bypass other rules.
 
-   Save the job, enable it, and use **Run now** for the first live execution.
+If you prefer films with fewer audience votes, lower the vote minimum. For subtitles or dubbed audio, remember that original language does not describe the audio tracks in a downloadable release.
 
-8. **Verify Activity**
+## 5. Create the job
 
-   Use Activity Entries for title-level outcomes and Job Runs for found, passed, delivered, rejected, skipped, and failed totals.
-</Steps>
+In **Jobs → New job → Custom Job**, enter:
 
-## Recommended first setup
+| Field | Value |
+| --- | --- |
+| Job Name | `My first trending movies` |
+| Job Type | Trending |
+| Media Type | Movie |
+| Discovery Source | TMDB |
+| Rule set | My first movies |
+| Discovery limit | `50` |
+| Job delivery cap | `3` |
+| Include in ranked selection | Off |
 
-- One TMDB or Simkl Trending Movies job
-- Default Movies rules with a language and reasonable year/rating boundary
-- Jellyseerr/Seerr mode if you want approval before download
-- A manual preview and one live run before relying on the schedule
+Create it, then open the job to edit its delivery mode to **Direct (Radarr/Sonarr)** if necessary. Expand **Delivery & schedule** and set **Custom Sync Interval** to `24h` if you want it to run daily, and save.
 
-## Next steps
+The discovery limit asks for up to 50 candidates. The delivery cap allows at most 3 successful additions in a live run. The job may add fewer if few titles pass, titles already exist, or a shared limit has been reached.
 
-- [Deploy with Unraid, TrueNAS SCALE, or Portainer](/getting-started/deployment-platforms/)
-- [Understand Jobs](/concepts/jobs/)
-- [Build Rules](/concepts/rules/)
-- [Choose an Integration Mode](/concepts/integration-modes/)
-- [Upgrade an existing installation](/getting-started/upgrading-to-v2/)
-- [Review the API](/api/overview/)
+Prefer a preset? The recipe picker shows each recipe's source, rules, and limits. A ready recipe stays disabled and opens Preview. Most create dedicated rules; Personal Watchlist uses Default Movies. Review those settings rather than assuming they match this example.
+
+## 6. Preview and read the decisions
+
+Open **Preview** on the job. Pick a few titles and read their rule checks:
+
+- An English-language movie rated 7.2 with 500 votes passes these rules.
+- A movie rated 5.4 fails the minimum rating.
+- A movie with 20 votes fails the minimum votes, even if its rating is 9.
+- A passing movie already in Radarr is skipped.
+
+The numbers above are examples, not promised results from today's feed. If nothing passes, look at the actual rejection reasons before changing settings.
+
+**Preview does not add anything.** Its eligible count is not a promise of the live delivery count: a normal job preview does not simulate every delivery cap, and the source or destination can change before a run. With dry-run still enabled, you can also use **Run now** to inspect a simulated execution in Activity.
+
+## 7. Turn on real additions
+
+When the results look right:
+
+1. Disable other jobs you are not ready to run. Enabled duration-based jobs can run when Blockbusterr starts.
+2. Remove `BLOCKBUSTERR_DRY_RUN` or set it to `false` in your container settings and recreate the container with the same data mount. With Compose, use `docker compose up -d blockbusterr` after editing the environment.
+3. Confirm the dry-run banner is gone. Enable your job if you disabled it or used a recipe.
+4. Check Activity for a startup run before choosing **Run now**; the daily job may already have run.
+5. Open Radarr and confirm that the added titles appear.
+
+An added title may still be waiting for a suitable release. Check Radarr's monitoring, minimum availability, search settings, and download activity if it has no file yet.
+
+## 8. Check what happened
+
+**Activity Entries** explain individual titles. **Job Runs** summarize an execution, including failures. A run can complete successfully without adding anything if all candidates were rejected or already present.
+
+Dry-run history may say **Added** or **Requested** with a `[DRY RUN]` message. Read that message before treating an entry as a real delivery.
+
+Next, try the [sci-fi, recommendations, lists, and shared-limit examples](/examples/use-cases/), or use [Activity and troubleshooting](/concepts/activity/) if your result differs from what you expected.

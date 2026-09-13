@@ -1,43 +1,154 @@
 ---
 title: Use Cases
-description: Practical v2 job and rule-set arrangements for common media libraries.
+description: Worked setups for mainstream hits, science-fiction, family movies, documentaries, TV, and shared delivery budgets.
 ---
 
-## One simple discovery job
+These examples start with Blockbusterr's own jobs and rule sets. Connect TMDB and a destination using the [quickstart](/getting-started/quickstart/) first. Movies need Radarr or a request server; shows need Sonarr or a request server. Additional discovery providers are optional.
 
-Create a TMDB Trending Movies job, assign **Default Movies**, preview it, and enable it. This is enough to run Blockbusterr; additional providers are optional.
+Recipes create disabled jobs, so they are the easiest starting point. **Custom jobs are enabled on creation**: if following a custom example, start with `BLOCKBUSTERR_DRY_RUN=true`, then disable the created job while editing it. Review all enabled jobs before restoring normal delivery. See [Jobs](/concepts/jobs/#create-a-custom-job-safely).
 
-## Family and personal libraries
+All numbers below are starting preferences you can change. Rating and vote filters on TMDB jobs refer to **TMDB audience data**, not IMDb or critics.
 
-Create two movie rule sets:
+## Keep up with widely discussed movies
 
-- **Family Movies:** allowed languages, family-friendly genres, recent-year boundary, and blocked title exceptions.
-- **Personal Movies:** broader genres and a higher minimum rating.
+**Goal:** Include mainstream movies without requiring masterpiece-level scores.
 
-Assign each set to the jobs feeding its intended library or approval workflow.
+1. Open **Jobs → New job** and create the movie **Balanced Trending** recipe.
+2. Open its assigned rule set from the job. Rename it `Mainstream movies` if helpful.
+3. Under **Boundaries**, lower minimum rating from `6.5` to `5.1` for a permissive “at least 5.1” threshold. Keep minimum votes at `250` initially.
+4. Keep the job's discovery limit `50`, delivery cap `5`, and `24h` interval. Preview it.
+5. If the feed is too narrow, increase the discovery limit. If it is too generous, raise rating or votes. Enable when the results suit you.
 
-## Provider diversity with one policy
+**What this actually does:** fetches TMDB trending movies and keeps qualifying titles. Trending is a useful proxy for current attention; it does not establish that a film is a huge box-office hit. A vote threshold measures audience sample size, not revenue. The native Box office job uses Trakt, whose access requirements you should check separately.
 
-Create TMDB Trending, Simkl Trending, and Trakt Anticipated jobs, then assign the same **Current Releases** rule set to all three. Editing that rule set updates every assigned job while each provider continues discovering independently.
+For a rule that gives widely voted films a lower rating threshold, follow [Smart Jobs](/concepts/smart-jobs/). That is still an audience-vote heuristic, not a critic or box-office filter.
 
-## A special-purpose job
+## Pick up decent science-fiction
 
-Start with a shared **Default Movies** assignment, open one job, and choose **Make job-specific copy**. Add required science-fiction genres or keywords to the new copy without changing any other job.
+**Goal:** Use a lower quality bar for science-fiction than for your general movie feed.
 
-## Approval-first automation
+1. Create **Jobs → New job → Science-Fiction Discovery**.
+2. Open its dedicated `Science-Fiction Movies` rule set.
+3. Keep **Required matches → Genres** set to `science-fiction`. This exact provider genre matters; use the recipe's value rather than typing `sci-fi`.
+4. Under **Boundaries**, change minimum rating to `5.5` and minimum votes to `50` if you want to admit smaller releases. Keep `6.5` and `250` for a more conservative feed.
+5. In the job editor, keep discovery limit `100` and delivery cap `5`. Expand **Delivery & schedule** and use `24h` if you prefer daily checks to the recipe's `168h` interval.
+6. Save, preview, and enable.
 
-Set the default delivery mode to Jellyseerr, assign conservative rules, and run a preview. Accepted titles become Jellyseerr or Seerr requests; approval and forwarding remain controlled by that service's user permissions.
+Use a separate rule set from your mainstream job so these changes do not relax every movie job. Put the genre in **Required matches**; an **Allow override** is a bypass and does not mean “must be science-fiction.”
 
-## Fully automated library loop
+**Limit:** this filters the first 100 movies in TMDB's popular feed. If only two are science-fiction, the job has at most two matching candidates. It does not search every science-fiction movie. Increase discovery breadth or add a relevant list/recommendation job if preview shows too few candidates.
 
-Use Blockbusterr to discover and add suitable content, then use Maintainerr independently to remove or unmonitor stale and unwatched content. Coordinate Blockbusterr title exceptions and Maintainerr cleanup rules so removed titles are not repeatedly rediscovered.
+## Find highly rated smaller films without pretending audience votes are critics
 
-## Tuning workflow
+**Goal:** Give less-discussed films a path into the library.
 
-1. Preview the job.
-2. Inspect the accepted and rejected distribution.
-3. Open decision details for unexpected titles.
-4. Adjust the assigned rule set or add a universal title exception.
-5. Preview again before enabling delivery.
+A high score with a low minimum vote count is expressible, but **independent production and professional critic acclaim are not native rule fields**. A Popular job with a rating minimum of `8.7` and `10` votes is only “popular-feed movies with that audience score and at least ten audience votes.” It does not find every indie, count critic reviews, or require unanimous reviews.
 
-After enabling, use **Job Runs** for aggregate health and **Activity Entries** for title-level explanations.
+A native starting point is recommendations from films you already like:
+
+1. With dry-run enabled, create a Movie rule set named `Small-film recommendations` from **Empty rule set**.
+2. Set minimum rating `7.5` and minimum votes `10`. These are intentionally permissive on sample size; inspect the preview before trusting them.
+3. Open **Jobs → New job → Custom Job**. Choose **Recommendations**, **Movie**, and **TMDB**.
+4. Enter the TMDB numeric IDs of several relevant films in **TMDB seed IDs**. For a TMDB URL shaped like `/movie/12345-title`, the ID is `12345`; use real films you have checked, not that illustrative number. IMDb `tt...` IDs are not accepted here.
+5. Assign the new rules, discovery limit `100`, and delivery cap `3`. Create the job and disable it while reviewing.
+6. Set the interval to `168h`, preview the recommendations, and refine your seeds. Restore normal delivery and enable when ready.
+
+Recommendations expand those seeds once and exclude the seed titles themselves. This can surface adjacent films; it does not certify that they are independent or critically acclaimed.
+
+If your requirement is specifically “festival winners” or “critics' picks,” choose a maintained public list whose curator already makes that selection and import it with a **List or Watchlist** job. Inspect who maintains it, what the inclusion rules are, and how recently it was updated. Do not convert a critic score of 87/100 into a TMDB audience minimum of 8.7 and assume equivalence. [List setup and metadata limitations](/concepts/jobs/#lists-watchlists-and-recommendations) vary by provider.
+
+## Family movies with content-rating checks
+
+**Goal:** Discover family movies carrying a US G or PG certification.
+
+1. Create the **Family Movies** recipe.
+2. Open its dedicated rules. Review required genre `Family`, content-rating country `US`, allowed ratings `G` and `PG`, and the policy to reject unknown certifications.
+3. Keep or adjust the discovery limit `100`, delivery cap `5`, and weekly `168h` interval.
+4. Preview. Open rejected entries to distinguish a missing certification from a non-family genre or disallowed rating.
+5. Add specific titles to your blocked exceptions if needed, then preview again and enable.
+
+The Family genre alone is not a content-rating check. Likewise, a G or PG certification is a classification, not a guarantee that a title fits every household. Review the actual policy you want; change the certification country and labels when you use a different country's system.
+
+This job uses the configured movie destination. It does not create a second Radarr instance or independently select a different library root folder.
+
+## A small weekly documentary feed
+
+**Goal:** Add up to three qualifying documentaries a week.
+
+1. Create **Documentary Discovery**.
+2. Review its rules: required documentary genre, rating `6.5`, minimum votes `100`.
+3. Keep discovery limit `100`, job cap `3`, and interval `168h`.
+4. Preview and enable. If the vote boundary excludes too many small productions, lower it in this dedicated rule set.
+
+Three is a maximum per execution, not a guarantee. Running the job manually creates another execution; use a **global rolling ceiling** if you need a total limit across manual and scheduled runs. That ceiling is shared by all movie jobs, not just documentaries.
+
+## Follow recent TV or anime
+
+For recent TV, connect Sonarr and create **Current TV**. It uses TMDB Trending, a minimum rating of `6.5`, and a first-year boundary from the previous calendar year onward. Review the saved year boundary as time passes; this is not a rule about the air date of the latest episode.
+
+For anime, create **Anime Discovery**. It uses TMDB Popular shows with Japanese origin, animation genre, a rating minimum of `6.5`, and Sonarr series type `anime`. Preview and inspect identity-related failures: the show must have a TVDB identity that Sonarr recognizes. A title-name similarity is not enough for delivery.
+
+Both recipes create separate rules so they can coexist with a broader TV job. Set a global show ceiling if their combined output is too large.
+
+## Sync a personal TMDB watchlist
+
+**Goal:** Use your own watchlist as the selection step.
+
+1. Save your TMDB API key in **Settings → Connections → TMDB**, then use **Connect account** to authorize the watchlist account.
+2. Create the **Personal Watchlist** recipe.
+3. Review the assigned **Default Movies** rules. They still apply: being on the watchlist does not automatically bypass a minimum rating, language requirement, or blocked title.
+4. If you want a different watchlist policy, make a job-specific copy of the rules and edit that copy.
+5. Preview, check the two-hour interval and ten-title cap, then enable.
+
+Removing a title from the watchlist does not remove it from Radarr. A title already in the destination is skipped.
+
+## Review broad suggestions before adding them
+
+**Goal:** Send recommendations to an approval queue while allowing a trusted job to add directly.
+
+1. Configure Jellyseerr or Seerr and its downstream media services.
+2. Set Blockbusterr's global delivery mode to **Jellyseerr / Seerr**.
+3. In the connection settings, expand **Request as a specific user** and enter the email/password of an account without auto-approval permission. API-key-only requests auto-approve; a Request user ID alone is not sufficient.
+4. Create a disabled **Balanced Trending** recipe, use a small cap such as `2`, and preview it.
+5. For an existing trusted science-fiction job, open **Delivery & schedule → Custom Mode** and select **Direct (Radarr/Sonarr)**. Radarr must also be configured.
+6. Run a small test and verify the requested titles' approval status in the request server.
+
+Read [Integration Modes](/concepts/integration-modes/) for connection and account details. **Requested** in Activity means submission succeeded; it does not mean approved or downloaded.
+
+## Choose five movies across several jobs
+
+**Goal:** Have mainstream, science-fiction, and documentary discovery share five winner slots.
+
+1. Create and tune those three jobs independently using their previews. Keep global dry-run enabled while setting up the shared cycle.
+2. Open **Settings → Automation**, enable content scoring, then enable **Ranked selection**.
+3. Set **Run selection every** to `24h` and **Movie winner slots** to `5`.
+4. Add the three jobs as participants. Give the documentary job **Minimum picks** of `1` if you want to reserve a slot when a qualifying documentary exists.
+5. Keep each job's delivery cap compatible with the desired allocation; for example, cap documentaries at `2` and the others at `5`.
+6. Enable the intended participating jobs while global dry-run is active: disabled jobs are excluded from cycle previews. Preview the shared cycle and inspect duplicates, qualifying candidates, reserved picks, and score cutoffs. Restore live delivery only after reviewing the enabled participants and their limits.
+
+Participating jobs use this cycle's schedule instead of individual intervals. The reserved documentary slot cannot force a rejected film through. The same film found by two jobs is merged by identity.
+
+To also protect against additional manual runs or other movie jobs, set **Delivery limits → Global movie ceiling** to `5` over **24 hours**. A cycle with five winner slots can deliver fewer than five if the rolling ceiling has already been used. The rolling window is not a midnight reset.
+
+## Keep cleanup from causing a re-add loop
+
+**Goal:** Remove old content with your existing cleanup workflow without Blockbusterr promptly restoring it.
+
+1. Open each affected job's **Delivery & schedule**.
+2. Set **Repeat handling** to **Never re-add**, or choose a cooldown that matches your policy.
+3. Keep backups of Blockbusterr's database; the decision relies on recorded successful deliveries.
+4. After cleanup, inspect the next run's Activity Entries for repeat-related skips.
+
+A cooldown starts at the last successful delivery, not at deletion. A movie added 100 days ago and deleted today can immediately qualify under a 90-day cooldown. **Never re-add** is clearer when removal is intended to be permanent. A cleanup tool such as Maintainerr runs independently; Blockbusterr does not configure its removal policy.
+
+## Diagnose an example that behaves differently than expected
+
+Start with **Preview** and read the decision for one specific title:
+
+- **Missing from preview:** check source, feed, and discovery limit. Rules cannot select a film the source never returned.
+- **Rejected:** check the assigned rule set and its shared-job usage before editing it.
+- **Passes preview but is not delivered:** check destination duplicates, repeat policy, live caps, rolling limits, dry-run, and delivery errors in **Job Runs**.
+- **Unexpected title passes:** check **Allow overrides** and universal allowed-title exceptions as well as boundaries.
+- **Added or requested but not downloaded:** inspect Radarr, Sonarr, or the request server.
+
+Change one criterion and preview again. Single-job preview helps explain filtering; it is not an exact forecast of how many live deliveries will succeed.

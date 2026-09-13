@@ -1,137 +1,175 @@
 ---
 title: Jobs
-description: Configure scheduled discovery jobs and route accepted media to your delivery tools.
+description: Create your first discovery job, understand its rules and delivery, and tune schedules and limits.
 ---
 
-A job is one automated discovery pipeline:
+A job is a saved instruction to find movies or shows, check them against a rule set, and send eligible titles to your media services on a schedule.
 
-`provider → discovery type → rule set → scoring → delivery target`
+For example: “Every day, fetch 50 trending movies from TMDB, require a rating of 6.5 and 250 votes, and add up to five matches to Radarr.” Each part has a separate setting:
 
-You can run one job or combine several providers and strategies. Each job remains independently configurable and observable.
-
-## Create a job
-
-1. Open **Jobs** and select **New job**.
-2. Choose a ready recipe or open **Custom Job**.
-3. Recipes create a disabled job with an explicit provider, cadence, and job delivery cap. Recipes with meaningful filtering create dedicated rules; recipes without overrides reuse the media default.
-4. Review the automatic preview, adjust the job or its rules, then enable it.
-
-Unavailable recipes remain visible and identify the connection they need. Recipes never silently select a different configured provider.
-
-## Built-in recipes
-
-| Outcome | Provider | Default cadence |
+| Part | Setting in this example | What it controls |
 |---|---|---|
-| Balanced Trending movies and shows | TMDB | Daily |
-| New & Well Rated movies | TMDB | Daily |
-| Anticipated With Approval | Trakt + Jellyseerr/Seerr | Daily |
-| Documentary, Science-Fiction, Family, Reality TV, Anime | TMDB | Weekly |
-| Current TV | TMDB | Daily |
-| All-Time Classics | Trakt | Weekly |
-| Personal Watchlist | Connected TMDB account | Every 2 hours |
+| Source | TMDB | Where the candidates and their ratings come from |
+| Job type | Trending | Which source feed to fetch |
+| Discovery limit | 50 | How many candidates to fetch before filtering |
+| Rule set | Rating 6.5+, votes 250+ | Which candidates qualify |
+| Job delivery cap | 5 | Maximum deliveries from this job per run |
+| Delivery mode | Direct | Add movies to Radarr |
+| Schedule | 24h | When the job runs |
 
-Every recipe is versioned, disabled by default, and preview-first. Creating the same recipe again makes a separately named rule set rather than changing the first job's policy.
+Start with one job. Add more when you want different source feeds or different rules. A movie can qualify through any job whose rules it passes; it does not have to pass every job's rules.
 
-## Discovery types
+## Create your first job from a recipe
 
-| Type | Purpose |
-|---|---|
-| Trending | Content currently receiving attention |
-| Popular | Broad provider popularity |
-| Watched | Most watched for a selected period |
-| Collected | Most collected for a selected period |
-| Favorited | Most favorited for a selected period |
-| Played | Most played for a selected period |
-| Anticipated | Upcoming anticipated releases |
-| Box office | Current movie box-office discovery |
-| Smart Popular | Popularity with an adaptive rating threshold |
-| List or Watchlist | A provider-owned public list or personal watchlist |
-| Recommendations | One-hop TMDB recommendations from explicit seed IDs or a provider seed list |
+Connect a provider and destination first using the [quickstart](/getting-started/quickstart/). A TMDB connection plus Radarr is enough for this movie example.
 
-Support varies by provider and media type; the Jobs editor is the source of truth for valid combinations.
+1. Open **Jobs → New job**.
+2. In the movie recipes, choose **Balanced Trending**. Its defaults are TMDB, 50 candidates, rating 6.5+, 250 votes, a five-title delivery cap, and a `24h` interval.
+3. The recipe creates a **disabled** job and a dedicated rule set. Review the automatic preview.
+4. Open the job to check its assigned rules and expand **Delivery & schedule** to review the destination mode and interval.
+5. Save any changes. Preview again if you changed the rules.
+6. Enable the job when you are ready for scheduled execution. Use **Run Now** if you want an immediate execution.
 
-List jobs store a provider owner, list ID, or slug rather than an arbitrary web
-URL. They use the same preview, rules, scoring, duplicate checks, Activity
-Entries, and delivery limits as every other job. Removing an item from the
-source list never deletes media that Blockbusterr already delivered.
+An unavailable recipe tells you which connection it needs. It does not switch providers silently. Repeating a recipe creates another job; it does not edit the previous one.
 
-Public Trakt and TMDB lists need their provider application credentials.
-MDBList lists and the personal MDBList watchlist use an MDBList API key.
-Personal Trakt and TMDB watchlists require connecting that provider account in
-Settings; a public Trakt user's watchlist can instead use the account name in
-the job. Use **Check source** before saving to verify the identifier and see a
-movie/show sample without delivering anything.
+### Other starting recipes
 
-Letterboxd public lists and watchlists are available only after explicitly
-enabling experimental scraping in Settings. Its official API requires selective
-approval, so this fallback may be blocked or break whenever Letterboxd changes
-its pages. It never accesses private content and fails instead of guessing a
-title match. MDBList remains the reliable bridge for lists imported from
-Letterboxd or IMDb.
+| Recipe | What it fetches and checks | Default interval / delivery cap |
+|---|---|---|
+| New & Well Rated | TMDB popular movies, year from previous year onward, rating 7+, 500 votes | 24h / 5 |
+| Science-Fiction Discovery | TMDB popular movies, `science-fiction`, rating 6.5+, 250 votes | 168h / 5 |
+| Documentary Discovery | TMDB popular movies, documentary, rating 6.5+, 100 votes | 168h / 3 |
+| Family Movies | TMDB popular movies, family genre, US G or PG; unknown certifications rejected | 168h / 5 |
+| Personal Watchlist | Connected TMDB account's movie watchlist, Default Movies rules | 2h / 10 |
+| Balanced Trending shows | TMDB trending shows, rating 6.5+, 100 votes | 24h / 5 |
+| Current TV | TMDB trending shows, first year from previous year onward, rating 6.5+ | 24h / 5 |
+| Anime Discovery | TMDB popular shows, Japanese origin and animation, rating 6.5+, Sonarr anime type | 168h / 5 |
 
-Recommendation jobs accept up to 20 explicit TMDB movie or show IDs, an
-existing provider list, or both. Seed lists are normalized to TMDB identities;
-unmapped entries are ignored and a job with no usable seeds fails clearly.
-Seeds and results are deduplicated, seed titles are excluded, and results are
-never recursively expanded.
+Trakt-specific recipes also exist, including Anticipated With Approval and All-Time Classics. Check the [provider guide](/integrations/trakt/) for access requirements before choosing them. The year boundaries in recipes are set when you create the recipe; review them in future years.
 
-## Job settings
+## Create a custom job safely
 
-- **Source:** TMDB, Simkl, Trakt, or MDBList when supported.
-- **Media:** Movie or show.
-- **Content limit:** Maximum candidates fetched before rules are evaluated.
-- **Job delivery cap:** Maximum winners a job contributes in one standalone run or ranked cycle; `0` is unlimited.
-- **Period:** Weekly, monthly, yearly, or all time for period-based types.
-- **Rule set:** The reusable policy used by preview and execution.
-- **Sync interval:** Optional Go duration or five-field cron override.
-- **Mode:** Optional `direct` or `jellyseerr` delivery override.
-- **Availability and monitoring:** Optional Radarr/Sonarr overrides.
-- **Sonarr series type:** `standard`, `anime`, or `daily` for show jobs.
-- **Repeat handling:** Optional override for when previously delivered and later removed media becomes eligible again.
-- **Ranked selection:** Opt a job into a shared cycle and optionally reserve a minimum number of picks.
+**Custom jobs are enabled when created.** Unlike recipes, they are not a disabled draft. They can start scheduled execution before you finish tuning them.
 
-## Shared and job-specific rules
+For initial custom setup, start Blockbusterr with `BLOCKBUSTERR_DRY_RUN=true` as described in the quickstart. This simulates delivery while you configure jobs. Do not assume that opening Preview prevents an enabled job from running separately.
 
-Jobs reference one media-compatible rule set. Reuse a rule set when jobs should stay synchronized, or use **Make job-specific copy** to clone the effective policy for one job. See [Rules](/concepts/rules/).
+1. Open **Rules** and create a rule set for the intended media type. Start with **Empty rule set** when you want to enter every restriction yourself; see [Rules](/concepts/rules/).
+2. Open **Jobs → New job → Custom Job**.
+3. Enter a name, choose **Job Type**, **Media Type**, and **Discovery Source**. Only configured, compatible sources are offered.
+4. Assign your rule set and set **Discovery limit** and **Job delivery cap**.
+5. For list jobs, enter the source identifiers and use **Check source**. For recommendations, enter seed IDs or a seed list.
+6. Select **Create Job**. Open the created job, disable it while tuning, and expand **Delivery & schedule** to set the interval, mode, monitoring, and repeat handling.
+7. Save and preview. When ready, restore normal delivery if you enabled dry-run, then enable only the jobs you intend to run.
 
-The discovery limit controls how many candidates are evaluated. The job delivery cap controls how many winners one job can contribute. Ranked-selection winner slots cap the shared cycle, while global movie and show ceilings remain the final rolling safety limit. Configure shared membership and ceilings under **Settings → Automation**.
+Creating another job that shares a rule set does not create a private copy of those rules. Editing that set affects every assigned job. Use the job editor's **Make job-specific copy** when one job needs different criteria.
 
-## Ranked selection cycles
+## Choose a discovery type
 
-Ranked selection is opt-in under **Settings → Automation** and requires content scoring. Membership can be managed there or from an individual job. Participating jobs use the shared cycle cadence instead of their own schedule. At each cycle, Blockbusterr fetches every participating job, applies its assigned rules, merges duplicate media by canonical provider ID, and selects the highest normalized scores up to the movie and show winner slots.
+| Type | Candidates | Supported source families |
+|---|---|---|
+| Trending | Titles receiving current attention | TMDB, Simkl, Trakt |
+| Popular | The provider's popularity feed | TMDB, Simkl, Trakt |
+| Smart Popular | Popular feed with a vote-aware adaptive rating threshold | TMDB, Simkl, Trakt |
+| Most watched | Provider's watched feed for an available period | Simkl, Trakt |
+| Collected, Favorited, Played, Anticipated | Corresponding Trakt feed | Trakt |
+| Box office | Movie box-office feed | Trakt |
+| List or Watchlist | Entries from a specified list/account | TMDB, Trakt, MDBList, experimental Letterboxd |
+| Recommendations | TMDB recommendations from seeds | TMDB |
 
-Optional job minimums are allocated first and are validated against cycle capacity. Remaining slots go to the highest scores with provider rank and stable IDs used as deterministic tie-breakers. Preview reports found, rule-rejected, already-present, repeat-blocked, job-capped, duplicate, below-cutoff, and globally blocked candidates. A provider failure is shown for that job while successful providers still compete. Global rolling delivery ceilings remain final safeguards, and all participating jobs retain their normal Activity Entries and Job Runs.
+The editor limits the combinations and periods available for your source and media type. A job's **period** selects a provider feed, such as most watched this month; its **sync interval** controls how often Blockbusterr fetches that feed.
+
+### Discovery happens before filtering
+
+A genre rule does not turn a popular feed into a genre-specific database search. With **Popular**, a discovery limit of 100, and required genre `science-fiction`, the job asks for up to 100 popular movies and then keeps matching science-fiction titles. It does not ask for the top 100 science-fiction movies.
+
+If only four fetched movies match, increasing the delivery cap cannot produce more. Increase the discovery limit within the editor's maximum, choose another source feed, or use a relevant list. Even a large discovery limit does not guarantee every matching movie in a catalog will be found.
+
+Ratings are source data. TMDB jobs use TMDB audience ratings and vote counts, not IMDb scores or counts of professional reviews. A rating boundary of 8.7 does not mean “critics loved it.” There is no native critic-score selector or box-office revenue threshold in the rule editor.
+
+## Lists, watchlists, and recommendations
+
+For **List or Watchlist**, choose the provider, list kind, **Owner or member** when needed, and **List ID or slug**. Enter identifiers, not a copied full URL. **Check source** fetches a small sample without delivery.
+
+- TMDB public lists need an API key. A personal TMDB watchlist also needs **Connect account** in Settings.
+- Trakt public lists need application credentials; personal account access requires connecting the account. A public user's watchlist can use its owner name.
+- MDBList supports user lists, numeric list IDs, official slugs, and the API-key account's watchlist. Read its [integration guide](/integrations/mdblist/) before attaching rules: the current list adapter does not populate ratings, votes, or genres, so positive rating/vote boundaries and required genres reject its entries. Apply those criteria upstream if using that source.
+- Letterboxd requires opt-in experimental scraping, supports public content only, and can fail when access is blocked or pages change.
+
+Removing a title from a source list never deletes a title already delivered to Radarr, Sonarr, Jellyseerr, or Seerr.
+
+**Recommendations** accepts up to 20 explicit TMDB IDs, a provider seed list, or both. Use movie IDs for movie jobs and show IDs for show jobs. Seeds are starting examples of what you like: results exclude the seeds, duplicates are removed, and recommendations are expanded only once. A seed list entry without a usable TMDB identity is ignored; having no usable seeds causes the job to fail. Recommendations still pass through the assigned rules.
+
+## Set limits that match your intention
+
+| Setting | Scope | Example |
+|---|---|---|
+| Discovery limit | Candidates fetched before filtering | Fetch 100, even if only 8 pass |
+| Job delivery cap | Deliveries contributed by one job per run or ranked cycle | Add at most 3 from those matches |
+| Movie/show winner slots | Shared ranked selection cycle | Pick up to 5 movies across participating jobs |
+| Global movie/show ceiling | All jobs during a rolling period | At most 10 movie additions/requests in the last 24 hours |
+
+A delivery cap or ceiling of `0` means unlimited. **Settings → Automation → Delivery limits** offers rolling windows of 24 hours, 7 days, or 30 days. These do not reset at midnight. Additions and requests consume the budget; rejected, duplicate, skipped, and previewed titles do not. An uncertain delivery reserves a slot while its outcome is unresolved.
+
+A cap is a maximum, not a target or a promise to fill it. Existing titles, rules, repeat handling, delivery errors, and global limits may leave a run with fewer additions.
 
 ## Preview, run, and schedule
 
-Duration schedules run once when Blockbusterr starts and then repeat at the configured interval. Cron schedules wait for their next matching time and do not run at startup.
+| Action | What happens |
+|---|---|
+| Preview | Fetches candidates and explains rule/duplicate decisions without delivering |
+| Run Now | Executes immediately using the job's rules and destination |
+| Enable | Allows scheduled execution |
+| Disable | Stops future scheduled execution without deleting the job |
+| Delete | Removes the job after confirmation; does not remove delivered media |
 
-- **Preview** discovers and evaluates candidates without delivering them.
-- **Run now** executes the complete pipeline immediately.
-- **Enable/Disable** controls scheduled execution without deleting the job.
-- **Delete** removes the dynamic job after confirmation.
+A normal single-job preview is useful for tuning rules, but it is **not an exact delivery forecast**: live delivery caps, rolling budgets, and other execution checks can reduce the actual additions. Source results and destination state may also change between preview and execution.
 
-Manual runs ignore the schedule but use the same provider, rules, scoring, and delivery configuration. Participating ranked-selection jobs cannot run independently because doing so would bypass shared competition and cycle limits.
+Dry-run is installation-wide execution simulation, enabled by `BLOCKBUSTERR_DRY_RUN=true`; development builds also use it. It can produce execution records while skipping actual delivery. Preview needs no environment change and is usually enough for adjusting an existing disabled job. For custom job creation, use the dry-run setup described above.
 
-## Delivery modes
+In a job's **Delivery & schedule**, leave **Custom Sync Interval** empty to inherit the default from Settings, or enter:
 
-In **Direct mode**, accepted movies go to Radarr and shows go to Sonarr. In **Jellyseerr mode**, accepted titles are requested through Jellyseerr or Seerr, which applies its own approval permissions before forwarding them. See [Integration Modes](/concepts/integration-modes/).
+| Value | Meaning |
+|---|---|
+| `30m` | Every 30 minutes |
+| `24h` | Every 24 hours |
+| `168h` | Every 7 days |
+| `0 8 * * *` | Daily at 08:00 in the scheduler's timezone |
+| `0 8 * * 0` | Sundays at 08:00 in the scheduler's timezone |
 
-The Anime Discovery recipe uses normal show rules plus Sonarr's `anime` series
-type. TMDB must provide a TVDB identity and Sonarr must return that exact series;
-Blockbusterr reports a mapping failure instead of delivering a title-only guess.
+Use Go-style duration units such as `m` and `h`; `7d` is not a supported duration. Enabled duration jobs run once at application startup and repeat afterward. Cron jobs wait until their next matching time. Check the installation's timezone before using wall-clock schedules.
 
-## Understand a run
+Manual execution ignores the schedule but still uses the delivery checks. Jobs participating in active ranked selection cannot run independently; run or preview the shared cycle instead.
 
-The Activity page has two complementary views:
+## Ranked selection cycles
 
-- **Activity Entries:** individual titles with outcome, score, time, source job, and decision details.
-- **Job Runs:** each execution with found, passed, added, requested, rejected, skipped, and failed counts plus the outcome distribution. **Added** means Blockbusterr sent the title directly to Radarr or Sonarr; **Requested** means it submitted the title through Jellyseerr or Seerr. Outcomes with a zero count are hidden.
+Leave ranked selection off when each job should deliver independently. Enable it when you want jobs to compete for a shared set of slots, such as five movies per day across mainstream, science-fiction, and documentary jobs.
 
-Use Preview while tuning rules, Job Runs to spot pipeline-level problems, and Activity Entries to explain one title.
+1. Open **Settings → Automation** and enable content scoring.
+2. Enable **Ranked selection** and set **Run selection every** to `24h`.
+3. Set **Movie winner slots** to `5` for this example.
+4. Choose participating enabled movie jobs. Membership can also be set with **Include in ranked selection** in the job editor.
+5. Optionally reserve **Minimum picks** for a job. For example, reserve one documentary pick when at least one qualifying documentary exists.
+6. Save, preview the shared selection, and inspect why candidates won or lost before running the cycle.
 
-## Upgrade legacy jobs
+The cycle fetches participating jobs, applies each one's rules, merges duplicate media identities, and ranks qualifying candidates. Minimum picks are allocated first; remaining slots go to the highest normalized scores, with deterministic tie-breakers. Minimums must fit within capacity and do not force delivery of failing or unavailable candidates. Job caps and global delivery ceilings still apply.
 
-On first v2 startup, enabled v1 named job sections are upgraded automatically. Blockbusterr creates equivalent dynamic jobs, assigns the appropriate default rule set, preserves supported settings, saves the new configuration atomically, and disables the migrated legacy entries. The untouched v1 configuration remains available as `config.yaml.backup`.
+Participating jobs use the shared cycle schedule instead of their own intervals. If one source fails, successful jobs can still contribute candidates. The cycle preview explains rule rejection, duplicates, repeat restrictions, caps, and ranking cutoffs. A high score orders qualifying candidates; it does not make a failed required rule pass.
 
-Review the generated jobs and rules after startup. Do not delete the automatic backup until the installation has completed at least one expected schedule cycle. See [Upgrading to v2](/getting-started/upgrading-to-v2/).
+## Prevent removed titles from coming back
+
+Current destination duplicates are always skipped. **Repeat handling** applies when a title Blockbusterr previously delivered is no longer present:
+
+- **Re-add immediately:** it can qualify again on the next run.
+- **Wait 30/90/180 days:** it can qualify again after that interval from its **last successful delivery**, not from the day you deleted it.
+- **Never re-add:** recorded successful delivery prevents automatic re-addition.
+- **Use global default:** inherit the policy in Settings.
+
+For example, a movie delivered 100 days ago and deleted today is already outside a 90-day cooldown. Choose **Never re-add** for a cleanup workflow that should not replenish removed titles. This relies on Blockbusterr's retained delivery history, so keep database backups.
+
+## Understand what happened
+
+Open **Activity → Job Runs** for each execution's totals and errors. **Added** means sent directly to Radarr or Sonarr; **Requested** means submitted through Jellyseerr or Seerr. Neither means a media file has finished downloading.
+
+Use **Activity Entries** for one title's source job, outcome, time, score, and decision details. If nothing was added, inspect rejection reasons, existing media, repeat policy, caps, and delivery errors before loosening every rule.
+
+For complete worked configurations, see [Use Cases](/examples/use-cases/). For v1 configuration migration and backups, see [Upgrading to v2](/getting-started/upgrading-to-v2/).

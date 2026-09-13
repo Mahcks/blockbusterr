@@ -3,11 +3,13 @@ title: Rules
 description: Build reusable movie and show policies, assign them to jobs, and manage title exceptions.
 ---
 
+import { Aside, Steps } from '@astrojs/starlight/components';
+
 Rules decide which discovered titles a job may deliver. Every job references exactly one rule set, and every rule set applies to either movies or shows.
 
-## The v2 model
+## One set of preferences, one or more jobs
 
-- **Default Movies** and **Default Shows** are built-in rule sets created automatically.
+- **Default Movies** and **Default Shows** are built-in rule sets created automatically. On a fresh install they have no filters configured, so every discovered title passes until you add rules.
 - Create additional rule sets for different audiences, libraries, or discovery strategies.
 - Assign the same rule set to several jobs when they should follow the same policy.
 - Use **Make job-specific copy** in the job editor when one job needs independent rules.
@@ -15,9 +17,26 @@ Rules decide which discovered titles a job may deliver. Every job references exa
 
 Changes to a shared rule set affect every assigned job. The Rules page shows its media type, revision, and assignment count before you save it.
 
+## Build your first rule set
+
+This walkthrough builds a real, working "Family Movies" rule set — every value below is one you can type in exactly as shown.
+
+<Steps>
+
+1. Open **Rules → Movie rules → New rule set**, name it `Family Movies`, and start it from **Empty rule set**.
+2. Under **Required matches**, add `family` to **Genres**. This is the exact genre value TMDB and Trakt report for family movies — see [Genres must match exactly](#genres-must-match-exactly-not-a-display-name) below.
+3. Under **Content ratings**, set **Country** to `US`, add `G`, `PG`, and `PG-13` to **Allowed ratings**, and set **When no rating is found** to **Reject the title**.
+4. Under **Boundaries**, set **Minimum rating** to `5`.
+5. Save, then open a movie job and assign **Family Movies** under **Rules**.
+6. Click **Preview** on the job. You should see titles rejected with reasons like `Rejected: US certification R is not allowed (TMDB)` or `Rejected: Required genre not matched: family`, and accepted titles with `Accepted: Passed all configured rules`.
+
+</Steps>
+
+These are the rule-decision messages used by Preview and Activity Entries. Passing rules makes a title eligible; duplicate checks, repeat handling, scoring, delivery caps, and the downstream service can still prevent an addition. Preview does not send titles to Radarr or Sonarr.
+
 ## Evaluation order
 
-Blockbusterr evaluates a candidate in this order:
+Blockbusterr evaluates a candidate in this order, stopping at the first rule that decides the outcome:
 
 1. Universal title block
 2. Universal title allow
@@ -26,31 +45,135 @@ Blockbusterr evaluates a candidate in this order:
 5. Allow overrides
 6. Required matches and boundaries such as year, runtime, rating, and votes
 
-A universally blocked title is always rejected, while a universally allowed title bypasses the selected rule set. Within a rule set, content-rating and block rules win over allow overrides. Otherwise, the title must satisfy every configured requirement and boundary.
+A universally blocked title is always rejected, while a universally allowed title bypasses the selected rule set entirely (it skips content ratings, block rules, and everything else). Within a rule set, a content-rating rejection or a block rule wins over an allow override — a title must first survive certification and block checks before an allow override can accept it. Allow overrides then bypass required matches and boundaries. If nothing above decides the title, it must satisfy every configured required match and boundary to pass.
 
-## Rule groups
+## Required matches, blocks, and overrides
 
-### Required matches
+The same value has different effects depending on where you put it:
 
-Country and language lists narrow accepted content to those values. Required genre, keyword, and network lists express positive requirements. An empty list means that dimension is unrestricted.
+| Setting | Meaning | Example |
+|---|---|---|
+| Required matches → Genres | At least one listed genre must match | `science-fiction` requires science fiction and still applies Minimum rating |
+| Blocked content → Genres | Any listed genre match rejects the title | `horror` rejects a science-fiction/horror movie too |
+| Allow overrides → Genres | Any listed genre match accepts after content-rating and block checks | `science-fiction` bypasses Minimum rating, Minimum votes, and required languages |
 
-### Block rules
+Use **Required matches** when you mean “only these.” Use **Allow overrides** when you mean “make an exception for these.” You do not need an allow override to enable a genre: an empty genre requirement already permits any genre.
 
-Block countries, languages, genres, keywords, networks, or provider IDs. Keyword checks are case-insensitive partial-title matches; provider IDs are exact matches.
+Within each required field, values are alternatives (**OR**). Across different required fields and boundaries, conditions combine (**AND**). Required genres `science-fiction, fantasy`, languages `en, ja`, and Minimum rating `6` means `(science-fiction OR fantasy) AND (English OR Japanese) AND rating at least 6`. It does not require both genres or both languages. There is no nested condition builder; use separate jobs with separate rule sets for different combinations.
 
-### Allow overrides
+Assume that configuration, a blocked genre of `horror`, and no overrides or universal exceptions:
 
-Allow overrides admit a title that matches a configured country, language, genre, keyword, network, or minimum rating after it clears block rules. Use them sparingly: a matching override bypasses required matches and boundaries.
+| Candidate metadata | Rule outcome |
+|---|---|
+| English science fiction, rating 6.0 | Passes; the minimum is inclusive |
+| Japanese fantasy, rating 7.2 | Passes; either listed language and either listed genre is enough |
+| English drama, rating 9.0 | Rejected; neither required genre matches |
+| French science fiction, rating 8.0 | Rejected; the required language does not match |
+| English science fiction/horror, rating 8.0 | Rejected; the blocked genre wins |
+| English science fiction, rating 5.9 | Rejected; below Minimum rating |
+
+Adding `science-fiction` to **Allow overrides → Genres** changes the French and 5.9-rated examples to passes. It does not change the horror example. A universal Always allow exception would even bypass that block, unless the title is also universally blocked.
+
+## Field formats — what actually works
+
+Rules compare the metadata Blockbusterr receives from the selected discovery source. That can differ between providers, even for the same title. Getting the exact format right is the single most common source of "my rule isn't doing anything."
+
+### Countries and languages
+
+- **Countries** use the two-letter ISO 3166-1 code: `US`, `GB`, `IN`, `JP`, `DE`. Type it in any case — the Rules page automatically uppercases it when you add it.
+- **Languages** use the two-letter ISO 639-1 code: `en`, `ja`, `ko`, `fr`, `es`. The Rules page automatically lowercases it.
+- Matching is an exact, case-insensitive comparison — not a substring match.
+
+<Aside type="caution" title="An empty metadata value rejects the title, it does not skip the check">
+If **Required matches → Countries** or **Languages** has at least one entry, and a discovered title has no country or language reported at all, Blockbusterr rejects it with "country metadata unavailable" (or the language equivalent) rather than letting it through. Provider coverage varies; list imports can omit these values too. If a rule set that used to work suddenly rejects everything from one job, check Activity Entries for that exact message before assuming the rule itself is wrong.
+</Aside>
+
+### Genres must match exactly, not a display name
+
+Genres are compared with an exact, case-insensitive match — never a partial match. For TMDB jobs, Blockbusterr converts numeric genre IDs into the slugs below. Typing `Sci-Fi` or `Science Fiction` will not match TMDB movie science fiction; enter `science-fiction`. Capitalization is ignored, but spaces and hyphens are not interchangeable. The Rules editor trims surrounding spaces; it does not translate genre names.
+
+The built-in **Science-Fiction Discovery** recipe proves the point — it ships with `required_genres: ["science-fiction"]`, which is the exact value described here, not a documentation shorthand.
+
+TMDB movie genres:
+
+`action`, `adventure`, `animation`, `comedy`, `crime`, `documentary`, `drama`, `family`, `fantasy`, `history`, `horror`, `music`, `mystery`, `romance`, `science-fiction`, `thriller`, `tv-movie`, `war`, `western`
+
+TMDB show genres:
+
+`action-adventure`, `animation`, `comedy`, `crime`, `documentary`, `drama`, `family`, `kids`, `mystery`, `news`, `reality`, `sci-fi-fantasy`, `soap`, `talk`, `war-politics`, `western`
+
+<Aside type="note">
+Trakt and Simkl supply their own genre strings; Blockbusterr does not translate them into the TMDB vocabulary. In particular, do not assume a TMDB show genre such as `sci-fi-fantasy` is the Trakt show value. Check the source metadata and Preview results for your actual job. MDBList and direct Letterboxd list imports currently do not populate genres, so any required genre rejects their candidates; filter those lists upstream instead.
+</Aside>
+
+### Title keywords are substring matches, not word matches
+
+Keyword fields (in Required matches, Blocked content, and Allow overrides) check whether the text appears **anywhere inside the title**, case-insensitively. These are not plot, theme, cast, or provider keyword-tag searches.
+
+For example, blocked keyword `war` matches “Warcraft,” “Star Wars,” and “Software.” It does not mean “war movie.” Use a more specific phrase or block an exact title ID when you mean one film. The UI strips surrounding spaces, so entering ` war ` does not create a whole-word filter. Regular expressions and wildcards are not supported.
+
+### Networks (shows only)
+
+Networks are an exact, case-insensitive match against the network name the provider reports, for example `Disney+`, `Hallmark`, `Netflix`, `HBO`. Streaming brands are sometimes reported inconsistently between providers (`HBO` vs `HBO Max` vs `Max`) — if a network rule isn't triggering, check the exact string a Preview run reports for that title before assuming the rule is broken.
+
+### Blocked/allowed title IDs — movies use TMDB, shows use TVDB
+
+This is a common mix-up: **movie** ID fields (Blocked TMDB IDs, and movie Title exceptions) take a **TMDB** ID, but **show** ID fields (the equivalent show block list, and show Title exceptions) take a **TheTVDB** ID — not a TMDB show ID. This mirrors how Sonarr identifies series. To find a show's TVDB ID, look at its TMDB page under "External IDs," or search [thetvdb.com](https://thetvdb.com).
+
+### Allow overrides bypass more than you might expect
+
+An allow override is checked after content ratings and block rules, but **before** required matches and boundaries — so a matching override skips required genres, required countries/languages, minimum rating, minimum votes, and year/runtime boundaries entirely. It does not skip content-rating rejections or block rules.
+
+Concrete example: adding `PBS Kids` to a show rule set's **Allow overrides → Networks** means any PBS Kids show passes the rules regardless of its rating, vote count, release year, or required genre — as long as it isn't blocked by a country, language, genre, keyword, or a rejected content rating first. Preview a rule set after adding an override to confirm it isn't admitting more than intended.
 
 ### Content ratings
 
-Choose a two-letter country, then add allowed or blocked certifications for that region. Movie certifications and TV content ratings are enriched through TMDB only when a rule set uses this feature. If TMDB has multiple ratings for the selected country, any blocked match rejects the title.
+Content ratings evaluate the rating issued in **one** country you choose — set **Country** to a two-letter code such as `US` or `GB`. Movie certifications and TV content ratings come from TMDB. Configure a TMDB API key in Settings even when discovery uses another provider. Jobs from other providers perform the extra certification lookup only when an allowed or blocked rating is configured; TMDB discovery can already include this data.
 
-Choose an explicit unknown-rating policy. **Allow** preserves v1 behavior when regional metadata is missing; **Reject** fails closed and is recommended for family-focused rules. Preview and Activity identify the country, value, TMDB source, and unknown-rating decision.
+The rule stays completely inactive until you add at least one value to **Allowed ratings** or **Blocked ratings**. A blocked match always wins over an allowed match. If TMDB has no rating filed for your selected country specifically — even if the title is rated in other countries — that counts as "unknown," governed by **When no rating is found**:
+
+- **Allow the title** (the default) passes this content-rating check for an unknown certification; the remaining rule checks still apply.
+- **Reject the title** rejects an unknown certification. This makes the walkthrough above exclude unrated titles as well as disallowed ratings.
+
+If no TMDB key is configured, certification checks still run against whatever certification data is available; missing data follows the unknown policy. A failed TMDB request is a discovery/enrichment error, not proof that a title is unrated.
+
+If a title has several certifications for the selected country, any blocked value rejects it. Otherwise, one match in Allowed ratings is sufficient.
+
+Example: Country `US`, Allowed ratings `G, PG, PG-13`, unknown policy **Reject** — a movie TMDB rates `R` in the US is rejected with `Rejected: US certification R is not allowed (TMDB)`; a movie with no US rating on file at all is rejected with `Rejected: TMDB has no US certification; unknown ratings are rejected`.
 
 ### Boundaries
 
-Set minimum or maximum year and runtime plus minimum rating and vote counts. Leave a boundary empty or set it to `0` to disable it.
+Boundaries are plain numeric ranges: release year, runtime in minutes, minimum rating (0–10), and minimum vote count. Leave a side blank or `0` to leave it open — a minimum of `0` means "no minimum," not "must be exactly zero." Both ends are inclusive: years `2000–2020` include 2000 and 2020, and runtime `80–180` includes 80 and 180 minutes. A nonzero maximum must be at least the minimum.
+
+### What Minimum rating and Minimum votes measure
+
+**Minimum rating** is the discovered candidate's rating on a 0–10 scale. It is not a selectable IMDb, Rotten Tomatoes, or Metacritic filter. **Minimum votes** is the vote count accompanying that source rating.
+
+| Discovery source | Rating used by Blockbusterr |
+|---|---|
+| TMDB | TMDB vote average and vote count |
+| Trakt | Trakt rating and votes |
+| Simkl | Simkl rating/votes when present; otherwise IMDb values from the Simkl response |
+| MDBList list/watchlist | This integration currently does not populate rating or votes |
+| Experimental direct Letterboxd | This integration currently does not populate rating or votes |
+
+An 8.7 minimum on a TMDB job means TMDB 8.7, not IMDb 8.7 or a critic score. A high vote minimum favors widely rated titles and can exclude small releases. For critic-specific ratings, IMDb-only thresholds, or revenue criteria, filter a list in the upstream service, then follow it with a List or Watchlist job. See [Use cases](/examples/use-cases/).
+
+### Missing metadata is handled differently by field
+
+These outcomes assume no earlier universal allow or allow override has already accepted the title:
+
+| Missing candidate value | What happens |
+|---|---|
+| Country or language | A nonempty required list rejects it; an empty required list does not constrain it |
+| Genres or network | A nonempty required field rejects it because nothing matches |
+| Rating or votes | Missing values are zero; a positive minimum rejects them |
+| Runtime or release year | Zero/unknown skips that boundary, even when a minimum or maximum is configured |
+| Regional certification | Uses the selected unknown-rating policy, when content ratings are active |
+
+For example, Minimum runtime `80` rejects a known 70-minute movie, but an unknown runtime does not fail that boundary. Minimum votes `10` rejects a candidate with zero reported votes. A minimum of 10 means **at least** 10, not “approximately 10” or “no more than 10.” There is no maximum-vote boundary in Blockbusterr.
+
+For MDBList or direct Letterboxd imports, do not copy the TMDB Science-Fiction recipe's required genre, minimum rating, and minimum votes onto the list job: the integration does not supply those fields. Start with a dedicated empty rule set and enforce those criteria upstream. Adding a TMDB key for artwork or certifications does not fill in every missing field on these imports.
 
 ## Assign rules to a job
 
@@ -65,6 +188,8 @@ Only rule sets matching the job's media type can be assigned. Blockbusterr rejec
 
 Open the job, choose its current shared rule set, and select **Make job-specific copy**. Blockbusterr duplicates the effective rules, names the copy after the job, assigns it immediately, and leaves the original unchanged.
 
+For example, two jobs share **Current Movies** with Minimum rating `6`. Editing that shared rule to `7` changes both jobs. Making a job-specific copy first lets you raise only one job to `7`; future edits to the original no longer update the copy.
+
 This is the v2 replacement for embedded per-job filters: the result is still isolated to one job, but it remains visible, reusable, and auditable on the Rules page.
 
 ## Title exceptions
@@ -74,14 +199,28 @@ Use the **Title exceptions** tab to manage universal movie TMDB IDs and show TVD
 - **Always allow** bypasses normal rule evaluation.
 - **Always block** rejects the title before scoring or delivery.
 
-Activity Entries can add rejected titles to these lists. Review exceptions periodically because they affect every job of that media type.
+For example, adding movie TMDB ID `550` to **Always allow** makes that movie pass the rule stage whenever a movie job discovers it. It does not add the movie to a discovery source, create a job, bypass delivery caps, or force a duplicate into Radarr. Block always wins over allow for the same ID.
+
+Activity Entries can add rejected titles to these lists directly from a decision you're looking at. Review exceptions periodically because they affect every job of that media type.
 
 ## YAML compatibility
 
 The UI is recommended. Existing `filters.movies`, `filters.shows`, and embedded custom job filters are migrated into deterministic rule sets at startup. New configurations are stored under `rule_sets`, and jobs reference them through `rule_set_id`.
 
-Legacy fields remain readable for upgrade compatibility; avoid editing both models manually.
+Legacy fields remain readable for upgrade compatibility; avoid editing both models manually. See the [Rules API](/api/rules/) for the exact field names if you're editing `config.yaml` directly.
 
 ## Preview before enabling
 
 Preview uses the same assigned rules as manual and scheduled runs without delivering content. After a live run, use **Activity Entries** for per-title reasons and **Job Runs** for aggregate flow and outcome distribution.
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| A required or blocked genre never matches anything | You used a display name (`Science Fiction`) instead of the provider slug (`science-fiction`) | Use the exact value from the [genre tables above](#genres-must-match-exactly-not-a-display-name), or check Activity Entries for the exact genre a rejected title reported |
+| Every title from one show job is suddenly rejected with a metadata error | A Required country or language list rejects titles with no metadata, and this source doesn't always report one | Remove the requirement, or rely on genre/keyword/boundary rules instead for that job |
+| A blocked keyword rejects titles that clearly don't contain that word | Keyword matching is substring-based, not word-based | Use a longer phrase or an exact title ID; the UI trims surrounding spaces |
+| Content-rating rules don't seem to run at all | Both Allowed and Blocked rating lists are empty, or unknown ratings are allowed | Add at least one value to either list, and confirm a TMDB key is set in Settings even if you discover through Trakt or Simkl |
+| An allow override is letting in titles you expected to be filtered | A match in any override field bypasses required matches and boundaries | Narrow the override's values, or move the condition into a required match instead |
+| Adding a show's ID to Title exceptions or Blocked IDs does nothing | You used its TMDB ID instead of its TVDB ID | Look up the TVDB ID from the show's TMDB page ("External IDs") or thetvdb.com |
+| Saving a rule set returns a conflict | Someone else (or another open tab) saved a newer revision first | Reload the rule set and reapply your change — this prevents silently overwriting a concurrent edit |

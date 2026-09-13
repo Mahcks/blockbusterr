@@ -1,105 +1,77 @@
 ---
-title: Radarr Integration
-description: Configure Radarr for automatic movie management
+title: Radarr
+description: Connect a movie destination, select real profiles and folders, and verify what happens after delivery.
 ---
 
-Radarr integration allows Blockbusterr to automatically add movies to your library.
+Radarr manages movies. In **Direct to Radarr and Sonarr** mode, Blockbusterr adds accepted movies to Radarr using your selected quality profile, root folder, availability, and monitoring settings. Radarr handles release searching, downloads, and imports through its own configuration.
 
-## Prerequisites
+If you only want movies, you do not need Sonarr. If you want requests to go through Jellyseerr or Seerr, configure [that delivery target](/integrations/jellyseerr/) instead; its server owns the downstream Radarr settings.
 
-- Running Radarr instance (v3 or v4)
-- Radarr API key
-- Network access from Blockbusterr to Radarr
+## Prepare Radarr
 
-## Configuration
+Before connecting Blockbusterr, make sure you can add a movie in Radarr itself. Configure your library root folder, quality profiles, indexers, and download client there first. Blockbusterr does not configure those services for you.
 
-```yaml
-radarr:
-  url: "http://radarr:7878"
-  api_key: "your_radarr_api_key"
-  quality_profile: 1
-  root_folder: "/movies"
-  minimum_availability: "released"
-  monitor: "movieOnly"
-```
+Copy the Radarr API key from **Settings → General → Security**. You also need its server URL as reachable from the machine or container running Blockbusterr.
 
-## Monitor Options
+| Deployment | Example server URL |
+| --- | --- |
+| Both programs run directly on the same host | `http://localhost:7878` |
+| Containers share a Docker network and Radarr's service name is `radarr` | `http://radarr:7878` |
+| Radarr runs on another LAN machine | `http://192.168.1.20:7878` |
 
-The `monitor` setting controls how movies are monitored when added to Radarr.
+In a container, `localhost` refers to that container. A URL that works in your laptop's browser may not work from Blockbusterr. Include Radarr's configured URL base if it uses one; do not append `/api/v3`.
 
-| Value | Description |
-|-------|-------------|
-| `movieOnly` | Monitor only the movie itself (default) |
-| `movieAndCollection` | Monitor the movie and its entire collection (e.g., all MCU movies) |
-| `none` | Add the movie but don't monitor it for downloads |
+## Connect and select defaults
 
-:::tip
-Use `movieAndCollection` if you want Radarr to automatically grab other movies in a franchise when you add one from the collection.
-:::
+1. Start Blockbusterr with `BLOCKBUSTERR_DRY_RUN=true` while configuring delivery; follow the [quickstart](/getting-started/quickstart/) to set the environment variable and recreate your container with its existing data mount.
+2. Open **Settings → Connections → Radarr**.
+3. Enter **Server URL** and **API key**, then select **Test connection**.
+4. Select **Reload profiles** and choose a **Quality profile** by name.
+5. Select **Reload root folders** and choose the movie library folder configured in Radarr.
+6. Start with **Minimum availability → Released** and **Monitor → Movie only** if those match how you normally add movies.
+7. In Settings, choose **Direct to Radarr and Sonarr** as the delivery mode, then **Save changes**.
+8. Create or review a movie job and inspect its preview while dry run remains on.
+9. Confirm its rules, destination, and delivery cap before turning dry run off. Review all enabled jobs first, because dry run is global.
 
-## Minimum Availability Options
+A **quality profile** is Radarr's policy for acceptable release qualities and upgrades. Its numeric ID is not its position in a list; selecting it in Blockbusterr avoids guessing IDs.
 
-The `minimum_availability` setting determines when Radarr considers a movie available for download.
+The **root folder** is the path Radarr sees, for example `/movies`. It is not necessarily the host's path, and Blockbusterr does not need the movie files mounted locally to submit additions through Radarr's API.
 
-| Value | Description |
-|-------|-------------|
-| `announced` | As soon as the movie is announced |
-| `in_cinemas` | When the movie is released in theaters |
-| `released` | When the movie is released on physical/digital media (default, recommended) |
+## Availability and monitoring
 
-:::caution
-Setting `announced` or `in_cinemas` may result in lower quality releases or CAM rips. Use `released` for best quality.
-:::
+Minimum availability controls when Radarr considers a movie available. It does not enforce a video quality; Radarr's quality profile and other release settings do that.
 
-## Getting API Key
+| UI choice | Config value | Meaning |
+| --- | --- | --- |
+| Announced | `announced` | Use Radarr's announced availability setting |
+| In cinemas | `inCinemas` | Use theatrical availability |
+| Released | `released` | Use released availability |
 
-1. Open Radarr web interface
-2. Go to **Settings** → **General**
-3. Scroll to **Security** section
-4. Copy the **API Key**
+| Monitor choice | Config value | Result |
+| --- | --- | --- |
+| Movie only | `movieOnly` | Monitor the selected movie |
+| Movie and collection | `movieAndCollection` | Ask Radarr to monitor the movie and its collection |
+| None | `none` | Add without monitoring or an initial movie search from Blockbusterr |
 
-## Finding Quality Profile ID
+A collection is Radarr's collection grouping, not every movie in a shared universe. Review collection monitoring before using it because its scope can extend beyond the one title Blockbusterr selected.
 
-**Via API:**
-```bash
-curl "http://localhost:9090/v1/radarr/quality-profiles"
-```
+Jobs can override availability and monitoring. Check an individual job if its behavior differs from the Settings defaults.
 
-**Via Radarr UI:**
-1. Go to **Settings** → **Profiles**
-2. Note the profile name you want to use
-3. The ID corresponds to the order (1, 2, 3, etc.)
+## What successful delivery means
 
-## Finding Root Folder
+A successful addition means Radarr accepted the movie into its management database. It does not mean a release exists, a download completed, or a playable file is already in your library. For monitored movies, Blockbusterr also asks Radarr to search when adding.
 
-**Via API:**
-```bash
-curl "http://localhost:9090/v1/radarr/root-folders"
-```
+Existing movies are handled as duplicates. Removing a title from a discovery list does not delete it from Radarr. See [Jobs](/concepts/jobs/) for repeat handling when a previously delivered title is later removed from your library.
 
-**Via Radarr UI:**
-1. Go to **Settings** → **Media Management**
-2. Check **Root Folders** section
+## Troubleshooting
 
-## Testing Connection
+| Problem | What to check |
+| --- | --- |
+| Connection refused or timed out | Check the URL from Blockbusterr's host/container, network membership, port, and firewall. |
+| Unauthorized | Copy the API key from this Radarr instance; do not use the Blockbusterr or Sonarr key. |
+| No profiles or folders | Create them in Radarr first, then reload the dropdowns. |
+| Preview passes but nothing is added | Check dry run, job enabled state, global/per-job delivery mode, caps, duplicates, and Job Runs. |
+| Movie appears but does not download | Inspect Radarr's history, queue, indexers, download client, availability, and quality decisions. |
+| Wrong folder or quality | Review the saved Radarr defaults and confirm the job is delivering directly rather than through a request server. |
 
-```bash
-curl "http://localhost:9090/v1/radarr/validate"
-```
-
-## Docker Networking
-
-If using Docker, use container names:
-
-```yaml
-radarr:
-  url: "http://radarr:7878"  # Container name, not localhost
-```
-
-Ensure both containers are on the same Docker network.
-
-## Next Steps
-
-- Configure [Sonarr](/integrations/sonarr/) for TV shows
-- Set up [movie jobs](/concepts/jobs/)
-- Learn about [integration modes](/concepts/integration-modes/)
+Use **Activity Entries** for individual delivery outcomes and **Job Runs** for the scheduled run as a whole.

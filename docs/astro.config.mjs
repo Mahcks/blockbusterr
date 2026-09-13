@@ -30,7 +30,7 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: isVersioned ? 'Blockbusterr v2' : 'Blockbusterr',
-			description: 'Automate media discovery with reusable rules and observable delivery',
+			description: 'Find movies and shows, apply your preferences, and control what gets added to your library',
 			tagline: 'Smart content discovery for your media server',
 			components: {
 				SiteTitle: './src/components/VersionedSiteTitle.astro',
@@ -93,7 +93,7 @@ export default defineConfig({
 					label: 'Getting Started',
 					items: [
 						{ label: 'Introduction', slug: 'index' },
-						{ label: 'Quick Start', slug: 'getting-started/quickstart' },
+						{ label: 'Your first movie job', slug: 'getting-started/quickstart' },
 						{ label: 'Installation', slug: 'getting-started/installation' },
 						{ label: 'Deployment platforms', slug: 'getting-started/deployment-platforms' },
 						{ label: 'Configuration', slug: 'getting-started/configuration' },
@@ -101,12 +101,13 @@ export default defineConfig({
 					],
 				},
 				{
-					label: 'Core Concepts',
+					label: 'Using Blockbusterr',
 					items: [
 						{ label: 'Jobs Overview', slug: 'concepts/jobs' },
 						{ label: 'Rules', slug: 'concepts/rules' },
 						{ label: 'Smart Jobs', slug: 'concepts/smart-jobs' },
 						{ label: 'Integration Modes', slug: 'concepts/integration-modes' },
+						{ label: 'Activity & Troubleshooting', slug: 'concepts/activity' },
 					],
 				},
 				{
@@ -125,6 +126,7 @@ export default defineConfig({
 						{ label: 'Simkl (Optional)', slug: 'integrations/simkl' },
 						{ label: 'MDBList (Optional)', slug: 'integrations/mdblist' },
 						{ label: 'Trakt (Optional)', slug: 'integrations/trakt' },
+						{ label: 'Letterboxd (Experimental)', slug: 'integrations/letterboxd' },
 					],
 				},
 				{

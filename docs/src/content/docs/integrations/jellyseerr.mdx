@@ -1,92 +1,72 @@
 ---
-title: Jellyseerr / Seerr Integration
-description: Configure request-based delivery through Jellyseerr or Seerr
+title: Jellyseerr / Seerr
+description: Route movies and shows through a request server and configure real approval behavior.
 ---
 
-import { Aside, Steps } from '@astrojs/starlight/components';
+Jellyseerr / Seerr delivery sends accepted candidates as requests. The request server decides approval and routes approved requests to its configured Radarr or Sonarr service. Use it if you already manage requests there or need that server's user permissions and quotas.
 
-Jellyseerr mode creates requests instead of adding content directly to Radarr or Sonarr. It supports both **Jellyseerr and Seerr** because they expose the same compatible request API. The selected request server owns approval, quotas, notifications, quality profiles, and root-folder selection.
+The configuration key and job mode remain `jellyseerr` for compatibility, even when the URL points to Seerr. You can choose this mode globally or override it for an individual job.
 
-The configuration key and job mode remain named `jellyseerr` for backward compatibility; point the URL at either a Jellyseerr or Seerr server.
+## Prepare the request server
 
-## Prerequisites
-
-<Steps>
 1. Configure Radarr and/or Sonarr inside Jellyseerr or Seerr.
-2. Copy its API key from **Settings → General**.
-3. Ensure Blockbusterr can reach the request server URL.
-</Steps>
+2. Choose its downstream quality profiles, root folders, and default services there.
+3. Verify a request can be made and processed in that server.
+4. Copy its API key from **Settings → General**.
 
-## Configuration
+Blockbusterr's direct Radarr/Sonarr profile settings do not choose the request server's destinations. Keep that configuration in Jellyseerr or Seerr.
 
-```yaml
-jobs:
-  mode: jellyseerr
+## Connect Blockbusterr
 
-jellyseerr:
-  url: http://jellyseerr:5055
-  api_key: your_jellyseerr_api_key
-```
+1. Start Blockbusterr with `BLOCKBUSTERR_DRY_RUN=true` before changing delivery or creating jobs; follow the [quickstart](/getting-started/quickstart/) to set the environment variable and recreate your container with its existing data mount.
+2. Open **Settings → Connections → Jellyseerr / Seerr**.
+3. Enter **Server URL**, such as `http://seerr:5055`, and **API key**. The URL must be reachable from Blockbusterr; a service name works only when the containers share a network.
+4. Select **Test connection**.
+5. Select **Request through Jellyseerr / Seerr** as the delivery mode and **Save changes**.
+6. Review a movie or show job and confirm its mode uses the request server. An explicit per-job mode can override the global setting.
+7. Preview while dry run is on and check the rules and delivery cap.
+8. Configure approval as described below before turning dry run off. Review all enabled jobs because the global setting affects all of them.
 
-When the containers share a Docker network, use the container name rather than `localhost`.
+Custom jobs are created enabled. Dry run protects the setup period; a preview alone does not pause a scheduled job.
 
-### Request as a specific user
+## Requests do not automatically mean manual approval
 
-An API key normally creates requests with its own permissions. You can set a Jellyseerr/Seerr user ID:
+**Choosing Jellyseerr / Seerr is not an approval gate by itself.** Administrative API-key requests may be automatically approved. Setting **User ID** changes who the request is attributed to; do not assume it removes the API key's administrative permissions.
 
-```yaml
-jellyseerr:
-  url: http://jellyseerr:5055
-  api_key: your_jellyseerr_api_key
-  user_id: "2"
-```
+Seerr documents that users with administrative or auto-approve permissions have requests approved automatically. See [request permission behavior](https://docs.seerr.dev/api/create-new-request/).
 
-Alternatively, local login credentials can be used for request creation:
+To require review:
 
-```yaml
-jellyseerr:
-  url: http://jellyseerr:5055
-  api_key: your_jellyseerr_api_key
-  request_credentials:
-    email: user@example.com
-    password: your_password
-```
+1. Create a dedicated local user in Jellyseerr or Seerr.
+2. Give that user permission to request the media types you need, without administrative or auto-approve permissions. Set quotas there if needed.
+3. In Blockbusterr's connection settings, expand **Request as a specific user**.
+4. Enter that local user's **Request email** and **Request password**, then save. Supply both fields; this is local-login authentication, not a Plex account password.
+5. Keep the API key configured. Blockbusterr still uses it for read/status checks; request creation uses the local user session when both login fields are set.
+6. After the preview is satisfactory, test one tightly capped job with other jobs paused. Check the actual request in Jellyseerr or Seerr and confirm it waits for approval before enabling broader automation.
 
-<Aside type="caution">
-Keep the API key and optional login credentials private. Store them only in your local configuration or environment.
-</Aside>
+The Settings connection test verifies API access, not the user's request approval policy. A successful preview does not test approval because it creates no request.
 
-## Example job
+## Example: keep upcoming movies for review
 
-```yaml
-jobs:
-  mode: jellyseerr
-  sync_interval: 24h
-  list:
-    - id: family-movies
-      name: Family Movies
-      enabled: true
-      type: popular
-      source: simkl
-      media: movie
-      limit: 30
-      sync_interval: "0 8 * * *"
-```
+Create a movie job from a source that supplies upcoming candidates, assign rules appropriate to titles that may have few votes, and choose the request mode. Set a small job delivery cap while evaluating it. Configure the dedicated user above if the requests should wait for your approval.
 
-The job's discovery source does not change the request workflow. Blockbusterr fetches candidates, applies the job's assigned movie or show rule set, and creates Jellyseerr/Seerr requests for accepted items.
+The **Anticipated With Approval** recipe needs Trakt and a request server, but the recipe's name does not configure the request user's permissions. [Trakt's credentials may require VIP](/integrations/trakt/); use another supported discovery strategy if you do not want that dependency.
 
-## Approval behavior
+For show requests, Blockbusterr requests all seasons through the request API. Direct Sonarr monitoring overrides do not turn that request into a first-season-only request. Check the request server's behavior before automating large shows.
 
-Blockbusterr does not provide Jellyseerr or Seerr with score-based approval thresholds. To control approval:
+## What success means
 
-- Configure movie and show auto-approval on the Jellyseerr/Seerr user.
-- Configure request quotas in Jellyseerr or Seerr.
-- Use the job's assigned Blockbusterr rules to reject unwanted candidates before requesting them.
+A successful request means the request server accepted it. It may still be pending approval, processing, or awaiting an available release. Look in Jellyseerr or Seerr for its subsequent state, and in Radarr/Sonarr for downloading and importing.
+
+Blockbusterr filters candidates before requesting them. It does not send score-based auto-approval rules to Jellyseerr or Seerr. Removing a movie from a discovery list does not cancel a request already created.
 
 ## Troubleshooting
 
-- Verify the URL from the Blockbusterr host or container.
-- Verify the API key in Jellyseerr or Seerr.
-- Confirm the selected user can request the media type.
-- Check Activity Entries for filtered, duplicate, or failed items.
-- Confirm the job's discovery provider is configured.
+| Problem | What to check |
+| --- | --- |
+| Cannot connect | Check the URL, API key, container network, and any reverse-proxy base path. |
+| Requests auto-approve unexpectedly | Check API-key versus local-user authentication and the requesting user's permissions. User ID alone is not a reliable approval control. |
+| Connection test works but requests fail | Check both local-login fields, request permissions, quotas, and downstream service configuration. |
+| Accepted requests never reach Radarr/Sonarr | Inspect the request's approval state and the request server's default services and logs. |
+| Wrong quality or root folder | Change those defaults in Jellyseerr/Seerr, not Blockbusterr's direct-delivery connection. |
+| No request appears | Check dry run, job mode, filtering, duplicates, and caps in Activity Entries and Job Runs. |

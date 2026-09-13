@@ -29,7 +29,7 @@ Run this from a directory outside the data mount. Use a new backup filename if o
 
 ## Upgrade
 
-1. Set the image to `ghcr.io/mahcks/blockbusterr:v2.0.0`. For Compose, update `image:` and run `docker compose pull blockbusterr`; a pull alone does not change a pinned tag.
+1. Set the image to `ghcr.io/mahcks/blockbusterr:v2.0.1`. For Compose, update `image:` and run `docker compose pull blockbusterr`; a pull alone does not change a pinned tag.
 2. Optionally set `BLOCKBUSTERR_AUTH_TOKEN` to a random value of at least 32 characters and save it in your password manager.
 3. Docker users should leave the container user unset. The v2 entrypoint will repair ownership left by root-running v1 containers only for the mounted data directory and Blockbusterr's known writable files, then immediately run the application as UID/GID `10001:10001`.
 4. Set `BLOCKBUSTERR_DRY_RUN=true` and start Blockbusterr with the existing configuration and data mounts. For Compose, use `docker compose up -d blockbusterr`. Duration schedules can run at startup, so enable dry-run before the first v2 start.
