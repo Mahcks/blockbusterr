@@ -4,6 +4,21 @@ All notable changes to Blockbusterr are documented here. The project follows sem
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-09-12
+
+### Fixed
+
+- Settings can save successive changes without reloading the page.
+- Radarr and Sonarr profiles and root folders load with the credentials entered during setup, before saving.
+- Saved hidden credentials correctly count as configured and can be retested without re-entering keys.
+- Failed option loading preserves saved defaults and displays the server error.
+- Edits made during a save remain marked as unsaved.
+
+### Validation
+
+- Added desktop and mobile browser coverage for empty configuration, connection testing, two saves, navigation, saved credentials, and unavailable delivery services.
+- Release publication now requires the browser suite to pass against the candidate Docker image.
+
 ## [2.0.0] - 2026-09-12
 
 ### Added

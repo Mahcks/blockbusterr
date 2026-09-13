@@ -57,14 +57,13 @@ function init() {
   window.addEventListener('beforeunload', handleBeforeUnload);
 
   setupNavActiveTracking();
-  // Radarr/Sonarr may be slow or unreachable, so the dirty baseline is never
-  // gated on their response — each load patches only its own select's value
-  // into the existing baseline once it settles, instead of re-snapshotting
-  // the whole form (which would race with anything the user typed meanwhile).
+  // Saved options are rendered immediately; loading labels must not gate edits.
   autoLoadRadarrSonarrOptions();
 }
 
-function onFormChange() {
+function onFormChange(event) {
+  const service = event?.target.closest('[data-service]')?.dataset.service;
+  if (service) delete sessionTestResults[service];
   renderServiceStatuses();
   renderModeReadiness();
   updateWeightTotal();
@@ -97,6 +96,10 @@ function fieldValue(form, name) {
   return String(form.elements[name]?.value || '').trim();
 }
 
+function hasCredential(form, name) {
+  return Boolean(fieldValue(form, name) || form.elements[name]?.dataset.saved === 'true');
+}
+
 // ---- Service status -----------------------------------------------------
 
 function serviceState(service) {
@@ -110,19 +113,16 @@ function serviceState(service) {
 	}
   if (service === 'tmdb' || service === 'simkl' || service === 'mdblist') {
 	const field = service === 'tmdb' ? 'tmdb.api_key' : service === 'simkl' ? 'simkl.client_id' : 'mdblist.api_key';
-	const value = fieldValue(form, field);
+	const value = hasCredential(form, field);
     return value ? { state: 'configured', label: 'Configured' } : { state: 'not-configured', label: 'Not configured' };
   }
 
   const [firstKey, secondKey] = REQUIRED_PAIR[service];
   const first = fieldValue(form, firstKey);
-  const second = fieldValue(form, secondKey);
-  const optional = service === 'jellyseerr';
+  const second = hasCredential(form, secondKey);
 
   if (!first && !second) {
-    return optional
-      ? { state: 'not-configured', label: 'Not configured' }
-      : { state: 'not-configured', label: 'Not configured' };
+    return { state: 'not-configured', label: 'Not configured' };
   }
   if (!first || !second) {
     return { state: 'needs-attention', label: 'Needs attention' };
@@ -321,6 +321,7 @@ async function saveSettings() {
   }
 
   const saveButton = document.getElementById('save-button');
+  if (saveButton.disabled) return;
   saveButton.disabled = true;
   setSaveStatus('Saving…');
 
@@ -329,16 +330,19 @@ async function saveSettings() {
 	formData.set('jobs.selection.enabled', document.getElementById('selection-enabled')?.checked ? 'true' : 'false');
 	formData.set('letterboxd.experimental_scraping', document.getElementById('letterboxd-experimental-scraping')?.checked ? 'true' : 'false');
 
+  const submittedSnapshot = serializeForm(form);
   try {
     const response = await fetch('/config/save', { method: 'POST', body: formData });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
       setSaveStatus(result.error || 'Save failed', 'error');
       window.showNotification?.(result.error || 'Failed to save configuration.', 'error');
-      saveButton.disabled = false;
       return;
     }
-    baselineSnapshot = serializeForm(form);
+    baselineSnapshot = submittedSnapshot;
+    form.querySelectorAll('[data-saved]').forEach((input) => {
+      if (formData.get(input.name)) input.dataset.saved = 'true';
+    });
     updateSaveBar();
     updateSelectionControls();
     setSaveStatus('Saved', 'success');
@@ -347,6 +351,7 @@ async function saveSettings() {
   } catch (err) {
     setSaveStatus('Network error', 'error');
     window.showNotification?.(`Failed to save configuration: ${err.message}`, 'error');
+  } finally {
     saveButton.disabled = false;
   }
 }
@@ -387,7 +392,7 @@ async function testConnection(service, button) {
   const second = fieldValue(form, config.second);
   const resultEl = document.querySelector(`[data-test-result="${service}"]`);
 
-  if (!first || (config.second && service !== 'trakt' && !second)) {
+  if (!hasCredential(form, config.first) || (config.second && !hasCredential(form, config.second))) {
     writeTestResult(resultEl, 'error', 'Fill in the required fields first.');
     return;
   }
@@ -405,7 +410,7 @@ async function testConnection(service, button) {
       body: JSON.stringify(params),
     });
     const data = await response.json().catch(() => ({}));
-    if (data.connected || (response.ok && data.message)) {
+    if (response.ok && (data.connected || data.message)) {
       sessionTestResults[service] = 'connected';
       writeTestResult(resultEl, 'success', data.message || 'Connected.');
     } else {
@@ -447,18 +452,25 @@ async function loadOptions(service, kind, silent) {
   const selectId = `${service}-${kind === 'profiles' ? 'quality-profile' : 'root-folder'}`;
   const select = document.getElementById(selectId);
   if (!select) return;
-  const savedValue = select.dataset.selected;
+
+  const form = document.getElementById('settings-form');
   const path = kind === 'profiles' ? `/v1/${service}/quality-profiles` : `/v1/${service}/root-folders`;
 
   try {
-    const response = await fetch(path);
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: fieldValue(form, `${service}.url`), api_key: fieldValue(form, `${service}.api_key`) }),
+    });
     const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `Could not load ${kind}`);
     const items = data.data || [];
-    select.replaceChildren(new Option(kind === 'profiles' ? 'Select a quality profile…' : 'Select a root folder…', ''));
     if (items.length === 0) {
-      if (!silent) window.showNotification?.(`No ${kind} found. Test the connection first.`, 'error');
+      if (!silent) window.showNotification?.(`No ${kind} found on this server.`, 'error');
       return;
     }
+    const savedValue = select.value;
+    select.replaceChildren(new Option(kind === 'profiles' ? 'Select a quality profile…' : 'Select a root folder…', ''));
     items.forEach((item) => {
       const option = kind === 'profiles'
         ? new Option(item.name, String(item.id))
@@ -466,25 +478,14 @@ async function loadOptions(service, kind, silent) {
       if (savedValue && String(kind === 'profiles' ? item.id : item.path) === String(savedValue)) option.selected = true;
       select.appendChild(option);
     });
-    if (silent) refreshBaselineField(select.name, select.value);
-    else window.showNotification?.(`${kind === 'profiles' ? 'Quality profiles' : 'Root folders'} loaded.`, 'success');
+    if (savedValue && select.value !== savedValue) {
+      select.add(new Option(savedValue, savedValue, false, true));
+    }
+    updateSaveBar();
+    if (!silent) window.showNotification?.(`${kind === 'profiles' ? 'Quality profiles' : 'Root folders'} loaded.`, 'success');
   } catch (err) {
     if (!silent) window.showNotification?.(`Failed to load ${kind}: ${err.message}`, 'error');
   }
-}
-
-// Patches a single field's value into the stored baseline without
-// re-serializing the whole form, so an auto-selected option (the saved
-// profile/folder becoming available) doesn't register as an unsaved edit —
-// while anything the user typed in the meantime is left alone.
-function refreshBaselineField(name, value) {
-  if (!baselineSnapshot || !name) return;
-  const entries = JSON.parse(baselineSnapshot);
-  const match = entries.find(([key]) => key === name);
-  if (match) match[1] = value;
-  else entries.push([name, value]);
-  baselineSnapshot = JSON.stringify(entries);
-  updateSaveBar();
 }
 
 function autoLoadRadarrSonarrOptions() {

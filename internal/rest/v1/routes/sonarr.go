@@ -18,9 +18,11 @@ func RegisterSonarrRoutes(rg *RouteGroup, group fiber.Router) {
 
 	// GET /v1/sonarr/quality-profiles - Get quality profiles
 	sonarr.Get("/quality-profiles", rg.GetSonarrQualityProfiles)
+	sonarr.Post("/quality-profiles", rg.GetSonarrQualityProfiles)
 
 	// GET /v1/sonarr/root-folders - Get root folders
 	sonarr.Get("/root-folders", rg.GetSonarrRootFolders)
+	sonarr.Post("/root-folders", rg.GetSonarrRootFolders)
 
 	// GET /v1/sonarr/lookup?term=breaking+bad - Lookup series
 	sonarr.Get("/lookup", rg.LookupSonarrSeries)
@@ -31,23 +33,11 @@ func RegisterSonarrRoutes(rg *RouteGroup, group fiber.Router) {
 
 // ValidateSonarr validates the Sonarr API connection
 func (rg *RouteGroup) ValidateSonarr(c *fiber.Ctx) error {
-	var url, apiKey string
-	if c.Method() == fiber.MethodPost {
-		var request struct {
-			URL    string `json:"url"`
-			APIKey string `json:"api_key"`
-		}
-		if err := c.BodyParser(&request); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body", "connected": false})
-		}
-		url, apiKey = request.URL, request.APIKey
-	} else {
-		// Normal mode, use saved config
-		cfg := rg.gctx.Config()
-		url = cfg.Sonarr.URL
-		apiKey = cfg.Sonarr.APIKey
+	cfg := rg.gctx.Config()
+	url, apiKey, err := connectionCredentials(c, cfg.Sonarr.URL, cfg.Sonarr.APIKey)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error(), "connected": false})
 	}
-	c.Set(fiber.HeaderCacheControl, "no-store")
 
 	if url == "" || apiKey == "" {
 		return c.Status(400).JSON(fiber.Map{
@@ -101,10 +91,14 @@ func (rg *RouteGroup) GetSonarrSeries(c *fiber.Ctx) error {
 // GetSonarrQualityProfiles returns quality profiles
 func (rg *RouteGroup) GetSonarrQualityProfiles(c *fiber.Ctx) error {
 	cfg := rg.gctx.Config()
+	url, apiKey, err := connectionCredentials(c, cfg.Sonarr.URL, cfg.Sonarr.APIKey)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-		BaseURL: cfg.Sonarr.URL,
-		APIKey:  cfg.Sonarr.APIKey,
+		BaseURL: url,
+		APIKey:  apiKey,
 	})
 
 	profiles, err := sonarrClient.GetQualityProfiles(c.Context())
@@ -123,10 +117,14 @@ func (rg *RouteGroup) GetSonarrQualityProfiles(c *fiber.Ctx) error {
 // GetSonarrRootFolders returns root folders
 func (rg *RouteGroup) GetSonarrRootFolders(c *fiber.Ctx) error {
 	cfg := rg.gctx.Config()
+	url, apiKey, err := connectionCredentials(c, cfg.Sonarr.URL, cfg.Sonarr.APIKey)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	sonarrClient := integrations.NewSonarr(integrations.SonarrConfig{
-		BaseURL: cfg.Sonarr.URL,
-		APIKey:  cfg.Sonarr.APIKey,
+		BaseURL: url,
+		APIKey:  apiKey,
 	})
 
 	folders, err := sonarrClient.GetRootFolders(c.Context())

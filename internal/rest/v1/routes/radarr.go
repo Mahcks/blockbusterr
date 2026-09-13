@@ -18,9 +18,11 @@ func RegisterRadarrRoutes(rg *RouteGroup, group fiber.Router) {
 
 	// GET /v1/radarr/quality-profiles - Get quality profiles
 	radarr.Get("/quality-profiles", rg.GetRadarrQualityProfiles)
+	radarr.Post("/quality-profiles", rg.GetRadarrQualityProfiles)
 
 	// GET /v1/radarr/root-folders - Get root folders
 	radarr.Get("/root-folders", rg.GetRadarrRootFolders)
+	radarr.Post("/root-folders", rg.GetRadarrRootFolders)
 
 	// GET /v1/radarr/lookup?term=inception - Lookup movie
 	radarr.Get("/lookup", rg.LookupRadarrMovie)
@@ -31,23 +33,11 @@ func RegisterRadarrRoutes(rg *RouteGroup, group fiber.Router) {
 
 // ValidateRadarr validates the Radarr API connection
 func (rg *RouteGroup) ValidateRadarr(c *fiber.Ctx) error {
-	var url, apiKey string
-	if c.Method() == fiber.MethodPost {
-		var request struct {
-			URL    string `json:"url"`
-			APIKey string `json:"api_key"`
-		}
-		if err := c.BodyParser(&request); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body", "connected": false})
-		}
-		url, apiKey = request.URL, request.APIKey
-	} else {
-		// Normal mode, use saved config
-		cfg := rg.gctx.Config()
-		url = cfg.Radarr.URL
-		apiKey = cfg.Radarr.APIKey
+	cfg := rg.gctx.Config()
+	url, apiKey, err := connectionCredentials(c, cfg.Radarr.URL, cfg.Radarr.APIKey)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error(), "connected": false})
 	}
-	c.Set(fiber.HeaderCacheControl, "no-store")
 
 	if url == "" || apiKey == "" {
 		return c.Status(400).JSON(fiber.Map{
@@ -101,10 +91,14 @@ func (rg *RouteGroup) GetRadarrMovies(c *fiber.Ctx) error {
 // GetRadarrQualityProfiles returns quality profiles
 func (rg *RouteGroup) GetRadarrQualityProfiles(c *fiber.Ctx) error {
 	cfg := rg.gctx.Config()
+	url, apiKey, err := connectionCredentials(c, cfg.Radarr.URL, cfg.Radarr.APIKey)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-		BaseURL: cfg.Radarr.URL,
-		APIKey:  cfg.Radarr.APIKey,
+		BaseURL: url,
+		APIKey:  apiKey,
 	})
 
 	profiles, err := radarrClient.GetQualityProfiles(c.Context())
@@ -123,10 +117,14 @@ func (rg *RouteGroup) GetRadarrQualityProfiles(c *fiber.Ctx) error {
 // GetRadarrRootFolders returns root folders
 func (rg *RouteGroup) GetRadarrRootFolders(c *fiber.Ctx) error {
 	cfg := rg.gctx.Config()
+	url, apiKey, err := connectionCredentials(c, cfg.Radarr.URL, cfg.Radarr.APIKey)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	radarrClient := integrations.NewRadarr(integrations.RadarrConfig{
-		BaseURL: cfg.Radarr.URL,
-		APIKey:  cfg.Radarr.APIKey,
+		BaseURL: url,
+		APIKey:  apiKey,
 	})
 
 	folders, err := radarrClient.GetRootFolders(c.Context())

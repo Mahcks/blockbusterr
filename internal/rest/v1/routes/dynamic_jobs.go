@@ -26,7 +26,9 @@ func AddDynamicJobsRoutes(router fiber.Router, gctx global.Context) {
 			if err := c.BodyParser(&request); err != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 			}
-			apiKey = request.APIKey
+			if request.APIKey != "" {
+				apiKey = request.APIKey
+			}
 		}
 		c.Set(fiber.HeaderCacheControl, "no-store")
 		if apiKey == "" {
